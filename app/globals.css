@@ -1,0 +1,2447 @@
+/* Direction artistique typographique WADA :
+ *   Fraunces        — display, hero, palettes (axe ITAL/OPSZ, très éditorial)
+ *   Merriweather Sans — corps de texte (Relume 2026 — chargé localement)
+ *   EB Garamond     — fallback serif italique (storytelling, citations)
+ *   Inter           — labels CAPS, méta, navigation
+ *   Noto Serif JP   — caractères 和田 dans le wordmark                      */
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..600;1,9..144,300..600&family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Inter:wght@400;500;600;700&family=Noto+Serif+JP:wght@400;500;700&display=swap');
+
+/* Merriweather Sans — chargé localement (woff2 dans /public/fonts/) */
+@font-face {
+  font-family: 'Merriweather Sans';
+  font-weight: 300; font-style: normal; font-display: swap;
+  src: url('/fonts/merriweather-sans-300.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Merriweather Sans';
+  font-weight: 400; font-style: normal; font-display: swap;
+  src: url('/fonts/merriweather-sans-400.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Merriweather Sans';
+  font-weight: 500; font-style: normal; font-display: swap;
+  src: url('/fonts/merriweather-sans-500.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Merriweather Sans';
+  font-weight: 600; font-style: normal; font-display: swap;
+  src: url('/fonts/merriweather-sans-600.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Merriweather Sans';
+  font-weight: 700; font-style: normal; font-display: swap;
+  src: url('/fonts/merriweather-sans-700.woff2') format('woff2');
+}
+
+/* ───────────────────────────────────────────────────────────
+   THÈMES — clair & sombre via [data-theme] sur <html>
+   ─────────────────────────────────────────────────────────── */
+:root, [data-theme="light"] {
+  --wada-ink: #1F1B16;
+  --wada-paper: #F4EFE6;
+  --wada-subtle: #A89A85;
+  --wada-accent: #8B3A2A;
+  --wada-seal: #1B4A6B;
+  --wada-border: rgba(31, 27, 22, 0.15);
+  --wada-text-secondary: #3A3025;
+  --wada-card-bg: rgba(255, 255, 255, 0.5);
+  --wada-card-bg-strong: rgba(255, 255, 255, 0.8);
+  --wada-noise-opacity: 0.3;
+}
+
+[data-theme="dark"] {
+  --wada-ink: #EDE5D6;
+  --wada-paper: #14110D;
+  --wada-subtle: #8B7F6E;
+  --wada-accent: #C8A88C;
+  --wada-seal: #6FA9C8;
+  --wada-border: rgba(237, 229, 214, 0.18);
+  --wada-text-secondary: #BDB39E;
+  --wada-card-bg: rgba(237, 229, 214, 0.04);
+  --wada-card-bg-strong: rgba(237, 229, 214, 0.08);
+  --wada-noise-opacity: 0.06;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   RELUME DESIGN TOKENS — DA WADA 2026 (export Relume + esprit éditorial)
+   ═══════════════════════════════════════════════════════════════════════
+   Variables disponibles partout. Indépendantes des tokens legacy ci-dessus,
+   elles sont utilisées par les nouvelles sections (Hero, Features, etc.)
+   et par les classes .scheme-1 → .scheme-4.                              */
+:root, [data-theme="light"], [data-theme="dark"] {
+
+  /* ── Neutres — gamme 0 (blanc) → 7 (noir) ── */
+  --wada-neutral-0: #FFFFFF;
+  --wada-neutral-1: #F2F2F2;
+  --wada-neutral-2: #D9D9D9;
+  --wada-neutral-3: #B4B4B3;
+  --wada-neutral-4: #838380;
+  --wada-neutral-5: #51514D;
+  --wada-neutral-6: #1F1F1B;
+  --wada-neutral-7: #070702;
+
+  /* ── Plum — accent secondaire (gardé en backup) ── */
+  --wada-plum-1: #F3EAF0;
+  --wada-plum-2: #E7D5E2;
+  --wada-plum-3: #AD6D99;
+  --wada-plum-4: #8B2F6E;
+  --wada-plum-5: #6F2558;
+  --wada-plum-6: #37122C;
+  --wada-plum-7: #290E21;
+
+  /* ── Mojo — terracotta-brique (NOUVEAU accent primaire WADA v2) ── */
+  --wada-mojo-1: #F9EDEB;  /* fond Scheme 2 */
+  --wada-mojo-2: #F3DBD7;
+  --wada-mojo-3: #D58375;
+  --wada-mojo-4: #C44E3A;  /* primary — boutons, badges */
+  --wada-mojo-5: #9C3E2E;
+  --wada-mojo-6: #4E1F17;
+  --wada-mojo-7: #3A1711;
+
+  /* ── Jelly Bean — bleu éditorial (secondaire, contrastes) ── */
+  --wada-jelly-1: #E9F0F5;
+  --wada-jelly-4: #2B6FA3;
+
+  /* ── Anzac — doré (highlights, savings) ── */
+  --wada-anzac-1: #FCF7ED;
+  --wada-anzac-4: #E3B04B;
+
+  /* ── Cream Can — jaune doré (highlights, savings, warm) ── */
+  --wada-cream-can-1: #FDF9ED;
+  --wada-cream-can-2: #FCF4DB;
+  --wada-cream-can-3: #F5D981;
+  --wada-cream-can-4: #F2C94C;  /* primary */
+  --wada-cream-can-5: #C1A03C;
+  --wada-cream-can-6: #60501E;
+  --wada-cream-can-7: #483C16;
+
+  /* ── Chateau Green — succès, durable, eco ── */
+  --wada-green-1: #ECF6F0;
+  --wada-green-2: #DAEDE1;
+  --wada-green-3: #80C298;
+  --wada-green-4: #4AA96C;  /* primary */
+  --wada-green-5: #3B8756;
+  --wada-green-6: #1D432B;
+  --wada-green-7: #163220;
+
+  /* ── Wasabi — naturel, cultures, palette earthy ── */
+  --wada-wasabi-1: #F2F3E9;
+  --wada-wasabi-2: #E6E7D4;
+  --wada-wasabi-3: #A8AC6B;
+  --wada-wasabi-4: #84892C;  /* primary */
+  --wada-wasabi-5: #696D23;
+  --wada-wasabi-6: #343611;
+  --wada-wasabi-7: #27290D;
+
+  /* ── UI radius (Relume "sleek" — éditorial, pas pill) ── */
+  --wada-button-radius: 12px;
+  --wada-tag-radius:    6px;
+  --wada-input-radius:  12px;
+  --wada-card-radius:   16px;
+  --wada-card-border:   1px;
+
+  /* ── Tokens accent WADA v2 — Mojo terracotta remplace seal pour les CTAs ── */
+  --wada-mojo:        var(--wada-mojo-4);  /* #C44E3A — accent primaire */
+  --wada-mojo-soft:   var(--wada-mojo-1);  /* #F9EDEB — bg cream rosé */
+}
+
+/* ═══ SCHEMES — appliqués via classe sur une <section> ═══════════════════
+   Chaque scheme redéfinit --scheme-bg / --scheme-fg / --scheme-text /
+   --scheme-accent / --scheme-border. Les enfants héritent automatiquement.
+   ─────────────────────────────────────────────────────────────────────── */
+
+/* Scheme 1 — DA WADA éditoriale (cream paper + ink + seal bordeaux) */
+.scheme-1 {
+  --scheme-bg:     var(--wada-paper);                /* #F4EFE6 cream */
+  --scheme-fg:     rgba(255, 255, 255, 0.5);          /* surface card douce */
+  --scheme-text:   var(--wada-ink);                   /* #1F1B16 */
+  --scheme-accent: var(--wada-seal);                  /* #1B4A6B (legacy) — sera surchargé sur les CTAs en bordeaux #5C2018 si voulu */
+  --scheme-border: var(--wada-border);                /* rgba(31, 27, 22, 0.15) */
+  background-color: var(--scheme-bg);
+  color: var(--scheme-text);
+}
+
+/* Scheme 2 — fond noir absolu, texte blanc, accent blanc */
+.scheme-2 {
+  --scheme-bg:     var(--wada-neutral-7);    /* #070702 */
+  --scheme-fg:     var(--wada-neutral-6);    /* #1F1F1B */
+  --scheme-text:   #FFFFFF;
+  --scheme-accent: #FFFFFF;
+  --scheme-border: rgba(255, 255, 255, 0.2);
+  background-color: var(--scheme-bg);
+  color: var(--scheme-text);
+}
+
+/* Scheme 3 — fond charcoal, texte blanc — utilisé pour la nav sticky */
+.scheme-3 {
+  --scheme-bg:     var(--wada-neutral-6);    /* #1F1F1B */
+  --scheme-fg:     var(--wada-neutral-7);    /* #070702 */
+  --scheme-text:   #FFFFFF;
+  --scheme-accent: #FFFFFF;
+  --scheme-border: rgba(255, 255, 255, 0.2);
+  background-color: var(--scheme-bg);
+  color: var(--scheme-text);
+}
+
+/* Scheme 4 — variant cream légèrement plus chaud, sections de calme éditorial */
+.scheme-4 {
+  --scheme-bg:     #F1EADD;                           /* cream légèrement plus saturé */
+  --scheme-fg:     rgba(255, 255, 255, 0.45);
+  --scheme-text:   var(--wada-ink);                   /* #1F1B16 */
+  --scheme-accent: #5C2018;                           /* seal bordeaux WADA */
+  --scheme-border: var(--wada-border);
+  background-color: var(--scheme-bg);
+  color: var(--scheme-text);
+}
+
+/* Esprit WADA : la cream-paper reste disponible comme scheme alternatif
+   pour les sections qui veulent garder le ton livre/papier d'imprimerie. */
+.scheme-cream {
+  --scheme-bg:     #F4EFE6;       /* WADA cream paper historique */
+  --scheme-fg:     rgba(255, 255, 255, 0.5);
+  --scheme-text:   #1F1B16;       /* WADA ink */
+  --scheme-accent: #8B2F6E;       /* Plum reste l'accent */
+  --scheme-border: rgba(31, 27, 22, 0.15);
+  background-color: var(--scheme-bg);
+  color: var(--scheme-text);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   AMBIANCE VIVANTE — keyframes pour AmbientBackground
+   ═══════════════════════════════════════════════════════════════════════
+   Swatches qui flottent, kanji qui dérivent en diagonale, feuilles de
+   saule qui tombent. Tout reste très lent et bas opacity — la lisibilité
+   du contenu reste prioritaire.                                          */
+
+@keyframes wada-drift-up {
+  0%   { transform: translate3d(0, 30vh, 0)  rotate(-2deg); opacity: 0;    }
+  10%  {                                                    opacity: 0.18; }
+  50%  { transform: translate3d(8vw, -10vh, 0) rotate(3deg); opacity: 0.22; }
+  90%  {                                                    opacity: 0.15; }
+  100% { transform: translate3d(-4vw, -50vh, 0) rotate(-1deg); opacity: 0; }
+}
+
+@keyframes wada-drift-diagonal {
+  0%   { transform: translate3d(-10vw, 20vh, 0)  rotate(0deg); }
+  50%  { transform: translate3d(10vw, -10vh, 0)  rotate(2deg); }
+  100% { transform: translate3d(-10vw, 20vh, 0)  rotate(0deg); }
+}
+
+@keyframes wada-leaf-fall {
+  0%   { transform: translate3d(0, -10vh, 0) rotate(0deg);   opacity: 0; }
+  10%  {                                                     opacity: 0.18; }
+  90%  {                                                     opacity: 0.15; }
+  100% { transform: translate3d(0, 110vh, 0) rotate(220deg); opacity: 0; }
+}
+
+@keyframes wada-leaf-sway {
+  0%, 100% { margin-left: 0; }
+  25%      { margin-left:  18px; }
+  75%      { margin-left: -18px; }
+}
+
+@keyframes wada-ink-draw {
+  0%   { stroke-dashoffset: 200; opacity: 0; }
+  20%  {                         opacity: 1; }
+  100% { stroke-dashoffset: 0;   opacity: 1; }
+}
+
+@keyframes wada-fade-in {
+  0%   { opacity: 0; transform: translateY(12px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes wada-blur-in {
+  0%   { opacity: 0; filter: blur(8px); }
+  100% { opacity: 1; filter: blur(0); }
+}
+
+/* SketchUnderline qui se dessine au scroll-in */
+.wada-ambient-swatch,
+.wada-ambient-kanji {
+  transform-style: preserve-3d;
+}
+
+/* Respect du prefers-reduced-motion : on stoppe l'ambiance vivante */
+@media (prefers-reduced-motion: reduce) {
+  .wada-ambient * {
+    animation: none !important;
+    opacity: 0.08 !important;
+  }
+}
+
+/* Le contenu doit toujours flotter au-dessus de l'ambiance */
+main, nav, footer {
+  position: relative;
+  z-index: 1;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   TRANSITIONS DE PAGE — View Transitions API (Chrome/Edge/Safari TP)
+   Fade doux entre routes pour les navigateurs qui supportent.
+   ═══════════════════════════════════════════════════════════════════════ */
+@view-transition {
+  navigation: auto;
+}
+::view-transition-old(root) {
+  animation: wada-page-out 0.35s ease-in forwards;
+}
+::view-transition-new(root) {
+  animation: wada-page-in 0.45s 0.05s ease-out forwards;
+}
+@keyframes wada-page-out {
+  0%   { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(0.985); }
+}
+@keyframes wada-page-in {
+  0%   { opacity: 0; transform: scale(1.015); filter: blur(4px); }
+  100% { opacity: 1; transform: scale(1);     filter: blur(0); }
+}
+
+/* Reveal — fade + slide-up des sections au scroll-in */
+.wada-fade-in {
+  animation: wada-fade-in 0.6s ease-out backwards;
+}
+.wada-blur-in {
+  animation: wada-blur-in 0.8s ease-out backwards;
+}
+
+/* Cards — hover plus présent avec ombre douce */
+.wada-lift {
+  transition: transform 0.45s cubic-bezier(0.2, 0.7, 0.2, 1),
+              box-shadow 0.45s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+.wada-lift:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 32px rgba(31, 27, 22, 0.10);
+}
+.wada-lift-sm {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+.wada-lift-sm:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(31, 27, 22, 0.08);
+}
+
+/* Palette bands — élargissent légèrement la bande survolée */
+.wada-palette-bands > div {
+  transition: flex-grow 0.4s ease;
+}
+.wada-palette-bands:hover > div:hover {
+  flex-grow: 2.5;
+}
+
+/* Moodboard Pantone — grid collage responsive */
+@media (max-width: 900px) {
+  .wada-moodboard-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    grid-auto-rows: 140px !important;
+  }
+}
+@media (max-width: 480px) {
+  .wada-moodboard-grid {
+    grid-template-columns: 1fr !important;
+    grid-auto-rows: 130px !important;
+  }
+  .wada-moodboard-grid > div[style*="span 2"] {
+    grid-column: span 1 !important;
+  }
+}
+
+/* Pantone cards — hover subtle */
+.wada-pantone-card {
+  transition: transform 0.35s ease, box-shadow 0.35s ease;
+}
+.wada-pantone-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 20px rgba(31, 27, 22, 0.14);
+}
+
+/* /install — 3 plateformes responsive */
+@media (max-width: 900px) {
+  .wada-install-benefits {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 24px !important;
+  }
+  .wada-install-platforms {
+    grid-template-columns: 1fr !important;
+  }
+}
+@media (max-width: 480px) {
+  .wada-install-benefits {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* Palette page e-commerce v3 — responsive */
+@media (max-width: 900px) {
+  .wada-palette-hero {
+    grid-template-columns: 1fr !important;
+  }
+  .wada-palette-hero > div:nth-child(2) {
+    padding: 48px 32px !important;
+  }
+  .wada-palette-identity > div {
+    grid-template-columns: 1fr !important;
+    gap: 40px !important;
+  }
+  .wada-lookbook-photos {
+    grid-template-columns: 1fr 1fr !important;
+  }
+  .wada-similar-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+  .wada-trust-bar {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 24px !important;
+  }
+  .wada-open-outfit {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    text-align: center;
+  }
+  .wada-piece-hero {
+    grid-template-columns: 1fr !important;
+  }
+}
+@media (max-width: 600px) {
+  .wada-palette-identity {
+    padding: 48px 24px !important;
+  }
+  .wada-similar-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .wada-trust-bar {
+    grid-template-columns: 1fr !important;
+  }
+  .wada-pagination {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+html, body {
+  background-color: var(--wada-paper);
+  color: var(--wada-ink);
+  transition: background-color 0.3s ease, color 0.3s ease;
+  font-family: 'EB Garamond', Georgia, "Times New Roman", serif;
+  font-feature-settings: "liga", "kern";
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ───────────────────────────────────────────────────────────
+   GRAIN PAPIER — overlay SVG noise, signature toucher humain.
+   Visible mais non lisible — donne au cream paper une texture
+   de vrai papier d'imprimerie.
+   ─────────────────────────────────────────────────────────── */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0.45;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.12 0 0 0 0 0.10 0 0 0 0 0.08 0 0 0 0.10 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+}
+[data-theme="dark"] body::before {
+  opacity: 0.25;
+  mix-blend-mode: screen;
+}
+@media (prefers-reduced-motion: reduce) {
+  body::before { opacity: 0.25; }
+}
+
+/* Display headlines — Fraunces (axe italique éditorial) prend le pas sur EB Garamond */
+.wada-hero-title,
+.wada-section-title {
+  font-family: 'Fraunces', 'EB Garamond', Georgia, serif !important;
+  font-optical-sizing: auto;
+  font-feature-settings: "ss01", "liga", "kern";
+  letter-spacing: -0.02em;
+}
+
+/* Caractères japonais 和田 — Noto Serif JP au lieu du fallback système */
+.wada-jp {
+  font-family: 'Noto Serif JP', 'Fraunces', serif;
+  font-weight: 500;
+}
+
+
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* Empêche les débordements horizontaux sur mobile */
+html, body, main {
+  overflow-x: hidden;
+  max-width: 100vw;
+}
+
+/* ───────────────────────────────────────────────────────────
+   FOND DOUX — lavis de couleurs Wada uniquement, papier washi
+   ─────────────────────────────────────────────────────────── */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 900px 700px at 15% 25%, rgba(201, 165, 103, 0.12) 0%, transparent 65%),
+    radial-gradient(ellipse 700px 600px at 85% 75%, rgba(155, 168, 138, 0.10) 0%, transparent 65%),
+    radial-gradient(ellipse 1000px 800px at 50% 50%, rgba(232, 223, 200, 0.20) 0%, transparent 75%);
+  pointer-events: none;
+  opacity: var(--wada-noise-opacity);
+  z-index: 0;
+  transition: opacity 0.3s ease;
+}
+
+main {
+  position: relative;
+  z-index: 1;
+  background-color: transparent !important;
+}
+
+input::placeholder {
+  color: rgba(31, 27, 22, 0.3);
+  font-style: italic;
+}
+
+button, a {
+  transition: all 0.2s ease;
+}
+
+a:hover {
+  text-decoration: none;
+}
+
+/* Slider — style Wada */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  width: 100%;
+  height: 24px;
+  cursor: pointer;
+}
+input[type="range"]::-webkit-slider-runnable-track { height: 2px; background: rgba(31, 27, 22, 0.25); border: none; }
+input[type="range"]::-moz-range-track { height: 2px; background: rgba(31, 27, 22, 0.25); border: none; }
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 18px; height: 18px;
+  background: #1F1B16; border: 2px solid #F4EFE6; border-radius: 50%;
+  cursor: pointer; margin-top: -8px;
+  box-shadow: 0 0 0 1px #1F1B16, 0 2px 6px rgba(31, 27, 22, 0.2);
+}
+input[type="range"]::-moz-range-thumb {
+  width: 18px; height: 18px; background: #1F1B16; border: 2px solid #F4EFE6;
+  border-radius: 50%; cursor: pointer;
+  box-shadow: 0 0 0 1px #1F1B16, 0 2px 6px rgba(31, 27, 22, 0.2);
+}
+input[type="range"]:hover::-webkit-slider-thumb { background: #1B4A6B; box-shadow: 0 0 0 1px #1B4A6B, 0 2px 8px rgba(27, 74, 107, 0.3); }
+input[type="range"]:hover::-moz-range-thumb { background: #1B4A6B; box-shadow: 0 0 0 1px #1B4A6B, 0 2px 8px rgba(27, 74, 107, 0.3); }
+
+/* ═══════════════════════════════════════════════════════════
+   TABLET — < 1024px
+   ═══════════════════════════════════════════════════════════ */
+@media (max-width: 1024px) {
+  .wada-grid-3 {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+  .wada-grid-4 {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+  .wada-palettes-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   MOBILE — < 768px (tablette portrait + tous mobiles)
+   ═══════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  /* CONTAINER : padding réduit */
+  .wada-container {
+    padding: 0 16px 50px !important;
+  }
+
+  /* GENDER BAR : boutons plus petits, pleine largeur */
+  .wada-gender-bar {
+    width: 100%;
+  }
+  .wada-gender-bar button {
+    flex: 1 1 0 !important;
+    padding: 12px 8px !important;
+    font-size: 9px !important;
+    letter-spacing: 0.25em !important;
+  }
+
+
+
+  /* HERO : taille très réduite */
+  .wada-hero-title {
+    font-size: 44px !important;
+    line-height: 1.1 !important;
+  }
+  .wada-hero-tagline {
+    font-size: 16px !important;
+    padding: 0 8px !important;
+  }
+  .wada-hero-buttons {
+    width: 100%;
+  }
+  .wada-hero-buttons > a {
+    width: 100%;
+    text-align: center;
+    padding: 18px 24px !important;
+    font-size: 11px !important;
+    letter-spacing: 0.3em !important;
+  }
+
+  /* TITRES DE SECTION */
+  .wada-section-title {
+    font-size: 26px !important;
+  }
+
+  /* GRILLES : stack en 1 colonne */
+  .wada-grid-3, .wada-grid-4, .wada-grid-2, .wada-grid-avatar, .wada-palettes-grid {
+    grid-template-columns: 1fr !important;
+    gap: 24px !important;
+  }
+
+  /* RESULTAT D'UNE PALETTE : stack composition */
+  .wada-entry-result {
+    grid-template-columns: 1fr !important;
+    gap: 24px !important;
+    padding: 30px 0 !important;
+  }
+
+  /* PIECE ROW : plus compact */
+  .wada-piece-row {
+    grid-template-columns: 32px 44px 1fr !important;
+    gap: 10px !important;
+  }
+  .wada-piece-swatch {
+    width: 28px !important;
+    height: 38px !important;
+  }
+
+  /* CART DRAWER : pleine largeur */
+  .wada-cart-drawer {
+    width: 100% !important;
+  }
+
+  /* QUIZ MODAL : 1 colonne sur mobile */
+  .wada-quiz-options {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+  .wada-quiz-title {
+    font-size: 24px !important;
+    padding: 0 12px !important;
+    margin-bottom: 32px !important;
+  }
+
+  /* FOOTER : 1 colonne */
+  .wada-footer > div:first-child {
+    grid-template-columns: 1fr !important;
+    gap: 28px !important;
+  }
+  .wada-footer-bottom {
+    flex-direction: column !important;
+    gap: 12px !important;
+    text-align: center !important;
+  }
+
+  /* BOUTONS GÉNÉRAUX : taille tactile minimum 44px */
+  button, a {
+    min-height: 36px;
+  }
+
+  /* COULEURS NUANCIER : 6 colonnes au lieu de 12 */
+  .wada-color-grid {
+    grid-template-columns: repeat(6, 1fr) !important;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   MOBILE COMPACT — < 480px
+   ═══════════════════════════════════════════════════════════ */
+@media (max-width: 480px) {
+  .wada-container {
+    padding: 0 12px 40px !important;
+  }
+
+  .wada-hero-title {
+    font-size: 36px !important;
+  }
+  .wada-hero-tagline {
+    font-size: 15px !important;
+  }
+  .wada-section-title {
+    font-size: 22px !important;
+  }
+
+  /* Hero : indicateurs 1-2-3 en colonne */
+  .wada-hero-buttons {
+    gap: 10px !important;
+  }
+
+  /* Pricing : padding réduit */
+  .wada-grid-3 article,
+  .wada-grid-2 article {
+    padding: 20px !important;
+  }
+
+  /* Tags / chips plus serrés */
+  .wada-piece-row > div:last-child > div > a,
+  .wada-piece-row > div:last-child > div > button {
+    padding: 6px 10px !important;
+    font-size: 10px !important;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   COMPOSITION /palette — header pièce + grille shops mobile
+   ═══════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  .wada-piece-header {
+    grid-template-columns: 56px 70px 1fr !important;
+    gap: 14px !important;
+  }
+  .wada-piece-header > button.wada-add-cart-btn {
+    grid-column: 1 / -1 !important;
+    width: 100% !important;
+    margin-top: 14px !important;
+  }
+  .wada-shop-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+@media (min-width: 769px) and (max-width: 1024px) {
+  .wada-shop-grid {
+    grid-template-columns: repeat(3, 1fr) !important;
+  }
+}
+@media (max-width: 480px) {
+  .wada-piece-header h3 {
+    font-size: 18px !important;
+  }
+  .wada-piece-header > div:nth-child(2) {
+    display: none !important; /* on cache la silhouette pour gagner de la place */
+  }
+  .wada-piece-header {
+    grid-template-columns: 50px 1fr !important;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   HOME HERO — empilage propre sur mobile
+   ═══════════════════════════════════════════════════════════ */
+@media (max-width: 900px) {
+  .wada-hero-grid {
+    grid-template-columns: 1fr !important;
+    gap: 40px !important;
+  }
+  .wada-hero-title {
+    font-size: 56px !important;
+  }
+}
+@media (max-width: 480px) {
+  .wada-hero-title {
+    font-size: 44px !important;
+  }
+  .wada-hero-tagline {
+    font-size: 16px !important;
+  }
+}
+
+/* "Comment ça marche" + sélection palettes : 1 col sur mobile */
+@media (max-width: 768px) {
+  .wada-grid-3 {
+    grid-template-columns: 1fr !important;
+    gap: 18px !important;
+  }
+  .wada-grid-2 {
+    grid-template-columns: 1fr !important;
+  }
+  .wada-palettes-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 14px !important;
+  }
+  .wada-book-section {
+    grid-template-columns: 1fr !important;
+    padding: 32px !important;
+    gap: 32px !important;
+  }
+  .wada-section-title {
+    font-size: 30px !important;
+  }
+}
+@media (max-width: 480px) {
+  .wada-palettes-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* Footer — empile sur mobile */
+@media (max-width: 768px) {
+  .wada-footer > div:first-child {
+    grid-template-columns: 1fr !important;
+    gap: 28px !important;
+  }
+}
+
+/* Testimonials — 3 cards desktop → 1 col mobile */
+@media (max-width: 900px) {
+  .wada-testimonials-grid {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+}
+
+/* Garde-robe digitale — 3 cards desktop → 2 tablet → 1 mobile */
+@media (max-width: 1024px) {
+  .wada-garde-robe-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+@media (max-width: 600px) {
+  .wada-garde-robe-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* Générateur de tenues — stage 2 colonnes desktop → 1 sur mobile */
+@media (max-width: 900px) {
+  .wada-generator-stage {
+    grid-template-columns: 1fr !important;
+    gap: 32px !important;
+    max-width: 480px !important;
+  }
+}
+
+/* Hero — 2 cartes "pages de livre" côte à côte sur desktop, empilées sur très petit mobile */
+@media (max-width: 480px) {
+  .wada-hero-cards {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+}
+
+/* Home Relume — Hero / Features / Benefits responsive */
+@media (max-width: 900px) {
+  .wada-hero-grid {
+    grid-template-columns: 1fr !important;
+    gap: 40px !important;
+  }
+  .wada-features-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .wada-benefit-grid {
+    grid-template-columns: 1fr !important;
+    gap: 32px !important;
+    padding: 32px 0 !important;
+  }
+  .wada-tools-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 16px !important;
+  }
+}
+/* ≤600px : 2 col conservées (les cards sont assez petites pour tenir) */
+@media (max-width: 600px) {
+  .wada-tools-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 12px !important;
+  }
+}
+/* ≤420px : 1 col pour grandes cards lisibles, plus de scroll vertical
+   mais lecture confortable un coup d'œil par card */
+@media (max-width: 420px) {
+  .wada-tools-grid {
+    grid-template-columns: 1fr !important;
+    gap: 14px !important;
+  }
+  /* En 1 col on peut se permettre des cards plus grandes : bandeau
+     palette 88px (au lieu de 64), titre 22px (au lieu de 20) */
+  .wada-tool-card > div:first-of-type {
+    height: 88px !important;
+  }
+  .wada-tool-card h3 {
+    font-size: 22px !important;
+  }
+}
+
+/* ─── Dictionnaire banner (atelier) — stack vertical sur mobile ─── */
+@media (max-width: 800px) {
+  .wada-dictionnaire-banner {
+    grid-template-columns: 1fr !important;
+  }
+  .wada-dictionnaire-banner > div:first-of-type {
+    aspect-ratio: 16 / 9 !important;
+  }
+}
+
+/* ─── Home hero (page d'accueil) — kanji + photo stack vertical ─── */
+@media (max-width: 900px) {
+  .wada-home-hero-grid {
+    grid-template-columns: 1fr !important;
+    gap: 48px !important;
+  }
+  /* Sur mobile, la photo passe au-dessus du texte ? Non : ordre source = kanji+texte
+     d'abord (sémantique), photo ensuite. Pas de reorder, juste un stack. */
+  .wada-kanji-grid {
+    max-width: 200px !important;
+    margin: 0 auto 28px !important;
+  }
+  .wada-hero-cartel {
+    bottom: 14px !important;
+    left: 14px !important;
+    padding: 10px 12px 8px !important;
+    max-width: 200px !important;
+  }
+}
+@media (max-width: 500px) {
+  .wada-kanji-grid {
+    max-width: 160px !important;
+  }
+}
+
+/* ─── Gender chooser — vignettes empilées sur mobile ─── */
+@media (max-width: 720px) {
+  .wada-gender-block {
+    padding: 32px 20px !important;
+    margin-top: 56px !important;
+  }
+  .wada-gender-thumbs {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 12px !important;
+  }
+  .wada-gender-thumbs > button {
+    justify-content: center !important;
+    width: 100% !important;
+  }
+}
+
+/* ─── CTA sombre — padding réduit sur mobile ─── */
+@media (max-width: 720px) {
+  .wada-cta-darkcard-inner {
+    padding: 72px 22px 64px !important;
+  }
+}
+
+/* ─── Bento mosaic responsive ───
+   Desktop: 6 colonnes (configuré inline). Tablette: passe à 3 → les tiles
+   span-3 deviennent pleine largeur, les span-2 prennent 2/3, les span-1
+   restent 1/3. Mobile: 2 colonnes, tiles s'empilent naturellement. */
+@media (max-width: 900px) {
+  .wada-bento {
+    grid-template-columns: repeat(3, 1fr) !important;
+    grid-auto-rows: 140px !important;
+  }
+}
+@media (max-width: 600px) {
+  .wada-bento {
+    grid-template-columns: repeat(2, 1fr) !important;
+    grid-auto-rows: 120px !important;
+    gap: 10px !important;
+  }
+  /* Les tiles qui spannent plus de colonnes que la grille → reset à 2 ou 1 */
+  .wada-bento > * {
+    grid-column: span 2 !important;
+  }
+  .wada-bento > *:nth-child(3),
+  .wada-bento > *:nth-child(5),
+  .wada-bento > *:nth-child(8) {
+    grid-column: span 1 !important;
+  }
+}
+
+/* ─── Cartes outils : micro-rotation alternée (effet "swatches posés") ───
+   Chaque carte est légèrement inclinée, comme si on l'avait placée à la
+   main sur une table — ça casse l'alignement Figma trop net. Au hover,
+   la rotation s'annule + la carte se redresse, pour une mise en avant claire. */
+.wada-tools-grid > a > article {
+  transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1),
+              box-shadow 0.35s cubic-bezier(0.2, 0.8, 0.2, 1),
+              border-color 0.25s ease;
+}
+.wada-tools-grid > a:nth-child(4n+1) > article { transform: rotate(-0.6deg); }
+.wada-tools-grid > a:nth-child(4n+2) > article { transform: rotate(0.4deg); }
+.wada-tools-grid > a:nth-child(4n+3) > article { transform: rotate(-0.3deg); }
+.wada-tools-grid > a:nth-child(4n+4) > article { transform: rotate(0.7deg); }
+.wada-tools-grid > a:hover > article {
+  transform: rotate(0deg) translateY(-8px) !important;
+  box-shadow: var(--wada-shadow-4) !important;
+  border-color: var(--wada-ink) !important;
+}
+/* Filet inférieur coloré qui se révèle au hover (palette de la carte). */
+.wada-tools-grid > a:hover .wada-tool-card-underline {
+  transform: scaleX(1) !important;
+}
+/* Flèche "Ouvrir →" qui glisse à droite au hover. */
+.wada-tools-grid > a:hover article p:last-of-type span[aria-hidden] {
+  transform: translateX(4px);
+}
+@media (prefers-reduced-motion: reduce) {
+  .wada-tools-grid > a > article { transform: none !important; }
+  .wada-tools-grid > a:hover .wada-tool-card-underline { transform: scaleX(1) !important; }
+}
+
+/* ─── Boutons WADA : profondeur boutonnée avec highlight haut + ombre nette
+   Sur les liens stylés inline comme btnPrimary/btnOutline. On cible via
+   data-attribute pour ne pas casser d'autres usages. */
+.wada-btn,
+a[data-wada-btn],
+button[data-wada-btn] {
+  box-shadow: var(--wada-shadow-btn);
+  transition: transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1),
+              box-shadow 0.22s cubic-bezier(0.2, 0.8, 0.2, 1),
+              filter 0.18s ease;
+}
+.wada-btn:hover,
+a[data-wada-btn]:hover,
+button[data-wada-btn]:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--wada-shadow-btn-hover);
+  filter: brightness(1.04);
+}
+.wada-btn:active,
+a[data-wada-btn]:active,
+button[data-wada-btn]:active {
+  transform: translateY(0);
+  box-shadow: var(--wada-shadow-btn-active);
+  filter: brightness(0.96);
+  transition-duration: 0.08s;
+}
+/* Variante "ghost" — pas de fond, donc pas d'ombre portée non plus. */
+.wada-btn-ghost,
+a[data-wada-btn="ghost"] {
+  box-shadow: none !important;
+}
+.wada-btn-ghost:hover,
+a[data-wada-btn="ghost"]:hover {
+  background: rgba(31, 27, 22, 0.04) !important;
+  box-shadow: none !important;
+  transform: translateY(-1px);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   TEXTE EN RELIEF — typo display qui "flotte" sur le papier
+   ─────────────────────────────────────────────────────────────────────
+   Multi-couches de text-shadow : un écho Mojo très léger (teinte), un
+   highlight blanc en haut (lumière), puis une ombre portée diffuse. Ça
+   donne l'impression que l'encre repose au-dessus de la feuille — pas
+   imprimée à plat dedans. Approprié pour les italiques Fraunces grand
+   format ; à ne PAS appliquer aux paragraphes (illisible).
+   ═══════════════════════════════════════════════════════════════════════ */
+.wada-text-lift {
+  text-shadow:
+    0 1px 0 rgba(255, 252, 247, 0.6),
+    0 2px 0 rgba(196, 78, 58, 0.08),
+    0 4px 0 rgba(196, 78, 58, 0.04),
+    0 6px 16px rgba(31, 27, 22, 0.12),
+    0 12px 28px rgba(31, 27, 22, 0.06);
+  -webkit-font-smoothing: antialiased;
+}
+/* Variante plus marquée pour les très grands H1 — relief plus prononcé. */
+.wada-text-lift-strong {
+  text-shadow:
+    0 1px 0 rgba(255, 252, 247, 0.7),
+    0 2px 0 rgba(196, 78, 58, 0.12),
+    0 4px 0 rgba(196, 78, 58, 0.08),
+    0 6px 0 rgba(196, 78, 58, 0.04),
+    0 10px 22px rgba(31, 27, 22, 0.16),
+    0 20px 40px rgba(31, 27, 22, 0.10);
+  -webkit-font-smoothing: antialiased;
+}
+/* Variante "gravée" — letterpress, l'encre semble enfoncée dans le papier.
+   Highlight blanc en BAS (la lumière sort de la dépression), ombre sombre
+   en HAUT. Pour les eyebrows / petits labels uniquement. */
+.wada-text-engrave {
+  text-shadow:
+    0 -1px 0 rgba(31, 27, 22, 0.18),
+    0 1px 0 rgba(255, 252, 247, 0.5);
+}
+/* Variante "tilt" — léger 3D sur le mot via perspective + rotateX, comme
+   si la phrase était posée à plat sur la page et inclinée légèrement vers
+   nous. Combinable avec wada-text-lift. */
+.wada-text-3d {
+  display: inline-block;
+  transform: perspective(800px) rotateX(6deg);
+  transform-origin: 50% 100%;
+}
+@media (prefers-reduced-motion: reduce) {
+  .wada-text-3d { transform: none; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   TEXTE EN 3D EXTRUDÉ — empilement de copies décalées en teintes Mojo
+   ─────────────────────────────────────────────────────────────────────
+   Niveau "exagéré" : la typo paraît littéralement gravée et soulevée du
+   papier de 10-20px, avec une ombre projetée nette. Multi-couches de
+   text-shadow descendantes en dégradé Mojo → ink → ombre diffuse.
+
+   À réserver aux H1/H2 italiques Fraunces grand format (>40px). Sur
+   petit texte ça devient illisible. Combine avec antialiasing forcé.
+   ═══════════════════════════════════════════════════════════════════════ */
+/* Ombre plate solide offset — inspiration "DiDA". Offset RÉDUIT à 2-3px
+   pour un effet pop sans envahir. Une seule projection, pas d'extrusion
+   dégradée. La couleur de l'ombre s'adapte au thème via custom property.
+
+   --wada-3d-shadow-color : Mojo en clair, Mojo plus doux en sombre
+   --wada-3d-shadow-ink   : Ink en clair, Cream désaturé en sombre
+   ─────────────────────────────────────────────────────────────────── */
+:root, [data-theme="light"] {
+  --wada-3d-shadow-color: var(--wada-mojo-4);
+  --wada-3d-shadow-ink: #2a2622;
+  --wada-3d-shadow-halo: rgba(31, 27, 22, 0.10);
+}
+[data-theme="dark"] {
+  /* En sombre, ombre Mojo plus douce + halo presque invisible. L'ombre
+     "ink" devient une cream désaturée pour rester perceptible sur
+     texte clair sur fond sombre. */
+  --wada-3d-shadow-color: #8C2E22;
+  --wada-3d-shadow-ink: rgba(237, 229, 214, 0.35);
+  --wada-3d-shadow-halo: rgba(0, 0, 0, 0.25);
+}
+
+.wada-text-3d-xl {
+  text-shadow:
+    2px 3px 0 var(--wada-3d-shadow-color),
+    4px 8px 12px var(--wada-3d-shadow-halo);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.wada-text-3d-ink {
+  text-shadow:
+    2px 3px 0 var(--wada-3d-shadow-ink),
+    4px 7px 10px var(--wada-3d-shadow-halo);
+  -webkit-font-smoothing: antialiased;
+}
+
+.wada-text-3d-paper {
+  text-shadow:
+    2px 3px 0 var(--wada-3d-shadow-color),
+    4px 7px 10px rgba(0, 0, 0, 0.16);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Tilt 3D MARQUÉ — perspective + rotateX prononcé. La phrase semble
+   physiquement inclinée comme une enseigne 3D posée. Combine avec
+   wada-text-3d-xl pour le rendu maximum extrudé + perspective. */
+.wada-text-3d-pushed {
+  display: inline-block;
+  transform: perspective(600px) rotateX(14deg);
+  transform-origin: 50% 100%;
+}
+@media (prefers-reduced-motion: reduce) {
+  .wada-text-3d-pushed { transform: none; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   FOND IMAGE GLOBAL — canopée d'arbres en filigrane
+   ─────────────────────────────────────────────────────────────────────
+   L'image attendue à /bg-trees.jpg (public/). Placée en plein écran sous
+   tout le contenu via body::before, avec :
+     - opacité très basse (12 %) pour ne pas concurrencer le texte
+     - filtre sepia + saturation atténuée pour matcher la palette cream
+       WADA (vert vif → vert papier patiné)
+     - mix-blend-mode multiply pour fondre avec le fond cream paper
+     - position fixed → l'image reste calée pendant le scroll, donne du
+       relief sans bouger frénétiquement
+     - z-index 0 et pointer-events none → ne bloque jamais l'interaction
+   ═══════════════════════════════════════════════════════════════════════ */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image: url("/bg-clouds.svg");
+  background-size: 1400px 1400px;
+  background-position: center top;
+  background-repeat: repeat;
+  opacity: 0.14;
+  /* Hue piloté par CSS variable injectée par <PageHueAccent>
+     (cf. composant client appelé dans layout.tsx). Chaque route
+     reçoit son propre décalage de teinte → continuité visuelle
+     tout en signalant qu'on a changé de page. */
+  filter: hue-rotate(var(--wada-page-hue, 0deg)) saturate(0.9) contrast(0.92);
+  mix-blend-mode: multiply;
+  transition: filter 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+/* Tout le contenu doit passer au-dessus de l'overlay arbre. main est le
+   conteneur racine de chaque page (cf. page.tsx) — on l'élève au-dessus. */
+main {
+  position: relative;
+  z-index: 1;
+}
+/* En dark mode, baisse encore l'opacité, blend différent. */
+[data-theme="dark"] body::before,
+.dark body::before {
+  opacity: 0.08;
+  filter: sepia(0.4) saturate(0.5) brightness(0.6);
+  mix-blend-mode: screen;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   TEXTURE PAPIER GLOBALE — overlay grain très subtil sur le body
+   ─────────────────────────────────────────────────────────────────────
+   SVG noise inline, fixé, pointer-events:none. Donne du grain papier
+   sur l'ensemble de la page — fini l'aplat flat IA-générique.
+   ═══════════════════════════════════════════════════════════════════════ */
+/* Classe utilitaire à appliquer sur un wrapper section/div : ajoute un
+   overlay grain SVG via ::after, pointer-events:none, ne bloque rien.
+   Évite l'overlay fixé sur body qui risquait de couvrir tout le site
+   avec un mauvais z-index ou un mauvais blend-mode selon le thème. */
+.wada-paper-grain {
+  position: relative;
+}
+.wada-paper-grain::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.22;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.12 0 0 0 0 0.10 0 0 0 0 0.08 0 0 0 0.08 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  background-size: 240px 240px;
+}
+@media (max-width: 600px) {
+  .wada-hero-title {
+    font-size: 48px !important;
+  }
+  .wada-testimonials-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* Style modes — chip row scrollable horizontalement sur mobile */
+@media (max-width: 768px) {
+  .wada-style-modes {
+    justify-content: flex-start !important;
+    overflow-x: auto !important;
+    flex-wrap: nowrap !important;
+    padding-bottom: 8px !important;
+    margin: 0 -16px !important;
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+    scrollbar-width: thin;
+  }
+  .wada-style-modes button {
+    flex-shrink: 0 !important;
+  }
+}
+
+/* Panier — comparateur de tier et estimation totale */
+@media (max-width: 900px) {
+  .wada-estimation-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+  .wada-tier-compare {
+    grid-template-columns: repeat(3, 1fr) !important;
+  }
+}
+@media (max-width: 600px) {
+  .wada-tier-compare {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+  .wada-cart-item {
+    grid-template-columns: 50px 70px 1fr !important;
+    gap: 12px !important;
+  }
+  .wada-cart-item > button[aria-label*="Supprimer"] {
+    grid-column: 3 !important;
+    justify-self: end !important;
+    margin-top: -12px !important;
+  }
+}
+
+/* Pricing Table — 3 cards desktop → 1 col mobile */
+@media (max-width: 900px) {
+  .wada-pricing-grid {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+}
+@media (max-width: 600px) {
+  .wada-promises-grid {
+    grid-template-columns: 1fr !important;
+    gap: 20px !important;
+  }
+}
+
+/* Feature Grid 3 — passe en 1 col mobile */
+@media (max-width: 768px) {
+  .wada-feature-grid {
+    grid-template-columns: 1fr !important;
+    gap: 14px !important;
+  }
+}
+
+/* Value Section — visuel sous le texte sur mobile */
+@media (max-width: 900px) {
+  .wada-value-grid {
+    grid-template-columns: 1fr !important;
+    gap: 32px !important;
+    direction: ltr !important;
+  }
+  .wada-value-grid > div {
+    direction: ltr !important;
+  }
+}
+
+/* Planche éditoriale — empile sur mobile */
+@media (max-width: 900px) {
+  .wada-poster-section {
+    grid-template-columns: 1fr !important;
+    gap: 32px !important;
+  }
+  .wada-poster {
+    max-width: 360px !important;
+  }
+}
+
+/* Sélecteur de tier sur /palette — passe en 3, 2 ou 1 colonne selon viewport */
+@media (max-width: 1024px) {
+  .wada-tier-selector {
+    grid-template-columns: repeat(3, 1fr) !important;
+  }
+}
+@media (max-width: 600px) {
+  .wada-tier-selector {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+/* Container : padding latéral réduit sur petit mobile */
+@media (max-width: 480px) {
+  .wada-container {
+    padding-left: 18px !important;
+    padding-right: 18px !important;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   AVOIR DES TOUCH TARGETS PROPRES (touch devices uniquement)
+   ═══════════════════════════════════════════════════════════ */
+@media (hover: none) and (pointer: coarse) {
+  /* Pas d'hover transform sur tactile (évite l'effet "stuck") */
+  article:hover, button:hover, a:hover {
+    transform: none !important;
+  }
+}
+
+/* ───────────────────────────────────────────────────────────
+   NAV MOBILE — burger menu
+   ─────────────────────────────────────────────────────────── */
+.wada-nav-burger { display: none !important; }
+
+@media (max-width: 768px) {
+  .wada-nav-desktop-left { display: none !important; }
+  .wada-nav-desktop-right-link { display: none !important; }
+  .wada-nav-burger { display: flex !important; }
+  .wada-nav { padding: 16px 20px !important; }
+  .wada-nav-center span:first-child { font-size: 24px !important; }
+  .wada-nav-right { gap: 18px !important; }
+}
+
+/* CALENDRIER : ajustement mobile */
+@media (max-width: 480px) {
+  .wada-cal-grid { gap: 4px !important; }
+}
+
+/* CARTES "EXPLORER" (4 cartes navigation home) v2 — cards séparés avec hover lift */
+.wada-explore-card-v2 {
+  transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1),
+              box-shadow 0.35s cubic-bezier(0.2, 0.8, 0.2, 1),
+              border-color 0.25s ease;
+  box-shadow: 0 1px 2px rgba(31, 27, 22, 0.04);
+  will-change: transform;
+}
+.wada-explore-card-v2:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 18px 36px rgba(31, 27, 22, 0.14);
+  border-color: var(--wada-ink);
+}
+.wada-explore-card-v2:focus-visible {
+  outline: 2px solid var(--wada-ink);
+  outline-offset: 4px;
+  transform: translateY(-4px);
+}
+@media (max-width: 1024px) {
+  .wada-explore-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 14px !important; }
+}
+@media (max-width: 600px) {
+  .wada-explore-grid { grid-template-columns: 1fr !important; }
+}
+
+/* HOVER LIFT GLOBAL — appliqué à toute carte/lien qui doit "se soulever" au survol.
+   Au repos : ombre paper multi-couche (shadow-2) déjà visible — fini l'effet plat.
+   Au hover : shadow-4 + translateY plus marqué pour un vrai "décollement". */
+.wada-lift {
+  transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1),
+              box-shadow 0.35s cubic-bezier(0.2, 0.8, 0.2, 1),
+              border-color 0.25s ease;
+  box-shadow: var(--wada-shadow-2);
+  will-change: transform;
+}
+.wada-lift:hover {
+  transform: translateY(-8px);
+  box-shadow: var(--wada-shadow-4);
+  border-color: var(--wada-ink);
+}
+.wada-lift:active {
+  transform: translateY(-2px);
+  box-shadow: var(--wada-shadow-2);
+  transition-duration: 0.12s;
+}
+
+/* ───────────────────────────────────────────────────────────
+   MARQUEE PALETTES — défilement vertical lent, esprit "thanks scroller"
+   d'Oryzo. Une piste doublée, mask gradient haut/bas, 90s par cycle.
+   ─────────────────────────────────────────────────────────── */
+.wada-marquee-mask {
+  position: relative;
+  height: 360px;
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 18%, black 82%, transparent 100%);
+          mask-image: linear-gradient(to bottom, transparent 0%, black 18%, black 82%, transparent 100%);
+}
+.wada-marquee-track {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  animation: wada-marquee-scroll 90s linear infinite;
+  will-change: transform;
+}
+@keyframes wada-marquee-scroll {
+  0%   { transform: translateY(0); }
+  100% { transform: translateY(-50%); }
+}
+.wada-marquee-row {
+  display: grid;
+  grid-template-columns: 76px 96px 1fr;
+  gap: 22px;
+  align-items: center;
+  padding: 6px 18px;
+  text-decoration: none;
+  color: inherit;
+  border-radius: 0;
+  transition: background 0.25s ease;
+}
+.wada-marquee-row:hover {
+  background: rgba(255, 255, 255, 0.5);
+}
+.wada-marquee-num {
+  font-size: 10px;
+  letter-spacing: 0.35em;
+  text-transform: uppercase;
+  font-family: 'Inter', sans-serif;
+  color: var(--wada-subtle);
+  font-weight: 600;
+}
+.wada-marquee-bands {
+  display: flex;
+  height: 20px;
+  border: 1px solid var(--wada-border);
+}
+.wada-marquee-bands > span {
+  flex: 1;
+}
+.wada-marquee-name {
+  font-size: 22px;
+  font-style: italic;
+  font-family: 'Fraunces', 'EB Garamond', Georgia, serif;
+  color: var(--wada-ink);
+  letter-spacing: -0.005em;
+}
+@media (prefers-reduced-motion: reduce) {
+  .wada-marquee-track { animation: none; }
+}
+@media (max-width: 600px) {
+  .wada-marquee-row {
+    grid-template-columns: 56px 70px 1fr;
+    gap: 14px;
+    padding: 6px 8px;
+  }
+  .wada-marquee-name { font-size: 17px; }
+  .wada-marquee-num  { font-size: 9px;  letter-spacing: 0.25em; }
+}
+
+/* ───────────────────────────────────────────────────────────
+   WALKERS — frise de bonhommes 2D qui marchent sous les cartes nav.
+   Translation horizontale lente (boucle de 90s sur 50 % du track,
+   piste doublée pour continuité visuelle), micro-rebond par walker.
+   ─────────────────────────────────────────────────────────── */
+@keyframes wada-walkers-flow {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+.wada-walkers-track {
+  animation: wada-walkers-flow 38s linear infinite;
+  will-change: transform;
+}
+@keyframes wada-walker-step {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-3px); }
+}
+.wada-walker {
+  animation: wada-walker-step 0.42s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .wada-walkers-track, .wada-walker { animation: none; }
+}
+
+/* Cartes "explorer" — surélever davantage (default + hover). */
+.wada-explore-card-v2 {
+  box-shadow: 0 6px 14px rgba(31, 27, 22, 0.06) !important;
+}
+.wada-explore-card-v2:hover {
+  transform: translateY(-12px) !important;
+  box-shadow: 0 24px 42px rgba(31, 27, 22, 0.16) !important;
+}
+
+/* ───────────────────────────────────────────────────────────
+   ABONNEMENT — frise des enfants courants. Rebond vertical de 2px
+   en cadence rapide pour simuler le pas. Décalé par index pour
+   éviter le synchrone.
+   ─────────────────────────────────────────────────────────── */
+@keyframes wada-kid-bounce {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-2px); }
+}
+.wada-kid {
+  animation: wada-kid-bounce 0.55s ease-in-out infinite;
+  transform-origin: 50% 100%;
+  transition: color 0.25s ease;
+}
+a:hover .wada-kid {
+  color: var(--wada-seal);
+}
+@media (prefers-reduced-motion: reduce) {
+  .wada-kid { animation: none; }
+}
+
+/* ───────────────────────────────────────────────────────────
+   AVATAR — animation "vie" combinée : respiration (rise/fall) +
+   oscillation latérale (sway). Cycle de 9s — assez long pour
+   paraître organique, pas hypnotique.
+   ─────────────────────────────────────────────────────────── */
+@keyframes wada-avatar-life {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  25%      { transform: translate(1.4px, -0.6px) rotate(0.35deg); }
+  50%      { transform: translate(0, -1.6px) rotate(0deg); }
+  75%      { transform: translate(-1.4px, -0.6px) rotate(-0.35deg); }
+}
+.wada-avatar-life {
+  animation: wada-avatar-life 9s ease-in-out infinite;
+  will-change: transform;
+}
+@media (prefers-reduced-motion: reduce) {
+  .wada-avatar-life { animation: none; }
+}
+
+/* ───────────────────────────────────────────────────────────
+   PAUSE — animation "respiration" pour les bandes contemplatives.
+   Cycle de 6 secondes, ease-in-out, opacité + scale subtle.
+   ─────────────────────────────────────────────────────────── */
+@keyframes wada-breathe {
+  0%, 100% { opacity: 0.55; transform: scaleY(0.92); }
+  50%      { opacity: 1.0;  transform: scaleY(1.0); }
+}
+.wada-breathe {
+  animation: wada-breathe 6s ease-in-out infinite;
+  will-change: opacity, transform;
+}
+@media (prefers-reduced-motion: reduce) {
+  .wada-breathe { animation: none; opacity: 0.85; }
+}
+
+/* Variante petite : pour les boutons et chips de marque */
+.wada-lift-sm {
+  transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1),
+              box-shadow 0.25s cubic-bezier(0.2, 0.8, 0.2, 1),
+              border-color 0.2s ease,
+              background 0.2s ease;
+  will-change: transform;
+}
+.wada-lift-sm:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 14px rgba(31, 27, 22, 0.10);
+}
+.wada-lift-sm:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 2px rgba(31, 27, 22, 0.06);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   MOTION TOKENS — variables CSS pour timing/easing cohérents
+   Inspiration : Material 3 / Pinterest motion foundations
+   ═══════════════════════════════════════════════════════════════════════ */
+:root {
+  /* Durées (proches des UI feedback standards) */
+  --wada-dur-instant: 80ms;
+  --wada-dur-fast:    160ms;
+  --wada-dur-base:    260ms;
+  --wada-dur-slow:    400ms;
+  --wada-dur-xslow:   600ms;
+  /* Easings */
+  --wada-ease-out:    cubic-bezier(0.2, 0.8, 0.2, 1);
+  --wada-ease-out-soft: cubic-bezier(0.25, 1, 0.5, 1);
+  --wada-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --wada-ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  /* Élévations — multi-couche papier (proche + ambiant + diffus).
+     Avant : ombres mono-couche subtiles → effet "carte Figma plate".
+     Après : 3 couches qui simulent une feuille posée sur une autre, avec
+     un highlight blanc en haut pour suggérer la lumière qui tombe dessus. */
+  --wada-shadow-1:
+    inset 0 1px 0 rgba(255, 255, 255, 0.45),
+    0 1px 1px rgba(31, 27, 22, 0.05),
+    0 2px 4px rgba(31, 27, 22, 0.04);
+  --wada-shadow-2:
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    0 1px 2px rgba(31, 27, 22, 0.05),
+    0 4px 10px rgba(31, 27, 22, 0.07),
+    0 10px 18px rgba(31, 27, 22, 0.05);
+  --wada-shadow-3:
+    inset 0 1px 0 rgba(255, 255, 255, 0.55),
+    0 1px 2px rgba(31, 27, 22, 0.06),
+    0 6px 14px rgba(31, 27, 22, 0.08),
+    0 16px 30px rgba(31, 27, 22, 0.08);
+  --wada-shadow-4:
+    inset 0 1px 0 rgba(255, 255, 255, 0.6),
+    0 2px 4px rgba(31, 27, 22, 0.08),
+    0 10px 22px rgba(31, 27, 22, 0.12),
+    0 24px 44px rgba(31, 27, 22, 0.12);
+  --wada-shadow-5:
+    inset 0 1px 0 rgba(255, 255, 255, 0.65),
+    0 4px 8px rgba(31, 27, 22, 0.10),
+    0 16px 32px rgba(31, 27, 22, 0.14),
+    0 36px 60px rgba(31, 27, 22, 0.16);
+  /* Bouton — profondeur boutonnée (highlight haut + ombre portée nette). */
+  --wada-shadow-btn:
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    0 1px 0 rgba(31, 27, 22, 0.10),
+    0 2px 4px rgba(31, 27, 22, 0.12),
+    0 6px 14px rgba(31, 27, 22, 0.14);
+  --wada-shadow-btn-hover:
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    0 1px 0 rgba(31, 27, 22, 0.12),
+    0 4px 8px rgba(31, 27, 22, 0.14),
+    0 10px 22px rgba(31, 27, 22, 0.18);
+  --wada-shadow-btn-active:
+    inset 0 1px 2px rgba(31, 27, 22, 0.18),
+    0 1px 0 rgba(31, 27, 22, 0.06);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   ZOOM IMAGE — image qui zoom en douceur dans son conteneur au hover
+   Usage : <div class="wada-zoom"><img class="wada-zoom-img" /></div>
+   ═══════════════════════════════════════════════════════════════════════ */
+.wada-zoom {
+  overflow: hidden;
+  position: relative;
+}
+.wada-zoom .wada-zoom-img,
+.wada-zoom img,
+.wada-zoom svg {
+  transition: transform var(--wada-dur-xslow) var(--wada-ease-out-soft),
+              filter var(--wada-dur-slow) var(--wada-ease-out);
+  will-change: transform;
+}
+.wada-zoom:hover .wada-zoom-img,
+.wada-zoom:hover img,
+.wada-zoom:hover svg {
+  transform: scale(1.06);
+  filter: brightness(1.03) saturate(1.05);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   IMAGE CARD COMBO — surélèvement + zoom image + border foncée au hover
+   Usage : <article class="wada-image-card"> avec <div class="wada-zoom">…
+   ═══════════════════════════════════════════════════════════════════════ */
+.wada-image-card {
+  transition: transform var(--wada-dur-slow) var(--wada-ease-out),
+              box-shadow var(--wada-dur-slow) var(--wada-ease-out),
+              border-color var(--wada-dur-base) ease;
+  box-shadow: var(--wada-shadow-1);
+  will-change: transform;
+}
+.wada-image-card:hover {
+  transform: translateY(-8px);
+  box-shadow: var(--wada-shadow-4);
+  border-color: var(--wada-ink);
+}
+.wada-image-card:active {
+  transform: translateY(-2px);
+  box-shadow: var(--wada-shadow-2);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   LIFT STRONG — surélèvement marqué pour cards hero/feature
+   ═══════════════════════════════════════════════════════════════════════ */
+.wada-lift-strong {
+  transition: transform var(--wada-dur-slow) var(--wada-ease-out),
+              box-shadow var(--wada-dur-slow) var(--wada-ease-out),
+              border-color var(--wada-dur-base) ease;
+  box-shadow: var(--wada-shadow-2);
+  will-change: transform;
+}
+.wada-lift-strong:hover {
+  transform: translateY(-12px);
+  box-shadow: var(--wada-shadow-5);
+  border-color: var(--wada-ink);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   TILT — léger 3D subtle au survol (perspective)
+   Usage : .wada-tilt sur le container
+   ═══════════════════════════════════════════════════════════════════════ */
+.wada-tilt {
+  transform-style: preserve-3d;
+  transition: transform var(--wada-dur-slow) var(--wada-ease-out),
+              box-shadow var(--wada-dur-slow) var(--wada-ease-out);
+}
+.wada-tilt:hover {
+  transform: perspective(1000px) rotateX(2deg) rotateY(-2deg) translateY(-6px);
+  box-shadow: var(--wada-shadow-4);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   IMAGE OVERLAY — voile sombre apparaît au hover (CTA "voir")
+   Usage : <a class="wada-overlay"><img /><span class="wada-overlay-label">Voir</span></a>
+   ═══════════════════════════════════════════════════════════════════════ */
+.wada-overlay {
+  position: relative;
+  display: block;
+  overflow: hidden;
+}
+.wada-overlay::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(31, 27, 22, 0) 40%, rgba(31, 27, 22, 0.45) 100%);
+  opacity: 0;
+  transition: opacity var(--wada-dur-slow) var(--wada-ease-out);
+  pointer-events: none;
+}
+.wada-overlay:hover::after { opacity: 1; }
+.wada-overlay-label {
+  position: absolute;
+  bottom: 16px; left: 50%;
+  transform: translateX(-50%) translateY(8px);
+  color: #FFFFFF;
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  opacity: 0;
+  transition: opacity var(--wada-dur-slow) var(--wada-ease-out),
+              transform var(--wada-dur-slow) var(--wada-ease-out);
+  pointer-events: none;
+  z-index: 2;
+}
+.wada-overlay:hover .wada-overlay-label {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   FOCUS RING — état focus moderne, plus joli que outline système
+   Usage : appliqué automatiquement aux liens/boutons via :focus-visible
+   ═══════════════════════════════════════════════════════════════════════ */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+summary:focus-visible {
+  outline: 2px solid var(--wada-mojo, #C26A4F);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   PRESS — retour visuel au click (scale léger)
+   ═══════════════════════════════════════════════════════════════════════ */
+.wada-press {
+  transition: transform var(--wada-dur-fast) var(--wada-ease-out);
+}
+.wada-press:active {
+  transform: scale(0.97);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   FADE-BORDER — bordure qui s'épaissit en couleur au hover (subtil)
+   ═══════════════════════════════════════════════════════════════════════ */
+.wada-fade-border {
+  transition: border-color var(--wada-dur-base) ease,
+              background var(--wada-dur-base) ease;
+}
+.wada-fade-border:hover {
+  border-color: var(--wada-ink, #1F1B16);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   UNDERLINE GROW — souligné qui s'étend au hover (pour les liens texte)
+   Usage : <a class="wada-underline">…</a>
+   ═══════════════════════════════════════════════════════════════════════ */
+.wada-underline {
+  position: relative;
+  text-decoration: none;
+  background-image: linear-gradient(currentColor, currentColor);
+  background-size: 0% 1px;
+  background-position: 0 100%;
+  background-repeat: no-repeat;
+  transition: background-size var(--wada-dur-slow) var(--wada-ease-out);
+}
+.wada-underline:hover {
+  background-size: 100% 1px;
+}
+
+/* Respect prefers-reduced-motion : pas d'animation pour ceux qui le demandent */
+@media (prefers-reduced-motion: reduce) {
+  .wada-explore-card-v2,
+  .wada-lift,
+  .wada-lift-strong,
+  .wada-image-card,
+  .wada-tilt,
+  .wada-zoom,
+  .wada-palette-card-outfit {
+    transition: none !important;
+  }
+  .wada-explore-card-v2:hover,
+  .wada-lift:hover,
+  .wada-lift-strong:hover,
+  .wada-image-card:hover,
+  .wada-tilt:hover,
+  .wada-zoom:hover img,
+  .wada-zoom:hover svg {
+    transform: none !important;
+  }
+  .wada-overlay::after,
+  .wada-overlay-label {
+    transition: none !important;
+  }
+}
+
+/* INDEX COULEURS — grille responsive */
+@media (max-width: 1024px) {
+  .wada-couleurs-grid { grid-template-columns: repeat(4, 1fr) !important; }
+}
+@media (max-width: 768px) {
+  .wada-couleurs-grid { grid-template-columns: repeat(3, 1fr) !important; }
+}
+@media (max-width: 480px) {
+  .wada-couleurs-grid { grid-template-columns: repeat(2, 1fr) !important; }
+}
+
+/* ───────────────────────────────────────────────────────────
+   PALETTES — affinement éditorial subtil
+   Texture washi imperceptible + ombre interne légère pour
+   donner l'impression de couleurs imprimées sur papier
+   ─────────────────────────────────────────────────────────── */
+
+/* Wrapper d'une palette — utilisable sur toute bande de couleurs */
+.wada-palette-bands {
+  position: relative;
+  isolation: isolate;
+}
+
+/* Overlay washi très discret — uniquement perceptible de près */
+.wada-palette-bands::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.92' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.4  0 0 0 0 0.3  0 0 0 0 0.15  0 0 0 0.04 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+  mix-blend-mode: multiply;
+  opacity: 0.55;
+  z-index: 1;
+}
+
+/* Ombre interne très subtile — donne l'impression d'encre sur papier */
+.wada-palette-bands::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  box-shadow: inset 0 0 30px rgba(31, 27, 22, 0.08);
+  z-index: 2;
+}
+
+/* Désactiver la texture en mode sombre (les couleurs sont déjà assombries) */
+[data-theme="dark"] .wada-palette-bands::after {
+  opacity: 0.25;
+}
+
+/* DÉMO CONCRÈTE HOME — stack sur mobile */
+@media (max-width: 768px) {
+  .wada-demo-row { grid-template-columns: 1fr !important; gap: 28px !important; padding: 24px !important; }
+}
+
+/* HERO — stack mobile */
+@media (max-width: 900px) {
+  .wada-hero-grid { grid-template-columns: 1fr !important; gap: 40px !important; }
+  .wada-hero-title { font-size: 56px !important; }
+}
+
+/* SECTION LIVRE — stack mobile */
+@media (max-width: 900px) {
+  .wada-book-section { grid-template-columns: 1fr !important; gap: 40px !important; padding: 32px 24px !important; }
+}
+
+/* ───────────────────────────────────────────────────────────
+   ACCESSIBILITÉ — focus visible pour la navigation clavier
+   ─────────────────────────────────────────────────────────── */
+*:focus { outline: none; }
+
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+[role="button"]:focus-visible {
+  outline: 2px solid var(--wada-seal);
+  outline-offset: 2px;
+}
+
+/* Pour les utilisateurs qui préfèrent les animations réduites */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Skip link pour aller directement au contenu */
+.wada-skip-link {
+  position: absolute;
+  top: -40px;
+  left: 0;
+  background: var(--wada-ink);
+  color: var(--wada-paper);
+  padding: 8px 16px;
+  text-decoration: none;
+  font-size: 12px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  font-family: 'Inter', sans-serif;
+  z-index: 999;
+  transition: top 0.2s ease;
+}
+.wada-skip-link:focus {
+  top: 0;
+}
+
+/* MUR DE PALETTES — responsive */
+@media (max-width: 1024px) {
+  .wada-wall { grid-template-columns: repeat(8, 1fr) !important; }
+}
+@media (max-width: 768px) {
+  .wada-wall { grid-template-columns: repeat(6, 1fr) !important; }
+}
+@media (max-width: 480px) {
+  .wada-wall { grid-template-columns: repeat(5, 1fr) !important; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   PASSE MOBILE COMPLÈTE
+   ─────────────────────────────────────────────────────────────────────
+   Adapte ce qui ne tient pas naturellement sur smartphone : ombres 3D
+   (offsets trop grands à petite taille de police), paddings de section
+   (96px = trop sur 375px viewport), BackButton flottant (collision avec
+   la nav burger), hero H1 inline-styled.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* Tablette ≤ 900px — réduction modérée */
+@media (max-width: 900px) {
+  /* Ombres 3D titres : 2px offset → 1.5px pour rester proportionnel */
+  .wada-text-3d-xl {
+    text-shadow:
+      1.5px 2px 0 var(--wada-3d-shadow-color),
+      3px 6px 10px var(--wada-3d-shadow-halo) !important;
+  }
+  .wada-text-3d-ink {
+    text-shadow:
+      1.5px 2px 0 var(--wada-3d-shadow-ink),
+      3px 5px 8px var(--wada-3d-shadow-halo) !important;
+  }
+  .wada-text-3d-paper {
+    text-shadow:
+      1.5px 2px 0 var(--wada-3d-shadow-color),
+      3px 5px 8px rgba(0, 0, 0, 0.14) !important;
+  }
+  /* Hero H1 partout : fluid scaling via clamp(). Remplace les overrides
+     fixes en 56px qui sautaient brusquement entre 901→900px. */
+  .wada-hero-title {
+    font-size: clamp(38px, 7vw, 64px) !important;
+    line-height: 1.06 !important;
+    letter-spacing: -0.02em !important;
+  }
+  /* Section titles (H2 italic Fraunces) — pareil */
+  h2[style*="fontFamily"][style*="italic"]:not(.wada-hero-title) {
+    font-size: clamp(28px, 4.5vw, 44px) !important;
+  }
+  /* Sections — padding contenu reste raisonnable */
+  section[class*="wada-paper-grain"],
+  section {
+    padding-left: 5% !important;
+    padding-right: 5% !important;
+  }
+}
+
+/* Mobile ≤ 600px — passage en stack vertical, padding très réduit */
+@media (max-width: 600px) {
+  /* Ombres 3D quasi plates — juste un soupçon */
+  .wada-text-3d-xl {
+    text-shadow:
+      1px 1.5px 0 var(--wada-3d-shadow-color),
+      2px 4px 6px var(--wada-3d-shadow-halo) !important;
+  }
+  .wada-text-3d-ink {
+    text-shadow:
+      1px 1.5px 0 var(--wada-3d-shadow-ink),
+      2px 3px 5px var(--wada-3d-shadow-halo) !important;
+  }
+  .wada-text-3d-paper {
+    text-shadow:
+      1px 1.5px 0 var(--wada-3d-shadow-color),
+      2px 3px 5px rgba(0, 0, 0, 0.12) !important;
+  }
+
+  /* Hero — bien plus petit */
+  .wada-hero-title {
+    font-size: 42px !important;
+    line-height: 1.08 !important;
+    letter-spacing: -0.02em !important;
+  }
+  /* Paragraphes hero — taille plus mesurée */
+  .wada-hero-tagline {
+    font-size: 15px !important;
+    line-height: 1.55 !important;
+  }
+
+  /* Sections : padding vertical réduit (96px → 48px) sur mobile.
+     Plus serré que la passe précédente → moins de scroll fantôme entre
+     deux sections, lecture plus continue. */
+  main > section {
+    padding-top: 48px !important;
+    padding-bottom: 48px !important;
+    padding-left: 4vw !important;
+    padding-right: 4vw !important;
+  }
+  /* Hero : un peu plus de respiration en haut */
+  main > section:first-of-type {
+    padding-top: 64px !important;
+  }
+  /* Container max-width plein écran moins 4vw de chaque côté */
+  .wada-container,
+  main > section > div[style*="maxWidth"] {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+  /* Inter-paragraphes : espacement réduit (margin-top 28→20px) */
+  main p + p,
+  main h2 + p,
+  main h1 + p {
+    margin-top: 20px !important;
+  }
+
+  /* BackButton flottant — repositionné en bas-gauche en mobile (plus
+     proche du pouce, pratique d'une main), contraste boosté pour rester
+     visible sur le motif nuages. Touch target 44px min. */
+  .wada-back-button {
+    top: auto !important;
+    bottom: 16px !important;
+    left: 16px !important;
+    padding: 12px 18px !important;
+    font-size: 11px !important;
+    letter-spacing: 0.24em !important;
+    background: var(--wada-ink) !important;
+    color: var(--wada-paper) !important;
+    border-color: var(--wada-ink) !important;
+    box-shadow: var(--wada-shadow-4) !important;
+    min-height: 44px !important;
+  }
+  /* Burger mobile — plus visible, touch target élargi */
+  .wada-nav-burger {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 44px !important;
+    height: 44px !important;
+    padding: 0 !important;
+    font-size: 24px !important;
+  }
+  /* Nav mobile minimaliste : burger seul à gauche, logo au centre, panier
+     à droite. Les liens texte "Qui sommes-nous / Inspirations" débordaient
+     en s'écrasant — accessibles via burger menu qui est déjà conçu pour. */
+  .wada-nav-desktop-left {
+    display: none !important;
+  }
+  .wada-nav-desktop-right-link {
+    display: none !important;
+  }
+  /* Nav : padding latéral réduit sur petit viewport */
+  .wada-nav {
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+    grid-template-columns: 1fr auto 1fr !important;
+  }
+
+  /* Cartes outils Atelier — la micro-rotation devient bizarre en 1 col,
+     on l'annule. Les featured prennent les mêmes proportions que les
+     autres pour cohérence dans la pile verticale. */
+  .wada-tools-grid > a > article {
+    transform: none !important;
+  }
+  /* Atelier : bandeau palette des cards plus petit en mobile (gain
+     vertical, on voit plus de texte avant de scroller) */
+  .wada-tool-card > div:first-of-type {
+    height: 64px !important;
+  }
+  .wada-tool-card > div:first-of-type > div {
+    width: 48px !important;
+    height: 48px !important;
+  }
+  /* Atelier : padding interne carte resserré */
+  .wada-tool-card > div:last-of-type {
+    padding: 18px 18px 20px !important;
+  }
+  /* Atelier : titre de card moins gros en mobile */
+  .wada-tool-card h3 {
+    font-size: 20px !important;
+  }
+  /* Bento mosaic / Tool cards : éviter les hauteurs imposées qui
+     créent du vide en mobile (les tiles 150px en grid deviennent moches
+     empilées en 1 col) */
+  .wada-bento {
+    grid-auto-rows: auto !important;
+  }
+  .wada-bento > * {
+    min-height: 120px !important;
+  }
+  /* Palette card (PaletteCard) : padding interne réduit */
+  .wada-palette-card-outfit > div:last-of-type {
+    padding: 14px 16px 18px !important;
+  }
+
+  /* Boutons primary/outline — pleine largeur sur mobile, fini les
+     boutons centrés étriqués qu'on rate au touch */
+  a[data-wada-btn],
+  button[data-wada-btn] {
+    padding: 14px 22px !important;
+    font-size: 12px !important;
+    letter-spacing: 0.22em !important;
+  }
+  /* Hero buttons (Femme / Homme / Unisexe) : pile verticale plutôt qu'en
+     ligne pour tap confortable. Chaque bouton 100% du parent. */
+  main > section:first-of-type a[data-wada-btn],
+  main > section:first-of-type button[data-wada-btn] {
+    width: 100%;
+    justify-content: center;
+    max-width: 360px;
+  }
+  /* Container des 3 gender buttons : pile vertical sur très petit mobile */
+  main > section:first-of-type div[role="group"],
+  main > section:first-of-type > div > div:has(> button[data-wada-btn]) {
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 10px !important;
+  }
+  /* InlineShopPanel : titres + meta plus serrés, brand grid 1 col */
+  div[role="region"][aria-label*="marchand"],
+  section .wada-piece-cards + div {
+    padding: 22px 18px 20px !important;
+  }
+  /* CTA principal "Tous les marchands" : font plus petite, padding ok */
+  section .wada-piece-cards + div a[href*="tbm=shop"] {
+    font-size: 11px !important;
+    padding: 14px 16px !important;
+    letter-spacing: 0.18em !important;
+  }
+  /* Grille marques dans le panel : 1 col mobile pour grandes cards lisibles */
+  section .wada-piece-cards + div > div[style*="grid-template"] {
+    grid-template-columns: 1fr !important;
+  }
+  /* Cards/articles partout : force max-width pour éviter overflow horizontal */
+  article {
+    max-width: 100vw;
+  }
+  /* Skip-link visible quand focus (a11y) */
+  .wada-skip-link:focus {
+    position: fixed !important;
+    top: 8px !important;
+    left: 8px !important;
+    z-index: 200 !important;
+    background: var(--wada-ink) !important;
+    color: var(--wada-paper) !important;
+    padding: 12px 20px !important;
+    font-family: 'Inter', sans-serif !important;
+    font-size: 12px !important;
+    letter-spacing: 0.2em !important;
+    text-transform: uppercase !important;
+  }
+
+  /* Grille tenues /palettes : 1 colonne (au lieu de 2-3) */
+  .wada-palettes-grid {
+    grid-template-columns: 1fr !important;
+    gap: 20px !important;
+  }
+}
+
+/* Mobile compact ≤ 380px (iPhone SE / petits Android) */
+@media (max-width: 380px) {
+  .wada-hero-title {
+    font-size: clamp(32px, 9vw, 42px) !important;
+  }
+  .wada-back-button {
+    padding: 12px 14px !important;
+  }
+  .wada-back-button span:last-child {
+    display: none;
+  }
+  /* Tools grid : padding interne carte plus serré */
+  .wada-tool-card > div:last-of-type {
+    padding: 16px 14px 18px !important;
+  }
+  /* Buttons CTA : un peu plus de padding horizontal pour pas paraître étriqués */
+  a[data-wada-btn],
+  button[data-wada-btn] {
+    padding: 14px 18px !important;
+  }
+}
+
+/* ─── Piece cards (/palette/[n]) responsive ───
+   La grille 5 col HAUT/BAS/VESTE/CHAUSSURES/ACCENT est invivable en
+   dessous de 1000px. On passe à 3 col sur tablette, 2 col sur mobile.
+   L'InlineShopPanel en dessous prend toute la largeur disponible. */
+@media (max-width: 900px) {
+  .wada-piece-cards {
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 12px !important;
+  }
+}
+@media (max-width: 600px) {
+  .wada-piece-cards {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 10px !important;
+  }
+  /* 5e card (Accent) span full width pour ne pas être seule à droite */
+  .wada-piece-cards > *:nth-child(5) {
+    grid-column: span 2;
+  }
+  /* Icône piece plus petite sur mobile */
+  .wada-piece-cards button > div:first-of-type > svg {
+    width: 64px !important;
+    height: 64px !important;
+  }
+}
+@media (max-width: 380px) {
+  .wada-piece-cards {
+    grid-template-columns: 1fr !important;
+  }
+  .wada-piece-cards > *:nth-child(5) {
+    grid-column: auto;
+  }
+}
+
+/* ─── Fond + animations mobile : perf + lisibilité ─── */
+@media (max-width: 600px) {
+  /* Le motif nuages au fond — opacity baissée sur mobile :
+     moins de bruit visuel sur petit écran, meilleur contrast avec
+     le contenu, et léger gain de perf (moins de pixels à composer). */
+  body::before {
+    opacity: 0.09 !important;
+    background-size: 700px 700px !important;
+  }
+  /* Texture papier (.wada-paper-grain) — masquée en mobile, redondante
+     avec le motif clouds et coûteuse pour le rendu. */
+  .wada-paper-grain::after {
+    display: none !important;
+  }
+  /* Animations Reveal : déclenchement plus rapide en mobile (250ms au
+     lieu de 600ms) — sur petit écran les éléments arrivent en
+     viewport tous les ~2 cm de scroll, attendre 600ms casse la fluidité. */
+  .wada-reveal {
+    transition-duration: 250ms !important;
+  }
+  /* SketchUnderline mobile : le SVG était à -8px du bottom et débordait
+     dans le titre suivant en ligne wrappée. On le pousse à -4px avec
+     une hauteur réduite, et on force display:inline pour que le wrap
+     ne casse pas la box du span. */
+  span:has(> svg[viewBox="0 0 110 14"]) {
+    display: inline !important;
+  }
+  span:has(> svg[viewBox="0 0 110 14"]) > svg {
+    bottom: -3px !important;
+    height: 10px !important;
+  }
+}
+
+/* ─── FilterModal full-screen mobile ───
+   Le drawer 480px sur le côté droit ne tient pas en mobile. On passe en
+   bottom-sheet plein écran qui slide depuis le bas — pattern iOS/Android
+   familier, plus tactile, pouce qui glisse pour fermer. */
+@media (max-width: 600px) {
+  /* Le dialog wrapper passe en flex column (au lieu de flex-end horizontal) */
+  div[role="dialog"][aria-label="Filtres"] {
+    align-items: flex-end !important;
+  }
+  /* Le panneau prend toute la largeur, max 92vh en hauteur */
+  div[role="dialog"][aria-label="Filtres"] > aside {
+    width: 100% !important;
+    max-height: 92vh !important;
+    border-top-left-radius: 16px !important;
+    border-top-right-radius: 16px !important;
+    animation-name: wada-slide-up-mobile !important;
+  }
+  /* Animation slide-up au lieu de slide-in droite */
+  @keyframes wada-slide-up-mobile {
+    from { transform: translateY(40px); opacity: 0; }
+    to   { transform: translateY(0);     opacity: 1; }
+  }
+  /* Header padding réduit pour gagner du verticalSpace */
+  div[role="dialog"][aria-label="Filtres"] header {
+    padding: 18px 22px !important;
+  }
+  /* Filter pills plus tactiles */
+  div[role="dialog"][aria-label="Filtres"] button[aria-pressed] {
+    min-height: 36px !important;
+    padding: 8px 14px !important;
+    font-size: 11px !important;
+  }
+  /* Footer apply/clear : padding bottom étendu pour safe-area iOS */
+  div[role="dialog"][aria-label="Filtres"] footer {
+    padding-bottom: max(20px, env(safe-area-inset-bottom)) !important;
+  }
+}
+
+/* ─── prefers-reduced-motion : respect du choix système ─── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  /* Garde le hue-rotate du fond (c'est un filter, pas une animation),
+     mais retire toutes les transitions sur lui */
+  body::before {
+    transition: none !important;
+  }
+}
+
+/* ─── Safe-area iOS (notch, home indicator) ─── */
+@supports (padding: env(safe-area-inset-top)) {
+  /* Nav sticky : respecte la safe-area top (notch iPhone X+) */
+  .wada-nav {
+    padding-top: max(20px, env(safe-area-inset-top)) !important;
+  }
+  /* BackButton bas-gauche : respecte la safe-area bottom (home indicator) */
+  @media (max-width: 600px) {
+    .wada-back-button {
+      bottom: max(16px, env(safe-area-inset-bottom)) !important;
+      left: max(16px, env(safe-area-inset-left)) !important;
+    }
+  }
+}
+
+/* ─── Protection horizontal overflow (mobile uniquement) ─── */
+/* Sur mobile, le moindre élément qui dépasse de 1px crée un scroll
+   horizontal entier — très désagréable. On force le clip à l'html
+   et on s'assure que les sections principales ne débordent jamais. */
+@media (max-width: 600px) {
+  html, body {
+    overflow-x: hidden !important;
+    max-width: 100vw !important;
+  }
+  main, main > section {
+    max-width: 100vw !important;
+    overflow-x: hidden;
+  }
+  /* Image / svg : jamais plus large que le parent */
+  img, svg {
+    max-width: 100%;
+    height: auto;
+  }
+}
+
+/* ─── Scroll lock quand une modale est ouverte ─── */
+/* Empêche le scroll de la page principale derrière un dialog ouvert.
+   Le scroll lock côté JS (overflow:hidden sur body) ne fonctionne pas
+   parfaitement sur iOS Safari ; cette règle CSS sert de filet. */
+body:has(div[role="dialog"][aria-modal="true"]) {
+  overflow: hidden !important;
+  touch-action: none;
+}
+
+/* ─── Font rendering optimisé mobile ─── */
+/* Sur écrans haute densité (Retina), text-rendering geometricPrecision
+   peut être coûteux. optimizeLegibility est suffisant et préserve les
+   ligatures (Fraunces a beaucoup de ligatures éditoriales). */
+@media (max-width: 600px) {
+  body {
+    text-rendering: optimizeLegibility;
+    -webkit-text-size-adjust: 100%; /* Empêche iOS d'auto-zoomer le texte */
+  }
+}
+
+/* Touch-friendly : tap target min 44×44px pour iOS HIG / Android MD */
+@media (hover: none) and (pointer: coarse) {
+  a[data-wada-btn],
+  button[data-wada-btn],
+  .wada-back-button {
+    min-height: 44px;
+  }
+  /* Désactive les rotations alternées qui peuvent troubler en touch */
+  .wada-tools-grid > a > article {
+    transform: none !important;
+  }
+  /* Hover-effets désactivés sur touch (sinon collés en état hover après tap) */
+  .wada-lift:hover,
+  .wada-tools-grid > a:hover > article {
+    transform: none !important;
+    box-shadow: var(--wada-shadow-2) !important;
+  }
+  /* État :active marqué sur touch — feedback tactile clair quand on tape.
+     Sans ce feedback, l'utilisateur ne sait pas si son tap a été enregistré
+     avant que la nav ne se déclenche. */
+  a[data-wada-btn]:active,
+  button[data-wada-btn]:active {
+    transform: scale(0.97) !important;
+    filter: brightness(0.92) !important;
+    transition-duration: 0.05s !important;
+  }
+  .wada-lift:active,
+  .wada-tools-grid > a:active > article {
+    transform: scale(0.985) !important;
+    box-shadow: var(--wada-shadow-1) !important;
+    transition-duration: 0.05s !important;
+  }
+  /* Tap highlight personnalisé (au lieu du gris flash iOS par défaut) */
+  a, button {
+    -webkit-tap-highlight-color: rgba(196, 78, 58, 0.15);
+  }
+  /* Scroll natif optimisé : momentum iOS + smooth Android */
+  html {
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+  }
+}
