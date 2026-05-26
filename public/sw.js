@@ -151,7 +151,18 @@
       shuffle du top 10 palettes. Pas la même tenue à chaque appel.
    4. avoid_colors fusionné depuis collecte ET local interpreter.
    Force re-fetch JS. */
-const CACHE_VERSION = "wada-v18-2026-05-26";
+/* Bump 26/05 v19 : refonte design /scanner — signature éditoriale Wada.
+   - Hero : kicker "Scanner · I" avec hairlines (style chapitres de livre)
+   - Drop zone : icône aperture SVG fine remplace l'emoji ◇
+   - Panel 2-col : hairline vertical médian entre upload et info
+   - "Bénéfices" : numérotation 01/02/03 chiffres serif au lieu de ✓
+     (signature livre Sanzo Wada où chaque accord est numéroté)
+   - Essentielles : grille 12 swatches avec NOM sous chaque pastille
+     (Sumi, Marine, Brique, Olive, Sauge, Terre, Cuir, Lanterne, Doré,
+     Taupe, Crème, Os) — réf. swatch book. Hover lift +ombre, focus ring.
+   - Mobile : essentielles passent à 6 colonnes
+   Force re-fetch JS + CSS. */
+const CACHE_VERSION = "wada-v19-2026-05-26";
 const STATIC_CACHE  = `${CACHE_VERSION}-static`;
 const PAGE_CACHE    = `${CACHE_VERSION}-pages`;
 

@@ -529,6 +529,37 @@ body::after {
 }
 
 /* ───────────────────────────────────────────────────────────
+   SCANNER essentielles — hover lift sur les swatches nommées.
+   Brief design 2026-05-26 : signal d'interactivité subtil mais
+   présent. Le rond monte de 3px et porte une ombre plus marquée
+   au hover, le nom passe en bordeaux.
+   ─────────────────────────────────────────────────────────── */
+.wada-essential-swatch {
+  /* Le bouton est un column flex (rond + nom dessous) — le hover
+     joue sur le rond enfant via :hover sur le bouton parent. */
+}
+.wada-essential-swatch:hover > span:first-child {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 18px rgba(30,30,30,.14), 0 0 0 1px var(--wada-border, rgba(30,30,30,.20)) !important;
+}
+.wada-essential-swatch:hover > span:last-child {
+  color: var(--wada-bordeaux, #6B3A32) !important;
+}
+.wada-essential-swatch:focus-visible {
+  outline: none;
+}
+.wada-essential-swatch:focus-visible > span:first-child {
+  box-shadow: 0 0 0 2px var(--wada-bordeaux, #6B3A32), 0 0 0 4px var(--wada-paper, #F4EFE7) !important;
+}
+@media (max-width: 720px) {
+  /* Mobile : 6 par rangée plutôt que 12, sinon les ronds deviennent
+     minuscules sur iPhone SE 375px. */
+  .wada-essentials-grid {
+    grid-template-columns: repeat(6, 1fr) !important;
+  }
+}
+
+/* ───────────────────────────────────────────────────────────
    STYLIST « réfléchit » — 3 dots qui pulsent en cascade.
    Brief 2026-05-26 « ameliore le encore ». Signal visuel
    pendant l'appel LLM (latence 1-3 s typique). Les 3 spans

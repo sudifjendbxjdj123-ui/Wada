@@ -41,12 +41,22 @@ const fallback = {
   bordeaux: "#6B3A32",
 };
 
-/* 12 essentielles — couleurs du mockup (sumi, marine, brique, olive, sauge,
-   terracotta, brun, lanterne, beige doré, taupe, crème, off-white). */
-const ESSENTIALS = [
-  "#1E1E1E", "#1f3a5f", "#6B2D2A", "#556b2f",
-  "#7A8F73", "#c46b4a", "#b5613f", "#D4A24E",
-  "#c7a06a", "#a89e8e", "#D8C9B2", "#FBF9F5",
+/* 12 essentielles — couleurs nommées comme dans le dictionnaire Sanzo Wada.
+   Brief 2026-05-26 design : on associe un nom à chaque hex pour l'afficher
+   en micro-caption sous la pastille (éditorial swatch book). */
+const ESSENTIALS: { hex: string; name: string }[] = [
+  { hex: "#1E1E1E", name: "Sumi" },
+  { hex: "#1f3a5f", name: "Marine" },
+  { hex: "#6B2D2A", name: "Brique" },
+  { hex: "#556b2f", name: "Olive" },
+  { hex: "#7A8F73", name: "Sauge" },
+  { hex: "#c46b4a", name: "Terre" },
+  { hex: "#b5613f", name: "Cuir" },
+  { hex: "#D4A24E", name: "Lanterne" },
+  { hex: "#c7a06a", name: "Doré" },
+  { hex: "#a89e8e", name: "Taupe" },
+  { hex: "#D8C9B2", name: "Crème" },
+  { hex: "#FBF9F5", name: "Os" },
 ];
 
 export default function ScannerPage() {
@@ -144,48 +154,63 @@ export default function ScannerPage() {
            que le contenu reste dans la zone safe. */
         padding: "0 max(24px, env(safe-area-inset-right)) 0 max(24px, env(safe-area-inset-left))",
       }}>
-        {/* ─── HERO ÉDITORIAL CENTRÉ ─── */}
-        <div style={{ padding: "34px 0 8px", textAlign: "center" }}>
+        {/* ─── HERO ÉDITORIAL CENTRÉ ───
+            Brief design 2026-05-26 : hairline + numéro de chapitre type
+            livre Sanzo Wada (signature éditoriale WADA). */}
+        <div style={{ padding: "44px 0 8px", textAlign: "center" }}>
           <Reveal>
-            <p style={{
-              fontSize: 11, letterSpacing: "0.32em", textTransform: "uppercase",
-              color: fallback.bordeaux, fontWeight: 500, margin: 0,
+            {/* Hairline centrale + numéro chapitre (réf. livre Sanzo Wada) */}
+            <div style={{
+              display: "inline-flex", alignItems: "center", gap: 14,
+              fontFamily: fonts.sans, fontSize: 10, letterSpacing: "0.4em",
+              textTransform: "uppercase", color: "var(--wada-text-secondary, #6f685f)",
+              fontWeight: 600, margin: "0 0 14px",
             }}>
-              Scanner
-            </p>
+              <span aria-hidden style={{
+                width: 32, height: 1, background: "currentColor", opacity: 0.4,
+              }} />
+              <span style={{ color: fallback.bordeaux }}>Scanner · I</span>
+              <span aria-hidden style={{
+                width: 32, height: 1, background: "currentColor", opacity: 0.4,
+              }} />
+            </div>
             <h1 style={{
               fontFamily: fonts.display, fontWeight: 700,
-              fontSize: "clamp(30px, 5vw, 40px)", margin: "8px 0 6px",
+              fontSize: "clamp(32px, 5.4vw, 44px)", margin: "0 0 12px",
               color: "var(--wada-ink, #1E1E1E)",
+              letterSpacing: "-0.01em",
             }}>
               Trouvez votre couleur exacte.
             </h1>
             <p style={{
               color: "var(--wada-text-secondary, #6f685f)",
-              maxWidth: "50ch", margin: "0 auto",
+              maxWidth: "52ch", margin: "0 auto",
+              fontSize: 15, lineHeight: 1.6,
             }}>
               Photographiez une couleur ou un vêtement — WADA lit la teinte vraie et propose les palettes qui s'accordent.
             </p>
-            <div style={{ marginTop: 20 }}>
+            <div style={{ marginTop: 24 }}>
               <ScanModeToggle active="couleur" />
             </div>
           </Reveal>
         </div>
 
-        {/* ─── PANEL 2-COL ─── */}
+        {/* ─── PANEL 2-COL ───
+            Brief design 2026-05-26 : grille avec hairline vertical médian
+            (séparateur éditorial discret, signature DA WADA). */}
         <section
           className="wada-scanner-panel"
           style={{
             background: "var(--wada-card-bg-strong, #FBF9F5)",
             border: "1px solid var(--wada-border, rgba(30,30,30,.10))",
             borderRadius: 24,
-            padding: 30,
+            padding: 34,
             boxShadow: "0 8px 30px rgba(30,30,30,.06)",
-            margin: "26px 0 0",
+            margin: "30px 0 0",
             display: "grid",
-            gridTemplateColumns: "1fr 1fr",
-            gap: 34,
-            alignItems: "center",
+            gridTemplateColumns: "1fr 1px 1fr",
+            gap: 38,
+            alignItems: "stretch",
           }}
         >
           {/* COLONNE GAUCHE — drop zone + détection */}
@@ -250,15 +275,29 @@ export default function ScannerPage() {
                 </>
               ) : (
                 <>
-                  <div aria-hidden style={{ fontSize: 30, color: fallback.olive }}>◇</div>
+                  {/* Brief design 2026-05-26 : aperture SVG fine remplace
+                      l'emoji ◇ — signature éditoriale, traits hairline
+                      cohérents avec le DA WADA (livre Sanzo Wada). */}
+                  <svg
+                    aria-hidden
+                    width="38" height="38" viewBox="0 0 38 38"
+                    style={{ display: "block", margin: "0 auto", color: fallback.olive }}
+                  >
+                    <circle cx="19" cy="19" r="17" fill="none" stroke="currentColor" strokeWidth="1" opacity="0.55" />
+                    <circle cx="19" cy="19" r="10" fill="none" stroke="currentColor" strokeWidth="1" />
+                    <circle cx="19" cy="19" r="2.5" fill="currentColor" />
+                  </svg>
                   <h3 style={{
                     fontFamily: fonts.display, fontWeight: 500,
-                    fontSize: 20, margin: "10px 0 6px",
+                    fontSize: 20, margin: "12px 0 4px",
                     color: "var(--wada-ink, #1E1E1E)",
                   }}>
                     Déposez ou photographiez
                   </h3>
-                  <p style={{ fontSize: 13, color: "var(--wada-text-secondary, #6f685f)", margin: 0 }}>
+                  <p style={{
+                    fontSize: 12, color: "var(--wada-text-secondary, #6f685f)",
+                    margin: 0, fontStyle: "italic", letterSpacing: "0.01em",
+                  }}>
                     Un mur, une fleur, un tissu
                   </p>
                   <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 16 }}>
@@ -334,14 +373,17 @@ export default function ScannerPage() {
               />
             </label>
 
-            {/* Détection card */}
+            {/* Détection card — brief design 2026-05-26 : le placeholder
+                « Aucune couleur scannée » est remplacé par une instruction
+                italique discrète + le swatch d'attente en grille fine
+                (signature éditoriale livre Sanzo Wada). */}
             <div style={{
               display: "flex", alignItems: "center", gap: 14,
               background: "var(--wada-paper, #F4EFE7)",
               border: "1px solid var(--wada-border, rgba(30,30,30,.10))",
               borderRadius: 14,
               padding: "14px 16px",
-              marginTop: 14,
+              marginTop: 16,
             }}>
               <div
                 aria-hidden
@@ -376,9 +418,11 @@ export default function ScannerPage() {
                     ? { whiteSpace: "nowrap" as const, textOverflow: "ellipsis" as const }
                     : { wordBreak: "break-word" as const }),
                 }}>
-                  {loading ? "Analyse en cours…"
-                    : color ? color.toUpperCase()
-                    : "Aucune couleur scannée pour le moment"}
+                  {loading
+                    ? "Analyse en cours…"
+                    : color
+                      ? color.toUpperCase()
+                      : <span style={{ fontStyle: "italic", opacity: 0.75 }}>En attente d'une photo ou d'une teinte</span>}
                 </p>
               </div>
               <input
@@ -398,83 +442,162 @@ export default function ScannerPage() {
             </div>
           </div>
 
+          {/* HAIRLINE DIVIDER vertical — entre les 2 colonnes, signature
+              éditoriale (cf. mise en page d'un livre de couleur). */}
+          <div
+            aria-hidden
+            style={{
+              background: "var(--wada-border, rgba(30,30,30,.10))",
+              width: 1,
+              alignSelf: "stretch",
+              margin: "8px 0",
+            }}
+          />
+
           {/* COLONNE DROITE — info */}
           <div>
             <h2 style={{
               fontFamily: fonts.display, fontWeight: 700,
               fontSize: "clamp(26px, 3.4vw, 34px)", lineHeight: 1.1,
               color: "var(--wada-ink, #1E1E1E)", margin: 0,
+              letterSpacing: "-0.01em",
             }}>
               La teinte vraie, pas une approximation.
             </h2>
             <p style={{
               color: "var(--wada-text-secondary, #6f685f)",
-              margin: "12px 0 16px",
+              margin: "14px 0 22px",
+              fontSize: 14, lineHeight: 1.6,
             }}>
               WADA détecte la couleur dans votre navigateur et la rattache à l'accord de Sanzo Wada le plus proche.
             </p>
 
+            {/* Brief design 2026-05-26 : numérotation 01/02/03 chiffres
+                serif en kicker remplace les ✓. Signature éditoriale livre
+                Sanzo Wada (les accords numérotés). */}
             {[
               { t: "Précision", d: "analyse pondérée, ignore le bruit." },
               { t: "Sans inscription", d: "tout reste sur votre appareil." },
               { t: "348 palettes", d: "le dictionnaire complet, à portée." },
-            ].map((b) => (
-              <div key={b.t} style={{ display: "flex", gap: 10, marginBottom: 10, fontSize: 13 }}>
-                <span style={{ color: fallback.bordeaux, fontWeight: 700 }}>✓</span>
-                <span>
-                  <b style={{ fontWeight: 600, color: "var(--wada-ink, #1E1E1E)" }}>{b.t}</b>
-                  <span style={{ color: "var(--wada-text-secondary, #6f685f)" }}> — {b.d}</span>
+            ].map((b, i) => (
+              <div key={b.t} style={{
+                display: "grid", gridTemplateColumns: "32px 1fr",
+                gap: 14, marginBottom: 14,
+                paddingTop: i === 0 ? 0 : 14,
+                borderTop: i === 0 ? "none" : "1px solid var(--wada-border, rgba(30,30,30,.07))",
+              }}>
+                <span style={{
+                  fontFamily: fonts.display, fontWeight: 600,
+                  fontSize: 13, color: fallback.bordeaux,
+                  letterSpacing: "0.04em",
+                  paddingTop: 1,
+                }}>
+                  {String(i + 1).padStart(2, "0")}
                 </span>
+                <div>
+                  <div style={{
+                    fontFamily: fonts.sans, fontSize: 11,
+                    letterSpacing: "0.18em", textTransform: "uppercase",
+                    color: "var(--wada-ink, #1E1E1E)", fontWeight: 600,
+                    marginBottom: 2,
+                  }}>
+                    {b.t}
+                  </div>
+                  <div style={{
+                    fontSize: 13, color: "var(--wada-text-secondary, #6f685f)",
+                    lineHeight: 1.45,
+                  }}>
+                    {b.d}
+                  </div>
+                </div>
               </div>
             ))}
           </div>
         </section>
 
-        {/* ─── ESSENTIELLES — raccourcis 12 swatches ronds ─── */}
+        {/* ─── ESSENTIELLES — raccourcis swatches nommées ───
+            Brief design 2026-05-26 : on passe en grille uniforme avec
+            nom de couleur sous chaque pastille (réf. swatch book Sanzo
+            Wada). Plus de hover lift + ring bordeaux quand actif. */}
         <section style={{
           margin: "30px 0 0",
           background: "var(--wada-card-bg-strong, #FBF9F5)",
           border: "1px solid var(--wada-border, rgba(30,30,30,.10))",
           borderRadius: 24,
-          padding: "26px 30px",
+          padding: "30px 30px 26px",
           textAlign: "center",
         }}>
-          <p style={{
-            fontSize: 11, letterSpacing: "0.32em", textTransform: "uppercase",
-            color: fallback.bordeaux, fontWeight: 500, margin: 0,
+          <div style={{
+            display: "inline-flex", alignItems: "center", gap: 14,
+            fontFamily: fonts.sans, fontSize: 10, letterSpacing: "0.4em",
+            textTransform: "uppercase", color: fallback.bordeaux, fontWeight: 600,
+            margin: "0 0 12px",
           }}>
-            Raccourcis
-          </p>
+            <span aria-hidden style={{ width: 24, height: 1, background: "currentColor", opacity: 0.4 }} />
+            Raccourcis · II
+            <span aria-hidden style={{ width: 24, height: 1, background: "currentColor", opacity: 0.4 }} />
+          </div>
           <h3 style={{
             fontFamily: fonts.display, fontWeight: 700,
-            fontSize: 24, margin: "6px 0 4px",
+            fontSize: 24, margin: "4px 0 4px",
             color: "var(--wada-ink, #1E1E1E)",
+            letterSpacing: "-0.01em",
           }}>
             Ou choisissez parmi les essentielles
           </h3>
-          <div style={{
-            display: "flex", gap: 10, justifyContent: "center",
-            flexWrap: "wrap", marginTop: 16,
+          <p style={{
+            fontSize: 12, color: "var(--wada-text-secondary, #6f685f)",
+            fontStyle: "italic", margin: "4px 0 0",
           }}>
-            {ESSENTIALS.map((c) => {
-              const active = color?.toLowerCase() === c.toLowerCase();
+            12 teintes signature pour démarrer un accord
+          </p>
+          <div className="wada-essentials-grid" style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(12, 1fr)",
+            gap: 12,
+            marginTop: 22,
+            maxWidth: 760,
+            marginInline: "auto",
+          }}>
+            {ESSENTIALS.map(({ hex, name }) => {
+              const active = color?.toLowerCase() === hex.toLowerCase();
               return (
                 <button
-                  key={c}
-                  onClick={() => onColorChange(c)}
-                  aria-label={`Choisir ${c}`}
+                  key={hex}
+                  onClick={() => onColorChange(hex)}
+                  aria-label={`Choisir ${name} ${hex}`}
+                  title={`${name} · ${hex}`}
                   className="wada-essential-swatch"
                   style={{
-                    width: 46, height: 46,
-                    borderRadius: "50%",
-                    background: c,
-                    border: `2px solid ${active ? fallback.bordeaux : "var(--wada-card-bg-strong, #FBF9F5)"}`,
-                    boxShadow: "0 0 0 1px var(--wada-border, rgba(30,30,30,.10))",
+                    display: "flex", flexDirection: "column",
+                    alignItems: "center", gap: 6,
+                    background: "transparent",
+                    border: "none",
                     cursor: "pointer",
                     padding: 0,
-                    transition: "transform .2s ease",
+                    transition: "transform .25s ease",
                   }}
-                />
+                >
+                  <span aria-hidden style={{
+                    width: 44, height: 44,
+                    borderRadius: "50%",
+                    background: hex,
+                    border: `2px solid ${active ? fallback.bordeaux : "var(--wada-card-bg-strong, #FBF9F5)"}`,
+                    boxShadow: active
+                      ? `0 0 0 1px ${fallback.bordeaux}, 0 4px 12px rgba(107,58,50,.18)`
+                      : "0 0 0 1px var(--wada-border, rgba(30,30,30,.10))",
+                    transition: "box-shadow .2s ease, border-color .2s ease",
+                  }} />
+                  <span style={{
+                    fontFamily: fonts.sans, fontSize: 9,
+                    letterSpacing: "0.14em", textTransform: "uppercase",
+                    color: active ? fallback.bordeaux : "var(--wada-text-secondary, #6f685f)",
+                    fontWeight: 600,
+                    transition: "color .2s ease",
+                  }}>
+                    {name}
+                  </span>
+                </button>
               );
             })}
           </div>
