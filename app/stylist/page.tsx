@@ -884,6 +884,65 @@ export default function StylistPage() {
     return map[slot.toLowerCase()] || "Haut";
   }
 
+  /** Extrait la valeur en cours du champ `reponse` depuis un JSON incomplet
+   *  (en cours de streaming). Indispensable pour afficher le texte de la
+   *  réponse mot par mot pendant que le LLM stream les chunks suivants.
+   *
+   *  Algo : trouve "reponse":, saute la guillemet ouvrante, accumule
+   *  les caractères jusqu'à la guillemet fermante non-échappée. Gère les
+   *  escapes JSON (\n, \", \\). Retourne null si le champ n'est pas
+   *  encore commencé ou si JSON malformé. */
+  function extractStreamingReponse(streamingText: string): string | null {
+    const idx = streamingText.indexOf('"reponse":');
+    if (idx === -1) return null;
+    let i = idx + '"reponse":'.length;
+    // Saute le whitespace
+    while (i < streamingText.length && /\s/.test(streamingText[i])) i++;
+    if (streamingText[i] !== '"') return null;
+    i++; // past opening quote
+
+    let result = "";
+    while (i < streamingText.length) {
+      const c = streamingText[i];
+      if (c === '\\' && i + 1 < streamingText.length) {
+        const next = streamingText[i + 1];
+        if (next === 'n') result += '\n';
+        else if (next === 't') result += '\t';
+        else if (next === '"') result += '"';
+        else if (next === '\\') result += '\\';
+        else if (next === '/') result += '/';
+        else result += next; // unicode escapes etc — best effort
+        i += 2;
+      } else if (c === '"') {
+        // Guillemet fermante : champ terminé
+        return result;
+      } else {
+        result += c;
+        i++;
+      }
+    }
+    // Pas encore de fermante → on retourne ce qu'on a (en cours)
+    return result;
+  }
+
+  /** Met à jour la dernière bulle bot transient avec le texte de réponse
+   *  en cours de streaming. Si pas de bulle transient, on en crée une.
+   *  À la fin du streaming (complete event), clearTransient() la remplace
+   *  par la version finale. */
+  function updateStreamingText(text: string) {
+    setBubbles((prev) => {
+      const last = prev[prev.length - 1];
+      if (last && last.who === "bot" && last.transient) {
+        // Remplace le contenu de la bulle transient (dots → texte streamé)
+        return [
+          ...prev.slice(0, -1),
+          { who: "bot", html: text.replace(/\n/g, "<br/>"), transient: true },
+        ];
+      }
+      return [...prev, { who: "bot", html: text.replace(/\n/g, "<br/>"), transient: true }];
+    });
+  }
+
   /** Appelle le LLM /api/stylist avec la saisie libre + l'état conversationnel
    *  accumulé. Route la réponse vers question (chips d'options) ou tenue
    *  (rendu outfit + chips d'ajustement). Fallback sur message générique
@@ -892,6 +951,129 @@ export default function StylistPage() {
    *  la vraie réponse. Évite que le placeholder reste affiché. */
   function clearTransient() {
     setBubbles((prev) => prev.filter((b) => !(b.who === "bot" && b.transient)));
+  }
+
+  /** Traitement du payload final (event "complete" SSE OU réponse JSON
+   *  legacy). Identique dans les 2 cas — partagé entre le path stream
+   *  et le path legacy. */
+  function handleComplete(data: {
+    collecte?: { piece?: string|null; couleur?: string|null; style?: string|null; occasion?: string|null };
+    mode?: "question" | "tenue";
+    reponse?: string;
+    options?: string[];
+    composed_outfit?: {
+      slots?: Array<{ slot: string; role: string; label: string; hex: string; colorName: string }>;
+      palette?: { entry?: { number?: string; name?: string; colors?: Array<{ hex: string; name: string }> } };
+    };
+    pourquoi?: string;
+    variation?: string;
+    nom_tenue?: string;
+    entities?: { styling_advice?: string };
+  }) {
+    /* Propage la collecte LLM dans le state local */
+    if (data.collecte) {
+      setState((s) => ({
+        ...s,
+        piece: data.collecte!.piece ?? s.piece,
+        couleur: data.collecte!.couleur ?? s.couleur,
+        style: data.collecte!.style ?? s.style,
+        occasion: data.collecte!.occasion ?? s.occasion,
+      }));
+    }
+
+    /* Mode "question" : UNE question + chips d'options contextuelles */
+    if (data.mode === "question" && data.reponse) {
+      clearTransient();
+      addBot(data.reponse);
+      pushHistory("assistant", data.reponse);
+      if (Array.isArray(data.options) && data.options.length) {
+        setChips(data.options.map((o: string) => ({ label: o })));
+      }
+      return;
+    }
+
+    /* Mode "tenue" : compose à partir de composed_outfit serveur */
+    const composed = data.composed_outfit;
+    if (composed?.slots?.length) {
+      const pieces: OutfitPiece[] = composed.slots.map((s) => ({
+        badge: s.role === "owned" ? "Votre pièce" : s.role === "accent" ? "Touche" : "Proposé",
+        role: slotToRole(s.slot),
+        type: s.label,
+        hex: s.hex,
+        couleurNom: s.colorName,
+        ancre: s.role === "owned",
+      }));
+      const reponse = data.reponse || data.entities?.styling_advice || "Voilà ce que je composerais.";
+      const accordRef = composed.palette?.entry?.number || null;
+      const accordName = composed.palette?.entry?.name || null;
+
+      clearTransient();
+      if (data.nom_tenue && typeof data.nom_tenue === "string") {
+        addBot(`<span style="display:inline-block;font-size:10px;letter-spacing:0.35em;text-transform:uppercase;color:#6B3A32;font-weight:600">${data.nom_tenue}</span>`);
+      }
+      addBot(reponse);
+      addOutfit(pieces);
+      setState((s) => ({ ...s, pieces, accordNumber: accordRef, accordName }));
+
+      const pourquoiText = data.pourquoi || pourquoiFor(state.couleur);
+      const variationText = data.variation;
+
+      const tenueSummary = pieces.map((p) => `${p.role.toLowerCase()}: ${p.type} (${p.couleurNom})`).join(" · ");
+      pushHistory(
+        "assistant",
+        `${reponse} | TENUE: ${tenueSummary} | POURQUOI: ${pourquoiText}${variationText ? " | VARIATION: " + variationText : ""}`
+      );
+
+      const accordColors = composed.palette?.entry?.colors;
+      const swatchesHtml = accordColors && accordColors.length > 0
+        ? `<span style="display:inline-flex;gap:6px;margin-left:8px;vertical-align:middle">${accordColors.slice(0, 5).map((c) => `<span title="${c.name}" style="display:inline-block;width:14px;height:14px;border-radius:50%;background:${c.hex};border:1px solid rgba(30,30,30,0.15)"></span>`).join("")}</span>`
+        : "";
+
+      setTimeout(() => {
+        addBot(`<b>Pourquoi ça marche</b> — ${pourquoiText}${swatchesHtml}`);
+        if (variationText) {
+          setTimeout(() => {
+            addBot(`<b>Ou plus audacieux</b> — <i>${variationText}</i>`);
+          }, 450);
+        }
+        setTimeout(() => {
+          addBot("Je peux l'ajuster — dites-moi.");
+          const adjustChips: { label: string; primary?: boolean }[] = [
+            { label: "Plus chaud" },
+            { label: "Sans veste" },
+            { label: "Plus décontracté" },
+            { label: "Une autre couleur" },
+            { label: "Moins cher" },
+          ];
+          if (variationText) {
+            adjustChips.unshift({ label: "Essayer la variation", primary: true });
+          } else {
+            adjustChips.push({ label: "C'est parfait", primary: true });
+          }
+          setChips(adjustChips);
+          if (variationText) {
+            setNextChipHandler(() => (label: string) => {
+              if (label === "Essayer la variation") {
+                addMe("Essayer la variation");
+                pushHistory("user", `Essaie cette variation : ${variationText}`);
+                callLLM(`Essaie cette variation : ${variationText}`);
+              } else {
+                onAdjust(label);
+              }
+            });
+          }
+          setDone(true);
+        }, variationText ? 950 : 650);
+      }, 450);
+      return;
+    }
+
+    /* Pas de tenue exploitable et pas de question : message générique */
+    clearTransient();
+    const fallback = data.reponse || data.entities?.styling_advice ||
+      "J'ai bien noté. Vous pouvez préciser un peu — une occasion, une couleur, une pièce que vous avez déjà ?";
+    addBot(fallback);
+    pushHistory("assistant", fallback);
   }
 
   async function callLLM(query: string) {
@@ -904,10 +1086,9 @@ export default function StylistPage() {
       occasion: state.occasion,
     };
 
-    /* Effet « le styliste réfléchit » : 3 points qui pulsent en CSS
-       keyframes (cf. .wada-thinking-dots dans globals.css). Plus lively
-       que le texte italique statique, signal visuel clair que le LLM
-       traite. Retiré dès l'arrivée de la réponse via clearTransient(). */
+    /* Effet « réfléchit » : 3 points qui pulsent. Reste affiché jusqu'à
+       l'arrivée du PREMIER delta SSE, après quoi il sera REMPLACÉ par
+       le texte streamé (via updateStreamingText). */
     setBubbles((prev) => [...prev, {
       who: "bot",
       html: "<span class=\"wada-thinking-dots\" aria-label=\"Le styliste réfléchit\"><span>•</span><span>•</span><span>•</span></span>",
@@ -918,160 +1099,69 @@ export default function StylistPage() {
       const res = await fetch("/api/stylist", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          query,
-          userPrefs,
-          collecte,
-          /* Brief « ameliore le encore » : historique conversationnel.
-             Le LLM voit les tours précédents → ajustements cohérents
-             (« sans la veste » sait quelle veste, « plus chaud » garde
-             l'ancre, etc.). Format OpenAI chat completions. Inclut le
-             tour courant (déjà pushé par send()). */
-          history: chatHistoryRef.current,
-        }),
+        body: JSON.stringify({ query, userPrefs, collecte, history: chatHistoryRef.current }),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
 
-      /* ─── Propage la collecte LLM dans le state local ─── */
-      if (data.collecte) {
-        setState((s) => ({
-          ...s,
-          piece: data.collecte.piece ?? s.piece,
-          couleur: data.collecte.couleur ?? s.couleur,
-          style: data.collecte.style ?? s.style,
-          occasion: data.collecte.occasion ?? s.occasion,
-        }));
-      }
+      const contentType = res.headers.get("content-type") || "";
+      const isStream = contentType.includes("event-stream");
 
-      /* ─── Mode "question" : pose UNE question + chips d'options contextuelles ─── */
-      if (data.mode === "question" && data.reponse) {
-        clearTransient();
-        addBot(data.reponse);
-        pushHistory("assistant", data.reponse);
-        if (Array.isArray(data.options) && data.options.length) {
-          setChips(data.options.map((o: string) => ({ label: o })));
-        }
+      if (!isStream || !res.body) {
+        /* ─── Legacy path : pas de stream, ancien JSON direct ─── */
+        const data = await res.json();
+        handleComplete(data);
         return;
       }
 
-      /* ─── Mode "tenue" : compose directement à partir de la sortie LLM ───
-         Priorité au composed_outfit du serveur (a déjà les lienAchat
-         attachés via merchantsForPiece). Sinon fallback sur data.tenue brut. */
-      const composed = data.composed_outfit;
-      if (composed?.slots?.length) {
-        const pieces: OutfitPiece[] = composed.slots.map((s: {
-          slot: string; role: string; label: string; hex: string; colorName: string;
-        }) => ({
-          badge: s.role === "owned" ? "Votre pièce" : s.role === "accent" ? "Touche" : "Proposé",
-          role: slotToRole(s.slot),
-          type: s.label,
-          hex: s.hex,
-          couleurNom: s.colorName,
-          ancre: s.role === "owned",
-        }));
-        const reponse = data.reponse || data.entities?.styling_advice || "Voilà ce que je composerais.";
-        const accordRef = composed.palette?.entry?.number || null;
-        const accordName = composed.palette?.entry?.name || null;
+      /* ─── Streaming SSE path ───────────────────────────────────────
+         Boucle de lecture du ReadableStream + parsing des évènements
+         SSE. Pour chaque delta on extrait le `reponse` field du JSON
+         partiel et on remplace la bulle transient (dots → texte qui
+         pousse). Sur complete on appelle handleComplete pour la suite
+         (outfit, pourquoi, etc.). */
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let sseBuffer = "";
+      let accumulatedJson = "";
+      let finalPayload: Parameters<typeof handleComplete>[0] | null = null;
 
-        clearTransient();
-        /* Brief V4 (2026-05-26 « ameliore encore ») : nom évocateur de
-           la tenue affiché en kicker au-dessus des cards outfit. Vient
-           du LLM (data.nom_tenue), ex. « L'Aventurier » pour pirate.
-           Si absent, on n'affiche rien — pas de fallback générique
-           type « Tenue 1 » qui serait pire que rien. */
-        if (data.nom_tenue && typeof data.nom_tenue === "string") {
-          addBot(`<span style="display:inline-block;font-size:10px;letter-spacing:0.35em;text-transform:uppercase;color:#6B3A32;font-weight:600">${data.nom_tenue}</span>`);
-        }
-        addBot(reponse);
-        addOutfit(pieces);
-        setState((s) => ({
-          ...s,
-          pieces,
-          accordNumber: accordRef,
-          accordName,
-        }));
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        sseBuffer += decoder.decode(value, { stream: true });
 
-        /* Brief V3 : « pourquoi ça marche » vient maintenant du LLM.
-           Fallback sur table statique si manquant. */
-        const pourquoiText = data.pourquoi || pourquoiFor(state.couleur);
-        const variationText = data.variation;
+        const events = sseBuffer.split("\n\n");
+        sseBuffer = events.pop() || "";
 
-        /* Push dans l'historique conversationnel : on synthétise la réponse
-           + la composition + le pourquoi pour que le LLM se souvienne du
-           contexte aux tours suivants. Format dense pour économiser des
-           tokens — pas besoin de toutes les couleurs hex. */
-        const tenueSummary = pieces.map((p) => `${p.role.toLowerCase()}: ${p.type} (${p.couleurNom})`).join(" · ");
-        pushHistory(
-          "assistant",
-          `${reponse} | TENUE: ${tenueSummary} | POURQUOI: ${pourquoiText}${variationText ? " | VARIATION: " + variationText : ""}`
-        );
-
-        /* Brief V4 (2026-05-26) : pastilles couleur de l'accord WADA dans
-           la bulle « Pourquoi ça marche ». Renforce visuellement le lien
-           théorie/composition — l'utilisateur VOIT les couleurs qu'on
-           décrit, pas juste leur nom. Récupéré depuis composed_outfit
-           qui a la vraie palette entry (4 couleurs typiquement). */
-        const accordColors = composed.palette?.entry?.colors as Array<{ hex: string; name: string }> | undefined;
-        const swatchesHtml = accordColors && accordColors.length > 0
-          ? `<span style="display:inline-flex;gap:6px;margin-left:8px;vertical-align:middle">${accordColors.slice(0, 5).map((c) => `<span title="${c.name}" style="display:inline-block;width:14px;height:14px;border-radius:50%;background:${c.hex};border:1px solid rgba(30,30,30,0.15)"></span>`).join("")}</span>`
-          : "";
-
-        setTimeout(() => {
-          addBot(`<b>Pourquoi ça marche</b> — ${pourquoiText}${swatchesHtml}`);
-          if (variationText) {
-            setTimeout(() => {
-              addBot(`<b>Ou plus audacieux</b> — <i>${variationText}</i>`);
-            }, 450);
+        for (const evt of events) {
+          const line = evt.trim();
+          if (!line.startsWith("data: ")) continue;
+          try {
+            const data = JSON.parse(line.slice(6));
+            if (data.type === "delta" && typeof data.content === "string") {
+              accumulatedJson += data.content;
+              const partialReponse = extractStreamingReponse(accumulatedJson);
+              if (partialReponse) {
+                updateStreamingText(partialReponse);
+              }
+            } else if (data.type === "complete") {
+              finalPayload = data;
+            } else if (data.type === "error") {
+              throw new Error("stream-error");
+            }
+          } catch (parseErr) {
+            // Évènement mal formé, on ignore (rare)
+            console.warn("[stylist] SSE parse skip:", parseErr);
           }
-          setTimeout(() => {
-            addBot("Je peux l'ajuster — dites-moi.");
-            /* Brief « ameliore le encore » : chip variation cliquable.
-               Si le LLM a proposé une variation, on l'expose comme bouton
-               primary → un clic envoie la phrase de variation comme prompt,
-               le LLM recompose autour. Plus actionnable qu'un texte passif. */
-            const adjustChips: { label: string; primary?: boolean }[] = [
-              { label: "Plus chaud" },
-              { label: "Sans veste" },
-              { label: "Plus décontracté" },
-              { label: "Une autre couleur" },
-              { label: "Moins cher" },
-            ];
-            if (variationText) {
-              adjustChips.unshift({ label: "Essayer la variation", primary: true });
-            } else {
-              adjustChips.push({ label: "C'est parfait", primary: true });
-            }
-            setChips(adjustChips);
-            /* Hijack du prochain chip click si « Essayer la variation »
-               est cliqué : on envoie le texte de variation au LLM comme
-               nouvelle demande, exactement comme si l'utilisateur l'avait
-               tapée. */
-            if (variationText) {
-              setNextChipHandler(() => (label: string) => {
-                if (label === "Essayer la variation") {
-                  addMe("Essayer la variation");
-                  pushHistory("user", `Essaie cette variation : ${variationText}`);
-                  callLLM(`Essaie cette variation : ${variationText}`);
-                } else {
-                  // Chip d'ajustement classique → onAdjust legacy
-                  onAdjust(label);
-                }
-              });
-            }
-            setDone(true);
-          }, variationText ? 950 : 650);
-        }, 450);
-        return;
+        }
       }
 
-      /* ─── Pas de tenue exploitable, pas de question : message générique ─── */
-      clearTransient();
-      const fallback = data.reponse ||
-        data.entities?.styling_advice ||
-        "J'ai bien noté. Vous pouvez préciser un peu — une occasion, une couleur, une pièce que vous avez déjà ?";
-      addBot(fallback);
-      pushHistory("assistant", fallback);
+      if (finalPayload) {
+        handleComplete(finalPayload);
+      } else {
+        clearTransient();
+        addBot("Petit souci technique de mon côté. Vous pouvez réessayer ?");
+      }
     } catch (err) {
       console.error("[stylist] callLLM error:", err);
       clearTransient();

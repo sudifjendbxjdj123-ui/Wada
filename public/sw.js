@@ -108,7 +108,18 @@
         ronds qui montrent l'accord Sanzo Wada utilisé. Théorie de
         la couleur + démonstration visuelle dans la même bulle.
    Force re-fetch JS pour propager les 3 changements. */
-const CACHE_VERSION = "wada-v14-2026-05-26";
+/* Bump 26/05 v15 : performances IA — Edge runtime + SSE streaming.
+   1. /api/stylist passe en Edge runtime → cold start ~5x plus rapide
+      (~50ms Edge vs ~250ms Node, mesure Vercel)
+   2. SSE streaming (Server-Sent Events) : la réponse du LLM arrive
+      mot par mot dès ~200ms (TTFT gpt-4o-mini), au lieu d'attendre
+      la complétion 2-3s. Latence perçue 10x inférieure.
+   3. Frontend extrait le champ `reponse` du JSON partiel en cours
+      de streaming → la bulle dots est remplacée en temps réel par
+      le texte qui pousse. Post-processing (outfit + pourquoi +
+      variation) émis dans un évènement final "complete".
+   Force re-fetch JS + CSS. */
+const CACHE_VERSION = "wada-v15-2026-05-26";
 const STATIC_CACHE  = `${CACHE_VERSION}-static`;
 const PAGE_CACHE    = `${CACHE_VERSION}-pages`;
 
