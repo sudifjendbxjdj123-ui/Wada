@@ -975,6 +975,14 @@ export default function StylistPage() {
         const accordName = composed.palette?.entry?.name || null;
 
         clearTransient();
+        /* Brief V4 (2026-05-26 « ameliore encore ») : nom évocateur de
+           la tenue affiché en kicker au-dessus des cards outfit. Vient
+           du LLM (data.nom_tenue), ex. « L'Aventurier » pour pirate.
+           Si absent, on n'affiche rien — pas de fallback générique
+           type « Tenue 1 » qui serait pire que rien. */
+        if (data.nom_tenue && typeof data.nom_tenue === "string") {
+          addBot(`<span style="display:inline-block;font-size:10px;letter-spacing:0.35em;text-transform:uppercase;color:#6B3A32;font-weight:600">${data.nom_tenue}</span>`);
+        }
         addBot(reponse);
         addOutfit(pieces);
         setState((s) => ({
@@ -999,8 +1007,18 @@ export default function StylistPage() {
           `${reponse} | TENUE: ${tenueSummary} | POURQUOI: ${pourquoiText}${variationText ? " | VARIATION: " + variationText : ""}`
         );
 
+        /* Brief V4 (2026-05-26) : pastilles couleur de l'accord WADA dans
+           la bulle « Pourquoi ça marche ». Renforce visuellement le lien
+           théorie/composition — l'utilisateur VOIT les couleurs qu'on
+           décrit, pas juste leur nom. Récupéré depuis composed_outfit
+           qui a la vraie palette entry (4 couleurs typiquement). */
+        const accordColors = composed.palette?.entry?.colors as Array<{ hex: string; name: string }> | undefined;
+        const swatchesHtml = accordColors && accordColors.length > 0
+          ? `<span style="display:inline-flex;gap:6px;margin-left:8px;vertical-align:middle">${accordColors.slice(0, 5).map((c) => `<span title="${c.name}" style="display:inline-block;width:14px;height:14px;border-radius:50%;background:${c.hex};border:1px solid rgba(30,30,30,0.15)"></span>`).join("")}</span>`
+          : "";
+
         setTimeout(() => {
-          addBot(`<b>Pourquoi ça marche</b> — ${pourquoiText}`);
+          addBot(`<b>Pourquoi ça marche</b> — ${pourquoiText}${swatchesHtml}`);
           if (variationText) {
             setTimeout(() => {
               addBot(`<b>Ou plus audacieux</b> — <i>${variationText}</i>`);

@@ -97,7 +97,18 @@
      3. Animation 3 dots qui pulsent en cascade pendant l'appel LLM
         (remplace l'italique statique, plus lively)
    Force re-fetch JS + CSS pour propager les 3 changements. */
-const CACHE_VERSION = "wada-v13-2026-05-26";
+/* Bump 26/05 v14 : itération qualité stylist :
+     1. Vraies palettes Sanzo Wada passées au LLM (top 10 pré-calculées
+        par findBestPalettesWithFallback) → fini les refs hallucinées
+        type « No. 168 » inventées. Le LLM CHOISIT parmi les 348 vraies.
+     2. nom_tenue : le LLM nomme la tenue (« L'Aventurier », « Le
+        Banquier », « Le Dimanche ») → affiché en kicker au-dessus
+        des cards outfit. Plus mémorable que « accord No. 094 ».
+     3. Pastilles couleur visibles dans « Pourquoi ça marche » — 4-5
+        ronds qui montrent l'accord Sanzo Wada utilisé. Théorie de
+        la couleur + démonstration visuelle dans la même bulle.
+   Force re-fetch JS pour propager les 3 changements. */
+const CACHE_VERSION = "wada-v14-2026-05-26";
 const STATIC_CACHE  = `${CACHE_VERSION}-static`;
 const PAGE_CACHE    = `${CACHE_VERSION}-pages`;
 

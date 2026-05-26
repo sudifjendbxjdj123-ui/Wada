@@ -154,6 +154,14 @@ Tu ne demandes JAMAIS :
   🚫 La SAISON si elle est dans la demande (« juin »=été)
   🚫 Une 2e question après avoir déjà composé — accepte les ajustements directs
 
+PALETTES SANZO WADA (impératif si fournies en contexte)
+- Le message utilisateur peut inclure un bloc « PALETTES SANZO WADA À TA DISPOSITION » avec
+  une liste numérotée de 10 accords pré-sélectionnés (ref + nom + couleurs hex/nom + tags).
+- Tu DOIS choisir UN accord de cette liste pour le champ "accord" (ref + nom + couleurs).
+  Tu n'inventes JAMAIS de ref. Si aucun ne te plaît, tu prends le moins inadapté.
+- Les 5 couleurs des slots de la tenue doivent être COHÉRENTES avec les couleurs de l'accord
+  choisi (ou des nuances voisines très proches). Tu utilises les hex de l'accord en priorité.
+
 SORTIE — JSON strict, rien autour
 A) Il manque une info essentielle → tu poses UNE question :
 {
@@ -167,9 +175,10 @@ A) Il manque une info essentielle → tu poses UNE question :
 B) Tu peux composer → tu réponds + tenue + pourquoi + variation optionnelle :
 {
   "mode": "tenue",
+  "nom_tenue": "1-3 mots évocateurs (ex. L'Aventurier, Le Banquier, Le Dimanche)",
   "reponse": "1-3 phrases de styliste qui réagissent à la demande",
   "pourquoi": "1 phrase couleur/matière qui explique POURQUOI ça marche",
-  "accord": { "ref": "No. XXX", "nom": "Nom de l'accord", "couleurs": ["#hex","..."] },
+  "accord": { "ref": "No. XXX", "nom": "Nom de l'accord (DU DICTIONNAIRE)", "couleurs": ["#hex","..."] },
   "tenue": [
     { "slot": "haut|bas|veste|chaussures|accent", "type": "ex. chemise oxford écru",
       "couleurNom": "Écru", "hex": "#EFE7D6", "genre": "femme|homme|unisexe", "ancre": false }
@@ -178,6 +187,13 @@ B) Tu peux composer → tu réponds + tenue + pourquoi + variation optionnelle :
   "collecte": { "piece": null, "couleur": "Écru", "style": "Décontracté", "occasion": "Soirée" }
 }
 Pas de texte hors du JSON.
+
+Convention nom_tenue :
+- Court (1-3 mots), commence par majuscule, en français.
+- Évoque le personnage / l'humeur de la tenue, pas l'occasion littérale.
+  ✓ « L'Aventurier » (pour pirate) · « Le Banquier » (bureau formel) · « Le Dimanche » (week-end chill)
+  ✓ « La Promeneuse » · « Le Corsaire » · « Le Café » · « L'Atelier »
+  ✗ « Bureau Lundi » · « Mariage Juin Homme » (trop littéral)
 
 EXEMPLES (barre de qualité)
 
@@ -728,7 +744,42 @@ export async function POST(req: Request) {
     const collecteBlock = (collecte.piece || collecte.couleur || collecte.style || collecte.occasion)
       ? `ÉTAT DE LA CONVERSATION (déjà collecté) :\n${JSON.stringify(collecte, null, 2)}\n`
       : "";
-    const fullUserMessage = [profileBlock, collecteBlock, `Demande : "${query}"`]
+
+    /* Brief 2026-05-26 « ameliore encore » : on PRÉ-CALCULE les 10
+       meilleures palettes Wada qui matchent l'intention locale, et on
+       les passe au LLM dans le message utilisateur. Avant : le LLM
+       inventait des refs ("No. 168 Corsaire") qui n'existent peut-être
+       pas dans notre dictionnaire de 348 entrées → le post-processing
+       devait fallback sur le top match. Maintenant : le LLM CHOISIT
+       dans une liste de vraies palettes → ref/nom/couleurs cohérents
+       avec /palette/[number] et le scoring downstream.
+
+       Construction de l'intent local (sans le LLM) : on utilise les
+       entités extraites par localInterpret() — occasion/style/season/
+       culture/avoid_colors — pour scorer le dictionnaire et garder
+       le top 10. Si l'intent est vide (premier tour, query courte),
+       on prend des défauts génériques (top palettes équilibrées). */
+    const localEntities = localToEntities(local);
+    const preIntent: UserIntent = {
+      occasion: localEntities.occasion,
+      style: localEntities.style || userPrefs.style,
+      season: localEntities.season,
+      culture: localEntities.culture,
+      mood: localEntities.emotion ? [localEntities.emotion] : undefined,
+      avoid_colors: localEntities.excluded?.colors,
+      target_color_hex: colorNameToHex(collecte.couleur || localEntities.color),
+    };
+    const preMatches = findBestPalettesWithFallback(dictionary, preIntent, 10).matches;
+    const palettesBlock = preMatches.length > 0
+      ? `PALETTES SANZO WADA À TA DISPOSITION (choisis-en UNE, ne les invente pas) :\n${preMatches.slice(0, 10).map((m, i) => {
+          const e = m.entry;
+          const colorsStr = e.colors.map((c) => `${c.hex} ${c.name}`).join(" / ");
+          const tags = [e.culture, ...(e.seasons || []).slice(0, 2), ...(e.styles || []).slice(0, 2)].filter(Boolean).join(", ");
+          return `${i + 1}. No. ${e.number} « ${e.name} » — ${colorsStr}${tags ? " — " + tags : ""}`;
+        }).join("\n")}\n`
+      : "";
+
+    const fullUserMessage = [profileBlock, collecteBlock, palettesBlock, `Demande : "${query}"`]
       .filter(Boolean).join("\n\n");
 
     /* ─── LLM call avec SYSTEM_PROMPT_V2 (brief 2026-05-22) ───────────
@@ -801,6 +852,11 @@ export async function POST(req: Request) {
       // V3 nouveautés : pourquoi (1 phrase) + variation (audacieuse, optionnelle)
       pourquoi?: string;
       variation?: string;
+      /* V4 (2026-05-26 « ameliore encore ») : nom évocateur de LA tenue
+         (1-3 mots, ex. « L'Aventurier », « Le Banquier », « Le Dimanche »).
+         Plus mémorable qu'« accord No. 094 », affiché en kicker au-dessus
+         des cards outfit. */
+      nom_tenue?: string;
       // État conversationnel propagé
       collecte?: V2Collecte;
       // Legacy (anciens prompts)
@@ -1003,9 +1059,11 @@ export async function POST(req: Request) {
       /* Brief V3 (2026-05-26) : champs enrichis pour le styliste Claude WADA.
          - pourquoi : 1 phrase qui explique la palette (côté color theory)
          - variation : 1 idée plus audacieuse (optionnelle) que l'UI peut
-           afficher en bulle séparée pour donner une alternative cliquable. */
+           afficher en bulle séparée pour donner une alternative cliquable.
+         - nom_tenue (V4) : nom évocateur de LA tenue (L'Aventurier, etc.). */
       pourquoi: v2.pourquoi || undefined,
       variation: v2.variation || undefined,
+      nom_tenue: v2.nom_tenue || undefined,
       entities: merged,
       // Brief V2 : exposer la question de précision si le LLM en a posé une
       preciser: v2.preciser || undefined,
