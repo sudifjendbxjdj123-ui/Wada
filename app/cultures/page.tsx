@@ -18,7 +18,7 @@ export default function CulturesPage() {
 
           <header style={{ textAlign: "center", padding: "80px 0 48px" }}>
             <p style={{ ...sectionLabel, marginBottom: 18, color: seal }}>Voyage</p>
-            <h1 className="wada-hero-title wada-text-3d-ink" style={{ fontSize: 56, fontWeight: 400, letterSpacing: "-0.01em", margin: 0, fontStyle: "italic", lineHeight: 1, fontFamily: "'Inter', sans-serif" }}>
+            <h1 className="wada-hero-title wada-text-3d-ink" style={{ fontSize: 56, fontWeight: 400, letterSpacing: "-0.01em", margin: 0, lineHeight: 1, fontFamily: "'Fredoka', sans-serif" }}>
               Inspirations<br/>du monde
             </h1>
             <p style={{ fontSize: 16, color: subtle, fontStyle: "italic", marginTop: 24, maxWidth: 560, margin: "24px auto 0", fontFamily: "'Inter', sans-serif", lineHeight: 1.6 }}>
@@ -50,7 +50,7 @@ export default function CulturesPage() {
                   outline: "none",
                 }}>
                   <p style={{ ...sectionLabel, color: seal, marginBottom: 10 }}>{cult.region}</p>
-                  <h2 style={{ fontSize: 44, fontStyle: "italic", fontWeight: 400, margin: 0, lineHeight: 1.1, fontFamily: "'Inter', sans-serif" }}>{cult.name}</h2>
+                  <h2 style={{ fontSize: 44, fontWeight: 400, margin: 0, lineHeight: 1.1, fontFamily: "'Fredoka', sans-serif" }}>{cult.name}</h2>
                   <p style={{ fontSize: 15, color: textSecondary, fontStyle: "italic", marginTop: 12, fontFamily: "'Inter', sans-serif" }}>{cult.craft}</p>
                   <span aria-hidden style={{
                     display: "inline-block",

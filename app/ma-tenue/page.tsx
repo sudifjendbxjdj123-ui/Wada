@@ -132,7 +132,7 @@ function MaTenueLoader() {
       </div>
       <div style={{ maxWidth: 720, margin: "0 auto", padding: "80px 5%" }}>
         <p style={{ ...sectionLabel, color: mojo, marginBottom: 14 }}>Composition de votre tenue</p>
-        <h1 style={{ fontFamily: fontHeading, fontStyle: "italic", fontSize: 48, margin: 0 }}>
+        <h1 style={{ fontFamily: fontHeading, fontSize: 48, margin: 0 }}>
           On vous prépare ça…
         </h1>
       </div>
@@ -293,7 +293,7 @@ function MaTenueContent() {
       <main style={{ minHeight: "100vh", background: paper, color: ink, fontFamily: fontBody }}>
                 <div style={{ maxWidth: 720, margin: "0 auto", padding: "120px 5%" }}>
           <p style={{ ...sectionLabel, color: mojo, marginBottom: 14 }}>Composition de votre tenue</p>
-          <h1 style={{ fontFamily: fontHeading, fontStyle: "italic", fontSize: 48, margin: 0 }}>
+          <h1 style={{ fontFamily: fontHeading, fontSize: 48, margin: 0 }}>
             On vous prépare ça…
           </h1>
           <p style={{ marginTop: 18, color: textSecondary }}>

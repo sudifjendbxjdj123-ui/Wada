@@ -27,7 +27,7 @@ export default function ConfidentialitePage() {
         <div style={{ maxWidth: 720, margin: "0 auto" }}>
           <header style={{ textAlign: "center", padding: "40px 0 48px" }}>
             <p style={{ ...sectionLabel, marginBottom: 18, color: seal }}>Vie privée</p>
-            <h1 style={{ fontSize: 56, fontWeight: 400, fontStyle: "italic", margin: 0, fontFamily: "'Inter', sans-serif" }}>Politique de confidentialité</h1>
+            <h1 style={{ fontSize: 56, fontWeight: 400, margin: 0, fontFamily: "'Fredoka', sans-serif" }}>Politique de confidentialité</h1>
           </header>
           <article style={{ fontSize: 16, lineHeight: 1.8, color: ink, fontFamily: "'Inter', sans-serif" }}>
 
@@ -35,13 +35,13 @@ export default function ConfidentialitePage() {
               La présente politique respecte la <strong>Loi fédérale suisse sur la protection des données (nLPD)</strong>, ainsi que le <strong>Règlement Général sur la Protection des Données (RGPD)</strong> pour les visiteurs de l'Union européenne.
             </p>
 
-            <h2 style={{ fontSize: 24, fontStyle: "italic", margin: "32px 0 16px" }}>1. Responsable du traitement</h2>
+            <h2 style={{ fontSize: 24, margin: "32px 0 16px" }}>1. Responsable du traitement</h2>
             <p style={{ color: textSecondary, marginBottom: 16 }}>
               Nemanja Milosevic — 66 Rue des Vollandes, 1207 Genève, Suisse<br/>
               Email : <a href="mailto:hello@wada.style" style={{ color: ink }}>hello@wada.style</a>
             </p>
 
-            <h2 style={{ fontSize: 24, fontStyle: "italic", margin: "32px 0 16px" }}>2. Données que nous collectons</h2>
+            <h2 style={{ fontSize: 24, margin: "32px 0 16px" }}>2. Données que nous collectons</h2>
             <p style={{ color: textSecondary, marginBottom: 16 }}>WADA collecte un minimum de données :</p>
             <ul style={{ color: textSecondary, marginBottom: 16, paddingLeft: 20 }}>
               <li><strong>Localement (votre navigateur uniquement) :</strong> palettes favorites, panier, préférence de thème (clair/sombre), abonnement newsletter. <strong>Aucune de ces données n'est envoyée sur nos serveurs.</strong></li>
@@ -49,7 +49,7 @@ export default function ConfidentialitePage() {
               <li><strong>Newsletter :</strong> votre adresse email, stockée localement dans votre navigateur. Désabonnement immédiat en effaçant les données du site.</li>
             </ul>
 
-            <h2 style={{ fontSize: 24, fontStyle: "italic", margin: "32px 0 16px" }}>3. Cookies et traceurs</h2>
+            <h2 style={{ fontSize: 24, margin: "32px 0 16px" }}>3. Cookies et traceurs</h2>
             <p style={{ color: textSecondary, marginBottom: 16 }}>
               <strong>Cookies first-party (déposés par wada.style) :</strong> aucun. WADA n'utilise pas de cookies de session, de tracking ou d'analyse côté serveur.
             </p>
@@ -67,7 +67,7 @@ export default function ConfidentialitePage() {
               <li><strong>Programmes d'affiliation</strong> (voir section 4) — déposés uniquement quand vous cliquez sur un lien sortant vers un marchand partenaire.</li>
             </ul>
 
-            <h2 style={{ fontSize: 24, fontStyle: "italic", margin: "32px 0 16px" }}>4. Liens et programmes d'affiliation</h2>
+            <h2 style={{ fontSize: 24, margin: "32px 0 16px" }}>4. Liens et programmes d'affiliation</h2>
             <p style={{ color: textSecondary, marginBottom: 16 }}>
               Quand vous cliquez sur un lien d'achat (Vinted, Zara, COS, Polène, Sézane, etc.), vous quittez WADA et entrez sur le site de la boutique, qui possède sa propre politique de confidentialité.
             </p>
@@ -82,12 +82,12 @@ export default function ConfidentialitePage() {
               Ces cookies servent <strong>uniquement à l'attribution de la vente</strong> (suivi anonyme du parcours d'achat), pas au profilage publicitaire. Vous pouvez les refuser via les réglages de votre navigateur ou via un bloqueur (uBlock, Brave, etc.).
             </p>
 
-            <h2 style={{ fontSize: 24, fontStyle: "italic", margin: "32px 0 16px" }}>4 bis. Application native (iOS / Android)</h2>
+            <h2 style={{ fontSize: 24, margin: "32px 0 16px" }}>4 bis. Application native (iOS / Android)</h2>
             <p style={{ color: textSecondary, marginBottom: 16 }}>
               Si vous utilisez l'application native WADA (publiée via Capacitor sur l'App Store / Play Store), les liens sortants s'ouvrent dans le navigateur in-app du système (<strong>SFSafariViewController</strong> sur iOS, <strong>Chrome Custom Tabs</strong> sur Android). Le comportement de stockage de cookies est identique à un navigateur web standard. WADA ne collecte aucune donnée supplémentaire dans le mode natif (pas de tracking d'usage in-app, pas de notifications push sans consentement explicite).
             </p>
 
-            <h2 style={{ fontSize: 24, fontStyle: "italic", margin: "32px 0 16px" }}>5. Vos droits</h2>
+            <h2 style={{ fontSize: 24, margin: "32px 0 16px" }}>5. Vos droits</h2>
             <p style={{ color: textSecondary, marginBottom: 16 }}>
               Conformément à la loi suisse (nLPD) et au RGPD européen, vous disposez des droits suivants :
             </p>
@@ -102,14 +102,14 @@ export default function ConfidentialitePage() {
               Pour exercer vos droits : <a href="mailto:hello@wada.style" style={{ color: ink }}>hello@wada.style</a>. Réponse sous 30 jours maximum.
             </p>
 
-            <h2 style={{ fontSize: 24, fontStyle: "italic", margin: "32px 0 16px" }}>6. Conservation des données</h2>
+            <h2 style={{ fontSize: 24, margin: "32px 0 16px" }}>6. Conservation des données</h2>
             <p style={{ color: textSecondary, marginBottom: 16 }}>
               <strong>Données client (Stripe) :</strong> conservées pendant la durée de l'abonnement actif + 10 ans après pour obligations comptables suisses.<br/>
               <strong>Données newsletter :</strong> conservées tant que vous n'avez pas demandé désinscription.<br/>
               <strong>Données navigateur (localStorage) :</strong> sous votre contrôle exclusif — vous pouvez les effacer à tout moment depuis les réglages de votre navigateur.
             </p>
 
-            <h2 style={{ fontSize: 24, fontStyle: "italic", margin: "32px 0 16px" }}>7. Sous-traitants</h2>
+            <h2 style={{ fontSize: 24, margin: "32px 0 16px" }}>7. Sous-traitants</h2>
             <p style={{ color: textSecondary, marginBottom: 16 }}>
               Pour fonctionner, WADA s'appuie sur :
             </p>
@@ -121,7 +121,7 @@ export default function ConfidentialitePage() {
               Aucun autre acteur n'a accès à vos données.
             </p>
 
-            <h2 style={{ fontSize: 24, fontStyle: "italic", margin: "32px 0 16px" }}>8. Réclamation</h2>
+            <h2 style={{ fontSize: 24, margin: "32px 0 16px" }}>8. Réclamation</h2>
             <p style={{ color: textSecondary, marginBottom: 32 }}>
               Si vous estimez que vos droits ne sont pas respectés, vous pouvez introduire une réclamation auprès :
             </p>

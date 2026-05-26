@@ -161,7 +161,7 @@ export default function PiecePage({
       <main style={{ minHeight: "100vh", background: paper, color: ink, fontFamily: fontBody }}>
                 <div style={{ maxWidth: 720, margin: "120px auto", padding: 32, textAlign: "center" }}>
           <p style={{ ...sectionLabel, color: mojo, marginBottom: 16, fontWeight: 600 }}>Erreur</p>
-          <h1 style={{ fontFamily: fontHeading, fontSize: 48, fontStyle: "italic", margin: 0 }}>
+          <h1 style={{ fontFamily: fontHeading, fontSize: 48, margin: 0 }}>
             Palette introuvable
           </h1>
           <div style={{ marginTop: 32 }}>
@@ -176,7 +176,7 @@ export default function PiecePage({
       <main style={{ minHeight: "100vh", background: paper, color: ink, fontFamily: fontBody }}>
                 <div style={{ maxWidth: 720, margin: "120px auto", padding: 32, textAlign: "center" }}>
           <p style={{ ...sectionLabel, color: mojo, marginBottom: 16, fontWeight: 600 }}>Erreur</p>
-          <h1 style={{ fontFamily: fontHeading, fontSize: 48, fontStyle: "italic", margin: 0 }}>
+          <h1 style={{ fontFamily: fontHeading, fontSize: 48, margin: 0 }}>
             Pièce introuvable
           </h1>
           <div style={{ marginTop: 32 }}>

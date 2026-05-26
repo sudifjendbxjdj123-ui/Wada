@@ -70,7 +70,15 @@
    mood — le LLM COMPOSE directement, ne demande plus la couleur en
    automatique. Force re-fetch JS pour que les clients aient le
    nouveau callLLM() côté frontend. */
-const CACHE_VERSION = "wada-v10-2026-05-26";
+/* Bump 26/05 v11 : brief client « UNE SEULE POLICE DE TITRE SUR TOUT
+   LE SITE ». Règle CSS globale h1-h6 { font-family: Fredoka
+   !important } posée dans globals.css → AUCUNE page ne peut imposer
+   sa propre police de titre. Plus sweep ~46 lignes de titres legacy
+   qui traînaient encore fontFamily inline (Inter sur les titres,
+   fontStyle italic sur Fredoka qui produirait un faux-italique).
+   Garantie : un client navigant entre 17 pages voit la même Fredoka
+   chubby sur tous les titres. */
+const CACHE_VERSION = "wada-v11-2026-05-26";
 const STATIC_CACHE  = `${CACHE_VERSION}-static`;
 const PAGE_CACHE    = `${CACHE_VERSION}-pages`;
 

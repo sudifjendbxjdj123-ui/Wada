@@ -28,7 +28,7 @@ export default function FavorisPage() {
 
           <header style={{ textAlign: "center", padding: "80px 0 48px" }}>
             <p style={{ ...sectionLabel, marginBottom: 18, color: seal }}>Vos coups de cœur</p>
-            <h1 className="wada-hero-title wada-text-3d-ink" style={{ fontSize: 56, fontWeight: 400, letterSpacing: "-0.01em", margin: 0, fontStyle: "italic", lineHeight: 1, fontFamily: "'Inter', sans-serif" }}>
+            <h1 className="wada-hero-title wada-text-3d-ink" style={{ fontSize: 56, fontWeight: 400, letterSpacing: "-0.01em", margin: 0, lineHeight: 1, fontFamily: "'Fredoka', sans-serif" }}>
               Mes favoris
             </h1>
             {hydrated && (

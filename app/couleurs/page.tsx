@@ -52,7 +52,7 @@ export default function CouleursPage() {
 
           <header style={{ textAlign: "center", padding: "80px 0 40px" }}>
             <p style={{ ...sectionLabel, marginBottom: 18, color: seal }}>Index ouvert</p>
-            <h1 className="wada-hero-title wada-text-3d-ink" style={{ fontSize: 56, fontWeight: 400, letterSpacing: "-0.01em", margin: 0, fontStyle: "italic", lineHeight: 1, fontFamily: "'Inter', sans-serif" }}>
+            <h1 className="wada-hero-title wada-text-3d-ink" style={{ fontSize: 56, fontWeight: 400, letterSpacing: "-0.01em", margin: 0, lineHeight: 1, fontFamily: "'Fredoka', sans-serif" }}>
               Toutes les couleurs<br/>de Sanzo Wada
             </h1>
             <p style={{ fontSize: 16, color: subtle, fontStyle: "italic", marginTop: 24, maxWidth: 580, margin: "24px auto 0", fontFamily: "'Inter', sans-serif", lineHeight: 1.6 }}>

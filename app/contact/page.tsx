@@ -48,7 +48,7 @@ export default function ContactPage() {
 
           <header style={{ textAlign: "center", padding: "80px 0 48px" }}>
             <p style={{ ...sectionLabel, marginBottom: 18, color: seal }}>Nous écrire</p>
-            <h1 className="wada-hero-title wada-text-3d-ink" style={{ fontSize: 56, fontWeight: 400, letterSpacing: "-0.01em", margin: 0, fontStyle: "italic", lineHeight: 1, fontFamily: "'Inter', sans-serif" }}>
+            <h1 className="wada-hero-title wada-text-3d-ink" style={{ fontSize: 56, fontWeight: 400, letterSpacing: "-0.01em", margin: 0, lineHeight: 1, fontFamily: "'Fredoka', sans-serif" }}>
               Contact
             </h1>
             <p style={{ fontSize: 16, color: subtle, fontStyle: "italic", marginTop: 24, maxWidth: 480, margin: "24px auto 0", fontFamily: "'Inter', sans-serif", lineHeight: 1.6 }}>
@@ -66,7 +66,7 @@ export default function ContactPage() {
 
           {/* FORMULAIRE */}
           <section style={{ marginBottom: 60 }}>
-            <h2 style={{ fontSize: 28, fontStyle: "italic", fontWeight: 400, margin: "0 0 32px", textAlign: "center", fontFamily: "'Inter', sans-serif" }}>
+            <h2 style={{ fontSize: 28, fontWeight: 400, margin: "0 0 32px", textAlign: "center", fontFamily: "'Fredoka', sans-serif" }}>
               Ou écrivez-nous directement
             </h2>
             <form onSubmit={send} style={{ display: "flex", flexDirection: "column", gap: 16 }}>

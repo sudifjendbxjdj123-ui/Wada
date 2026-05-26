@@ -35,7 +35,7 @@ export default async function AdminAffiliationsPage({
       <main style={{ minHeight: "100vh", background: paper, color: ink, fontFamily: fontBody }}>
                 <div style={{ maxWidth: 480, margin: "120px auto", padding: 32, textAlign: "center" }}>
           <p style={{ ...sectionLabel, color: seal, marginBottom: 14 }}>Accès restreint</p>
-          <h1 style={{ fontFamily: fontHeading, fontSize: 36, fontStyle: "italic", margin: "0 0 18px" }}>
+          <h1 style={{ fontFamily: fontHeading, fontSize: 36, margin: "0 0 18px" }}>
             Dashboard administrateur
           </h1>
           <p style={{ fontFamily: fontBody, fontSize: 14, color: subtle, fontStyle: "italic" }}>

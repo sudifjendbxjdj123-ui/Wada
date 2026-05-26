@@ -63,7 +63,7 @@ export default function CalendrierPage() {
           {/* HEADER */}
           <header style={{ textAlign: "center", padding: "80px 0 48px" }}>
             <p style={{ ...sectionLabel, marginBottom: 18, color: seal }}>Calendrier</p>
-            <h1 className="wada-hero-title wada-text-3d-ink" style={{ fontSize: 56, fontWeight: 400, letterSpacing: "-0.01em", margin: 0, fontStyle: "italic", lineHeight: 1, fontFamily: "'Inter', sans-serif" }}>
+            <h1 className="wada-hero-title wada-text-3d-ink" style={{ fontSize: 56, fontWeight: 400, letterSpacing: "-0.01em", margin: 0, lineHeight: 1, fontFamily: "'Fredoka', sans-serif" }}>
               Une palette<br/>par jour
             </h1>
             <p style={{ fontSize: 16, color: subtle, fontStyle: "italic", marginTop: 24, maxWidth: 540, margin: "24px auto 0", fontFamily: "'Inter', sans-serif", lineHeight: 1.6 }}>
@@ -79,7 +79,7 @@ export default function CalendrierPage() {
                 onMouseLeave={(ev) => { ev.currentTarget.style.transform = "translateY(0)"; }}>
                 <div style={{ padding: "48px 40px", display: "flex", flexDirection: "column", justifyContent: "center", borderRight: `1px solid ${border}` }}>
                   <p style={{ ...sectionLabel, marginBottom: 14, color: seal }}>Aujourd'hui · {today.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}</p>
-                  <h2 style={{ fontSize: 48, fontStyle: "italic", fontWeight: 400, margin: "0 0 12px", lineHeight: 1.05, fontFamily: "'Inter', sans-serif" }}>{todayPalette.name}</h2>
+                  <h2 style={{ fontSize: 48, fontWeight: 400, margin: "0 0 12px", lineHeight: 1.05, fontFamily: "'Fredoka', sans-serif" }}>{todayPalette.name}</h2>
                   <p style={{ fontSize: 14, color: subtle, fontStyle: "italic", margin: "0 0 24px", fontFamily: "'Inter', sans-serif" }}>No. {todayPalette.number} · {todayPalette.culture && (cultureLabels[todayPalette.culture] || todayPalette.culture)}</p>
                   <p style={{ fontSize: 16, color: textSecondary, lineHeight: 1.7, fontStyle: "italic", margin: "0 0 24px", fontFamily: "'Inter', sans-serif" }}>{todayPalette.description}</p>
                   <p style={{ fontSize: 11, letterSpacing: "0.4em", textTransform: "uppercase", color: ink, fontFamily: "'Inter', sans-serif", margin: 0 }}>Voir la tenue →</p>
@@ -96,7 +96,7 @@ export default function CalendrierPage() {
             {/* Navigation mois */}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 32, paddingBottom: 16, borderBottom: `1px solid ${border}` }}>
               <button onClick={prevMonth} aria-label="Mois précédent" style={{ background: "transparent", border: "none", cursor: "pointer", color: ink, fontSize: 24, padding: 8, fontFamily: "'Inter', sans-serif" }}>←</button>
-              <h2 style={{ fontSize: 32, fontStyle: "italic", fontWeight: 400, margin: 0, fontFamily: "'Inter', sans-serif" }}>
+              <h2 style={{ fontSize: 32, fontWeight: 400, margin: 0, fontFamily: "'Fredoka', sans-serif" }}>
                 {monthNames[month]} {year}
               </h2>
               <button onClick={nextMonth} aria-label="Mois suivant" style={{ background: "transparent", border: "none", cursor: "pointer", color: ink, fontSize: 24, padding: 8, fontFamily: "'Inter', sans-serif" }}>→</button>

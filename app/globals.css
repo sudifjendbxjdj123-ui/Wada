@@ -549,9 +549,36 @@ body.wada-home-immersive::after {
    « différenciante mais premium, pas enfantin ». Style normal, un seul
    poids 500. Letter-spacing négatif pour resserrer
    les blobs. */
+/* ═══════════════════════════════════════════════════════════════════════
+   RÈGLE GLOBALE — TOUS les titres en Fredoka, point final.
+   ═══════════════════════════════════════════════════════════════════════
+
+   Brief client 2026-05-26 verbatim : « Tous les titres de TOUTES les
+   pages utilisent LA MÊME police : la police ronde « chubby » (Fredoka).
+   Plus AUCUN titre en serif, nulle part. (…) Définir un seul style
+   global de titres (h1, h2, h3, h4, h5, h6 { font-family: Fredoka; })
+   dans le CSS global et l'appliquer partout. »
+
+   Pourquoi `!important` : les pages legacy ont des `fontFamily:` inline
+   (Inter, Fraunces, EB Garamond…) qui battent normalement les classes
+   CSS. Avec `!important` sur cette règle, AUCUNE déclaration inline ne
+   peut imposer sa propre police de titre — sauf si elle utilise aussi
+   `!important` (ce qu'on ne fait nulle part inline). C'est la seule
+   garantie qu'un client naviguant entre 17 pages ne voie jamais 2
+   polices de titre différentes.
+
+   Cette règle remplace l'ancienne `.wada-hero-title, .wada-section-title`
+   (qui dépendait du className posé par chaque page → oublié par certaines).
+   Maintenant : règle universelle sur la balise. */
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Fredoka', 'Bagel Fat One', sans-serif !important;
+}
+
+/* Hero titles : on garde les overrides de weight/letter-spacing/style
+   spécifiques à la classe (pour le mobile clamp + le look posé), mais
+   la font-family vient de la règle globale ci-dessus. */
 .wada-hero-title,
 .wada-section-title {
-  font-family: 'Fredoka', 'Bagel Fat One', sans-serif !important;
   font-style: normal !important;
   font-weight: 500 !important;
   letter-spacing: -0.01em !important;

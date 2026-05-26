@@ -32,37 +32,37 @@ export default function MentionsPage() {
           </header>
           <article style={{ fontSize: 16, lineHeight: 1.8, color: ink, fontFamily: "'Inter', sans-serif" }}>
 
-            <h2 style={{ fontSize: 24, fontStyle: "italic", margin: "32px 0 16px" }}>Éditeur du site</h2>
+            <h2 style={{ fontSize: 24, margin: "32px 0 16px" }}>Éditeur du site</h2>
             <p style={{ color: textSecondary, marginBottom: 16 }}>
               Le site <strong>wada.style</strong> est édité par Nemanja Milosevic, exerçant en raison individuelle.<br/>
               Adresse : 66 Rue des Vollandes, 1207 Genève, Suisse<br/>
               Email : <a href="mailto:hello@wada.style" style={{ color: ink }}>hello@wada.style</a>
             </p>
 
-            <h2 style={{ fontSize: 24, fontStyle: "italic", margin: "32px 0 16px" }}>Statut juridique</h2>
+            <h2 style={{ fontSize: 24, margin: "32px 0 16px" }}>Statut juridique</h2>
             <p style={{ color: textSecondary, marginBottom: 16 }}>
               Raison individuelle non inscrite au Registre du commerce (chiffre d'affaires inférieur au seuil légal de 100 000 CHF/an).<br/>
               Affilié auprès de l'OCAS — Office cantonal des assurances sociales de Genève.<br/>
               Non assujetti à la TVA suisse (chiffre d'affaires inférieur à 100 000 CHF/an).
             </p>
 
-            <h2 style={{ fontSize: 24, fontStyle: "italic", margin: "32px 0 16px" }}>Directeur de la publication</h2>
+            <h2 style={{ fontSize: 24, margin: "32px 0 16px" }}>Directeur de la publication</h2>
             <p style={{ color: textSecondary, marginBottom: 16 }}>Nemanja Milosevic</p>
 
-            <h2 style={{ fontSize: 24, fontStyle: "italic", margin: "32px 0 16px" }}>Hébergement</h2>
+            <h2 style={{ fontSize: 24, margin: "32px 0 16px" }}>Hébergement</h2>
             <p style={{ color: textSecondary, marginBottom: 16 }}>
               Le site est hébergé par <strong>Vercel Inc.</strong><br/>
               440 N Barranca Ave #4133, Covina, CA 91723, États-Unis<br/>
               <a href="https://vercel.com" target="_blank" rel="noopener" style={{ color: ink }}>vercel.com</a>
             </p>
 
-            <h2 style={{ fontSize: 24, fontStyle: "italic", margin: "32px 0 16px" }}>Paiements</h2>
+            <h2 style={{ fontSize: 24, margin: "32px 0 16px" }}>Paiements</h2>
             <p style={{ color: textSecondary, marginBottom: 16 }}>
               Les paiements relatifs à l'abonnement WADA Premium sont traités par <strong>Stripe Payments Europe Ltd</strong>, certifié PCI-DSS.<br/>
               1 Grand Canal Street Lower, Dublin, Irlande.
             </p>
 
-            <h2 style={{ fontSize: 24, fontStyle: "italic", margin: "32px 0 16px" }}>Propriété intellectuelle</h2>
+            <h2 style={{ fontSize: 24, margin: "32px 0 16px" }}>Propriété intellectuelle</h2>
             <p style={{ color: textSecondary, marginBottom: 16 }}>
               L'ensemble du contenu de wada.style (textes, design, code, sélections éditoriales) est la propriété de Nemanja Milosevic, à l'exception :
             </p>
@@ -72,7 +72,7 @@ export default function MentionsPage() {
               <li>Des images, lorsqu'elles proviennent de tiers cités.</li>
             </ul>
 
-            <h2 style={{ fontSize: 24, fontStyle: "italic", margin: "32px 0 16px" }}>Liens externes et affiliation</h2>
+            <h2 style={{ fontSize: 24, margin: "32px 0 16px" }}>Liens externes et affiliation</h2>
             <p style={{ color: textSecondary, marginBottom: 16 }}>
               WADA propose des liens vers des boutiques tierces (Vinted, Zara, Massimo Dutti, COS, Polène, Sézane, etc.). Certains de ces liens sont des liens d'affiliation : si vous effectuez un achat via ces liens, WADA peut percevoir une commission de la part de la boutique, sans surcoût pour vous.
             </p>
@@ -90,12 +90,12 @@ export default function MentionsPage() {
               <strong>Application native (iOS / Android) :</strong> les liens sortants s'ouvrent dans le navigateur in-app système (SFSafariViewController / Chrome Custom Tabs). Les cookies d'affiliation y sont préservés comme dans un navigateur web standard.
             </p>
 
-            <h2 style={{ fontSize: 24, fontStyle: "italic", margin: "32px 0 16px" }}>Droit applicable</h2>
+            <h2 style={{ fontSize: 24, margin: "32px 0 16px" }}>Droit applicable</h2>
             <p style={{ color: textSecondary, marginBottom: 16 }}>
               Le présent site est régi par le droit suisse. Tout litige sera porté devant les tribunaux compétents du canton de Genève.
             </p>
 
-            <h2 style={{ fontSize: 24, fontStyle: "italic", margin: "32px 0 16px" }}>Contact</h2>
+            <h2 style={{ fontSize: 24, margin: "32px 0 16px" }}>Contact</h2>
             <p style={{ color: textSecondary, marginBottom: 32 }}>
               Pour toute question relative au site : <a href="mailto:hello@wada.style" style={{ color: ink }}>hello@wada.style</a>
             </p>
