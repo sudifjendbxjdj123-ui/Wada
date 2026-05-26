@@ -61,7 +61,16 @@
    ConditionalFooter wrapper filtre le footer global sur "/". Autres
    pages inchangées. Force re-fetch HTML pour que les clients voient
    la nouvelle home + l'absence de footer en arrivant. */
-const CACHE_VERSION = "wada-v9-2026-05-26";
+/* Bump 26/05 v10 : brief client « l'assistant IA doit VRAIMENT
+   comprendre ». /stylist saisie libre re-branchée sur le LLM
+   gpt-4o-mini (route /api/stylist) au lieu du script hardcoded qui
+   répondait « Notée. De quelle couleur est-elle ? » sur n'importe
+   quelle demande. SYSTEM_PROMPT_V2 mis à jour : si l'utilisateur
+   donne un thème (soirée pirate), une occasion (mariage juin), un
+   mood — le LLM COMPOSE directement, ne demande plus la couleur en
+   automatique. Force re-fetch JS pour que les clients aient le
+   nouveau callLLM() côté frontend. */
+const CACHE_VERSION = "wada-v10-2026-05-26";
 const STATIC_CACHE  = `${CACHE_VERSION}-static`;
 const PAGE_CACHE    = `${CACHE_VERSION}-pages`;
 

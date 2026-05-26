@@ -803,39 +803,175 @@ export default function StylistPage() {
     return onAdjust(t);
   }
 
-  /* ─── Saisie libre ─── */
+  /* ─── Saisie libre ───
+     Brief client 2026-05-26 verbatim : « L'assistant doit lire et
+     comprendre le message (thème, occasion, humeur, pièce possédée,
+     contraintes) et répondre pertinemment. Poser une question seulement
+     si une info manque vraiment. Jamais un "de quelle couleur ?"
+     automatique sur une demande déjà claire. »
+
+     Avant : `send()` aiguillait sur des regex hardcodées (`onPieceFreeText`)
+     qui répondait toujours « Notée. De quelle couleur est-elle ? » quel
+     que soit le contenu — l'utilisateur tapait « soirée pirate », le bot
+     ignorait le thème et demandait la couleur. Bug critique.
+
+     Maintenant : TOUTE saisie libre passe par /api/stylist (LLM gpt-4o-mini
+     + SYSTEM_PROMPT_V2 mis à jour). Le LLM renvoie soit `mode: "tenue"`
+     (compose direct) soit `mode: "question"` (UNE seule question, options
+     contextuelles). Le state machine à chips reste opérationnel pour les
+     clics sur les chips initiaux. */
   function send() {
     const v = input.trim();
     if (!v) return;
     setInput("");
     addMe(v);
-    if (state.mode === null) {
-      if (/rien|zéro|zero|complet|sais pas|propose|compose|tenue/i.test(v)) {
-        setState((s) => ({ ...s, mode: "full" }));
-        botDelay(() => {
-          addBot("Parfait, je pars de zéro. Pour qui je compose ?");
-          setChips([{ label: "Femme" }, { label: "Homme" }, { label: "Unisexe" }]);
-        });
-      } else {
-        setState((s) => ({ ...s, mode: "anchor" }));
-        onPieceFreeText(v);
-      }
+    callLLM(v);
+  }
+
+  /** Lit les préférences localStorage pour les envoyer au LLM (genre +
+   *  style préféré + budget). Permet au styliste de personnaliser sans
+   *  reposer la question (cf. brief : « ne demande JAMAIS le STYLE si
+   *  déjà connu via le profil »). */
+  function readUserPrefs(): {
+    gender?: "femme" | "homme" | "unisexe" | null;
+    style?: string;
+    budget?: number;
+    morpho?: string;
+    size?: string;
+  } {
+    try {
+      const prefs = JSON.parse(localStorage.getItem("wada-prefs") || "{}");
+      const genderRaw = localStorage.getItem("wada-gender");
+      const gender = (genderRaw === "femme" || genderRaw === "homme" || genderRaw === "unisexe")
+        ? genderRaw
+        : null;
+      return {
+        gender: gender || state.genre?.toLowerCase() as "femme" | "homme" | "unisexe" | null,
+        style: state.style || prefs.style,
+        budget: prefs.budget,
+        morpho: prefs.morpho,
+        size: prefs.size,
+      };
+    } catch {
+      return {};
     }
   }
-  function onPieceFreeText(v: string) {
-    let piece = v, role: Role = "Haut";
-    if (/loro|piana/i.test(v)) { piece = "Loro Piana"; role = "Chaussures"; }
-    else if (/pull/i.test(v)) { piece = "Pull"; role = "Haut"; }
-    else if (/chemise/i.test(v)) { piece = "Chemise"; role = "Haut"; }
-    else if (/chaussure|derby|basket|sneaker|mocassin/i.test(v)) role = "Chaussures";
-    else if (/pantalon|chino|jean/i.test(v)) role = "Bas";
-    else if (/veste|blazer|manteau/i.test(v)) role = "Veste";
-    setState((s) => ({ ...s, piece, anchorRole: role }));
-    botDelay(() => {
-      addBot("Notée. De quelle couleur est-elle ?");
-      setChips(Object.keys(COULEURS).map((c) => ({ label: c })));
-    });
+
+  /** Convertit un slot LLM ("haut"|"bas"|...) vers le Role frontend. */
+  function slotToRole(slot: string): Role {
+    const map: Record<string, Role> = {
+      haut: "Haut", bas: "Bas", chaussures: "Chaussures",
+      veste: "Veste", accent: "Accent",
+    };
+    return map[slot.toLowerCase()] || "Haut";
   }
+
+  /** Appelle le LLM /api/stylist avec la saisie libre + l'état conversationnel
+   *  accumulé. Route la réponse vers question (chips d'options) ou tenue
+   *  (rendu outfit + chips d'ajustement). Fallback sur message générique
+   *  en cas d'erreur réseau. */
+  async function callLLM(query: string) {
+    setChips([]);
+    const userPrefs = readUserPrefs();
+    const collecte = {
+      piece: state.piece,
+      couleur: state.couleur,
+      style: state.style,
+      occasion: state.occasion,
+    };
+
+    try {
+      const res = await fetch("/api/stylist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query, userPrefs, collecte }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+
+      /* ─── Propage la collecte LLM dans le state local ─── */
+      if (data.collecte) {
+        setState((s) => ({
+          ...s,
+          piece: data.collecte.piece ?? s.piece,
+          couleur: data.collecte.couleur ?? s.couleur,
+          style: data.collecte.style ?? s.style,
+          occasion: data.collecte.occasion ?? s.occasion,
+        }));
+      }
+
+      /* ─── Mode "question" : pose UNE question + chips d'options contextuelles ─── */
+      if (data.mode === "question" && data.reponse) {
+        botDelay(() => {
+          addBot(data.reponse);
+          if (Array.isArray(data.options) && data.options.length) {
+            setChips(data.options.map((o: string) => ({ label: o })));
+          }
+        });
+        return;
+      }
+
+      /* ─── Mode "tenue" : compose directement à partir de la sortie LLM ───
+         Priorité au composed_outfit du serveur (a déjà les lienAchat
+         attachés via merchantsForPiece). Sinon fallback sur data.tenue brut. */
+      const composed = data.composed_outfit;
+      if (composed?.slots?.length) {
+        const pieces: OutfitPiece[] = composed.slots.map((s: {
+          slot: string; role: string; label: string; hex: string; colorName: string;
+        }) => ({
+          badge: s.role === "owned" ? "Votre pièce" : s.role === "accent" ? "Touche" : "Proposé",
+          role: slotToRole(s.slot),
+          type: s.label,
+          hex: s.hex,
+          couleurNom: s.colorName,
+          ancre: s.role === "owned",
+        }));
+        const reponse = data.reponse || data.entities?.styling_advice || "Voilà ce que je composerais.";
+        const accordRef = composed.palette?.entry?.number || null;
+        const accordName = composed.palette?.entry?.name || null;
+
+        botDelay(() => {
+          addBot(reponse);
+          addOutfit(pieces);
+          setState((s) => ({
+            ...s,
+            pieces,
+            accordNumber: accordRef,
+            accordName,
+          }));
+          setTimeout(() => {
+            addBot("Je peux l'ajuster — dites-moi.");
+            setChips([
+              { label: "Plus chaud" },
+              { label: "Sans veste" },
+              { label: "Plus décontracté" },
+              { label: "Une autre couleur" },
+              { label: "C'est parfait", primary: true },
+            ]);
+            setDone(true);
+          }, 950);
+        });
+        return;
+      }
+
+      /* ─── Pas de tenue exploitable, pas de question : message générique ─── */
+      botDelay(() => {
+        addBot(
+          data.reponse ||
+          data.entities?.styling_advice ||
+          "J'ai bien noté. Vous pouvez préciser un peu — une occasion, une couleur, une pièce que vous avez déjà ?"
+        );
+      });
+    } catch (err) {
+      console.error("[stylist] callLLM error:", err);
+      botDelay(() => {
+        addBot("Petit souci technique de mon côté. Vous pouvez réessayer ?");
+      });
+    }
+  }
+
+  /* Legacy onPieceFreeText supprimé — la saisie libre passe désormais par
+     callLLM() qui gère thèmes/occasions/pièces sans script rigide. */
 
   /* ══════════════════════════════════════════════════════════════════
      RENDER
