@@ -528,6 +528,22 @@ body::after {
   body::after { opacity: 0.25; }
 }
 
+/* ───────────────────────────────────────────────────────────
+   HOME IMMERSIVE (brief 2026-05-26) — vidéo mannequin plein
+   écran. On masque le grain papier (body::after) ET le wash
+   radial (body::before) sur la home : ces 2 overlays
+   position:fixed z-index 2 passent sinon AU-DESSUS de la
+   vidéo (isolation:isolate sur main ne les bloque pas car
+   position:fixed se réfère au viewport, pas au parent).
+   La classe est posée par app/page.tsx via useEffect on mount
+   et retirée on unmount → scope strictement /, autres pages
+   gardent leurs overlays.
+   ─────────────────────────────────────────────────────────── */
+body.wada-home-immersive::before,
+body.wada-home-immersive::after {
+  display: none !important;
+}
+
 /* Display headlines — Fredoka : chubby rond mais POSÉ (pas exagéré comme
    Bagel Fat One). Le brief client demande la chubby comme voix de marque
    « différenciante mais premium, pas enfantin ». Style normal, un seul

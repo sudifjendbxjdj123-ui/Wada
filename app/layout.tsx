@@ -1,7 +1,11 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import Nav from "@/components/Nav";
-import Footer from "@/components/Footer";
+/* Brief client 2026-05-26 : footer retiré de la home (et UNIQUEMENT
+   de la home). ConditionalFooter lit usePathname() et rend null sur
+   "/" pour libérer toute la hauteur pour la vidéo mannequin plein
+   écran. Les autres pages gardent le Footer normal. */
+import ConditionalFooter from "@/components/ConditionalFooter";
 import MobileTabBar from "@/components/MobileTabBar";
 import PageHueAccent from "@/components/PageHueAccent";
 import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
@@ -264,7 +268,7 @@ export default function RootLayout({
             page. Nav reste sticky (body est l'ancêtre scrollant). */}
         <Nav />
         {children}
-        <Footer />
+        <ConditionalFooter />
         {/* Audit mobile (24/05) §1 : barre d'onglets bottom-nav fixée,
             visible uniquement ≤880px via .wada-tabbar { display:none }.
             Accès permanent aux 4 outils principaux au pouce, le drawer

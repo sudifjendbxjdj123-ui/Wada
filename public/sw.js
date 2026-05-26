@@ -53,7 +53,15 @@
    <PaletteCard> partagé partout : /palettes, /scanner, /cultures,
    /favoris, /about, WadaVisual. ♡ favori intégré dans la card via
    useFavorites(), plus de bouton ✕ externe sur /favoris. */
-const CACHE_VERSION = "wada-v8-2026-05-26";
+/* Bump 26/05 v9 : brief client « la vidéo du mannequin en plein écran,
+   qui tourne en boucle » + « Retirer le footer de la page d'accueil
+   uniquement ». Home refactor : <video autoplay muted loop playsinline
+   poster="…webp"> 100svh × 100vw, object-fit cover, safe-areas
+   respectées, body::before/after masqués via classe wada-home-immersive.
+   ConditionalFooter wrapper filtre le footer global sur "/". Autres
+   pages inchangées. Force re-fetch HTML pour que les clients voient
+   la nouvelle home + l'absence de footer en arrivant. */
+const CACHE_VERSION = "wada-v9-2026-05-26";
 const STATIC_CACHE  = `${CACHE_VERSION}-static`;
 const PAGE_CACHE    = `${CACHE_VERSION}-pages`;
 
