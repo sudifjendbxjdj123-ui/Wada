@@ -636,13 +636,13 @@ function MaTenueContent() {
                   <p style={{
                     fontSize: 13, color: textSecondary,
                     margin: "4px 0 0", fontStyle: "italic",
-                    fontFamily: "'EB Garamond', Georgia, serif",
+                    fontFamily: "'Inter', sans-serif",
                   }}>
                     Estimation — prix réels chez chaque marchand au clic
                   </p>
                 </div>
                 <p style={{
-                  fontFamily: "'Fraunces', Georgia, serif",
+                  fontFamily: "'Fredoka', sans-serif",
                   fontWeight: 600, fontSize: 28,
                   color: "#6B3A32",
                   margin: 0, lineHeight: 1,
@@ -1301,7 +1301,7 @@ function PieceCard({
           <p style={{ fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", color: "#A8B29A", margin: 0, fontWeight: 700 }}>
             {PIECE_LABELS[piece] || piece}
           </p>
-          <p style={{ fontFamily: "'Fraunces', Georgia, serif", fontSize: 17, margin: "4px 0 0", lineHeight: 1.25, color: ink }}>
+          <p style={{ fontFamily: "'Fredoka', sans-serif", fontSize: 17, margin: "4px 0 0", lineHeight: 1.25, color: ink }}>
             {itemName}
           </p>
           <p style={{ marginTop: 10, fontSize: 11, color: textSecondary, fontStyle: "italic" }}>
@@ -1449,7 +1449,7 @@ function PieceCard({
         <p
           className="wada-piece-name"
           style={{
-            fontFamily: "'Fraunces', Georgia, serif",
+            fontFamily: "'Fredoka', sans-serif",
             fontWeight: 500, fontSize: 17, margin: "4px 0 0",
             lineHeight: 1.25, color: ink,
             display: "-webkit-box",

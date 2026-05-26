@@ -1,45 +1,57 @@
 "use client";
+/**
+ * /scanner — Refonte 2026-05-27 mockup éditorial jour/nuit.
+ *
+ * Brief : template HTML reçu (kicker + h1 Fredoka centré, sub italique,
+ * tabs pill, panel 2-col, raccourcis circulaires).
+ *
+ * Architecture :
+ *   1. Hero centré : kicker / h1 / sub / tabs <ScanModeToggle/>
+ *   2. Panel 2-col : drop zone dashed + détection card (gauche) | info
+ *      « La teinte vraie » + 3 ✓ (droite)
+ *   3. Ess card : kicker + heading + grid 12 swatches ronds
+ *   4. Résultats si scan effectué
+ *
+ * Couleurs via CSS variables (--txt, --txt-soft, --ln, --surf) qui suivent
+ * data-theme="jour|nuit" sur <html> (cf. globals.css + ThemeToggle).
+ *
+ * Mécanique inchangée :
+ *   - extractFromImageSrc : décode pixels canvas → moyenne pondérée
+ *   - Drag/drop, file picker, color picker fallback, native camera Capacitor
+ */
 import Link from "next/link";
 import { useState, useRef, useEffect } from "react";
 import { dictionary, findPalettesByColor, type DictionaryEntry } from "@/lib/data";
-import {
-  ink, paper, subtle, border, textSecondary, cardBg,
-  mojo, mojoSoft,
-  sectionLabel,
-  fontHeading, fontBody, fontLabel,
-  buttonRadius, cardRadius,
-} from "@/lib/styles";
-import Nav from "@/components/Nav";
-import Footer from "@/components/Footer";
-import HandArrow from "@/components/HandArrow";
-import SketchUnderline from "@/components/SketchUnderline";
+import BackButton from "@/components/BackButton";
 import Reveal from "@/components/Reveal";
-import WadaVisual from "@/components/WadaVisual";
 import PaletteCard from "@/components/PaletteCard";
+import ScanModeToggle from "@/components/ScanModeToggle";
 import { isNative, takeNativePhoto, hapticMedium } from "@/lib/native";
 
-/* ──────────────────────────────────────────────────────────────────────
-   Boutons identiques à la home
-   ────────────────────────────────────────────────────────────────────── */
-const btnBase = {
-  display: "inline-flex", alignItems: "center", gap: 10,
-  padding: "13px 24px", borderRadius: buttonRadius,
-  fontFamily: fontLabel, fontSize: 13, fontWeight: 600,
-  letterSpacing: "0.04em", textDecoration: "none",
-  cursor: "pointer", border: "1px solid transparent",
-  whiteSpace: "nowrap" as const, transition: "all 0.2s ease",
+const fonts = {
+  display: "'Fredoka', sans-serif",
+  serif: "'Inter', sans-serif",
+  sans: "'Inter', Arial, sans-serif",
 };
-const btnPrimary = { ...btnBase, background: mojo, color: "#FFFFFF" };
-const btnOutline = { ...btnBase, background: "transparent", color: ink, border: `1px solid ${ink}` };
-const btnGhost   = { ...btnBase, background: "transparent", color: ink, padding: "13px 8px" };
 
-const quickSwatches = [
-  "#0C0C0C", "#1B2840", "#5C2018", "#5C5A3C", "#7A8F73", "#C26A4F",
-  "#A8624A", "#C9A24A", "#B8946A", "#A89A85", "#E8DFD0", "#F8F5EE",
+/* Palette (côté pages). Les vars CSS (--txt, --txt-soft, --ln, --surf) du
+   theme jour/nuit prennent le dessus quand disponibles. */
+const fallback = {
+  olive: "#A8B29A",
+  bordeaux: "#6B3A32",
+};
+
+/* 12 essentielles — couleurs du mockup (sumi, marine, brique, olive, sauge,
+   terracotta, brun, lanterne, beige doré, taupe, crème, off-white). */
+const ESSENTIALS = [
+  "#1E1E1E", "#1f3a5f", "#6B2D2A", "#556b2f",
+  "#7A8F73", "#c46b4a", "#b5613f", "#D4A24E",
+  "#c7a06a", "#a89e8e", "#D8C9B2", "#FBF9F5",
 ];
 
 export default function ScannerPage() {
-  const [color, setColor] = useState<string>("#5C2018");
+  /* État vide propre — pas de #5C2018 par défaut (brief 3.1). */
+  const [color, setColor] = useState<string | null>(null);
   const [results, setResults] = useState<DictionaryEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -47,13 +59,7 @@ export default function ScannerPage() {
   const [nativeMode, setNativeMode] = useState(false);
   const fileRef = useRef<HTMLInputElement | null>(null);
 
-  const demo  = dictionary.find((d) => d.number === "002") || dictionary[0];
-  const demo2 = dictionary.find((d) => d.number === "003") || dictionary[1] || dictionary[0];
-
   useEffect(() => {
-    setResults(findPalettesByColor("#5C2018", 6));
-    // Détection client-only de la plateforme native (Capacitor) — utilisé
-    // pour afficher le bouton "Prendre une photo" et activer les haptiques.
     setNativeMode(isNative());
   }, []);
 
@@ -83,7 +89,7 @@ export default function ScannerPage() {
       setColor(hex);
       setResults(findPalettesByColor(hex, 6));
       setLoading(false);
-      void hapticMedium(); // no-op sur web, vibration douce sur device
+      void hapticMedium();
       setTimeout(() => document.getElementById("results")?.scrollIntoView({ behavior: "smooth", block: "start" }), 100);
     };
     img.src = src;
@@ -91,15 +97,10 @@ export default function ScannerPage() {
 
   const extractFromFile = (file: File) => extractFromImageSrc(URL.createObjectURL(file));
 
-  /** Ouvre la caméra native Capacitor (iOS/Android) — fallback file input web. */
   const onNativeCamera = async () => {
     const dataUrl = await takeNativePhoto();
-    if (dataUrl) {
-      extractFromImageSrc(dataUrl);
-    } else if (!isNative()) {
-      // Sur web : fallback file picker. Sur natif : annulation → on ne fait rien.
-      fileRef.current?.click();
-    }
+    if (dataUrl) extractFromImageSrc(dataUrl);
+    else if (!isNative()) fileRef.current?.click();
   };
 
   const onFile = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -119,411 +120,427 @@ export default function ScannerPage() {
   };
 
   return (
-    <main style={{ minHeight: "100vh", fontFamily: fontBody, background: paper, color: ink }}>
-      <a href="#main-content" className="wada-skip-link">Aller au contenu</a>
-      <Nav />
-      <div id="main-content" />
+    <main
+      style={{
+        minHeight: "100vh",
+        fontFamily: fonts.sans,
+        background: "var(--wada-paper, #F4EFE7)",
+        color: "var(--wada-ink, #1E1E1E)",
+        lineHeight: 1.55,
+        transition: "background .4s ease, color .4s ease",
+      }}
+    >
+            <BackButton fallback="/atelier" />
 
-      {/* ══════════════════════════════════════════════════════════════════
-          1. HERO — 2 colonnes : scanner à gauche, titre éditorial à droite
-          Fond Mojo soft comme la home
-          ══════════════════════════════════════════════════════════════════ */}
-      <section style={{ background: mojoSoft, padding: "80px 5% 96px" }}>
-        <div style={{ maxWidth: 1280, margin: "0 auto" }}>
+      <div style={{
+        maxWidth: 1000, margin: "0 auto",
+        /* Brief « bugs visuels mobile » BUG #2 (24/05) :
+           padding "0 24px" ne prenait pas en compte env(safe-area-
+           inset-*). Sur iPhone à encoche + viewportFit:cover, les
+           ~14px de safe-area droite n'étaient pas réservés → le bord
+           droit des boutons « Prendre une photo » / « Choisir un
+           fichier » et de la carte « Couleur détectée » passait sous
+           la courbure du device. max(24px, safe-area-inset-*) garantit
+           que le contenu reste dans la zone safe. */
+        padding: "0 max(24px, env(safe-area-inset-right)) 0 max(24px, env(safe-area-inset-left))",
+      }}>
+        {/* ─── HERO ÉDITORIAL CENTRÉ ─── */}
+        <div style={{ padding: "34px 0 8px", textAlign: "center" }}>
           <Reveal>
-            <div className="wada-hero-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 64, alignItems: "center" }}>
-
-              {/* Colonne gauche — Scanner */}
-              <div>
-                {nativeMode && (
-                  <button
-                    type="button"
-                    onClick={onNativeCamera}
-                    data-wada-btn
-                    style={{
-                      ...btnPrimary,
-                      width: "100%",
-                      justifyContent: "center",
-                      marginBottom: 16,
-                      padding: "16px 24px",
-                      fontSize: 14,
-                    }}
-                  >
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                      <rect x="3" y="7" width="18" height="13" rx="2" />
-                      <circle cx="12" cy="13.5" r="3.5" />
-                      <path d="M8 7 L9 4 L15 4 L16 7" />
-                    </svg>
-                    <span>Prendre une photo</span>
-                  </button>
-                )}
-                <div
-                  onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
-                  onDragLeave={() => setDragActive(false)}
-                  onDrop={onDrop}
-                  onClick={() => fileRef.current?.click()}
-                  style={{
-                    position: "relative",
-                    border: `2px dashed ${dragActive ? ink : border}`,
-                    background: dragActive ? cardBg : paper,
-                    padding: "56px 32px",
-                    cursor: "pointer",
-                    textAlign: "center",
-                    transition: "all 0.2s ease",
-                    minHeight: 320,
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: 16,
-                    borderRadius: cardRadius,
-                  }}
-                  onMouseEnter={(ev) => { if (!dragActive) ev.currentTarget.style.borderColor = subtle; }}
-                  onMouseLeave={(ev) => { if (!dragActive) ev.currentTarget.style.borderColor = border; }}
-                >
-                  {previewUrl ? (
-                    <>
-                      <img src={previewUrl} alt="Aperçu" style={{ maxHeight: 220, maxWidth: "100%", objectFit: "contain", borderRadius: 6 }} />
-                      <p style={{ fontSize: 13, color: subtle, fontStyle: "italic", margin: 0, fontFamily: fontBody }}>
-                        Cliquez ou déposez une autre photo pour changer
-                      </p>
-                    </>
-                  ) : (
-                    <>
-                      <svg width="56" height="56" viewBox="0 0 48 48" fill="none" stroke={ink} strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
-                        <rect x="8" y="14" width="32" height="22" />
-                        <circle cx="24" cy="25" r="6" />
-                        <path d="M16 14 L18 10 L30 10 L32 14" />
-                      </svg>
-                      <h2 style={{
-                        fontFamily: fontHeading, fontSize: 26, fontStyle: "italic", fontWeight: 500,
-                        margin: 0, color: ink, letterSpacing: "-0.01em",
-                      }}>
-                        {loading ? "Analyse en cours…" : "Déposez une photo ici"}
-                      </h2>
-                      <p style={{ fontSize: 14, color: textSecondary, fontStyle: "italic", margin: 0, fontFamily: fontBody }}>
-                        ou cliquez pour parcourir vos fichiers
-                      </p>
-                    </>
-                  )}
-                  <input ref={fileRef} type="file" accept="image/*" onChange={onFile} style={{ display: "none" }} />
-                </div>
-
-                {/* Aperçu couleur sous la zone */}
-                <div style={{ marginTop: 24, display: "flex", alignItems: "center", gap: 16, padding: "16px 20px", background: paper, border: `1px solid ${border}`, borderRadius: cardRadius }}>
-                  <div style={{ width: 48, height: 48, background: color, border: `1px solid ${border}`, borderRadius: 6 }} />
-                  <div style={{ flex: 1 }}>
-                    <p style={{ ...sectionLabel, color: subtle, margin: 0, fontSize: 10 }}>Couleur détectée</p>
-                    <p style={{ fontFamily: fontHeading, fontSize: 20, fontStyle: "italic", color: ink, margin: "2px 0 0", lineHeight: 1 }}>
-                      {color.toUpperCase()}
-                    </p>
-                  </div>
-                  <input
-                    type="color"
-                    value={color}
-                    onChange={(e) => onColorChange(e.target.value)}
-                    style={{ width: 44, height: 36, border: `1px solid ${border}`, background: "transparent", cursor: "pointer", padding: 0, borderRadius: 6 }}
-                    aria-label="Choix précis de la couleur"
-                  />
-                </div>
-              </div>
-
-              {/* Colonne droite — Texte éditorial */}
-              <div>
-                {/* Vignette photo — "main qui tient un petit appareil photo" */}
-                <div
-                  aria-hidden
-                  style={{
-                    width: 110, height: 140,
-                    marginBottom: 22,
-                    background: `url("/scanner-camera.jpg")`,
-                    backgroundSize: "cover", backgroundPosition: "center",
-                    borderRadius: 4,
-                    boxShadow: "var(--wada-shadow-3)",
-                    transform: "rotate(-2deg)",
-                  }}
-                />
-                <p style={{ ...sectionLabel, color: mojo, marginBottom: 16, fontWeight: 600 }}>Scanner</p>
-                <h1 className="wada-hero-title wada-text-3d-ink" style={{
-                  fontFamily: fontHeading, fontSize: 72, fontWeight: 500,
-                  lineHeight: 1.04, letterSpacing: "-0.02em", margin: 0,
-                  fontStyle: "italic", color: ink,
-                }}>
-                  Trouvez votre <SketchUnderline color={mojo}>couleur</SketchUnderline> exacte.
-                </h1>
-                <p style={{
-                  fontFamily: fontBody, fontSize: 18, lineHeight: 1.7,
-                  color: textSecondary, margin: "24px 0 0", maxWidth: 520,
-                }}>
-                  Déposez la photo d'un vêtement, d'un mur, d'une fleur. WADA lit la teinte
-                  vraie et propose les palettes qui s'accordent — pas une approximation.
-                </p>
-
-                {/* Bénéfices courts */}
-                <ul style={{ margin: "28px 0 0", padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 12 }}>
-                  {[
-                    { t: "Précision sub-pixel", d: "Algo qui ignore le bruit blanc/noir et calcule la moyenne pondérée." },
-                    { t: "Aucune inscription", d: "Tout reste local dans votre navigateur." },
-                    { t: "348 palettes prêtes", d: "Le dictionnaire complet de Sanzo Wada à portée." },
-                  ].map((b) => (
-                    <li key={b.t} style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
-                      <span style={{
-                        flexShrink: 0, width: 22, height: 22, borderRadius: "50%",
-                        background: mojo, color: "#FFFFFF",
-                        display: "flex", alignItems: "center", justifyContent: "center",
-                        fontFamily: fontLabel, fontSize: 12, fontWeight: 700,
-                      }}>
-                        ✓
-                      </span>
-                      <div>
-                        <p style={{ fontFamily: fontLabel, fontSize: 13, fontWeight: 600, color: ink, margin: 0, letterSpacing: "0.02em" }}>
-                          {b.t}
-                        </p>
-                        <p style={{ fontFamily: fontBody, fontSize: 14, color: textSecondary, margin: "2px 0 0", lineHeight: 1.5 }}>
-                          {b.d}
-                        </p>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-
-                <div style={{ marginTop: 32, display: "flex", gap: 12, flexWrap: "wrap" }}>
-                  <button
-                    onClick={() => fileRef.current?.click()}
-                    style={{ ...btnPrimary, cursor: "pointer" }}
-                  >
-                    <span>Choisir une photo</span>
-                    <HandArrow size={24} color="#FFFFFF" />
-                  </button>
-                  <Link href="/palettes" style={btnGhost}>
-                    <span>Voir les 348 tenues</span>
-                    <span aria-hidden style={{ fontSize: 16 }}>→</span>
-                  </Link>
-                </div>
-              </div>
-
+            <p style={{
+              fontSize: 11, letterSpacing: "0.32em", textTransform: "uppercase",
+              color: fallback.bordeaux, fontWeight: 500, margin: 0,
+            }}>
+              Scanner
+            </p>
+            <h1 style={{
+              fontFamily: fonts.display, fontWeight: 700,
+              fontSize: "clamp(30px, 5vw, 40px)", margin: "8px 0 6px",
+              color: "var(--wada-ink, #1E1E1E)",
+            }}>
+              Trouvez votre couleur exacte.
+            </h1>
+            <p style={{
+              color: "var(--wada-text-secondary, #6f685f)",
+              maxWidth: "50ch", margin: "0 auto",
+            }}>
+              Photographiez une couleur ou un vêtement — WADA lit la teinte vraie et propose les palettes qui s'accordent.
+            </p>
+            <div style={{ marginTop: 20 }}>
+              <ScanModeToggle active="couleur" />
             </div>
           </Reveal>
         </div>
-      </section>
 
-      {/* ══════════════════════════════════════════════════════════════════
-          2. RACCOURCIS — swatches essentiels, fond paper
-          ══════════════════════════════════════════════════════════════════ */}
-      <section style={{ background: paper, padding: "72px 5%", borderBottom: `1px solid ${border}` }}>
-        <div style={{ maxWidth: 1100, margin: "0 auto" }}>
-          <Reveal>
-            <div style={{ textAlign: "center", marginBottom: 36 }}>
-              <p style={{ ...sectionLabel, color: mojo, marginBottom: 14, fontWeight: 600 }}>Raccourcis</p>
-              <h2 style={{
-                fontFamily: fontHeading, fontSize: 36, fontWeight: 500,
-                lineHeight: 1.1, letterSpacing: "-0.015em", margin: "0 0 12px",
-                fontStyle: "italic", color: ink,
-              }}>
-                Ou choisissez parmi les <SketchUnderline color={mojo}>essentielles</SketchUnderline>.
-              </h2>
-              <p style={{ fontFamily: fontBody, fontSize: 15, color: textSecondary, margin: 0, fontStyle: "italic" }}>
-                Douze couleurs qui ouvrent les meilleures palettes.
-              </p>
+        {/* ─── PANEL 2-COL ─── */}
+        <section
+          className="wada-scanner-panel"
+          style={{
+            background: "var(--wada-card-bg-strong, #FBF9F5)",
+            border: "1px solid var(--wada-border, rgba(30,30,30,.10))",
+            borderRadius: 24,
+            padding: 30,
+            boxShadow: "0 8px 30px rgba(30,30,30,.06)",
+            margin: "26px 0 0",
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: 34,
+            alignItems: "center",
+          }}
+        >
+          {/* COLONNE GAUCHE — drop zone + détection */}
+          <div>
+            {nativeMode && (
+              <button
+                type="button"
+                onClick={onNativeCamera}
+                style={{
+                  width: "100%",
+                  marginBottom: 12,
+                  background: fallback.bordeaux,
+                  color: "#FAF8F4",
+                  border: "none",
+                  borderRadius: 999,
+                  padding: "13px",
+                  fontSize: 14,
+                  fontFamily: fonts.sans,
+                  fontWeight: 500,
+                  cursor: "pointer",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 8,
+                }}
+              >
+                <span aria-hidden>📷</span> Ouvrir la caméra
+              </button>
+            )}
+
+            {/* Drop zone — brief audit A5 : <label htmlFor> natif au lieu
+                de role="button" custom. Sémantique correcte : cliquer (ou
+                taper) sur le label ouvre directement l'input file natif,
+                pas besoin de gérer le clavier manuellement. Drag/drop
+                conservé via les events sur le label. */}
+            <label
+              htmlFor="wada-scanner-file"
+              onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
+              onDragLeave={() => setDragActive(false)}
+              onDrop={onDrop}
+              style={{
+                display: "block",
+                border: `1.5px dashed ${dragActive ? "var(--wada-ink, #1E1E1E)" : "var(--wada-border, rgba(30,30,30,.10))"}`,
+                borderRadius: 18,
+                background: "var(--wada-paper, #F4EFE7)",
+                padding: "34px 20px",
+                textAlign: "center",
+                cursor: "pointer",
+                transition: "border-color .2s ease, background .2s ease",
+              }}
+            >
+              {previewUrl ? (
+                <>
+                  <img
+                    src={previewUrl}
+                    alt="Aperçu"
+                    style={{ maxHeight: 180, maxWidth: "100%", objectFit: "contain", borderRadius: 8, marginBottom: 10 }}
+                  />
+                  <p style={{ fontSize: 13, color: "var(--wada-text-secondary, #6f685f)", margin: 0, fontStyle: "italic" }}>
+                    Cliquez pour changer
+                  </p>
+                </>
+              ) : (
+                <>
+                  <div aria-hidden style={{ fontSize: 30, color: fallback.olive }}>◇</div>
+                  <h3 style={{
+                    fontFamily: fonts.display, fontWeight: 500,
+                    fontSize: 20, margin: "10px 0 6px",
+                    color: "var(--wada-ink, #1E1E1E)",
+                  }}>
+                    Déposez ou photographiez
+                  </h3>
+                  <p style={{ fontSize: 13, color: "var(--wada-text-secondary, #6f685f)", margin: 0 }}>
+                    Un mur, une fleur, un tissu
+                  </p>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 16 }}>
+                    {/* preventDefault sur les boutons à l'intérieur du
+                        <label> : empêche le label de re-déclencher l'input
+                        file natif (sinon double dialogue ou conflit avec
+                        l'API caméra Capacitor). stopPropagation reste pour
+                        bloquer le bubbling jusqu'au label. */}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        if (nativeMode) onNativeCamera();
+                        else fileRef.current?.click();
+                      }}
+                      style={{
+                        background: fallback.bordeaux,
+                        color: "#FAF8F4",
+                        border: "none",
+                        borderRadius: 999,
+                        padding: "13px",
+                        fontSize: 16, // M2 audit : ≥16 évite zoom iOS sur input
+                        cursor: "pointer",
+                        fontFamily: fonts.sans,
+                        fontWeight: 500,
+                      }}
+                    >
+                      <span aria-hidden>📷</span> Prendre une photo
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        fileRef.current?.click();
+                      }}
+                      style={{
+                        background: "transparent",
+                        color: "var(--wada-ink, #1E1E1E)",
+                        border: "1px solid var(--wada-border, rgba(30,30,30,.10))",
+                        borderRadius: 999,
+                        padding: "12px",
+                        fontSize: 16,
+                        cursor: "pointer",
+                        fontFamily: fonts.sans,
+                        fontWeight: 500,
+                      }}
+                    >
+                      Choisir un fichier
+                    </button>
+                  </div>
+                </>
+              )}
+              <input
+                ref={fileRef}
+                id="wada-scanner-file"
+                type="file"
+                accept="image/*"
+                capture="environment"
+                onChange={onFile}
+                style={{
+                  /* sr-only : caché visuellement mais accessible au clavier
+                     (vs display:none qui rend l'input inatteignable). */
+                  position: "absolute",
+                  width: 1, height: 1,
+                  padding: 0, margin: -1,
+                  overflow: "hidden",
+                  clip: "rect(0,0,0,0)",
+                  whiteSpace: "nowrap",
+                  border: 0,
+                }}
+              />
+            </label>
+
+            {/* Détection card */}
+            <div style={{
+              display: "flex", alignItems: "center", gap: 14,
+              background: "var(--wada-paper, #F4EFE7)",
+              border: "1px solid var(--wada-border, rgba(30,30,30,.10))",
+              borderRadius: 14,
+              padding: "14px 16px",
+              marginTop: 14,
+            }}>
+              <div
+                aria-hidden
+                style={{
+                  width: 40, height: 40, borderRadius: 10,
+                  background: color || "#cfc8bd",
+                  border: "1px solid var(--wada-border, rgba(30,30,30,.10))",
+                  flexShrink: 0,
+                }}
+              />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{
+                  fontSize: 10, letterSpacing: "0.18em",
+                  textTransform: "uppercase", color: fallback.olive,
+                  margin: 0, fontWeight: 600,
+                }}>
+                  Couleur détectée
+                </p>
+                <p style={{
+                  fontFamily: fonts.serif,
+                  fontSize: 15, color: "var(--wada-text-secondary, #6f685f)",
+                  margin: "2px 0 0", lineHeight: 1.3,
+                  /* Brief « bugs visuels mobile » BUG #2 (24/05) :
+                     whiteSpace:nowrap + ellipsis tronquait « Aucune
+                     couleur scannée pour le moment » en « …pour le momen… »
+                     sur iPhone (32 chars ne tiennent jamais à 375px).
+                     Pour les hex (« #1F3A5F »), nowrap reste pertinent ;
+                     on garde nowrap UNIQUEMENT quand on affiche un hex.
+                     Sinon, le texte peut wrap sur 2 lignes. */
+                  overflow: "hidden",
+                  ...(color && !loading
+                    ? { whiteSpace: "nowrap" as const, textOverflow: "ellipsis" as const }
+                    : { wordBreak: "break-word" as const }),
+                }}>
+                  {loading ? "Analyse en cours…"
+                    : color ? color.toUpperCase()
+                    : "Aucune couleur scannée pour le moment"}
+                </p>
+              </div>
+              <input
+                type="color"
+                value={color || "#888888"}
+                onChange={(e) => onColorChange(e.target.value)}
+                style={{
+                  // Brief audit mobile §4 : 44×44 minimum tactile (WCAG 2.5.5).
+                  // L'ancien 36×32 forçait l'utilisateur à zoomer pour viser.
+                  width: 44, height: 44, minWidth: 44, minHeight: 44,
+                  border: "1px solid var(--wada-border, rgba(30,30,30,.10))",
+                  background: "transparent",
+                  cursor: "pointer", padding: 0, borderRadius: 8,
+                }}
+                aria-label="Choix précis de la couleur"
+              />
             </div>
-            <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 12 }}>
-              {quickSwatches.map((c) => (
+          </div>
+
+          {/* COLONNE DROITE — info */}
+          <div>
+            <h2 style={{
+              fontFamily: fonts.display, fontWeight: 700,
+              fontSize: "clamp(26px, 3.4vw, 34px)", lineHeight: 1.1,
+              color: "var(--wada-ink, #1E1E1E)", margin: 0,
+            }}>
+              La teinte vraie, pas une approximation.
+            </h2>
+            <p style={{
+              color: "var(--wada-text-secondary, #6f685f)",
+              margin: "12px 0 16px",
+            }}>
+              WADA détecte la couleur dans votre navigateur et la rattache à l'accord de Sanzo Wada le plus proche.
+            </p>
+
+            {[
+              { t: "Précision", d: "analyse pondérée, ignore le bruit." },
+              { t: "Sans inscription", d: "tout reste sur votre appareil." },
+              { t: "348 palettes", d: "le dictionnaire complet, à portée." },
+            ].map((b) => (
+              <div key={b.t} style={{ display: "flex", gap: 10, marginBottom: 10, fontSize: 13 }}>
+                <span style={{ color: fallback.bordeaux, fontWeight: 700 }}>✓</span>
+                <span>
+                  <b style={{ fontWeight: 600, color: "var(--wada-ink, #1E1E1E)" }}>{b.t}</b>
+                  <span style={{ color: "var(--wada-text-secondary, #6f685f)" }}> — {b.d}</span>
+                </span>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* ─── ESSENTIELLES — raccourcis 12 swatches ronds ─── */}
+        <section style={{
+          margin: "30px 0 0",
+          background: "var(--wada-card-bg-strong, #FBF9F5)",
+          border: "1px solid var(--wada-border, rgba(30,30,30,.10))",
+          borderRadius: 24,
+          padding: "26px 30px",
+          textAlign: "center",
+        }}>
+          <p style={{
+            fontSize: 11, letterSpacing: "0.32em", textTransform: "uppercase",
+            color: fallback.bordeaux, fontWeight: 500, margin: 0,
+          }}>
+            Raccourcis
+          </p>
+          <h3 style={{
+            fontFamily: fonts.display, fontWeight: 700,
+            fontSize: 24, margin: "6px 0 4px",
+            color: "var(--wada-ink, #1E1E1E)",
+          }}>
+            Ou choisissez parmi les essentielles
+          </h3>
+          <div style={{
+            display: "flex", gap: 10, justifyContent: "center",
+            flexWrap: "wrap", marginTop: 16,
+          }}>
+            {ESSENTIALS.map((c) => {
+              const active = color?.toLowerCase() === c.toLowerCase();
+              return (
                 <button
                   key={c}
                   onClick={() => onColorChange(c)}
-                  aria-label={c}
-                  className="wada-lift"
+                  aria-label={`Choisir ${c}`}
+                  className="wada-essential-swatch"
                   style={{
-                    width: 64, height: 64, background: c,
-                    border: color === c ? `2px solid ${ink}` : `1px solid ${border}`,
-                    cursor: "pointer", padding: 0, borderRadius: 6,
-                    transition: "transform 0.15s ease",
+                    width: 46, height: 46,
+                    borderRadius: "50%",
+                    background: c,
+                    border: `2px solid ${active ? fallback.bordeaux : "var(--wada-card-bg-strong, #FBF9F5)"}`,
+                    boxShadow: "0 0 0 1px var(--wada-border, rgba(30,30,30,.10))",
+                    cursor: "pointer",
+                    padding: 0,
+                    transition: "transform .2s ease",
                   }}
                 />
-              ))}
-            </div>
-          </Reveal>
-        </div>
-      </section>
-
-      {/* ══════════════════════════════════════════════════════════════════
-          3. RÉSULTATS — toujours affichés (démo au démarrage)
-          ══════════════════════════════════════════════════════════════════ */}
-      {results.length > 0 && (
-        <section id="results" style={{ background: paper, padding: "96px 5%" }}>
-          <div style={{ maxWidth: 1280, margin: "0 auto" }}>
-            <Reveal>
-              <div style={{ textAlign: "center", maxWidth: 720, margin: "0 auto 56px" }}>
-                <p style={{ ...sectionLabel, color: mojo, marginBottom: 14, fontWeight: 600 }}>
-                  {previewUrl ? "Vos résultats" : "Aperçu"}
-                </p>
-                <h2 style={{
-                  fontFamily: fontHeading, fontSize: 56, fontWeight: 500,
-                  lineHeight: 1.05, letterSpacing: "-0.02em", margin: "0 0 16px",
-                  fontStyle: "italic", color: ink,
-                }}>
-                  Palettes qui s'accordent à <SketchUnderline color={mojo}>{color.toUpperCase()}</SketchUnderline>
-                </h2>
-                <p style={{ fontFamily: fontBody, fontSize: 17, color: textSecondary, margin: 0, lineHeight: 1.6 }}>
-                  Cliquez sur une palette pour voir la tenue complète et les boutiques.
-                </p>
-              </div>
-            </Reveal>
-            <Reveal>
-              <div className="wada-palettes-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 32 }}>
-                {results.map((p) => (
-                  <PaletteCard key={p.number} entry={p} />
-                ))}
-              </div>
-            </Reveal>
+              );
+            })}
           </div>
         </section>
-      )}
 
-      {/* ══════════════════════════════════════════════════════════════════
-          5. POURQUOI LE SCANNER — 3 différences, fond paper
-          ══════════════════════════════════════════════════════════════════ */}
-      <section style={{ background: paper, padding: "96px 5%", borderTop: `1px solid ${border}` }}>
-        <div style={{ maxWidth: 1280, margin: "0 auto" }}>
-          <Reveal>
-            <div style={{ textAlign: "center", maxWidth: 720, margin: "0 auto 64px" }}>
-              <p style={{ ...sectionLabel, color: mojo, marginBottom: 16, fontWeight: 600 }}>Précision</p>
-              <h2 style={{
-                fontFamily: fontHeading,
-                fontSize: "clamp(28px, 5.5vw, 56px)",
-                fontWeight: 500,
-                lineHeight: 1.08, letterSpacing: "-0.02em", margin: "0 0 16px",
-                fontStyle: "italic", color: ink,
+        {/* ─── RÉSULTATS — apparaît après un scan ─── */}
+        {results.length > 0 && (
+          <section id="results" style={{ margin: "40px 0 0" }}>
+            <div style={{ textAlign: "center", marginBottom: 28 }}>
+              <p style={{
+                fontSize: 11, letterSpacing: "0.32em", textTransform: "uppercase",
+                color: fallback.bordeaux, fontWeight: 500, margin: 0,
               }}>
-                Pas une <SketchUnderline color={mojo}>devinette</SketchUnderline>.<br />Une lecture.
+                Vos résultats
+              </p>
+              <h2 style={{
+                fontFamily: fonts.display, fontWeight: 700,
+                fontSize: "clamp(26px, 3.5vw, 32px)", margin: "6px 0 4px",
+                color: "var(--wada-ink, #1E1E1E)",
+              }}>
+                Palettes accordées {color && <span style={{ color: fallback.bordeaux }}>{color.toUpperCase()}</span>}
               </h2>
-              <p style={{ fontFamily: fontBody, fontSize: 17, color: textSecondary, margin: 0, lineHeight: 1.6 }}>
-                Le scanner WADA traite chaque pixel comme un mot du dictionnaire de Sanzo Wada.
+              <p style={{
+                fontFamily: fonts.serif,
+                color: "var(--wada-text-secondary, #6f685f)", margin: 0,
+              }}>
+                Cliquez sur une palette pour voir la tenue complète.
               </p>
             </div>
-          </Reveal>
-
-          <Reveal>
-            <div className="wada-features-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 32 }}>
-              <ReasonCard
-                title="Couleur vraie"
-                desc="Algo qui pondère luminance et saturation pour retourner la teinte dominante — pas une moyenne grise."
-              />
-              <ReasonCard
-                title="100 % local"
-                desc="Vos photos ne quittent jamais votre appareil. Aucune analyse côté serveur."
-              />
-              <ReasonCard
-                title="348 palettes"
-                desc="Chaque résultat est validé contre le dictionnaire de Sanzo Wada (1933) — un siècle de couleur."
-              />
+            <div
+              className="wada-palettes-grid"
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(3, 1fr)",
+                gap: 24,
+              }}
+            >
+              {results.map((p) => (
+                <PaletteCard key={p.number} entry={p} />
+              ))}
             </div>
-          </Reveal>
-        </div>
-      </section>
+          </section>
+        )}
+      </div>
 
-      {/* ══════════════════════════════════════════════════════════════════
-          6. CTA — fond paper minimaliste, sans photo marbrée
-          ══════════════════════════════════════════════════════════════════ */}
-      <section style={{ background: paper, padding: "80px 5% 96px", borderTop: `1px solid ${border}` }}>
-        <Reveal>
-          <div style={{
-            maxWidth: 720, margin: "0 auto", textAlign: "center",
-          }}>
-            <h2 className="wada-text-3d-ink" style={{
-              fontFamily: fontHeading, fontSize: "clamp(28px, 5vw, 48px)", fontWeight: 500,
-              lineHeight: 1.05, letterSpacing: "-0.02em", margin: "0 0 20px",
-              fontStyle: "italic", color: ink,
-            }}>
-              Une photo. <SketchUnderline color={mojo}>Une palette.</SketchUnderline>
-            </h2>
-            <p style={{ fontFamily: fontBody, fontSize: 17, color: textSecondary, margin: "0 auto 32px", maxWidth: 540, lineHeight: 1.6 }}>
-              Aucune inscription. Aucun upload sur nos serveurs. Juste votre couleur.
-            </p>
-            <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
-              <Link href="/palettes" style={btnPrimary} data-wada-btn>
-                <span>Explorer les palettes</span>
-                <HandArrow size={22} color="#FFFFFF" />
-              </Link>
-            </div>
-          </div>
-        </Reveal>
-      </section>
-
-      <Footer />
+      
+      <style jsx>{`
+        .wada-essential-swatch:hover {
+          transform: scale(1.1);
+        }
+        @media (max-width: 760px) {
+          :global(.wada-scanner-panel) {
+            grid-template-columns: 1fr !important;
+            gap: 22px !important;
+            padding: 22px !important;
+          }
+          :global(.wada-palettes-grid) {
+            grid-template-columns: 1fr 1fr !important;
+          }
+        }
+        @media (max-width: 460px) {
+          :global(.wada-palettes-grid) {
+            grid-template-columns: 1fr !important;
+          }
+        }
+      `}</style>
     </main>
-  );
-}
-
-/* ════════════════════════════════════════════════════════════════════════
-   COMPOSANTS LOCAUX
-   ════════════════════════════════════════════════════════════════════════ */
-function StepCard(props: { step: string; visual: React.ReactNode; title: string; desc: string }) {
-  return (
-    <article className="wada-lift wada-press" style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-      <div className="wada-zoom" style={{ position: "relative", aspectRatio: "4 / 3", overflow: "hidden", borderRadius: cardRadius, background: cardBg, border: `1px solid ${border}` }}>
-        {props.visual}
-        <span style={{
-          position: "absolute", top: 16, left: 16,
-          padding: "4px 10px",
-          background: "rgba(255, 255, 255, 0.92)",
-          color: ink,
-          fontFamily: fontLabel,
-          fontSize: 11,
-          fontWeight: 700,
-          letterSpacing: "0.25em",
-          borderRadius: 6,
-          zIndex: 2,
-        }}>
-          {props.step}
-        </span>
-      </div>
-      <div>
-        <h3 style={{
-          fontFamily: fontHeading, fontSize: 26, fontWeight: 500,
-          lineHeight: 1.15, letterSpacing: "-0.015em", margin: "0 0 10px",
-          fontStyle: "italic", color: ink,
-        }}>
-          {props.title}
-        </h3>
-        <p style={{ fontFamily: fontBody, fontSize: 16, color: textSecondary, margin: 0, lineHeight: 1.6 }}>
-          {props.desc}
-        </p>
-      </div>
-    </article>
-  );
-}
-
-function ReasonCard(props: { title: string; desc: string }) {
-  return (
-    <article className="wada-lift" style={{
-      background: paper,
-      borderRadius: cardRadius,
-      border: `1px solid ${border}`,
-      padding: 32,
-      display: "flex",
-      flexDirection: "column",
-      gap: 12,
-    }}>
-      <div style={{
-        width: 40, height: 40, borderRadius: "50%",
-        background: mojoSoft, color: mojo,
-        display: "flex", alignItems: "center", justifyContent: "center",
-        fontFamily: fontHeading, fontSize: 20, fontStyle: "italic", fontWeight: 600,
-        marginBottom: 4,
-      }}>
-        ✦
-      </div>
-      <h3 style={{
-        fontFamily: fontHeading, fontSize: 24, fontWeight: 500,
-        lineHeight: 1.2, letterSpacing: "-0.01em", margin: 0,
-        fontStyle: "italic", color: ink,
-      }}>
-        {props.title}
-      </h3>
-      <p style={{ fontFamily: fontBody, fontSize: 15, color: textSecondary, margin: 0, lineHeight: 1.6 }}>
-        {props.desc}
-      </p>
-    </article>
   );
 }

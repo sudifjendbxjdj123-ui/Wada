@@ -1,364 +1,354 @@
 "use client";
-import Link from "next/link";
-import { dictionary } from "@/lib/data";
-import {
-  ink, paper, subtle, border, textSecondary, cardBg,
-  mojo,
-  sectionLabel,
-  fontHeading, fontBody, fontLabel,
-  cardRadius,
-} from "@/lib/styles";
-import Nav from "@/components/Nav";
-import Footer from "@/components/Footer";
-import SketchUnderline from "@/components/SketchUnderline";
-import Reveal from "@/components/Reveal";
-
 /**
- * /atelier — Sommaire des huit outils WADA.
- * Déplacé hors de la home pour garder la home en porte d'entrée pure.
- * Présenté comme un sommaire de livre : eyebrow caps, gros titre 3D
- * extrudé, grille 4×2 des tool cards, pagination en clôture.
+ * /atelier — Sommaire éditorial (refonte 2026-05-20, v3).
+ *
+ * Changements vs v2 :
+ *   - Police titres = Bagel Fat One (= police home WADA, fontHeading)
+ *     au lieu de Fraunces serif. Cohérence d'identité brand sitewide.
+ *   - Fond vidéo CONSERVÉ (femme-wada-bg.mp4 fixé global) + voile crème
+ *     dense (0.78→0.62) selon règle scrim brief 2026-05.
+ *   - Page transparente — le contenu flotte sur la vidéo voilée.
+ *   - Tiles 2×2 inchangées (4 portes : Scanner / Composer / Assistant IA / Dressing)
  */
+import Link from "next/link";
+import BackButton from "@/components/BackButton";
+
+const palette = {
+  beige: "#F4EFE7",
+  cream: "#FAF8F4",
+  olive: "#A8B29A",
+  bordeaux: "#6B3A32",
+  ink: "#1E1E1E",
+  inkSoft: "#6a6259",
+  sable: "#D8C9B2",
+  line: "rgba(30,30,30,.10)",
+};
+
+// Police home WADA — Bagel Fat One (chubby/rounded) pour TOUS les titres
+// du sommaire et numéros. Fraunces serif reste pour le corps long mais
+// pas pour les headlines (cohérence avec la home).
+const fonts = {
+  display: "'Fredoka', sans-serif",
+  sans: "'Inter', 'Helvetica Neue', Arial, sans-serif",
+};
+
+const shadow = "0 12px 48px rgba(30,30,30,.10)";
+const shadowHover = "0 20px 60px rgba(30,30,30,.16)";
+
+interface ToolTile {
+  n: string;
+  title: string;
+  desc: string;
+  href: string;
+  meta: string;
+  wash: "olive" | "sable" | "ink" | "bordeaux";
+  /** Photo cover du wash header (brief 2026-05-25). */
+  photo: string;
+  icon: string;
+  iaBadge?: boolean;
+}
+
+const TOOLS: ToolTile[] = [
+  {
+    n: "01",
+    title: "Scanner une couleur",
+    desc: "Photographiez une teinte — un mur, une fleur, un vêtement. WADA compose la tenue qui s'accorde.",
+    href: "/scanner",
+    meta: "348 palettes prêtes",
+    wash: "olive",
+    photo: "/hero/photo-mood-1.png",
+    icon: "⬡",
+  },
+  {
+    // Refonte 2026-05-21 : "Composer une tenue" ouvre désormais la GRILLE
+    // des 348 palettes (et plus l'upload photo). Parcours attendu :
+    //   atelier → /palettes → /palette/[n] → "Composer ma tenue avec cet accord"
+    // L'upload photo "Une pièce que vous avez" vit uniquement dans /scanner
+    // via le ScanModeToggle (mode "Un vêtement" → /composer).
+    /* Brief audit N6 (2026-05-28) : libellé recadré. « Composer une tenue »
+       laissait croire qu'on uploadait des pièces ; en réalité on ouvre la
+       grille des 348 palettes. Renommé en « Explorer les palettes ».
+       L'upload réel « Un vêtement » vit dans /scanner (tab) → /composer. */
+    n: "02",
+    title: "Explorer les palettes",
+    desc: "Parcourez les 348 accords du dictionnaire Sanzo Wada. Choisissez celui qui vous parle, WADA compose la tenue autour.",
+    href: "/palettes",
+    meta: "348 accords",
+    wash: "sable",
+    photo: "/hero/photo-mood-2.png",
+    icon: "⌂",
+  },
+  {
+    n: "03",
+    title: "Assistant",
+    desc: "Dites une pièce, une humeur, une occasion. Un styliste calme compose autour, jamais robotique.",
+    href: "/stylist",
+    meta: "Conversation",
+    wash: "ink",
+    photo: "/hero/photo-mood-3.png",
+    icon: "❝",
+    iaBadge: true,
+  },
+  {
+    /* Brief audit N5 (2026-05-28) : libellé clarifié. Le link pointe vers
+       /favoris (le slug court — /garde-robe redirige 308 dessus). Pour ne
+       pas tromper le client qui s'attend à un vrai dressing (avec pièces
+       photo, gestion taille), on annonce honnêtement « palettes favorites ». */
+    n: "04",
+    title: "Mes favoris",
+    desc: "Vos palettes coup de cœur, sauvegardées localement pour les retrouver d'une visite à l'autre.",
+    href: "/favoris",
+    meta: "Vos palettes sauvegardées",
+    wash: "bordeaux",
+    photo: "/hero/photo-mood-4.png",
+    icon: "♡",
+  },
+];
+
+const WASH_GRADIENT: Record<ToolTile["wash"], string> = {
+  olive:    `linear-gradient(135deg, ${palette.olive}, #7d8a6e)`,
+  sable:    `linear-gradient(135deg, ${palette.sable}, #bda680)`,
+  ink:      `linear-gradient(135deg, #39342f, ${palette.ink})`,
+  bordeaux: `linear-gradient(135deg, #8a554e, ${palette.bordeaux})`,
+};
+
 export default function AtelierPage() {
-  const demo  = dictionary.find((d) => d.number === "002") || dictionary[0];
-  const demo2 = dictionary.find((d) => d.number === "003") || dictionary[1] || dictionary[0];
-
+  // Refonte 2026-05-25 : la vidéo .mp4 est devenue une <img> .webp (gain
+  // perf majeur : 3-5 MB → ~190 KB). Plus besoin de videoRef ni de l'autoplay
+  // programmatique iOS Safari.
   return (
-    <main style={{ minHeight: "100vh", fontFamily: fontBody, background: paper, color: ink }}>
-      <a href="#main-content" className="wada-skip-link">Aller au contenu</a>
-      <Nav />
-      <div id="main-content" />
+    <main style={{
+      fontFamily: fonts.sans,
+      color: palette.ink,
+      lineHeight: 1.6,
+      minHeight: "100vh",
+      WebkitFontSmoothing: "antialiased",
+      // Brief 2026-05-25 : main = beige opaque. L'image hero est CONFINÉE
+      // à sa zone, ne déborde plus derrière le contenu/footer.
+      background: "#F4EFE7",
+      position: "relative",
+    }}>
+            <BackButton />
 
-      {/* ═══════════════════════════════════════════════════════════════
-          HERO ATELIER — layout 2 colonnes texte/photo type Figma mockup
-          Gauche : SOMMAIRE eyebrow + L'atelier WADA + fleur + sub-text
-          Droite : photo "livres Sanzo Wada vintage" + caption éditoriale
-          ═══════════════════════════════════════════════════════════════ */}
-      <section className="wada-paper-grain" style={{ background: paper, padding: "80px 5% 56px" }}>
-        <div style={{ maxWidth: 1280, margin: "0 auto" }}>
-          <Reveal>
-            <div className="wada-hero-grid" style={{
-              display: "grid",
-              gridTemplateColumns: "1.1fr 0.9fr",
-              gap: 64, alignItems: "center",
-            }}>
-              {/* Colonne gauche — texte */}
-              <div>
-                <p style={{ ...sectionLabel, color: mojo, marginBottom: 24, fontWeight: 700, fontSize: 11, letterSpacing: "0.5em" }}>
-                  Sommaire
-                </p>
-                <h1 className="wada-text-lift" style={{
-                  fontFamily: fontHeading,
-                  fontSize: "clamp(40px, 7vw, 76px)",
-                  fontWeight: 500,
-                  lineHeight: 1.02, letterSpacing: "-0.025em", margin: 0,
-                  fontStyle: "italic", color: ink,
-                }}>
-                  L'atelier <SketchUnderline color={mojo}>WADA</SketchUnderline>.
-                </h1>
-                <p aria-hidden style={{
-                  fontFamily: fontHeading, fontSize: 22, color: subtle,
-                  margin: "20px 0 0", letterSpacing: "0.6em",
-                }}>
-                  ✦  ✦  ✦
-                </p>
-              </div>
-
-              {/* Colonne droite — photo Sanzo Wada style "books + ceramic ball".
-                  Unsplash : vintage books / objets d'atelier. À remplacer par
-                  une vraie photo si tu en as une (place à /public/atelier-hero.jpg). */}
-              <div style={{ position: "relative", aspectRatio: "1 / 1", maxWidth: 480, marginLeft: "auto" }}>
-                <div style={{
-                  width: "100%", height: "100%",
-                  background: `linear-gradient(rgba(31,27,22,0.05), rgba(31,27,22,0.15)), url("https://images.unsplash.com/photo-1532012197267-da84d127e765?auto=format&fit=crop&w=900&q=80")`,
-                  backgroundSize: "cover", backgroundPosition: "center",
-                  borderRadius: cardRadius,
-                  boxShadow: "var(--wada-shadow-4)",
-                }} />
-              </div>
-            </div>
-          </Reveal>
+      {/* ═══ ZONE HERO CONTENUE (overflow:hidden) ═══
+          Image + voile en position:absolute À L'INTÉRIEUR — plus de fixed.
+          Quand le wrapper se ferme, l'image disparaît, le footer voit
+          du beige propre. */}
+      <div style={{
+        position: "relative",
+        overflow: "hidden",
+        isolation: "isolate",
+      }}>
+        <img
+          src="/hero/femme-wada-bg-photo.webp"
+          alt=""
+          aria-hidden
+          loading="eager"
+          className="wada-bg-video"
+          style={{
+            position: "absolute", inset: 0,
+            width: "100%", height: "100%",
+            objectFit: "cover", objectPosition: "center",
+            zIndex: 0, pointerEvents: "none",
+            background: "#3a2820",
+          }}
+        />
+        {/* Voile crème dense — brief scrim 2026-05 (contraste AA 4.5:1) */}
+        <div aria-hidden style={{
+          position: "absolute", inset: 0,
+          background: "linear-gradient(180deg, rgba(244,239,231,.78) 0%, rgba(244,239,231,.62) 50%, rgba(244,239,231,.78) 100%)",
+          zIndex: 1, pointerEvents: "none",
+        }} />
+        <div style={{ position: "relative", zIndex: 2, maxWidth: 1000, margin: "0 auto", padding: "60px 28px 90px" }}>
+        {/* HEADER — police Bagel Fat One (= home WADA) */}
+        <div style={{ textAlign: "center", marginBottom: 50 }}>
+          <p style={{
+            fontSize: 11, letterSpacing: "0.34em", textTransform: "uppercase",
+            color: palette.bordeaux, fontWeight: 500,
+          }}>
+            Sommaire
+          </p>
+          <h1 style={{
+            fontFamily: fonts.display, fontWeight: 700,
+            fontSize: "clamp(42px, 6.5vw, 62px)",
+            lineHeight: 1.02,
+            margin: "14px 0 10px",
+            letterSpacing: "0.01em",
+            color: palette.ink,
+          }}>
+            L'atelier WADA
+          </h1>
+          <div style={{
+            color: palette.olive,
+            letterSpacing: "0.5em", fontSize: 13,
+          }}>
+            ✦ &nbsp; ✦ &nbsp; ✦
+          </div>
         </div>
-      </section>
 
-      {/* ═══ GRILLE OUTILS ═══ */}
-      <section style={{ background: paper, padding: "32px 5% 80px" }}>
-        <div style={{ maxWidth: 1280, margin: "0 auto" }}>
-          <Reveal>
-            <div className="wada-tools-grid" style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(4, 1fr)",
-              gap: 24,
-            }}>
-              <ToolCard photoUrl="/atelier-scanner.jpg"     icon="camera"   kind="Photo → tenue"  title="Scanner une couleur" desc="Prenez une photo, recevez la tenue qui s'accorde."         href="/scanner"  colors={(dictionary.find((d) => d.number === "001") || demo).colors.map((c) => c.hex)} featured />
-              <ToolCard photoUrl="/atelier-creer-tenue.jpg" icon="hanger"   kind="Votre tenue"    title="Créer une tenue"     desc="348 palettes du dictionnaire WADA — chacune sa silhouette."  href="/palettes" colors={(dictionary.find((d) => d.number === "024") || demo2).colors.map((c) => c.hex)} featured />
-              <ToolCard photoUrl="https://images.unsplash.com/photo-1539109136881-3be0616acf4b?auto=format&fit=crop&w=600&q=80" icon="chat"     kind="IA stylist"     title="Assistant mode"      desc="Décrivez l'occasion, on trouve la palette qui marche." href="/stylist"    colors={(dictionary.find((d) => d.number === "056") || demo).colors.map((c) => c.hex)} />
-              <ToolCard photoUrl="https://images.unsplash.com/photo-1558769132-cb1aea458c5e?auto=format&fit=crop&w=600&q=80" icon="wardrobe" kind="Vos favoris"    title="Mon dressing"        desc="Vos tenues sauvegardées, prêtes à reprendre."          href="/garde-robe" colors={(dictionary.find((d) => d.number === "094") || demo).colors.map((c) => c.hex)} />
-              <ToolCard photoUrl="https://images.unsplash.com/photo-1542640244-7e672d6cef4e?auto=format&fit=crop&w=600&q=80" icon="globe"    kind="Voyage"         title="Inspirations"        desc="Le style selon six géographies du monde."              href="/cultures"   colors={(dictionary.find((d) => d.number === "115") || demo).colors.map((c) => c.hex)} />
-              <ToolCard photoUrl="https://images.unsplash.com/photo-1612965607446-25e1332775ae?auto=format&fit=crop&w=600&q=80" icon="palette"  kind="Par teinte"     title="Explorer les couleurs" desc="Cherchez par brique, indigo, sauge, ocre…"           href="/couleurs"   colors={(dictionary.find((d) => d.number === "189") || demo).colors.map((c) => c.hex)} />
-              <ToolCard photoUrl="https://images.unsplash.com/photo-1485518882345-15568b007407?auto=format&fit=crop&w=600&q=80" icon="sparkle"  kind="Chaque jour"    title="Looks du jour"       desc="Une palette nouvelle chaque matin, fraîche."           href="/decouverte" colors={(dictionary.find((d) => d.number === "133") || demo).colors.map((c) => c.hex)} />
-            </div>
-          </Reveal>
+        {/* GRID 2×2 */}
+        <div className="wada-atelier-grid" style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          gap: 22,
+        }}>
+          {TOOLS.map((t) => (
+            <Tile key={t.n} tile={t} />
+          ))}
         </div>
-      </section>
+      </div>
+      </div>{/* /hero-wrapper overflow:hidden (brief 2026-05-25) */}
 
-      {/* Pagination de clôture — façon livre */}
-      <Pagination current="Atelier" page="01" total="348" />
-
-      <Footer />
+      
+      <style jsx>{`
+        @media (max-width: 760px) {
+          :global(.wada-atelier-grid) {
+            grid-template-columns: 1fr !important;
+          }
+        }
+      `}</style>
     </main>
   );
 }
 
-/* ─────────────────── ToolIcon ───────────────────
-   Icônes line-art simples (stroke ink, fill none), genre éditorial.
-   Pas d'emojis (cassent la DA), pas de pictos remplis (trop UI).
-   ───────────────────────────────────────────────────── */
-type IconKind = "camera" | "hanger" | "outfit" | "grid" | "chat" | "wardrobe" | "globe" | "palette" | "sparkle";
-
-function ToolIcon({ kind, size = 28, color }: { kind: IconKind; size?: number; color?: string }) {
-  const stroke = color || "currentColor";
-  const props = {
-    width: size, height: size,
-    viewBox: "0 0 28 28",
-    fill: "none" as const, stroke,
-    strokeWidth: 1.4, strokeLinecap: "round" as const, strokeLinejoin: "round" as const,
-    "aria-hidden": true as const,
-  };
-  switch (kind) {
-    case "camera":
-      return (
-        <svg {...props}>
-          <rect x="3" y="8" width="22" height="15" rx="2" />
-          <circle cx="14" cy="15.5" r="4.5" />
-          <path d="M9 8 L10 5 L18 5 L19 8" />
-          <circle cx="21" cy="11" r="0.6" fill={stroke} />
-        </svg>
-      );
-    case "hanger":
-      return (
-        <svg {...props}>
-          <path d="M14 5 a2 2 0 1 1 1.5 3.4" />
-          <path d="M14 8 L14 11" />
-          <path d="M14 11 L3 19 L25 19 L14 11" />
-          <path d="M3 19 L3 21 L25 21 L25 19" />
-        </svg>
-      );
-    case "outfit":
-      return (
-        <svg {...props}>
-          <path d="M8 4 L10 6 Q14 8 18 6 L20 4 L24 7 L22 11 L20 10 L20 22 L8 22 L8 10 L6 11 L4 7 Z" />
-        </svg>
-      );
-    case "grid":
-      // Catalogue / dictionnaire — 4 carrés en 2×2 + une légère ligne de
-      // reliure à gauche, suggère "pages d'un livre catalogué"
-      return (
-        <svg {...props}>
-          <rect x="5" y="5" width="8" height="8" />
-          <rect x="15" y="5" width="8" height="8" />
-          <rect x="5" y="15" width="8" height="8" />
-          <rect x="15" y="15" width="8" height="8" />
-          <circle cx="9" cy="9" r="0.8" fill={stroke} />
-          <circle cx="19" cy="19" r="0.8" fill={stroke} />
-        </svg>
-      );
-    case "chat":
-      return (
-        <svg {...props}>
-          <path d="M4 6 L24 6 Q25 6 25 7 L25 18 Q25 19 24 19 L11 19 L7 23 L7 19 L4 19 Q3 19 3 18 L3 7 Q3 6 4 6 Z" />
-          <circle cx="10" cy="12.5" r="0.6" fill={stroke} />
-          <circle cx="14" cy="12.5" r="0.6" fill={stroke} />
-          <circle cx="18" cy="12.5" r="0.6" fill={stroke} />
-        </svg>
-      );
-    case "wardrobe":
-      return (
-        <svg {...props}>
-          <rect x="5" y="4" width="18" height="20" />
-          <line x1="14" y1="4" x2="14" y2="24" />
-          <circle cx="11" cy="14" r="0.6" fill={stroke} />
-          <circle cx="17" cy="14" r="0.6" fill={stroke} />
-          <line x1="8" y1="8" x2="11" y2="8" />
-          <line x1="17" y1="8" x2="20" y2="8" />
-        </svg>
-      );
-    case "globe":
-      return (
-        <svg {...props}>
-          <circle cx="14" cy="14" r="10" />
-          <ellipse cx="14" cy="14" rx="5" ry="10" />
-          <line x1="4" y1="14" x2="24" y2="14" />
-          <path d="M5.5 8 Q14 11 22.5 8" />
-          <path d="M5.5 20 Q14 17 22.5 20" />
-        </svg>
-      );
-    case "palette":
-      return (
-        <svg {...props}>
-          <path d="M14 4 a10 10 0 1 0 0 20 c1 0 1.5 -1 1 -2 c-0.5 -1 0 -2 1 -2 L19 20 a4 4 0 0 0 4 -4 c0 -7 -4 -12 -9 -12 Z" />
-          <circle cx="9" cy="11" r="1.2" fill={stroke} />
-          <circle cx="14" cy="9" r="1.2" fill={stroke} />
-          <circle cx="19" cy="11" r="1.2" fill={stroke} />
-          <circle cx="9" cy="16" r="1.2" fill={stroke} />
-        </svg>
-      );
-    case "sparkle":
-      return (
-        <svg {...props}>
-          <path d="M14 4 L15.5 11 L22 12 L15.5 13 L14 20 L12.5 13 L6 12 L12.5 11 Z" />
-          <path d="M22 4 L22.7 6 L25 6.5 L22.7 7 L22 9 L21.3 7 L19 6.5 L21.3 6 Z" />
-          <path d="M6 18 L6.7 20 L9 20.5 L6.7 21 L6 23 L5.3 21 L3 20.5 L5.3 20 Z" />
-        </svg>
-      );
-  }
-}
-
-/* ─────────────────── ToolCard ───────────────────
-   Refonte "tout public" : icône explicite + titre direct + desc concrète.
-   Hiérarchie visuelle : cards `featured` (Scanner + Créer une tenue)
-   reçoivent un fond cream, bordure ink, label Mojo et icône plus grande.
-   ───────────────────────────────────────────────────── */
-function ToolCard(props: {
-  title: string; desc: string; href: string; colors: string[];
-  icon: IconKind; kind: string; featured?: boolean;
-  /** URL photo Unsplash ou /public — affichée en hero de la card.
-      Quand fournie : prend la place du bandeau palette pur (qui devient
-      une fine bande de 3 chips en bas du photo). Quand omise : bandeau
-      palette classique avec icône médaillon centrale (rendu legacy). */
-  photoUrl?: string;
-}) {
-  const accent = props.colors[0] || ink;
+function Tile({ tile }: { tile: ToolTile }) {
   return (
-    <Link href={props.href} style={{ textDecoration: "none", color: ink }}>
-      <article className="wada-lift wada-tool-card" style={{
-        background: props.featured ? cardBg : paper,
-        border: `1px solid ${props.featured ? ink : border}`,
-        borderRadius: cardRadius,
-        overflow: "hidden", height: "100%",
-        display: "flex", flexDirection: "column",
+    <Link
+      href={tile.href}
+      style={{
         position: "relative",
-        ["--accent" as string]: accent,
-      } as React.CSSProperties}>
-        {/* Photo hero (si photoUrl) — paysage 4:3, icône médaillon en
-            haut-gauche en overlay. Sinon bandeau palette pur. */}
-        {props.photoUrl ? (
-          <div style={{
-            position: "relative",
-            aspectRatio: "4 / 3",
-            backgroundImage: `linear-gradient(rgba(31,27,22,0.0), rgba(31,27,22,0.1)), url("${props.photoUrl}")`,
-            backgroundSize: "cover", backgroundPosition: "center",
-            background: `linear-gradient(rgba(31,27,22,0.0), rgba(31,27,22,0.1)), ${accent} url("${props.photoUrl}") center/cover`,
-          }}>
-            {/* Médaillon icône — top-left, signature WADA */}
-            <div style={{
-              position: "absolute", top: 12, left: 12,
-              width: 32, height: 32,
-              background: paper, border: `1px solid ${ink}`,
-              borderRadius: "50%",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              boxShadow: "var(--wada-shadow-1)",
-            }}>
-              <ToolIcon kind={props.icon} size={16} color={ink} />
-            </div>
-            {/* Bande palette fine en bas du photo (3 chips, signature WADA) */}
-            <div style={{
-              position: "absolute", bottom: 0, left: 0, right: 0,
-              display: "flex", height: 6,
-            }}>
-              {props.colors.slice(0, 3).map((c, i) => (
-                <div key={i} style={{ flex: 1, background: c }} />
-              ))}
-            </div>
-          </div>
-        ) : (
-          <div style={{ display: "flex", height: 88, position: "relative" }}>
-            {props.colors.slice(0, 5).map((c, i) => (
-              <div key={i} style={{ flex: 1, background: c }} />
-            ))}
-            <div style={{
-              position: "absolute", top: "50%", left: "50%",
-              transform: "translate(-50%, -50%)",
-              width: props.featured ? 60 : 52,
-              height: props.featured ? 60 : 52,
-              background: paper,
-              border: `1px solid ${ink}`,
-              borderRadius: "50%",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              boxShadow: "var(--wada-shadow-2)",
-            }}>
-              <ToolIcon kind={props.icon} size={props.featured ? 30 : 26} color={ink} />
-            </div>
-          </div>
-        )}
-
-        <div style={{ padding: "24px 22px 22px", display: "flex", flexDirection: "column", gap: 8, flex: 1 }}>
-          {/* Micro-catégorie — vise "tout public" : descripteur direct, pas abstrait */}
-          <p style={{
-            fontFamily: fontLabel, fontSize: 9, fontWeight: 700,
-            letterSpacing: "0.32em", textTransform: "uppercase",
-            color: props.featured ? mojo : subtle, margin: 0,
-          }}>
-            {props.kind}
-          </p>
-
-          <h3 className="wada-text-lift" style={{
-            fontFamily: fontHeading, fontSize: props.featured ? 26 : 22, fontWeight: 500,
-            lineHeight: 1.15, letterSpacing: "-0.02em", margin: 0,
-            fontStyle: "italic", color: ink,
-          }}>
-            {props.title}
-          </h3>
-
-          <span aria-hidden style={{
-            display: "block", width: 28, height: 1,
-            background: ink, opacity: 0.4, marginTop: 4, marginBottom: 4,
-          }} />
-
-          <p style={{
-            fontFamily: fontBody, fontSize: 14, color: textSecondary, margin: 0,
-            lineHeight: 1.5, flex: 1, fontStyle: "normal",
-          }}>
-            {props.desc}
-          </p>
-
-          <p style={{
-            fontFamily: fontLabel, fontSize: 10, fontWeight: 700, letterSpacing: "0.3em",
-            textTransform: "uppercase", color: props.featured ? mojo : ink, margin: "12px 0 0",
-            display: "inline-flex", alignItems: "center", gap: 10,
-          }}>
-            <span>Ouvrir</span>
-            <span aria-hidden style={{ fontSize: 13, letterSpacing: 0, transition: "transform 0.2s" }}>→</span>
-          </p>
-        </div>
-
-        <span aria-hidden className="wada-tool-card-underline" style={{
-          position: "absolute", left: 0, right: 0, bottom: 0,
-          height: 3, background: accent,
-          transform: "scaleX(0)", transformOrigin: "left center",
-          transition: "transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1)",
-        }} />
-      </article>
-    </Link>
-  );
-}
-
-/* ─────────────────── Pagination de clôture ─────────────────── */
-function Pagination({ current, page, total }: { current: string; page: string; total: string }) {
-  return (
-    <div style={{
-      padding: "48px 5% 80px",
-      textAlign: "center",
-      borderTop: `1px solid ${border}`,
-      background: paper,
-    }}>
-      <p style={{
-        fontFamily: fontLabel, fontSize: 10, fontWeight: 600,
-        letterSpacing: "0.5em", textTransform: "uppercase",
-        color: subtle, margin: 0,
+        borderRadius: 24,
+        overflow: "hidden",
+        background: palette.cream,
+        border: `1px solid ${palette.line}`,
+        boxShadow: shadow,
+        cursor: "pointer",
+        transition: "transform 0.4s cubic-bezier(.22,1,.36,1), box-shadow 0.4s cubic-bezier(.22,1,.36,1)",
+        minHeight: 260,
+        display: "flex",
+        flexDirection: "column",
+        textDecoration: "none",
+        color: palette.ink,
+      }}
+      onMouseEnter={(ev) => {
+        ev.currentTarget.style.transform = "translateY(-4px)";
+        ev.currentTarget.style.boxShadow = shadowHover;
+      }}
+      onMouseLeave={(ev) => {
+        ev.currentTarget.style.transform = "translateY(0)";
+        ev.currentTarget.style.boxShadow = shadow;
+      }}
+    >
+      {/* WASH header avec PHOTO + voile + icône + numéro (brief 2026-05-25).
+          Photo `object-fit: cover` pour éviter les bandes noires sur les
+          formats portrait. Gradient de fond conservé en fallback si la
+          photo échoue à charger. Voile sombre par-dessus pour garantir le
+          contraste de l'icône blanche et du numéro. */}
+      <div style={{
+        height: 150,
+        position: "relative",
+        overflow: "hidden",
+        background: WASH_GRADIENT[tile.wash],
+        display: "flex",
+        alignItems: "flex-end",
+        padding: "18px 22px",
       }}>
-        — {current} · page {page} / {total} —
-      </p>
-    </div>
+        {/* Photo cover */}
+        <img
+          src={tile.photo}
+          alt=""
+          aria-hidden="true"
+          loading="lazy"
+          style={{
+            position: "absolute", inset: 0,
+            width: "100%", height: "100%",
+            objectFit: "cover", display: "block",
+            zIndex: 0,
+          }}
+        />
+        {/* Voile sombre 18→42% pour lisibilité de l'icône blanche et du numéro */}
+        <div
+          aria-hidden
+          style={{
+            position: "absolute", inset: 0, zIndex: 1, pointerEvents: "none",
+            background: "linear-gradient(180deg, rgba(20,18,16,.18) 0%, rgba(20,18,16,.42) 100%)",
+          }}
+        />
+        {/* Icône (badge blanc) — z-index 2 pour rester nette au-dessus du voile */}
+        <div aria-hidden style={{
+          position: "relative", zIndex: 2,
+          width: 46, height: 46,
+          borderRadius: 12,
+          background: "rgba(255,255,255,.92)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontSize: 20,
+          color: palette.ink,
+          boxShadow: "0 2px 12px rgba(0,0,0,.18)",
+        }}>
+          {tile.icon}
+        </div>
+        {tile.iaBadge ? (
+          <span style={{
+            position: "absolute", top: 14, right: 20, zIndex: 2,
+            background: palette.ink, color: palette.cream,
+            fontSize: 10, letterSpacing: "0.16em",
+            padding: "5px 10px",
+            borderRadius: 999,
+          }}>
+            IA
+          </span>
+        ) : (
+          <span style={{
+            position: "absolute", top: 14, right: 20, zIndex: 2,
+            fontFamily: fonts.display,
+            fontWeight: 600,
+            fontSize: 18,
+            color: "rgba(255,255,255,.98)",
+            textShadow: "0 2px 8px rgba(0,0,0,.4)",
+          }}>
+            {tile.n}
+          </span>
+        )}
+      </div>
+
+      {/* Body — titre en police display, description en sans */}
+      <div style={{
+        padding: "22px 24px 26px",
+        flex: 1,
+        display: "flex",
+        flexDirection: "column",
+      }}>
+        <h3 style={{
+          fontFamily: fonts.display, fontWeight: 600,
+          fontSize: 27,
+          marginBottom: 8,
+          color: palette.ink,
+        }}>
+          {tile.title}
+        </h3>
+        <p style={{
+          color: palette.inkSoft, fontSize: 15,
+          maxWidth: "34ch",
+        }}>
+          {tile.desc}
+        </p>
+        <div style={{
+          fontSize: 12, color: palette.olive,
+          letterSpacing: "0.06em", marginTop: "auto",
+          paddingTop: 16,
+        }}>
+          {tile.meta}
+        </div>
+        <span style={{
+          display: "inline-flex", alignItems: "center", gap: 8,
+          marginTop: 12, fontSize: 13, letterSpacing: "0.04em",
+          color: palette.ink,
+        }}>
+          Ouvrir <span aria-hidden style={{ transition: "transform 0.35s ease" }}>→</span>
+        </span>
+      </div>
+    </Link>
   );
 }

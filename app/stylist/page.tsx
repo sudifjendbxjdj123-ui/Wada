@@ -1,0 +1,1366 @@
+"use client";
+/**
+ * /stylist — Refonte v4 (2026-05-27 mockup chat client-side).
+ *
+ * Brief : remplacer le flow LLM (/api/stylist) par un state machine
+ * DÉTERMINISTE côté client. Plus rapide, plus prédictible, pas d'appel
+ * réseau. Le styliste pose des questions à chips, l'utilisateur clique,
+ * la tenue s'affiche.
+ *
+ * 2 voies au départ :
+ *   1. ANCHOR (« J'ai déjà une pièce ») → demande la pièce, sa couleur,
+ *      le style autour, l'occasion → recompose autour de cette ancre
+ *   2. FULL  (« Composez-moi une tenue complète ») → genre, couleur,
+ *      style, occasion → 5 pièces générées
+ *
+ * Après composition :
+ *   - Affiche les 5 pièces avec SlotCard rich (marque + via Amazon + prix
+ *     + bouton Acheter) — pattern unifié avec /ma-tenue
+ *   - « Pourquoi ça marche » : explication courte selon la couleur
+ *   - Chips d'ajustement : plus chaud / sans veste / décontracté /
+ *     autre couleur / parfait
+ *
+ * Visuel mockup :
+ *   - Header simple kicker + h1 Fredoka
+ *   - Chat bubbles (bot crème à gauche / me bordeaux à droite)
+ *   - Chips area séparée du chat (s'efface au clic)
+ *   - Composer pill (input + bouton Envoyer)
+ *   - Bouton « Recommencer » visible après composition
+ */
+import { useEffect, useRef, useState } from "react";
+import BackButton from "@/components/BackButton";
+import { amazonSearch } from "@/lib/amazonAffiliate";
+import { dictionary, type DictionaryEntry } from "@/lib/data";
+import { analyzeColor } from "@/lib/colorEngine";
+
+/** Hook qui fetch un vrai produit MUJI pour ce slot+couleur via /api/products.
+ *  Brief 2026-05-28 : aligne /stylist sur /ma-tenue → vraies photos MUJI
+ *  dans le chat avec image / nom / prix réels + Acheter. Null en cas d'absence
+ *  (la card retombe alors sur le swatch + lien Amazon générique). */
+function useMujiForSlot(
+  slot: string | null,
+  colorHex: string | null,
+  style: string | null,
+  genre: string | null,
+  seed: string | null,
+) {
+  const [product, setProduct] = useState<{
+    nom: string;
+    marque: string;
+    image: string;
+    prix: number;
+    devise: string;
+    url: string;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!slot || !colorHex) return;
+    let cancelled = false;
+    const params = new URLSearchParams({
+      slot,
+      merchant: "muji-france",
+      color: colorHex,
+      limit: "1",
+    });
+    if (style) params.set("style", style);
+    /* Brief audit live 2026-05-28 : on normalise en lowercase parce que
+       les chips du /stylist renvoient « Femme »/« Homme »/« Unisexe »
+       (capitalisés) alors que l'API filtre en lowercase. Sans ça, un
+       homme reçoit des jupes femme. */
+    if (genre) params.set("genre", genre.toLowerCase());
+    if (seed) params.set("seed", seed);
+
+    fetch(`/api/products?${params}`)
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        if (cancelled || !data?.products?.length) return;
+        const p = data.products[0];
+        /* Brief « Page Tenue maître » P0-2 (24/05) :
+           priorité d'image hi-res :
+             1. imageLocal — Blob mirroré (depuis le fix cron, en hi-res)
+             2. largeImage — CDN MUJI ~1280px, proxy via /api/img
+             3. image — aw_image_url ~200px, proxy /api/img (dernier recours) */
+        const displayImage = p.imageLocal
+          ? p.imageLocal
+          : p.largeImage
+            ? `/api/img?u=${encodeURIComponent(p.largeImage)}`
+            : p.image
+              ? `/api/img?u=${encodeURIComponent(p.image)}`
+              : "";
+        setProduct({
+          nom: p.nom,
+          marque: p.marque || p.marchand || "MUJI",
+          image: displayImage,
+          prix: p.prix,
+          devise: p.devise,
+          url: p.urlProduit,
+        });
+      })
+      .catch(() => { /* silencieux — fallback Amazon */ });
+    return () => { cancelled = true; };
+  }, [slot, colorHex, style, genre, seed]);
+
+  return product;
+}
+
+/** Map role canonique (« Haut », « Bas »…) → slot API (« haut », « bas »…). */
+function roleToApiSlot(role: string): string | null {
+  const map: Record<string, string> = {
+    Haut: "haut", Bas: "bas", Veste: "veste",
+    Chaussures: "chaussures", Accent: "accent",
+  };
+  return map[role] || null;
+}
+
+/* ──────────────────────────────────────────────────────────────────────
+   Design tokens — alignés sur le mockup
+   ────────────────────────────────────────────────────────────────────── */
+const palette = {
+  beige: "#F4EFE7",
+  cream: "#FAF8F4",
+  olive: "#A8B29A",
+  bordeaux: "#6B3A32",
+  ink: "#1E1E1E",
+  inkSoft: "#6a6259",
+  line: "rgba(30,30,30,.10)",
+};
+const fonts = {
+  display: "'Fredoka', sans-serif",
+  sans: "'Inter', Arial, sans-serif",
+};
+const SOFT = "0 8px 36px rgba(30,30,30,.06)";
+
+/* ──────────────────────────────────────────────────────────────────────
+   Brief « Styliste IA — relier la composition aux 348 accords » (24/05).
+   Avant ce patch, les slots support (haut/bas/chaussures/accent) avaient
+   des hex en dur dans STYLES (écru / sable / cuir / brun) IDENTIQUES quelle
+   que soit la couleur signature de l'utilisateur. Conséquence : les
+   348 accords Sanzo Wada n'étaient JAMAIS utilisés sur /stylist, alors
+   que c'est la promesse centrale de WADA.
+   Fix : on dérive les couleurs des slots support d'un VRAI accord Wada
+   qui contient (ou s'accorde avec) la couleur signature. On garde les
+   TYPES de vêtements de STYLES, on remplace juste les hex.
+   ────────────────────────────────────────────────────────────────────── */
+
+/** Distance angulaire entre deux teintes (0-180). */
+function hueDist(a: number, b: number): number {
+  const d = Math.abs(a - b);
+  return d > 180 ? 360 - d : d;
+}
+
+/**
+ * Choisit l'accord Sanzo Wada qui contient le mieux la couleur signature
+ * et colle au style demandé.
+ *
+ * Stratégie :
+ * - Si la signature est neutre (saturation basse / temperature neutral) :
+ *   on score sur la clarté entre les neutres de chaque accord.
+ * - Sinon : on score sur la proximité de teinte (hue) avec les couleurs
+ *   saturées de l'accord.
+ * - Bonus +0.3 si l'accord déclare ce style dans ses tags.
+ */
+function accordForColor(signatureHex: string, style: string | null): DictionaryEntry {
+  const sig = analyzeColor(signatureHex);
+  const styleKey = (style || "").toLowerCase().replace(/\s+/g, "-");
+  let best = dictionary[0];
+  let bestScore = -Infinity;
+  for (const e of dictionary) {
+    let colorScore = 0;
+    for (const c of e.colors) {
+      const m = analyzeColor(c.hex);
+      if (sig.temperature === "neutral" || sig.saturationLevel === "low") {
+        // signature neutre → on matche sur la clarté entre neutres
+        if (m.saturationLevel === "low") {
+          colorScore = Math.max(colorScore, 1 - Math.abs(m.lightness - sig.lightness));
+        }
+      } else if (m.saturation > 0.12) {
+        // signature colorée → proximité de teinte
+        colorScore = Math.max(colorScore, 1 - hueDist(m.hue, sig.hue) / 180);
+      }
+    }
+    const styleScore = e.styles?.some((st) => {
+      const k = st.toLowerCase().replace(/\s+/g, "-");
+      return k.includes(styleKey) || (styleKey && styleKey.includes(k));
+    }) ? 0.3 : 0;
+    const score = colorScore + styleScore;
+    if (score > bestScore) { bestScore = score; best = e; }
+  }
+  return best;
+}
+
+/**
+ * Répartit les couleurs d'un accord sur les slots support :
+ *   - haut    = couleur la plus claire (base lumineuse)
+ *   - bas     = couleur médiane (tonalité de jonction)
+ *   - chauss  = couleur la plus sombre (ancrage)
+ *   - accent  = couleur la plus chaude si présente, sinon la plus sombre
+ *               (la touche qui réchauffe)
+ *
+ * Retourne null si l'accord est vide (cas garde-fou).
+ */
+function supportColorsFromAccord(accord: DictionaryEntry) {
+  const cols = accord.colors.map((c) => ({ hex: c.hex, name: c.name, m: analyzeColor(c.hex) }));
+  if (cols.length === 0) return null;
+  const byLight = [...cols].sort((a, b) => b.m.lightness - a.m.lightness);
+  const lightest = byLight[0];
+  const darkest = byLight[byLight.length - 1];
+  const mid = byLight[Math.floor(byLight.length / 2)];
+  const warm = cols.find((c) => c.m.temperature === "warm") || darkest;
+  return {
+    haut:   { hex: lightest.hex, nom: lightest.name },
+    bas:    { hex: mid.hex,      nom: mid.name },
+    chauss: { hex: darkest.hex,  nom: darkest.name },
+    accent: { hex: warm.hex,     nom: warm.name },
+  };
+}
+
+/* ──────────────────────────────────────────────────────────────────────
+   Catalogue couleurs et styles (mockup figé)
+   ──────────────────────────────────────────────────────────────────────
+   Couleurs : 7 teintes signature, chacune avec hex + nom français.
+   Styles : 4 registres, chacun défini par 5 slots (haut, bas, chauss,
+   veste, accent) — chaque slot = [type, hex].
+   Note : les hex de STYLES servent uniquement de FALLBACK pour
+   `supportColorsFromAccord` (en cas d'accord vide). En usage normal,
+   les couleurs viennent désormais d'un accord Wada (cf. helpers ci-dessus).
+*/
+const COULEURS: Record<string, string> = {
+  "Bleu":        "#33586B",
+  "Beige":       "#C7A06A",
+  "Noir":        "#1E1E1E",
+  "Marron":      "#6B4A33",
+  "Blanc":       "#ECE4D6",
+  "Vert olive":  "#7D8A4A",
+  "Bordeaux":    "#6B3A32",
+};
+
+type SlotPair = [string, string]; // [type, hex]
+type StyleSet = {
+  haut: SlotPair; bas: SlotPair; chauss: SlotPair;
+  veste: SlotPair; accent: SlotPair;
+};
+const STYLES: Record<string, StyleSet> = {
+  "Minimal": {
+    haut:   ["Tee col rond",   "#ECE4D6"],
+    bas:    ["Pantalon droit", "#C9B79C"],
+    chauss: ["Sneakers cuir",  "#E8E2D6"],
+    veste:  ["Surchemise",     "#8E9A82"],
+    accent: ["Tote en cuir",   "#6B4A33"],
+  },
+  "Classique": {
+    haut:   ["Chemise oxford",  "#F0E9DB"],
+    bas:    ["Chino",           "#C9B79C"],
+    chauss: ["Derbies cuir",    "#5A4636"],
+    veste:  ["Blazer",          "#33586B"],
+    accent: ["Ceinture cuir",   "#6B4A33"],
+  },
+  "Old money": {
+    haut:   ["Polo cachemire",       "#F0E9DB"],
+    bas:    ["Pantalon à pinces",    "#CDBB9B"],
+    chauss: ["Mocassins",            "#5A4636"],
+    veste:  ["Blazer croisé",        "#33586B"],
+    accent: ["Foulard",              "#6B3A32"],
+  },
+  "Décontracté": {
+    haut:   ["Tee coton",       "#ECE4D6"],
+    bas:    ["Chino souple",    "#C9B79C"],
+    chauss: ["Sneakers",        "#E8E2D6"],
+    veste:  ["Surchemise",      "#8E9A82"],
+    accent: ["Casquette",       "#6B4A33"],
+  },
+};
+
+/* ──────────────────────────────────────────────────────────────────────
+   Brief « Styliste IA — accords Wada » §5 (24/05) — petites retouches
+   à fort impact dans la machine à états.
+   ────────────────────────────────────────────────────────────────────── */
+
+/**
+ * Occasions contextuelles au style choisi : plutôt qu'une liste figée
+ * (Bureau / Sorties / Quotidien / Voyage), on propose ce qui colle au
+ * registre — Streetwear ne demande pas « cérémonie », Old money pas
+ * « concert ». Fallback générique si style inconnu.
+ */
+const OCCASIONS_PAR_STYLE: Record<string, string[]> = {
+  "Streetwear":  ["Tous les jours", "Sortir entre amis", "Voyage", "Concert"],
+  "Old money":   ["Bureau", "Déjeuner", "Réception", "Week-end"],
+  "Classique":   ["Bureau", "Dîner", "Cérémonie", "Week-end"],
+  "Décontracté": ["Tous les jours", "Brunch", "Voyage", "Balade"],
+  "Minimal":     ["Bureau", "Dîner", "Galerie", "Tous les jours"],
+};
+
+/**
+ * Sous-nuances par famille de couleur : quand l'utilisateur clique
+ * « Bleu », on lui propose Marine / Pétrole / Clair avant de passer au
+ * style — plus précis pour le choix d'accord (un marine ≠ un bleu clair
+ * côté harmonie Wada). Les familles purement neutres (Noir, Blanc) et
+ * les couleurs déjà spécifiques (Bordeaux) ne sont pas re-déclinées.
+ */
+const NUANCES_PAR_COULEUR: Record<string, Array<{ label: string; hex: string }>> = {
+  "Bleu": [
+    { label: "Marine",    hex: "#1F3A5F" },
+    { label: "Pétrole",   hex: "#2E5C5C" },
+    { label: "Bleu clair", hex: "#6B8FA6" },
+  ],
+  "Vert olive": [
+    { label: "Olive",  hex: "#7D8A4A" },
+    { label: "Forêt",  hex: "#2E4A30" },
+    { label: "Sauge",  hex: "#9CAF88" },
+  ],
+  "Beige": [
+    { label: "Sable",  hex: "#D9C9A8" },
+    { label: "Crème",  hex: "#EFE7D6" },
+    { label: "Camel",  hex: "#B8956A" },
+  ],
+  "Marron": [
+    { label: "Tabac",     hex: "#8B5E3C" },
+    { label: "Chocolat",  hex: "#4A3526" },
+    { label: "Cognac",    hex: "#9A6038" },
+  ],
+};
+
+const POURQUOI: Record<string, string> = {
+  "Bleu":       "Le bleu est froid : on le réchauffe avec des neutres sable et un cuir brun, pour qu'il respire sans durcir.",
+  "Beige":      "Le beige est doux : on lui donne du relief avec une touche sombre et une matière mate, sinon tout s'efface.",
+  "Noir":       "Le noir appelle la chaleur — sable et cuir brun l'adoucissent, le bordeaux le réchauffe. Jamais noir sur noir.",
+  "Marron":     "Le marron est terreux : on reste dans la même famille chaude et on éclaire avec de l'écru.",
+  "Blanc":      "Le blanc est lumineux : on l'ancre avec un neutre plus profond et une matière, pour éviter l'effet clinique.",
+  "Vert olive": "L'olive aime les neutres chauds (sable, cuir) et une pointe de bordeaux pour la profondeur.",
+  "Bordeaux":   "Le bordeaux est riche : une seule pièce forte suffit, le reste en sourdine (beige, brun).",
+};
+const POURQUOI_DEFAULT =
+  "On garde une seule couleur forte et on l'entoure de neutres chauds : c'est ce qui rend une tenue juste.";
+
+/**
+ * Brief §5 (24/05) — comme on accepte maintenant des nuances précises
+ * (« Marine », « Pétrole »…), la table POURQUOI keyée par famille
+ * (« Bleu ») ne matche plus. On fait un reverse lookup via
+ * NUANCES_PAR_COULEUR pour retrouver la famille parent et son explication.
+ */
+function pourquoiFor(couleur: string | null): string {
+  if (!couleur) return POURQUOI_DEFAULT;
+  if (POURQUOI[couleur]) return POURQUOI[couleur];
+  for (const [family, nuances] of Object.entries(NUANCES_PAR_COULEUR)) {
+    if (nuances.some((n) => n.label === couleur)) {
+      return POURQUOI[family] || POURQUOI_DEFAULT;
+    }
+  }
+  return POURQUOI_DEFAULT;
+}
+
+/* ──────────────────────────────────────────────────────────────────────
+   Types et bulles
+   ────────────────────────────────────────────────────────────────────── */
+type Mode = "anchor" | "full" | null;
+type Role = "Haut" | "Bas" | "Chaussures" | "Veste" | "Accent";
+
+interface OutfitPiece {
+  /** Étiquette en haut de la card (« Proposé », « Signature », « Touche », « Votre pièce »). */
+  badge: string;
+  /** Rôle canonique de la pièce dans la silhouette. */
+  role: Role;
+  /** Type FR (« Chemise oxford », « Pantalon droit »…). */
+  type: string;
+  /** Couleur hex de la pièce. */
+  hex: string;
+  /** Nom de la couleur pour l'affichage et la search query. */
+  couleurNom: string;
+  /** True si c'est la pièce existante du client (« à vous ✓ »). */
+  ancre: boolean;
+}
+
+type Bubble =
+  | { who: "bot"; html: string }
+  | { who: "me"; text: string }
+  | { who: "outfit"; pieces: OutfitPiece[] };
+
+interface State {
+  mode: Mode;
+  genre: string | null;
+  piece: string | null;        // libellé de la pièce ancre (« Loro Piana », « Pull », …)
+  anchorRole: Role | null;     // dans quel slot insérer la pièce ancre
+  couleur: string | null;
+  couleurHex: string | null;
+  style: string | null;
+  occasion: string | null;
+  pieces: OutfitPiece[] | null;
+  /* Brief « Styliste IA — accords Wada » (24/05) : on stocke l'accord
+     calculé pour la composition courante afin de pouvoir l'afficher
+     (« Accord No. 094 — Béton & Lin ») et le ré-afficher après un
+     ajustement. Calculé dans `compose()`, propagé via setState. */
+  accordNumber: string | null;
+  accordName: string | null;
+}
+
+function emptyState(): State {
+  return {
+    mode: null, genre: null, piece: null, anchorRole: null,
+    couleur: null, couleurHex: null, style: null, occasion: null,
+    pieces: null,
+    accordNumber: null, accordName: null,
+  };
+}
+
+/* ──────────────────────────────────────────────────────────────────────
+   Helpers
+   ────────────────────────────────────────────────────────────────────── */
+
+/** Génère un lien d'achat Amazon affilié pour une pièce + couleur + genre. */
+function buyLinkFor(p: OutfitPiece, genre: string | null): string {
+  if (p.ancre) return "#"; // pas de lien pour l'ancre client
+  const parts = [p.type, p.couleurNom?.toLowerCase(), genre?.toLowerCase()].filter(Boolean);
+  return amazonSearch(parts.join(" "));
+}
+
+/** Map role → slot canonique de STYLES (haut/bas/chauss/veste/accent). */
+function roleToSlotKey(role: Role): keyof StyleSet {
+  switch (role) {
+    case "Haut":        return "haut";
+    case "Bas":         return "bas";
+    case "Chaussures":  return "chauss";
+    case "Veste":       return "veste";
+    case "Accent":      return "accent";
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   PAGE
+   ══════════════════════════════════════════════════════════════════════ */
+export default function StylistPage() {
+  const [bubbles, setBubbles] = useState<Bubble[]>([]);
+  const [chips, setChips] = useState<{ label: string; primary?: boolean }[]>([]);
+  const [state, setState] = useState<State>(emptyState());
+  const [input, setInput] = useState("");
+  const [done, setDone] = useState(false);
+  const chatEndRef = useRef<HTMLDivElement>(null);
+
+  /* Scroll vers le bas à chaque nouvelle bulle */
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [bubbles, chips]);
+
+  /* Démarre la conversation au mount */
+  useEffect(() => { start(); /* eslint-disable-next-line */ }, []);
+
+  function addBot(html: string) {
+    setBubbles((prev) => [...prev, { who: "bot", html }]);
+  }
+  function addMe(text: string) {
+    setBubbles((prev) => [...prev, { who: "me", text }]);
+  }
+  function addOutfit(pieces: OutfitPiece[]) {
+    setBubbles((prev) => [...prev, { who: "outfit", pieces }]);
+  }
+  function botDelay(fn: () => void) {
+    setTimeout(fn, 450);
+  }
+
+  /* ─── Étape 0 : reset + question d'ouverture ─── */
+  function start() {
+    setBubbles([]);
+    setChips([]);
+    setState(emptyState());
+    setDone(false);
+    addBot("Bonjour 👋 On compose ensemble. Vous avez déjà une pièce à mettre en valeur, ou vous partez de zéro ?");
+    setChips([
+      { label: "J'ai déjà une pièce" },
+      { label: "Composez-moi une tenue complète", primary: true },
+    ]);
+  }
+
+  /* ─── Étape 1 : choix mode ─── */
+  function onMode(t: string) {
+    addMe(t);
+    setChips([]);
+    if (/complet|zéro|zero|compos/i.test(t)) {
+      setState((s) => ({ ...s, mode: "full" }));
+      botDelay(() => {
+        addBot("Parfait, je pars de zéro. Pour qui je compose ?");
+        setChips([{ label: "Femme" }, { label: "Homme" }, { label: "Unisexe" }]);
+      });
+    } else {
+      setState((s) => ({ ...s, mode: "anchor" }));
+      botDelay(() => {
+        addBot("Très bien. Dites-moi la pièce que vous voulez garder.");
+        setChips([
+          { label: "Mes Loro Piana" },
+          { label: "Un pull noir" },
+          { label: "Une chemise" },
+          { label: "Autre…" },
+        ]);
+      });
+    }
+  }
+
+  /* ─── Étape 2A (full) : genre ─── */
+  function onGenre(t: string) {
+    addMe(t);
+    setChips([]);
+    setState((s) => ({ ...s, genre: t }));
+    botDelay(() => {
+      addBot("Sur quelle couleur on construit ? Ce sera la teinte signature.");
+      setChips(Object.keys(COULEURS).map((c) => ({ label: c })));
+    });
+  }
+
+  /* ─── Étape 2B (anchor) : pièce ─── */
+  function onPiece(t: string) {
+    addMe(t);
+    setChips([]);
+    let piece = t, role: Role = "Haut";
+    if (/loro|piana/i.test(t)) {
+      piece = "Loro Piana"; role = "Chaussures";
+    } else if (/pull/i.test(t)) {
+      piece = "Pull"; role = "Haut";
+    } else if (/chemise/i.test(t)) {
+      piece = "Chemise"; role = "Haut";
+    } else if (/chaussure|derby|basket|sneaker|mocassin/i.test(t)) {
+      role = "Chaussures";
+    } else if (/pantalon|chino|jean/i.test(t)) {
+      role = "Bas";
+    } else if (/veste|blazer|manteau/i.test(t)) {
+      role = "Veste";
+    } else if (/autre/i.test(t)) {
+      piece = "votre pièce"; role = "Haut";
+    }
+    setState((s) => ({ ...s, piece, anchorRole: role }));
+    botDelay(() => {
+      const intro =
+        piece === "Loro Piana"
+          ? "Très beau choix — le luxe discret, le daim. De quelle couleur sont-elles ?"
+          : "Notée. De quelle couleur est-elle ?";
+      addBot(intro);
+      setChips(Object.keys(COULEURS).map((c) => ({ label: c })));
+    });
+  }
+
+  /* ─── Étape 3 : couleur ───
+     Brief §5 (24/05) — si la couleur a des sous-nuances (Bleu, Vert olive,
+     Beige, Marron), on demande la précision avant de passer au style ;
+     un marine ne va pas dans le même accord qu'un bleu clair. Validation
+     explicite dans la question suivante (« Du bordeaux, parfait — … »). */
+  function onCouleur(t: string) {
+    addMe(t);
+    setChips([]);
+    const nuances = NUANCES_PAR_COULEUR[t];
+    if (nuances && nuances.length > 0) {
+      // Pré-remplit avec la valeur générique de la famille en attendant
+      // la précision (évite l'état null transitoire).
+      setState((s) => ({ ...s, couleur: t, couleurHex: COULEURS[t] || "#888" }));
+      botDelay(() => {
+        addBot(`Du ${t.toLowerCase()} — quelle nuance ?`);
+        setChips(nuances.map((n) => ({ label: n.label })));
+        // Hijack le prochain clic pour traiter la nuance puis enchaîner.
+        setNextChipHandler(() => (c: string) => {
+          addMe(c);
+          setChips([]);
+          const picked = nuances.find((n) => n.label === c) || nuances[0];
+          // On utilise le label nuancé comme `couleur` (« Marine ») et le hex précis.
+          setState((s) => ({ ...s, couleur: picked.label, couleurHex: picked.hex }));
+          botDelay(() => {
+            addBot(`${picked.label}, parfait — quel style autour ?`);
+            setChips(Object.keys(STYLES).map((k) => ({ label: k })));
+          });
+        });
+      });
+      return;
+    }
+    // Pas de nuances pour cette couleur — on enchaîne directement le style.
+    setState((s) => ({ ...s, couleur: t, couleurHex: COULEURS[t] || "#888" }));
+    botDelay(() => {
+      addBot(`Du ${t.toLowerCase()}, parfait — quel style autour ?`);
+      setChips(Object.keys(STYLES).map((c) => ({ label: c })));
+    });
+  }
+
+  /* ─── Étape 4 : style ───
+     Brief §5 (24/05) — occasions contextuelles au style (cf. carte
+     OCCASIONS_PAR_STYLE) au lieu d'une liste générique. Streetwear
+     ne demande plus « cérémonie », Old money ne demande plus « concert ». */
+  function onStyle(t: string) {
+    addMe(t);
+    setChips([]);
+    setState((s) => ({ ...s, style: t }));
+    botDelay(() => {
+      addBot(`${t} — et pour quelle occasion ?`);
+      const occasions = OCCASIONS_PAR_STYLE[t]
+        || ["Bureau", "Dîner", "Voyage", "Week-end"];
+      setChips(occasions.map((c) => ({ label: c })));
+    });
+  }
+
+  /* ─── Étape 5 : occasion → compose ─── */
+  function onOccasion(t: string) {
+    addMe(t);
+    setChips([]);
+    setState((s) => {
+      const next = { ...s, occasion: t };
+      // Compose immédiatement avec le state final (s'évite un useEffect)
+      botDelay(() => compose(next));
+      return next;
+    });
+  }
+
+  /* ─── Compose la tenue ───
+     Brief « Styliste IA — accords Wada » (24/05) : on calcule l'accord
+     dérivé de la couleur signature et on l'affiche en chat. Les pièces
+     viennent ensuite de buildFull/buildAnchor qui utilisent ce même accord
+     (les helpers le re-calculent mais c'est pur, donc idempotent). */
+  function compose(s: State) {
+    let pieces: OutfitPiece[];
+    const sigHex = s.couleurHex || COULEURS[s.couleur || "Beige"] || "#C7A06A";
+    const accord = accordForColor(sigHex, s.style);
+    if (s.mode === "full") {
+      pieces = buildFull(s);
+      addBot(
+        `Voilà une tenue complète <b>${s.style?.toLowerCase()}</b> pour <b>${s.occasion?.toLowerCase()}</b> (${s.genre?.toLowerCase()}) : le ${s.couleur?.toLowerCase()} en signature, le reste sur l'accord <b>No. ${accord.number} — ${accord.name}</b>.`
+      );
+    } else {
+      pieces = buildAnchor(s);
+      const anchorName = s.piece === "Loro Piana" ? "Loro Piana" : s.piece?.toLowerCase();
+      addBot(
+        `Voilà : autour de vos/votre ${anchorName}, un look <b>${s.style?.toLowerCase()}</b> pour <b>${s.occasion?.toLowerCase()}</b> — accord <b>No. ${accord.number} — ${accord.name}</b>.`
+      );
+    }
+    setState((prev) => ({
+      ...prev,
+      pieces,
+      accordNumber: accord.number,
+      accordName: accord.name,
+    }));
+    addOutfit(pieces);
+    botDelay(() => {
+      addBot(`<b>Pourquoi ça marche</b> — ${pourquoiFor(s.couleur)}`);
+    });
+    setTimeout(() => {
+      addBot("Je peux l'ajuster — dites-moi.");
+      setChips([
+        { label: "Plus chaud" },
+        { label: "Sans veste" },
+        { label: "Plus décontracté" },
+        { label: "Une autre couleur" },
+        { label: "C'est parfait", primary: true },
+      ]);
+      setDone(true);
+    }, 950);
+  }
+
+  /* ─── Composition mode FULL ───
+     Brief « Styliste IA — accords Wada » (24/05) : on dérive les couleurs
+     des slots support d'un VRAI accord Wada qui contient la couleur
+     signature. On garde les types de vêtements de STYLES. Si l'accord
+     est vide (cas garde-fou improbable), on retombe sur les hex figés. */
+  function buildFull(s: State): OutfitPiece[] {
+    const setStyles = STYLES[s.style || "Classique"];
+    const sigHex = s.couleurHex || COULEURS[s.couleur || "Beige"] || "#C7A06A";
+    const accord = accordForColor(sigHex, s.style);
+    const sup = supportColorsFromAccord(accord);
+
+    const pieces: OutfitPiece[] = [
+      { badge: "Proposé",   role: "Haut",       type: setStyles.haut[0],   hex: sup?.haut.hex   ?? setStyles.haut[1],   couleurNom: sup?.haut.nom   ?? "écru",   ancre: false },
+      { badge: "Proposé",   role: "Bas",        type: setStyles.bas[0],    hex: sup?.bas.hex    ?? setStyles.bas[1],    couleurNom: sup?.bas.nom    ?? "sable",  ancre: false },
+      { badge: "Proposé",   role: "Chaussures", type: setStyles.chauss[0], hex: sup?.chauss.hex ?? setStyles.chauss[1], couleurNom: sup?.chauss.nom ?? "cuir",   ancre: false },
+      { badge: "Signature", role: "Veste",      type: setStyles.veste[0],  hex: setStyles.veste[1],  couleurNom: "neutre", ancre: false },
+      { badge: "Touche",    role: "Accent",     type: setStyles.accent[0], hex: sup?.accent.hex ?? setStyles.accent[1], couleurNom: sup?.accent.nom ?? "brun",   ancre: false },
+    ];
+    // La veste devient la pièce signature dans la couleur choisie
+    const vesteIdx = pieces.findIndex((p) => p.role === "Veste");
+    if (vesteIdx !== -1 && s.couleur && s.couleurHex) {
+      pieces[vesteIdx] = {
+        ...pieces[vesteIdx],
+        type: `${pieces[vesteIdx].type} ${s.couleur.toLowerCase()}`,
+        hex: s.couleurHex,
+        couleurNom: s.couleur,
+      };
+    }
+    return pieces;
+  }
+
+  /* ─── Composition mode ANCHOR ───
+     Brief « Styliste IA — accords Wada » (24/05) : idem buildFull, on
+     dérive les hex des slots non-ancre d'un vrai accord Wada qui contient
+     la couleur de la pièce ancre. La pièce ancre garde sa couleur exacte.
+     L'accord est choisi sur la couleur de la pièce ancre car c'est elle
+     qui dicte l'harmonie. */
+  function buildAnchor(s: State): OutfitPiece[] {
+    const setStyles = STYLES[s.style || "Classique"];
+    const sigHex = s.couleurHex || COULEURS[s.couleur || "Beige"] || "#C7A06A";
+    const accord = accordForColor(sigHex, s.style);
+    const sup = supportColorsFromAccord(accord);
+
+    const anchorLabel =
+      s.piece === "Loro Piana"
+        ? `Loro Piana (${s.couleur?.toLowerCase()})`
+        : `${s.piece ? s.piece.charAt(0).toUpperCase() + s.piece.slice(1) : "Pièce"} ${s.couleur?.toLowerCase()}`;
+    // Base proposée selon le style + couleurs dérivées de l'accord Wada
+    const base: Record<Role, OutfitPiece> = {
+      Haut:       { badge: "Proposé", role: "Haut",       type: setStyles.haut[0],   hex: sup?.haut.hex   ?? setStyles.haut[1],   couleurNom: sup?.haut.nom   ?? "écru",   ancre: false },
+      Bas:        { badge: "Proposé", role: "Bas",        type: setStyles.bas[0],    hex: sup?.bas.hex    ?? setStyles.bas[1],    couleurNom: sup?.bas.nom    ?? "sable",  ancre: false },
+      Chaussures: { badge: "Proposé", role: "Chaussures", type: setStyles.chauss[0], hex: sup?.chauss.hex ?? setStyles.chauss[1], couleurNom: sup?.chauss.nom ?? "cuir",   ancre: false },
+      Veste:      { badge: "Proposé", role: "Veste",      type: setStyles.veste[0],  hex: setStyles.veste[1],  couleurNom: "neutre", ancre: false },
+      Accent:     { badge: "Touche",  role: "Accent",     type: setStyles.accent[0], hex: sup?.accent.hex ?? setStyles.accent[1], couleurNom: sup?.accent.nom ?? "brun",   ancre: false },
+    };
+    if (s.anchorRole && s.couleur && s.couleurHex) {
+      base[s.anchorRole] = {
+        badge: "Votre pièce",
+        role: s.anchorRole,
+        type: anchorLabel,
+        hex: s.couleurHex,
+        couleurNom: s.couleur,
+        ancre: true,
+      };
+    }
+    return [base.Haut, base.Bas, base.Chaussures, base.Veste, base.Accent];
+  }
+
+  /* ─── Ajustements après composition ─── */
+  function onAdjust(t: string) {
+    addMe(t);
+    setChips([]);
+    if (/parfait/i.test(t)) {
+      botDelay(() => addBot("Très bien. Je l'ajoute à votre dressing ✓"));
+      return;
+    }
+    if (/autre couleur/i.test(t)) {
+      botDelay(() => {
+        addBot("On change la teinte signature — laquelle ?");
+        setChips(Object.keys(COULEURS).map((c) => ({ label: c })));
+        // Hijack le handler — au prochain clic chip, on relance compose
+        setNextChipHandler(() => (c: string) => {
+          addMe(c);
+          setChips([]);
+          setState((prev) => {
+            const next = { ...prev, couleur: c, couleurHex: COULEURS[c] || "#888" };
+            botDelay(() => compose(next));
+            return next;
+          });
+        });
+      });
+      return;
+    }
+    setState((prev) => {
+      if (!prev.pieces) return prev;
+      let next = [...prev.pieces];
+      if (/chaud/i.test(t)) {
+        next = applyHotter(next);
+        addBot("Plus chaud : une terracotta et du brun.");
+      } else if (/sans veste/i.test(t)) {
+        next = next.filter((p) => p.role !== "Veste");
+        addBot("Sans veste : on allège, plus épuré.");
+      } else if (/décontract/i.test(t)) {
+        next = applyCasual(next);
+        addBot("Plus décontracté : tee, chino et sneakers, mêmes couleurs.");
+      }
+      addOutfit(next);
+      botDelay(() => {
+        setChips([
+          { label: "Plus chaud" },
+          { label: "Sans veste" },
+          { label: "Plus décontracté" },
+          { label: "Une autre couleur" },
+          { label: "C'est parfait", primary: true },
+        ]);
+      });
+      return { ...prev, pieces: next };
+    });
+  }
+
+  function applyHotter(pieces: OutfitPiece[]): OutfitPiece[] {
+    return pieces.map((p) => {
+      if (p.role === "Veste" && !p.ancre) return { ...p, type: "Surveste terracotta", hex: "#B5613F", couleurNom: "terracotta" };
+      if (p.role === "Accent" && !p.ancre) return { ...p, type: "Touche brun chaud", hex: "#8a5a3a", couleurNom: "brun" };
+      return p;
+    });
+  }
+  function applyCasual(pieces: OutfitPiece[]): OutfitPiece[] {
+    return pieces.map((p) => {
+      if (p.role === "Haut" && !p.ancre) return { ...p, type: "Tee coton", hex: "#ECE4D6", couleurNom: "écru" };
+      if (p.role === "Bas" && !p.ancre) return { ...p, type: "Chino souple", hex: "#C9B79C", couleurNom: "sable" };
+      if (p.role === "Chaussures" && !p.ancre) return { ...p, type: "Sneakers", hex: "#E8E2D6", couleurNom: "écru" };
+      return p;
+    });
+  }
+
+  /* ─── Routage du clic chip selon la phase ─── */
+  const nextChipHandlerRef = useRef<((t: string) => void) | null>(null);
+  function setNextChipHandler(getter: () => (t: string) => void) {
+    nextChipHandlerRef.current = getter();
+  }
+  function onChip(t: string) {
+    if (nextChipHandlerRef.current) {
+      const fn = nextChipHandlerRef.current;
+      nextChipHandlerRef.current = null;
+      fn(t);
+      return;
+    }
+    // Route selon l'état courant
+    if (state.mode === null) return onMode(t);
+    if (state.mode === "full" && state.genre === null) return onGenre(t);
+    if (state.mode === "anchor" && state.piece === null) return onPiece(t);
+    if (state.couleur === null) return onCouleur(t);
+    if (state.style === null) return onStyle(t);
+    if (state.occasion === null) return onOccasion(t);
+    return onAdjust(t);
+  }
+
+  /* ─── Saisie libre ─── */
+  function send() {
+    const v = input.trim();
+    if (!v) return;
+    setInput("");
+    addMe(v);
+    if (state.mode === null) {
+      if (/rien|zéro|zero|complet|sais pas|propose|compose|tenue/i.test(v)) {
+        setState((s) => ({ ...s, mode: "full" }));
+        botDelay(() => {
+          addBot("Parfait, je pars de zéro. Pour qui je compose ?");
+          setChips([{ label: "Femme" }, { label: "Homme" }, { label: "Unisexe" }]);
+        });
+      } else {
+        setState((s) => ({ ...s, mode: "anchor" }));
+        onPieceFreeText(v);
+      }
+    }
+  }
+  function onPieceFreeText(v: string) {
+    let piece = v, role: Role = "Haut";
+    if (/loro|piana/i.test(v)) { piece = "Loro Piana"; role = "Chaussures"; }
+    else if (/pull/i.test(v)) { piece = "Pull"; role = "Haut"; }
+    else if (/chemise/i.test(v)) { piece = "Chemise"; role = "Haut"; }
+    else if (/chaussure|derby|basket|sneaker|mocassin/i.test(v)) role = "Chaussures";
+    else if (/pantalon|chino|jean/i.test(v)) role = "Bas";
+    else if (/veste|blazer|manteau/i.test(v)) role = "Veste";
+    setState((s) => ({ ...s, piece, anchorRole: role }));
+    botDelay(() => {
+      addBot("Notée. De quelle couleur est-elle ?");
+      setChips(Object.keys(COULEURS).map((c) => ({ label: c })));
+    });
+  }
+
+  /* ══════════════════════════════════════════════════════════════════
+     RENDER
+     ══════════════════════════════════════════════════════════════════ */
+  return (
+    <main
+      style={{
+        minHeight: "100vh",
+        background: palette.beige,
+        color: palette.ink,
+        fontFamily: fonts.sans,
+        lineHeight: 1.55,
+      }}
+    >
+            <BackButton fallback="/atelier" />
+
+      <div style={{ maxWidth: 620, margin: "0 auto", padding: "34px 20px 60px" }}>
+        {/* HEADER */}
+        <div style={{ textAlign: "center", marginBottom: 18 }}>
+          <p style={{
+            fontSize: 11, letterSpacing: "0.3em", textTransform: "uppercase",
+            color: palette.olive, fontWeight: 500, margin: 0,
+          }}>
+            Le styliste · WADA AI
+          </p>
+          <h1 style={{
+            fontFamily: fonts.display, fontWeight: 700,
+            fontSize: 30, marginTop: 6,
+            color: palette.ink,
+          }}>
+            Composons votre tenue.
+          </h1>
+        </div>
+
+        {/* CHAT — brief audit A1 : role="log" + aria-live="polite" pour
+            que les lecteurs d'écran annoncent les nouveaux messages du bot
+            au fur et à mesure. aria-atomic=false : on n'annonce QUE les
+            additions, pas toute la conversation à chaque update. */}
+        <div
+          role="log"
+          aria-live="polite"
+          aria-atomic="false"
+          aria-label="Conversation avec l'assistant styliste"
+          style={{
+          display: "flex", flexDirection: "column", gap: 12,
+          minHeight: 200,
+        }}>
+          {bubbles.map((b, i) => {
+            if (b.who === "outfit") {
+              return <OutfitBubble key={i} pieces={b.pieces} genre={state.genre} style={state.style} />;
+            }
+            if (b.who === "me") {
+              return (
+                <div
+                  key={i}
+                  style={{
+                    alignSelf: "flex-end",
+                    maxWidth: "82%",
+                    padding: "13px 17px",
+                    fontSize: 15, lineHeight: 1.5,
+                    borderRadius: 18,
+                    borderBottomRightRadius: 5,
+                    background: palette.bordeaux,
+                    color: "#FAF8F4",
+                  }}
+                >
+                  {b.text}
+                </div>
+              );
+            }
+            return (
+              <div
+                key={i}
+                style={{
+                  alignSelf: "flex-start",
+                  maxWidth: "82%",
+                  padding: "13px 17px",
+                  fontSize: 15, lineHeight: 1.5,
+                  borderRadius: 18,
+                  borderBottomLeftRadius: 5,
+                  background: palette.cream,
+                  border: `1px solid ${palette.line}`,
+                  color: palette.ink,
+                }}
+              >
+                <div style={{
+                  fontSize: 10, letterSpacing: "0.16em",
+                  textTransform: "uppercase", color: palette.olive,
+                  marginBottom: 4, fontWeight: 600,
+                }}>
+                  WADA
+                </div>
+                <div dangerouslySetInnerHTML={{ __html: b.html }} />
+              </div>
+            );
+          })}
+          <div ref={chatEndRef} />
+        </div>
+
+        {/* CHIPS AREA */}
+        {chips.length > 0 && (
+          <div style={{
+            display: "flex", flexWrap: "wrap", gap: 8,
+            marginTop: 12,
+          }}>
+            {chips.map((c, i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={() => onChip(c.label)}
+                style={{
+                  fontFamily: fonts.sans, fontSize: 14,
+                  padding: "10px 16px",
+                  borderRadius: 999,
+                  border: `1px solid ${c.primary ? palette.bordeaux : palette.line}`,
+                  background: c.primary ? palette.bordeaux : palette.cream,
+                  color: c.primary ? "#FAF8F4" : palette.ink,
+                  cursor: "pointer",
+                  transition: "all .2s ease",
+                }}
+                onMouseEnter={(ev) => {
+                  if (c.primary) {
+                    ev.currentTarget.style.background = "#5a3029";
+                  } else {
+                    ev.currentTarget.style.background = "#fff";
+                    ev.currentTarget.style.borderColor = palette.olive;
+                  }
+                }}
+                onMouseLeave={(ev) => {
+                  if (c.primary) {
+                    ev.currentTarget.style.background = palette.bordeaux;
+                  } else {
+                    ev.currentTarget.style.background = palette.cream;
+                    ev.currentTarget.style.borderColor = palette.line;
+                  }
+                }}
+              >
+                {c.label}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* COMPOSER PILL */}
+        <div style={{
+          display: "flex", gap: 8, marginTop: 16,
+          background: palette.cream,
+          border: `1px solid ${palette.line}`,
+          borderRadius: 999,
+          padding: "6px 6px 6px 18px",
+        }}>
+          <input
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") send(); }}
+            placeholder="Décrivez ce que vous avez, ou ce que vous cherchez…"
+            style={{
+              flex: 1, border: "none", background: "transparent",
+              /* Brief audit M2 : 16px évite le zoom iOS au focus.
+                 A2 : outline:none retiré ; le focus ring global a11y joue
+                 (cf. globals.css :focus-visible). */
+              fontFamily: fonts.sans, fontSize: 16, color: palette.ink,
+            }}
+          />
+          <button
+            type="button"
+            onClick={send}
+            style={{
+              fontSize: 13, letterSpacing: "0.1em", textTransform: "uppercase",
+              background: palette.ink, color: palette.cream,
+              border: "none", borderRadius: 999,
+              padding: "10px 18px", cursor: "pointer",
+              fontFamily: fonts.sans, fontWeight: 600,
+            }}
+          >
+            Envoyer
+          </button>
+        </div>
+
+        {/* RECOMMENCER */}
+        {done && (
+          <button
+            type="button"
+            onClick={start}
+            style={{
+              marginTop: 14,
+              fontSize: 13, color: palette.bordeaux,
+              background: "none", border: "none",
+              cursor: "pointer", textDecoration: "underline",
+              fontFamily: fonts.sans,
+            }}
+          >
+            ↺ Recommencer
+          </button>
+        )}
+      </div>
+
+          </main>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   OutfitBubble — affiche la tenue composée dans une bulle bot étendue.
+   Réutilise le pattern SlotCard (marque + via Amazon + prix + Acheter)
+   pour cohérence avec /ma-tenue.
+   ══════════════════════════════════════════════════════════════════════ */
+function OutfitBubble({ pieces, genre, style }: { pieces: OutfitPiece[]; genre: string | null; style: string | null }) {
+  return (
+    <div
+      style={{
+        alignSelf: "stretch",
+        maxWidth: "100%",
+        padding: "16px 18px",
+        background: palette.cream,
+        border: `1px solid ${palette.line}`,
+        borderRadius: 18,
+        borderBottomLeftRadius: 5,
+        boxShadow: SOFT,
+      }}
+    >
+      <p style={{
+        fontSize: 10, letterSpacing: "0.16em",
+        textTransform: "uppercase", color: palette.olive,
+        marginBottom: 10, fontWeight: 600,
+      }}>
+        La tenue
+      </p>
+      <div
+        className="wada-stylist-outfit"
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(2, 1fr)",
+          gap: 12,
+        }}
+      >
+        {pieces.map((p, i) => (
+          <PieceCard
+            key={i}
+            piece={p}
+            amzUrl={p.ancre ? undefined : buyLinkFor(p, genre)}
+            style={style}
+            genre={genre}
+          />
+        ))}
+      </div>
+      {/* Strip palette en bas */}
+      <div style={{ display: "flex", gap: 6, marginTop: 10 }}>
+        {pieces.map((p, i) => (
+          <span
+            key={i}
+            aria-hidden
+            style={{
+              flex: 1, height: 24, borderRadius: 6,
+              background: p.hex,
+            }}
+          />
+        ))}
+      </div>
+      <style jsx>{`
+        @media (max-width: 400px) {
+          :global(.wada-stylist-outfit) {
+            grid-template-columns: 1fr !important;
+          }
+        }
+      `}</style>
+    </div>
+  );
+}
+
+/* ──────────────────────────────────────────────────────────────────────
+   PieceCard — pattern marque + Amazon "a" + prix + Acheter (idem /ma-tenue)
+   ────────────────────────────────────────────────────────────────────── */
+function PieceCard({
+  piece, amzUrl, style, genre,
+}: {
+  piece: OutfitPiece;
+  amzUrl?: string;
+  style?: string | null;
+  genre?: string | null;
+}) {
+  /* Brief 2026-05-28 : on tente un vrai produit MUJI matchant slot +
+     couleur précise (piece.hex) + style + genre. Si trouvé → vraie photo
+     + nom MUJI + prix réel + Acheter sur MUJI. Sinon → swatch couleur +
+     Amazon générique (placeholder honnête). */
+  /* Brief 2026-05-28 (variété) : seed unique par (couleur+style+role)
+     pour que deux tenues stylist différentes ne donnent pas les mêmes
+     produits MUJI. Stable au reload, varié entre tenues. */
+  const seed = piece.ancre ? null : `${piece.hex}-${piece.role}-${style || ""}-${genre || ""}`;
+  const mujiProduct = useMujiForSlot(
+    piece.ancre ? null : roleToApiSlot(piece.role),
+    piece.ancre ? null : piece.hex,
+    style || null,
+    genre || null,
+    seed,
+  );
+
+  return (
+    <div
+      style={{
+        background: palette.cream,
+        border: piece.ancre ? `1.5px solid ${palette.bordeaux}` : `1px solid ${palette.line}`,
+        borderRadius: 16,
+        overflow: "hidden",
+        boxShadow: SOFT,
+        display: "flex",
+        flexDirection: "column",
+      }}
+    >
+      {/* JSON-LD Product schema — idem /ma-tenue (brief P4.19). */}
+      {mujiProduct && (
+        <script
+          type="application/ld+json"
+          // eslint-disable-next-line react/no-danger
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "Product",
+              name: mujiProduct.nom,
+              image: mujiProduct.image,
+              description: `${piece.role} ${piece.couleurNom} — ${mujiProduct.marque}`,
+              brand: { "@type": "Brand", name: mujiProduct.marque },
+              category: piece.role,
+              color: piece.couleurNom,
+              offers: {
+                "@type": "Offer",
+                price: mujiProduct.prix,
+                priceCurrency: mujiProduct.devise,
+                availability: "https://schema.org/InStock",
+                url: mujiProduct.url,
+              },
+            }),
+          }}
+        />
+      )}
+
+      {/* Visuel top — photo MUJI réelle si trouvée, sinon swatch couleur.
+          Brief « Page Tenue maître » P0-2 + P2-5 (24/05) :
+          - objectFit: cover edge-to-edge (était contain + padding 14 = trous)
+          - objectPosition: center 20% pour cadrer le buste du mannequin
+          - source = imageLocal (Blob hi-res depuis P0-2 fix mirror) →
+            largeImage proxifié /api/img si pas de mirror local → image
+            (200px) en dernier recours. Aligné sur ma-tenue/PieceCard. */}
+      {mujiProduct ? (
+        <div
+          aria-hidden
+          style={{
+            aspectRatio: "4 / 5",
+            background: "#FBF9F5",
+            overflow: "hidden",
+            borderBottom: `1px solid ${palette.line}`,
+          }}
+        >
+          <img
+            src={mujiProduct.image}
+            alt={mujiProduct.nom}
+            loading="lazy"
+            style={{
+              width: "100%", height: "100%",
+              objectFit: "cover", objectPosition: "center 20%",
+              display: "block",
+            }}
+          />
+        </div>
+      ) : (
+        /* Brief finition (24/05) §2 — chargement : avant on rendait
+           juste un block plein de la teinte (height:96). Maintenant on
+           garde le même aspect-ratio 4/5 que la version avec produit et
+           on superpose un overlay shimmer (.wada-skeleton défini dans
+           globals.css) pour signaler le chargement actif sans saut de
+           layout quand le produit MUJI arrive. */
+        <div
+          aria-hidden
+          className="wada-skeleton"
+          style={{
+            aspectRatio: "4 / 5",
+            background: piece.hex,
+            opacity: 0.85,
+            borderBottom: `1px solid ${palette.line}`,
+          }}
+        />
+      )}
+
+      <div style={{ padding: "11px 13px", flex: 1, display: "flex", flexDirection: "column" }}>
+        <p style={{
+          fontSize: 9, letterSpacing: "0.18em",
+          textTransform: "uppercase", margin: 0, fontWeight: 700,
+          color: piece.ancre ? palette.bordeaux : palette.olive,
+        }}>
+          {piece.badge} <span style={{ color: palette.inkSoft, fontWeight: 500 }}>· {piece.role}</span>
+        </p>
+        <p
+          style={{
+            fontFamily: fonts.display, fontWeight: 600,
+            fontSize: 14, margin: "3px 0 0",
+            lineHeight: 1.2, color: palette.ink,
+            display: "-webkit-box",
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: "vertical",
+            overflow: "hidden",
+            minHeight: "calc(1.2em * 2)",
+          }}
+        >
+          {mujiProduct ? mujiProduct.nom : piece.type}
+        </p>
+
+        <div style={{ marginTop: "auto", paddingTop: 10 }}>
+          {piece.ancre ? (
+            <p style={{
+              fontSize: 12, color: palette.inkSoft,
+              textAlign: "center", margin: 0,
+              fontStyle: "italic",
+            }}>
+              à vous ✓
+            </p>
+          ) : mujiProduct ? (
+            /* Bloc MUJI réel : marque + via Awin + prix réel + Acheter MUJI */
+            <div style={{
+              background: "rgba(255,255,255,0.65)",
+              border: `1px solid ${palette.line}`,
+              borderRadius: 12,
+              padding: "10px 12px",
+            }}>
+              <p style={{
+                fontFamily: fonts.sans, fontSize: 15, fontWeight: 700,
+                color: palette.ink, margin: 0, lineHeight: 1.1,
+              }}>
+                {mujiProduct.marque}
+              </p>
+              <span style={{
+                display: "inline-block", marginTop: 4,
+                fontSize: 11, color: palette.inkSoft,
+                fontStyle: "italic", fontFamily: fonts.sans,
+              }}>
+                via Awin · MUJI partenaire
+              </span>
+              <p style={{
+                fontFamily: fonts.sans, fontSize: 14, fontWeight: 700,
+                color: palette.bordeaux, margin: "6px 0 0",
+              }}>
+                {mujiProduct.prix.toFixed(2)} {mujiProduct.devise === "EUR" ? "€" : mujiProduct.devise}
+              </p>
+              <a
+                href={mujiProduct.url}
+                target="_blank"
+                rel="noopener nofollow sponsored"
+                style={{
+                  display: "block", marginTop: 8,
+                  textAlign: "center",
+                  fontFamily: fonts.sans,
+                  fontSize: 12, fontWeight: 600,
+                  textDecoration: "none",
+                  background: palette.ink, color: palette.cream,
+                  borderRadius: 999,
+                  padding: "8px 12px",
+                }}
+              >
+                Acheter sur MUJI →
+              </a>
+            </div>
+          ) : amzUrl ? (
+            /* Fallback Amazon générique (placeholder honnête tant qu'il
+               n'y a pas de produit MUJI matchant). */
+            <div style={{
+              background: "rgba(255,255,255,0.65)",
+              border: `1px solid ${palette.line}`,
+              borderRadius: 12,
+              padding: "10px 12px",
+            }}>
+              <p style={{
+                fontFamily: fonts.sans, fontSize: 15, fontWeight: 700,
+                color: palette.ink, margin: 0, lineHeight: 1.1,
+              }}>
+                Amazon
+              </p>
+              <div style={{
+                display: "flex", alignItems: "center", gap: 5,
+                marginTop: 4,
+              }}>
+                <span
+                  aria-label="via Amazon"
+                  style={{
+                    display: "inline-flex", alignItems: "center", justifyContent: "center",
+                    width: 14, height: 14, borderRadius: 3,
+                    background: "#FF9900", color: "#1E1E1E",
+                    fontFamily: fonts.sans, fontWeight: 800,
+                    fontSize: 9, letterSpacing: 0, lineHeight: 1,
+                  }}
+                >
+                  a
+                </span>
+                <span style={{
+                  fontSize: 11, color: palette.inkSoft,
+                  fontStyle: "italic", fontFamily: fonts.sans,
+                }}>
+                  Recherche multi-marques
+                </span>
+              </div>
+              <p style={{
+                fontFamily: fonts.sans, fontSize: 14, fontWeight: 700,
+                color: palette.bordeaux, margin: "8px 0 0",
+              }}>
+                ~55 €
+              </p>
+              <a
+                href={amzUrl}
+                target="_blank"
+                rel="noopener nofollow sponsored"
+                style={{
+                  display: "block", marginTop: 8,
+                  textAlign: "center",
+                  fontFamily: fonts.sans,
+                  fontSize: 12, fontWeight: 600,
+                  textDecoration: "none",
+                  background: palette.ink, color: palette.cream,
+                  borderRadius: 999,
+                  padding: "8px 12px",
+                }}
+              >
+                Acheter →
+              </a>
+            </div>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
+}

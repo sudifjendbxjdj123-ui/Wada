@@ -82,7 +82,7 @@ export default function PaletteCardMatisse({ entry, height = 280 }: PaletteCardM
             color: ink,
             fontStyle: "italic",
             margin: 0,
-            fontFamily: "'EB Garamond', Georgia, serif",
+            fontFamily: "'Inter', sans-serif",
             lineHeight: 1.3,
             overflow: "hidden",
             textOverflow: "ellipsis",

@@ -1,0 +1,135 @@
+{
+  "synonyms": {
+    "classe": ["chic", "élégant", "minimaliste", "soigné"],
+    "stylé": ["tendance", "moderne", "affirmé"],
+    "simple": ["minimal", "épuré", "sans effort"],
+    "bof": ["basique", "neutre", "ordinaire"],
+    "propre": ["soigné", "net", "minimal"],
+    "cool": ["décontracté", "streetwear", "casual"],
+    "moche": ["démodé", "incohérent", "criard"],
+    "joli": ["féminin", "doux", "soigné"],
+    "BCBG": ["preppy", "old-money", "classique"]
+  },
+  "intentions": {
+    "je sors ce soir": {
+      "occasion": "Soirée",
+      "style": "Minimaliste",
+      "formality": 4,
+      "comfort": 3,
+      "color_mood": "sombres",
+      "explanation": "Soirée → palette sombre + coupe travaillée"
+    },
+    "j'ai la flemme": {
+      "occasion": "Maison",
+      "style": "Décontracté",
+      "formality": 1,
+      "comfort": 5,
+      "explanation": "Effort minimum → confort max, palette neutre"
+    },
+    "je vais au bureau": {
+      "occasion": "Bureau",
+      "style": "Classique",
+      "formality": 4,
+      "comfort": 3,
+      "explanation": "Pro-friendly, palette terreuse ou neutre"
+    },
+    "classe mais pas trop": {
+      "occasion": "Dîner",
+      "style": "Minimaliste",
+      "formality": 3,
+      "comfort": 4,
+      "explanation": "Smart casual équilibré"
+    },
+    "rendez-vous galant": {
+      "occasion": "Date",
+      "style": "Romantique",
+      "formality": 3,
+      "comfort": 4,
+      "color_mood": "terreuses",
+      "explanation": "Soigné mais accessible, palette flatteuse"
+    }
+  },
+  "contexts": {
+    "boulot": "Bureau",
+    "taf": "Bureau",
+    "travail": "Bureau",
+    "diner": "Dîner",
+    "resto": "Dîner",
+    "rencard": "Date",
+    "noces": "Mariage",
+    "enterrement": "Cérémonie",
+    "balade": "Weekend",
+    "promenade": "Weekend",
+    "vacances": "Voyage",
+    "voyage": "Voyage",
+    "expo": "Galerie",
+    "vernissage": "Galerie",
+    "brunch": "Brunch",
+    "tranquille": "Maison"
+  },
+  "intensity_map": {
+    "un peu": 0.3,
+    "légèrement": 0.3,
+    "moyen": 0.5,
+    "normal": 0.5,
+    "assez": 0.6,
+    "très": 0.8,
+    "ultra": 0.95,
+    "à fond": 1.0,
+    "pas trop": 0.35,
+    "vraiment pas": 0.1,
+    "discret": 0.25
+  },
+  "conflict_rules": [
+    {
+      "pattern": "simple.*styl|styl.*simple",
+      "interpretation": {
+        "style": "Minimaliste",
+        "notes": "Minimaliste + une pièce accent forte"
+      }
+    },
+    {
+      "pattern": "décontract.*class|class.*décontract",
+      "interpretation": {
+        "style": "Sport-chic",
+        "notes": "Smart casual : blazer + sneakers OU pull cachemire + jean"
+      }
+    },
+    {
+      "pattern": "chill.*propre|propre.*chill",
+      "interpretation": {
+        "style": "Décontracté",
+        "notes": "Casual clean : matières nobles en coupe loose, sans logo"
+      }
+    }
+  ],
+  "human_vocabulary": {
+    "vite fait": {
+      "meaning": "Tenue rapide à enfiler, pas de superposition complexe",
+      "triggers": { "effort_level": 0.2, "mood": "rushed" }
+    },
+    "effortless": {
+      "meaning": "Look naturel qui semble non-arrangé mais maîtrisé",
+      "triggers": { "effort_level": 0.6, "confidence": 0.7 }
+    },
+    "j'ose pas trop": {
+      "meaning": "Aller vers neutre + classique, éviter pièces fortes",
+      "triggers": { "confidence": -0.4, "mood": "uncertain" }
+    },
+    "j'assume": {
+      "meaning": "Pièce statement OK, couleurs vives OK",
+      "triggers": { "confidence": 0.9, "mood": "confident" }
+    },
+    "tranquille": {
+      "meaning": "Confort prime, palette douce, pas de talons",
+      "triggers": { "effort_level": 0.3, "mood": "happy" }
+    }
+  },
+  "fallback_interpretation": {
+    "occasion": "Quotidien",
+    "style": "Minimaliste",
+    "formality": 3,
+    "comfort": 4,
+    "reasoning": "Si l'utilisateur est ambigu, on tombe sur 'safe stylish' : palette neutre, coupe nette."
+  }
+}

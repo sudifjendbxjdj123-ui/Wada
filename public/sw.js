@@ -40,7 +40,14 @@
    pleines éditoriales. + Fix /ma-tenue couleur label : pastille + nom
    viennent maintenant du VRAI produit MUJI (couleurHex/couleurNom),
    plus de désaccord entre label affiché et photo réelle. */
-const CACHE_VERSION = "wada-v6-2026-05-26";
+/* Bump 26/05 v7 : brief charte typographique — on GARDE la chubby
+   (Fredoka) comme voix de marque, on RETIRE serif (Fraunces + EB
+   Garamond) sitewide. Refactor de ~150 fontFamily inline + tokens
+   centraux + globals.css + Logo + layout. Hero H1 fontSize 72→56
+   (brief : « réduire les plus gros pour ne pas faire lourd »).
+   Force re-fetch CSS+JS chez tous les clients pour qu'ils voient
+   la nouvelle typo dès le prochain lancement. */
+const CACHE_VERSION = "wada-v7-2026-05-26";
 const STATIC_CACHE  = `${CACHE_VERSION}-static`;
 const PAGE_CACHE    = `${CACHE_VERSION}-pages`;
 
