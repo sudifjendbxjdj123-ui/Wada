@@ -78,7 +78,16 @@
    fontStyle italic sur Fredoka qui produirait un faux-italique).
    Garantie : un client navigant entre 17 pages voit la même Fredoka
    chubby sur tous les titres. */
-const CACHE_VERSION = "wada-v11-2026-05-26";
+/* Bump 26/05 v12 : brief « Le Styliste IA version Claude WADA ».
+   SYSTEM_PROMPT_V2 refait à neuf (ton conversationnel, règle d'or
+   « réponds D'ABORD », nouveaux exemples : pirate / entretien créatif
+   / pull noir / aide-moi / hors-sujet). Schéma de sortie enrichi :
+   `pourquoi` (1 phrase couleur/matière) + `variation` (1 idée plus
+   audacieuse, optionnelle) + `genre` par slot pour le matching
+   produit. Frontend : indicateur « Le styliste réfléchit… » pendant
+   l'appel LLM (effet streaming). Force re-fetch JS pour propager
+   les nouveaux champs et l'UI. */
+const CACHE_VERSION = "wada-v12-2026-05-26";
 const STATIC_CACHE  = `${CACHE_VERSION}-static`;
 const PAGE_CACHE    = `${CACHE_VERSION}-pages`;
 

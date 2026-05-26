@@ -369,8 +369,12 @@ interface OutfitPiece {
   ancre: boolean;
 }
 
+/* Brief V3 (2026-05-26) — `transient` permet d'afficher un placeholder
+   « Le styliste réfléchit… » pendant l'appel LLM, qu'on retire au moment
+   où la vraie réponse arrive. Effet streaming sans implémenter de vrai
+   streaming (qui demande du parsing JSON incrémental côté serveur). */
 type Bubble =
-  | { who: "bot"; html: string }
+  | { who: "bot"; html: string; transient?: boolean }
   | { who: "me"; text: string }
   | { who: "outfit"; pieces: OutfitPiece[] };
 
@@ -870,6 +874,12 @@ export default function StylistPage() {
    *  accumulé. Route la réponse vers question (chips d'options) ou tenue
    *  (rendu outfit + chips d'ajustement). Fallback sur message générique
    *  en cas d'erreur réseau. */
+  /** Retire toutes les bulles transient (« réfléchit… ») avant d'ajouter
+   *  la vraie réponse. Évite que le placeholder reste affiché. */
+  function clearTransient() {
+    setBubbles((prev) => prev.filter((b) => !(b.who === "bot" && b.transient)));
+  }
+
   async function callLLM(query: string) {
     setChips([]);
     const userPrefs = readUserPrefs();
@@ -879,6 +889,15 @@ export default function StylistPage() {
       style: state.style,
       occasion: state.occasion,
     };
+
+    /* Effet « le styliste réfléchit » : on affiche un placeholder italique
+       pendant l'appel LLM (latence typique 1-3 s). Retiré dès l'arrivée
+       de la vraie réponse via clearTransient(). */
+    setBubbles((prev) => [...prev, {
+      who: "bot",
+      html: "<i style=\"opacity:0.7\">Le styliste réfléchit…</i>",
+      transient: true,
+    }]);
 
     try {
       const res = await fetch("/api/stylist", {
@@ -902,12 +921,11 @@ export default function StylistPage() {
 
       /* ─── Mode "question" : pose UNE question + chips d'options contextuelles ─── */
       if (data.mode === "question" && data.reponse) {
-        botDelay(() => {
-          addBot(data.reponse);
-          if (Array.isArray(data.options) && data.options.length) {
-            setChips(data.options.map((o: string) => ({ label: o })));
-          }
-        });
+        clearTransient();
+        addBot(data.reponse);
+        if (Array.isArray(data.options) && data.options.length) {
+          setChips(data.options.map((o: string) => ({ label: o })));
+        }
         return;
       }
 
@@ -930,15 +948,34 @@ export default function StylistPage() {
         const accordRef = composed.palette?.entry?.number || null;
         const accordName = composed.palette?.entry?.name || null;
 
-        botDelay(() => {
-          addBot(reponse);
-          addOutfit(pieces);
-          setState((s) => ({
-            ...s,
-            pieces,
-            accordNumber: accordRef,
-            accordName,
-          }));
+        clearTransient();
+        addBot(reponse);
+        addOutfit(pieces);
+        setState((s) => ({
+          ...s,
+          pieces,
+          accordNumber: accordRef,
+          accordName,
+        }));
+
+        /* Brief V3 (2026-05-26) : « pourquoi ça marche » vient maintenant
+           du LLM (champ data.pourquoi) plutôt que de la table statique
+           pourquoiFor(). Le LLM peut adapter la phrase au contexte précis
+           de la tenue (pirate vs mariage vs bureau). Fallback table
+           statique si jamais le LLM n'a pas renvoyé pourquoi. */
+        const pourquoiText = data.pourquoi || pourquoiFor(state.couleur);
+        const variationText = data.variation;
+
+        setTimeout(() => {
+          addBot(`<b>Pourquoi ça marche</b> — ${pourquoiText}`);
+          /* Brief V3 : si le LLM propose une variation plus audacieuse,
+             on l'affiche dans une bulle dédiée. La personne peut s'en
+             inspirer en demandant l'ajustement (« je veux la variation »). */
+          if (variationText) {
+            setTimeout(() => {
+              addBot(`<b>Ou plus audacieux</b> — <i>${variationText}</i>`);
+            }, 450);
+          }
           setTimeout(() => {
             addBot("Je peux l'ajuster — dites-moi.");
             setChips([
@@ -949,24 +986,22 @@ export default function StylistPage() {
               { label: "C'est parfait", primary: true },
             ]);
             setDone(true);
-          }, 950);
-        });
+          }, variationText ? 950 : 650);
+        }, 450);
         return;
       }
 
       /* ─── Pas de tenue exploitable, pas de question : message générique ─── */
-      botDelay(() => {
-        addBot(
-          data.reponse ||
-          data.entities?.styling_advice ||
-          "J'ai bien noté. Vous pouvez préciser un peu — une occasion, une couleur, une pièce que vous avez déjà ?"
-        );
-      });
+      clearTransient();
+      addBot(
+        data.reponse ||
+        data.entities?.styling_advice ||
+        "J'ai bien noté. Vous pouvez préciser un peu — une occasion, une couleur, une pièce que vous avez déjà ?"
+      );
     } catch (err) {
       console.error("[stylist] callLLM error:", err);
-      botDelay(() => {
-        addBot("Petit souci technique de mon côté. Vous pouvez réessayer ?");
-      });
+      clearTransient();
+      addBot("Petit souci technique de mon côté. Vous pouvez réessayer ?");
     }
   }
 
