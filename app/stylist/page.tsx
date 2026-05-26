@@ -438,6 +438,19 @@ export default function StylistPage() {
   const [done, setDone] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
+  /* Brief 2026-05-26 « ameliore le encore » — historique conversationnel.
+     Le LLM voit maintenant les tours précédents (« sans la veste » sait
+     de quelle veste on parle, « plus chaud » sait quelle tenue ajuster).
+     Format OpenAI chat completions : array de {role: user|assistant, content}.
+     On limite à 8 derniers tours (cap token + pertinence). */
+  const chatHistoryRef = useRef<Array<{ role: "user" | "assistant"; content: string }>>([]);
+  function pushHistory(role: "user" | "assistant", content: string) {
+    chatHistoryRef.current.push({ role, content });
+    if (chatHistoryRef.current.length > 16) {
+      chatHistoryRef.current = chatHistoryRef.current.slice(-16);
+    }
+  }
+
   /* Scroll vers le bas à chaque nouvelle bulle */
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
@@ -829,6 +842,7 @@ export default function StylistPage() {
     if (!v) return;
     setInput("");
     addMe(v);
+    pushHistory("user", v);
     callLLM(v);
   }
 
@@ -890,12 +904,13 @@ export default function StylistPage() {
       occasion: state.occasion,
     };
 
-    /* Effet « le styliste réfléchit » : on affiche un placeholder italique
-       pendant l'appel LLM (latence typique 1-3 s). Retiré dès l'arrivée
-       de la vraie réponse via clearTransient(). */
+    /* Effet « le styliste réfléchit » : 3 points qui pulsent en CSS
+       keyframes (cf. .wada-thinking-dots dans globals.css). Plus lively
+       que le texte italique statique, signal visuel clair que le LLM
+       traite. Retiré dès l'arrivée de la réponse via clearTransient(). */
     setBubbles((prev) => [...prev, {
       who: "bot",
-      html: "<i style=\"opacity:0.7\">Le styliste réfléchit…</i>",
+      html: "<span class=\"wada-thinking-dots\" aria-label=\"Le styliste réfléchit\"><span>•</span><span>•</span><span>•</span></span>",
       transient: true,
     }]);
 
@@ -903,7 +918,17 @@ export default function StylistPage() {
       const res = await fetch("/api/stylist", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query, userPrefs, collecte }),
+        body: JSON.stringify({
+          query,
+          userPrefs,
+          collecte,
+          /* Brief « ameliore le encore » : historique conversationnel.
+             Le LLM voit les tours précédents → ajustements cohérents
+             (« sans la veste » sait quelle veste, « plus chaud » garde
+             l'ancre, etc.). Format OpenAI chat completions. Inclut le
+             tour courant (déjà pushé par send()). */
+          history: chatHistoryRef.current,
+        }),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
@@ -923,6 +948,7 @@ export default function StylistPage() {
       if (data.mode === "question" && data.reponse) {
         clearTransient();
         addBot(data.reponse);
+        pushHistory("assistant", data.reponse);
         if (Array.isArray(data.options) && data.options.length) {
           setChips(data.options.map((o: string) => ({ label: o })));
         }
@@ -958,19 +984,23 @@ export default function StylistPage() {
           accordName,
         }));
 
-        /* Brief V3 (2026-05-26) : « pourquoi ça marche » vient maintenant
-           du LLM (champ data.pourquoi) plutôt que de la table statique
-           pourquoiFor(). Le LLM peut adapter la phrase au contexte précis
-           de la tenue (pirate vs mariage vs bureau). Fallback table
-           statique si jamais le LLM n'a pas renvoyé pourquoi. */
+        /* Brief V3 : « pourquoi ça marche » vient maintenant du LLM.
+           Fallback sur table statique si manquant. */
         const pourquoiText = data.pourquoi || pourquoiFor(state.couleur);
         const variationText = data.variation;
 
+        /* Push dans l'historique conversationnel : on synthétise la réponse
+           + la composition + le pourquoi pour que le LLM se souvienne du
+           contexte aux tours suivants. Format dense pour économiser des
+           tokens — pas besoin de toutes les couleurs hex. */
+        const tenueSummary = pieces.map((p) => `${p.role.toLowerCase()}: ${p.type} (${p.couleurNom})`).join(" · ");
+        pushHistory(
+          "assistant",
+          `${reponse} | TENUE: ${tenueSummary} | POURQUOI: ${pourquoiText}${variationText ? " | VARIATION: " + variationText : ""}`
+        );
+
         setTimeout(() => {
           addBot(`<b>Pourquoi ça marche</b> — ${pourquoiText}`);
-          /* Brief V3 : si le LLM propose une variation plus audacieuse,
-             on l'affiche dans une bulle dédiée. La personne peut s'en
-             inspirer en demandant l'ajustement (« je veux la variation »). */
           if (variationText) {
             setTimeout(() => {
               addBot(`<b>Ou plus audacieux</b> — <i>${variationText}</i>`);
@@ -978,13 +1008,39 @@ export default function StylistPage() {
           }
           setTimeout(() => {
             addBot("Je peux l'ajuster — dites-moi.");
-            setChips([
+            /* Brief « ameliore le encore » : chip variation cliquable.
+               Si le LLM a proposé une variation, on l'expose comme bouton
+               primary → un clic envoie la phrase de variation comme prompt,
+               le LLM recompose autour. Plus actionnable qu'un texte passif. */
+            const adjustChips: { label: string; primary?: boolean }[] = [
               { label: "Plus chaud" },
               { label: "Sans veste" },
               { label: "Plus décontracté" },
               { label: "Une autre couleur" },
-              { label: "C'est parfait", primary: true },
-            ]);
+              { label: "Moins cher" },
+            ];
+            if (variationText) {
+              adjustChips.unshift({ label: "Essayer la variation", primary: true });
+            } else {
+              adjustChips.push({ label: "C'est parfait", primary: true });
+            }
+            setChips(adjustChips);
+            /* Hijack du prochain chip click si « Essayer la variation »
+               est cliqué : on envoie le texte de variation au LLM comme
+               nouvelle demande, exactement comme si l'utilisateur l'avait
+               tapée. */
+            if (variationText) {
+              setNextChipHandler(() => (label: string) => {
+                if (label === "Essayer la variation") {
+                  addMe("Essayer la variation");
+                  pushHistory("user", `Essaie cette variation : ${variationText}`);
+                  callLLM(`Essaie cette variation : ${variationText}`);
+                } else {
+                  // Chip d'ajustement classique → onAdjust legacy
+                  onAdjust(label);
+                }
+              });
+            }
             setDone(true);
           }, variationText ? 950 : 650);
         }, 450);
@@ -993,11 +1049,11 @@ export default function StylistPage() {
 
       /* ─── Pas de tenue exploitable, pas de question : message générique ─── */
       clearTransient();
-      addBot(
-        data.reponse ||
+      const fallback = data.reponse ||
         data.entities?.styling_advice ||
-        "J'ai bien noté. Vous pouvez préciser un peu — une occasion, une couleur, une pièce que vous avez déjà ?"
-      );
+        "J'ai bien noté. Vous pouvez préciser un peu — une occasion, une couleur, une pièce que vous avez déjà ?";
+      addBot(fallback);
+      pushHistory("assistant", fallback);
     } catch (err) {
       console.error("[stylist] callLLM error:", err);
       clearTransient();

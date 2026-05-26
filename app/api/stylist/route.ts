@@ -660,6 +660,17 @@ export async function POST(req: Request) {
     // collecte accumulé (piece/couleur/style/occasion) pour que le LLM
     // sache ce qui a déjà été demandé et ne repose pas la question.
     const collecte: { piece?: string|null; couleur?: string|null; style?: string|null; occasion?: string|null } = body.collecte || {};
+    /* Brief 2026-05-26 « ameliore le encore » : historique conversationnel.
+       Le client envoie les N derniers tours (user + assistant) pour que le
+       LLM ait la mémoire des échanges précédents. Indispensable pour les
+       ajustements (« sans la veste », « plus chaud ») qui n'ont de sens
+       qu'avec le contexte du tour précédent. Filtré + capé pour éviter
+       l'explosion de tokens. */
+    const rawHistory: Array<{ role?: string; content?: string }> = Array.isArray(body.history) ? body.history : [];
+    const history = rawHistory
+      .filter((m) => (m.role === "user" || m.role === "assistant") && typeof m.content === "string" && m.content.length > 0)
+      .slice(-12) // 12 derniers messages max (6 tours user+assistant)
+      .map((m) => ({ role: m.role as "user" | "assistant", content: m.content as string }));
 
     if (!query || typeof query !== "string" || query.trim().length < 2) {
       return NextResponse.json(
@@ -724,6 +735,19 @@ export async function POST(req: Request) {
        Sortie attendue : { reponse, accord, tenue[], preciser }. On parse
        et on construit ensuite l'API legacy {entities, composed_outfit,
        recommended_palettes} côté serveur. */
+    /* Brief « ameliore le encore » : on construit la séquence de messages
+       avec l'historique entre le system prompt et la nouvelle requête.
+       L'ordre est :
+         1. system (prompt V3 Claude WADA)
+         2. ...history (tours précédents : user/assistant alternés)
+         3. user (tour courant avec profil + collecte)
+       Le tour courant DOIT être le dernier message. Si history contient
+       déjà la query courante (cas typique : le frontend a fait pushHistory
+       avant l'appel), on l'enlève du history pour éviter le doublon. */
+    const historyForLLM = history.length > 0 && history[history.length - 1].role === "user" && history[history.length - 1].content === query
+      ? history.slice(0, -1)
+      : history;
+
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -734,11 +758,12 @@ export async function POST(req: Request) {
         model: "gpt-4o-mini",
         messages: [
           { role: "system", content: SYSTEM_PROMPT_V2 },
+          ...historyForLLM,
           { role: "user", content: fullUserMessage },
         ],
         temperature: 0.5,
         response_format: { type: "json_object" },
-        max_tokens: 700, // V2 inclut accord + tenue 5 slots → +marge
+        max_tokens: 800, // V3 inclut accord + tenue + pourquoi + variation → +marge
       }),
     });
 

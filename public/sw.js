@@ -87,7 +87,17 @@
    produit. Frontend : indicateur « Le styliste réfléchit… » pendant
    l'appel LLM (effet streaming). Force re-fetch JS pour propager
    les nouveaux champs et l'UI. */
-const CACHE_VERSION = "wada-v12-2026-05-26";
+/* Bump 26/05 v13 : améliorations stylist conversationnel :
+     1. Historique de chat envoyé au LLM (le styliste se souvient des
+        tours précédents → ajustements cohérents type « sans la veste »,
+        « plus chaud », « moins cher »)
+     2. Chip cliquable « Essayer la variation » : si le LLM propose une
+        idée audacieuse, un clic la lance comme nouveau prompt (pas
+        besoin de retaper)
+     3. Animation 3 dots qui pulsent en cascade pendant l'appel LLM
+        (remplace l'italique statique, plus lively)
+   Force re-fetch JS + CSS pour propager les 3 changements. */
+const CACHE_VERSION = "wada-v13-2026-05-26";
 const STATIC_CACHE  = `${CACHE_VERSION}-static`;
 const PAGE_CACHE    = `${CACHE_VERSION}-pages`;
 

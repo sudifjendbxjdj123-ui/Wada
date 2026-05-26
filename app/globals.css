@@ -529,6 +529,38 @@ body::after {
 }
 
 /* ───────────────────────────────────────────────────────────
+   STYLIST « réfléchit » — 3 dots qui pulsent en cascade.
+   Brief 2026-05-26 « ameliore le encore ». Signal visuel
+   pendant l'appel LLM (latence 1-3 s typique). Les 3 spans
+   pulsent en décalé pour effet vague.
+   ─────────────────────────────────────────────────────────── */
+.wada-thinking-dots {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  font-size: 22px;
+  line-height: 1;
+  color: var(--wada-subtle, #A89A85);
+}
+.wada-thinking-dots > span {
+  animation: wada-thinking-pulse 1.2s ease-in-out infinite;
+  opacity: 0.3;
+}
+.wada-thinking-dots > span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+.wada-thinking-dots > span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+@keyframes wada-thinking-pulse {
+  0%, 60%, 100% { opacity: 0.3; transform: translateY(0); }
+  30% { opacity: 1; transform: translateY(-3px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .wada-thinking-dots > span { animation: none; opacity: 0.6; }
+}
+
+/* ───────────────────────────────────────────────────────────
    HOME IMMERSIVE (brief 2026-05-26) — vidéo mannequin plein
    écran. On masque le grain papier (body::after) ET le wash
    radial (body::before) sur la home : ces 2 overlays
