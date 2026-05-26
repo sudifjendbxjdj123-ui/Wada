@@ -139,7 +139,19 @@
       qui varie sur les ajustements rapprochés. Plus de « chemise écru »
       3 fois de suite.
    Force re-fetch JS. */
-const CACHE_VERSION = "wada-v17-2026-05-26";
+/* Bump 26/05 v18 : logique IA — recherche de tenue améliorée.
+   1. Dictionnaire de 12 thèmes (pirate/gatsby/western/halloween/garden
+      party/festival/rococo/beach/ski/goth/noir/zen) qui pré-filtrent
+      les palettes Sanzo Wada avec des hex thématiques. Le LLM reçoit
+      des candidats vraiment adaptés au thème.
+   2. Profil utilisateur enrichi : morphologie traduite en consignes
+      silhouette ("poire → volume haut, ajusté bas"), budget mappé
+      vers des marques typiques (MUJI/Uniqlo pour accessible).
+   3. Mode "surprends-moi" : query contient "hasard"/"variété"/etc →
+      shuffle du top 10 palettes. Pas la même tenue à chaque appel.
+   4. avoid_colors fusionné depuis collecte ET local interpreter.
+   Force re-fetch JS. */
+const CACHE_VERSION = "wada-v18-2026-05-26";
 const STATIC_CACHE  = `${CACHE_VERSION}-static`;
 const PAGE_CACHE    = `${CACHE_VERSION}-pages`;
 

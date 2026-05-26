@@ -635,35 +635,52 @@ function formalityToLabel(n: number): string {
 }
 
 /** Construit un bloc texte qui résume le profil utilisateur pour le LLM.
-    Si aucune préférence n'est posée, retourne string vide (LLM doit deviner). */
+    Si aucune préférence n'est posée, retourne string vide (LLM doit deviner).
+
+    Brief 2026-05-26 « ameliore la logique IA » :
+    - Morphologie enrichie avec une CONSIGNE silhouette ("oversize haut /
+      ajusté bas" pour poire, etc.) que le LLM doit appliquer
+    - Budget mappé vers des marques typiques ("MUJI/Uniqlo/COS" pour
+      accessible) → guide la matière + le type de pièce sans changer
+      l'esthétique
+    - Intensité explicite : "discret" = palette muted, "affirmé" = une
+      pièce statement */
 function buildProfileBlock(p: UserPrefs): string {
   const parts: string[] = [];
   if (p.gender) {
     const label = p.gender === "femme" ? "féminin" : p.gender === "homme" ? "masculin" : "non-binaire/unisexe";
-    parts.push(`Genre : ${label}`);
+    parts.push(`Genre : ${label} → toutes les pièces doivent respecter ce genre`);
   }
-  if (p.style) parts.push(`Style préféré : ${p.style}`);
+  if (p.style) parts.push(`Style préféré : ${p.style} (à appliquer par défaut)`);
   if (typeof p.budget === "number") {
-    const labels = ["≤ 200€ (accessible)", "200-500€ (milieu de gamme)", "≥ 500€ (premium)"];
+    const labels = [
+      "≤ 200€ accessible (MUJI / Uniqlo / COS / H&M premium) — privilégie le coton, le lin, les basiques bien coupés",
+      "200-500€ milieu de gamme (Sandro / Maje / Massimo Dutti) — autorise un peu de cachemire, du cuir véritable",
+      "≥ 500€ premium (Loro Piana / The Row / Bottega) — cachemire, soie, cuir noble",
+    ];
     parts.push(`Budget tenue complète : ${labels[p.budget] || "non précisé"}`);
   }
   if (p.morpho) {
-    const morphoLabels: Record<string, string> = {
-      droite: "silhouette droite (rectangle)",
-      sablier: "silhouette sablier",
-      poire: "silhouette poire",
-      athletique: "silhouette athlétique (épaules larges)",
-      ronde: "silhouette ronde",
+    const morphoGuidance: Record<string, string> = {
+      droite: "silhouette droite (rectangle) → créer du volume aux hanches OU aux épaules pour casser la verticale",
+      sablier: "silhouette sablier → marquer la taille, fitted",
+      poire: "silhouette poire → volume sur le haut (épaule structurée, manche ample), ajusté en bas",
+      athletique: "silhouette athlétique (épaules larges) → adoucir le haut, fluide ; jamais épaulé carré",
+      ronde: "silhouette ronde → verticalité, fluidité, V ou U au col, jamais oversize qui ajoute du volume",
     };
-    parts.push(`Morphologie : ${morphoLabels[p.morpho] || p.morpho}`);
+    parts.push(`Morphologie : ${morphoGuidance[p.morpho] || p.morpho}`);
   }
   if (p.size) parts.push(`Taille : ${p.size}`);
   if (typeof p.intensity === "number") {
-    const label = p.intensity >= 0.66 ? "affirmé (pièces statement)" : p.intensity <= 0.33 ? "neutre (discret)" : "équilibré";
+    const label = p.intensity >= 0.66
+      ? "affirmé → autorise 1 pièce statement (couleur vive, coupe inhabituelle)"
+      : p.intensity <= 0.33
+        ? "neutre / discret → palette muted, pas de pièce statement, élégance sans contraste fort"
+        : "équilibré";
     parts.push(`Intensité voulue : ${label}`);
   }
   if (parts.length === 0) return "";
-  return `PROFIL UTILISATEUR :\n${parts.map((p) => `- ${p}`).join("\n")}`;
+  return `PROFIL UTILISATEUR (à respecter strictement) :\n${parts.map((part) => `- ${part}`).join("\n")}`;
 }
 
 /** Convertit un résultat de l'interpreter local → format StylistEntities
@@ -684,6 +701,119 @@ function localToEntities(local: import("@/lib/styleInterpreter").InterpretResult
     interpretation: local.explanation || undefined,
   };
 }
+
+/* ──────────────────────────────────────────────────────────────────────
+   DICTIONNAIRE DE THÈMES — brief 2026-05-26 « ameliore la logique IA »
+   ──────────────────────────────────────────────────────────────────────
+   Pour les demandes thématiques (« soirée pirate », « gatsby », « western »…),
+   le scoring legacy par occasion/style/season ne capte pas la spécificité
+   visuelle du thème. Conséquence : le top 10 de palettes fourni au LLM
+   peut rater les combos évidents (écru+bordeaux+brun pour pirate,
+   noir+ivoire+or pour gatsby, etc.).
+
+   Ce dictionnaire mappe les thèmes courants vers :
+     - colorHints : 1-3 hex emblématiques du thème (boost l'intent
+       target_color_hex pour favoriser les palettes proches)
+     - styleHint : registre stylistique implicite (audacieux, formel, etc.)
+     - seasonHint : saison implicite (pour les thèmes saisonniers)
+
+   findBestPalettesWithFallback va alors scorer les palettes qui contiennent
+   ces couleurs en haut du classement. */
+const THEME_PROFILES: Record<string, {
+  re: RegExp;
+  colorHints: string[];
+  styleHint?: string;
+  seasonHint?: string;
+  moodHint?: string;
+}> = {
+  pirate: {
+    re: /\bpirate(?:s)?\b|\bcorsaire(?:s)?\b/i,
+    colorHints: ["#EFE7D6", "#6B3A32", "#3A2418"], // écru, bordeaux, brun corsaire
+    styleHint: "audacieux",
+    moodHint: "theatral",
+  },
+  gatsby: {
+    re: /\bgatsby\b|\bann[ée]es?\s*20\b|\bart\s*d[ée]co\b/i,
+    colorHints: ["#1E1E1E", "#F0E9DB", "#A8784A"], // noir, ivoire, or éteint
+    styleHint: "formel",
+    moodHint: "luxueux",
+  },
+  western: {
+    re: /\bwestern\b|\bcowboy\b|\bfar\s*west\b/i,
+    colorHints: ["#C9B79C", "#A8784A", "#6B3A32"], // sable, tan, brun
+    styleHint: "decontracte",
+    moodHint: "terreux",
+  },
+  halloween: {
+    re: /\bhalloween\b|\bcitrouille\b/i,
+    colorHints: ["#1E1E1E", "#A8503A", "#6B3A32"], // noir, terracotta, bordeaux
+    styleHint: "audacieux",
+    moodHint: "theatral",
+    seasonHint: "automne",
+  },
+  gardenParty: {
+    re: /\bgarden\s*party\b|\bvin\s*d'?honneur\b|\bbrunch\b/i,
+    colorHints: ["#F0E9DB", "#D6A8A8", "#A8B29A"], // ivoire, rose, sauge
+    styleHint: "classique",
+    moodHint: "doux",
+    seasonHint: "printemps",
+  },
+  festival: {
+    re: /\bfestival\b|\bcoachella\b|\bwoodstock\b|\bhippie\b/i,
+    colorHints: ["#A8503A", "#C9A24A", "#A8B29A"], // terracotta, moutarde, sauge
+    styleHint: "decontracte",
+    moodHint: "boheme",
+    seasonHint: "ete",
+  },
+  rococo: {
+    re: /\brococo\b|\bbaroque\b|\bversailles\b|\bvictorien\b/i,
+    colorHints: ["#F0E9DB", "#D6A8A8", "#A8784A"], // ivoire, rose poudre, or
+    styleHint: "formel",
+    moodHint: "luxueux",
+  },
+  beach: {
+    re: /\bplage\b|\bbalnéaire\b|\bcote\s*d'?azur\b|\bvacances\b/i,
+    colorHints: ["#F5F2EC", "#1F3A5F", "#C9B79C"], // blanc cassé, marine, sable
+    styleHint: "decontracte",
+    seasonHint: "ete",
+  },
+  ski: {
+    re: /\bski\b|\bmontagne\b|\bcha?let\b|\balpes\b/i,
+    colorHints: ["#F5F2EC", "#A8784A", "#1E1E1E"], // blanc cassé, brun, noir
+    styleHint: "classique",
+    seasonHint: "hiver",
+  },
+  goth: {
+    re: /\bgoth(?:ique)?\b|\bdark\s*academia\b|\bvampire\b/i,
+    colorHints: ["#1E1E1E", "#6B3A32", "#3A2418"], // noir, bordeaux, brun corsaire
+    styleHint: "audacieux",
+    moodHint: "moody",
+  },
+  noir: {
+    re: /\bcin[ée]ma\s*noir\b|\bnoir\s*et\s*blanc\b|\b1940\b|\b1950\b/i,
+    colorHints: ["#1E1E1E", "#F5F2EC", "#6B3A32"], // noir, ivoire, bordeaux
+    styleHint: "classique",
+    moodHint: "moody",
+  },
+  zen: {
+    re: /\bzen\b|\bjapon(?:ais)?\b|\bwabi[\s-]?sabi\b|\bmin?imal(?:e|iste)?\b/i,
+    colorHints: ["#F0E9DB", "#A8784A", "#1E1E1E"], // ivoire, brun, noir
+    styleHint: "minimal",
+    moodHint: "calme",
+    seasonHint: "automne",
+  },
+};
+
+/** Détecte un thème dans la query et retourne son profil, ou null. */
+function detectTheme(query: string): typeof THEME_PROFILES[string] | null {
+  for (const profile of Object.values(THEME_PROFILES)) {
+    if (profile.re.test(query)) return profile;
+  }
+  return null;
+}
+
+/** Détecte si l'user demande explicitement une variété/surprise. */
+const SURPRISE_PATTERN = /\bsurprends?[\s-]?moi\b|\bhasard\b|\bal[ée]atoire\b|\bvari[ée]t[ée]\b|\bétonnez\b|\bsurprise\b/i;
 
 /** Dédup d'arrays optionnels — utile pour fusionner local + LLM */
 function dedupArr(a?: string[], b?: string[]): string[] | undefined {
@@ -823,16 +953,42 @@ export async function POST(req: Request) {
        le top 10. Si l'intent est vide (premier tour, query courte),
        on prend des défauts génériques (top palettes équilibrées). */
     const localEntities = localToEntities(local);
+
+    /* Brief « ameliore la logique IA » : détection de thème.
+       Si la query contient un thème connu (pirate, gatsby, western…),
+       on biaise l'intent avec les colorHints du thème pour favoriser
+       les palettes Sanzo Wada visuellement adaptées. Le LLM aura donc
+       de meilleurs candidats à choisir dans les top 10. */
+    const theme = detectTheme(query);
+
+    /* Couleur cible pour le scoring engine : priorité absolue à la couleur
+       explicitement collectée par l'user (« je veux du bordeaux »), sinon
+       1er hex du thème détecté, sinon couleur extraite par le local interp. */
+    const themeFirstHex = theme?.colorHints?.[0];
+    const targetColorHex = colorNameToHex(collecte.couleur || localEntities.color) || themeFirstHex;
+
     const preIntent: UserIntent = {
       occasion: localEntities.occasion,
-      style: localEntities.style || userPrefs.style,
-      season: localEntities.season,
+      style: localEntities.style || userPrefs.style || theme?.styleHint,
+      season: localEntities.season || theme?.seasonHint,
       culture: localEntities.culture,
-      mood: localEntities.emotion ? [localEntities.emotion] : undefined,
-      avoid_colors: localEntities.excluded?.colors,
-      target_color_hex: colorNameToHex(collecte.couleur || localEntities.color),
+      mood: localEntities.emotion ? [localEntities.emotion] : (theme?.moodHint ? [theme.moodHint] : undefined),
+      avoid_colors: [...(localEntities.excluded?.colors || []), ...(collecte.avoid?.colors || [])],
+      target_color_hex: targetColorHex,
     };
-    const preMatches = findBestPalettesWithFallback(dictionary, preIntent, 10).matches;
+
+    let preMatches = findBestPalettesWithFallback(dictionary, preIntent, 10).matches;
+
+    /* Mode « surprends-moi » : si l'user demande explicitement de la
+       variété, on shuffle le top 10 pour que le LLM ne prenne pas
+       toujours la palette #1 (qui finit par être la même sur des
+       requêtes similaires). Le shuffle est déterministe sur un seed
+       basé sur le tour (Date.now millisecondes), pour qu'on ait quand
+       même la cohérence intra-session si l'user re-clique. */
+    if (SURPRISE_PATTERN.test(query)) {
+      const seed = Date.now() % 1000;
+      preMatches = [...preMatches].sort(() => (seed % 7) - 3 + Math.random() - 0.5);
+    }
     /* Brief 2026-05-26 perf : format compact pour économiser les tokens
        d'entrée (chaque appel coûte ~100 tokens en moins sur le palettes
        block). Le LLM lit aussi bien :
