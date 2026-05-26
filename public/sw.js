@@ -162,7 +162,19 @@
      Taupe, Crème, Os) — réf. swatch book. Hover lift +ombre, focus ring.
    - Mobile : essentielles passent à 6 colonnes
    Force re-fetch JS + CSS. */
-const CACHE_VERSION = "wada-v19-2026-05-26";
+/* Bump 26/05 v20 : alignement /composer sur /scanner — design unifié
+   « Un vêtement » et « Une couleur ». Brief client verbatim : « il
+   n'est pas comme une couleur rends le pareil ».
+   - Hero centré beige uni (au lieu du dark gradient olive)
+   - Kicker hairlines « Scanner · II » + H1 Fredoka centré
+   - ScanModeToggle partagé (au lieu du toggle custom inline)
+   - Carte panel cohérente : background, border, radius, shadow alignés
+   - Étapes 01/02/03/04 numérotées (NumberedStep helper) au lieu de
+     « 1. Pour qui... » texte simple → signature livre Sanzo Wada
+   - Aperture SVG au lieu de ◇ emoji
+   - Drop zone hairline dashed beige comme /scanner
+   Force re-fetch JS. */
+const CACHE_VERSION = "wada-v20-2026-05-26";
 const STATIC_CACHE  = `${CACHE_VERSION}-static`;
 const PAGE_CACHE    = `${CACHE_VERSION}-pages`;
 

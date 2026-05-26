@@ -16,6 +16,9 @@ import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import BackButton from "@/components/BackButton";
 import { composeOutfitFromColor, type ComposedOutfit, type Slot } from "@/lib/outfitComposer";
+/* Brief design 2026-05-26 : alignement /composer sur /scanner — même
+   toggle, même hero centré, mêmes hairlines, même structure éditoriale. */
+import ScanModeToggle from "@/components/ScanModeToggle";
 
 const palette = {
   beige: "#F4EFE7",
@@ -252,10 +255,6 @@ export default function ComposerPage() {
     setOutfit(null);
   };
 
-  /* Gradient du hero — olive→sable→camel (cohérent avec le concept clothing) */
-  const HERO_BG = "linear-gradient(150deg, #5d6450 0%, #9a8f74 60%, #b9a98c 100%)";
-  const HERO_VEIL = "linear-gradient(180deg, rgba(25,22,18,.58), rgba(25,22,18,.42))";
-
   return (
     <main style={{
       fontFamily: fonts.sans,
@@ -265,86 +264,79 @@ export default function ComposerPage() {
       minHeight: "100vh",
       WebkitFontSmoothing: "antialiased",
     }}>
-            {/* Brief audit 2026-05-28 : back button standardisé sur /composer
-          (page « Un vêtement » du scanner). Retour → /atelier (le hub) en
-          fallback si pas d'historique. */}
       <BackButton fallback="/atelier" />
 
-      {/* ═══════════════════ HERO photo + voile fort ═══════════════════
-          + `wada-fade-to-beige` : fondu 160px en bas → la zone sombre se
-          dissout dans le beige du contenu suivant (brief transitions). */}
-      <section className="wada-fade-to-beige" style={{
-        position: "relative", overflow: "hidden",
-        padding: "96px 26px 150px",
-      }}>
-        <div aria-hidden style={{ position: "absolute", inset: 0, background: HERO_BG }} />
-        <div aria-hidden style={{ position: "absolute", inset: 0, background: HERO_VEIL }} />
-
-        {/* Mode toggle en pill semi-transparente au top center */}
-        <div style={{
-          position: "absolute", top: 32, left: "50%", transform: "translateX(-50%)",
-          zIndex: 3,
-          display: "inline-flex",
-          background: "rgba(250,248,244,.16)",
-          border: "1px solid rgba(250,248,244,.4)",
-          borderRadius: 999, padding: 5, gap: 4,
-          backdropFilter: "blur(8px)",
-          WebkitBackdropFilter: "blur(8px)",
-        }}>
-          <Link href="/scanner" style={modeBtnStyle(false)}>
-            Une couleur
-          </Link>
-          <span style={modeBtnStyle(true)} aria-current="page">
-            ◇ Un vêtement
-          </span>
-        </div>
-
-        <div style={{ position: "relative", zIndex: 2, maxWidth: 1040, margin: "0 auto", color: palette.cream }}>
-          {/* Brief 2026-05-26 §3 : « Retour » retiré du Scanner/Composer.
-              Header + logo suffisent comme retour. Pas de doublon, pas
-              de flottant. */}
+      {/* ═══════════════════ HERO ÉDITORIAL CENTRÉ ═══════════════════
+          Brief 2026-05-26 « rends-le pareil que Une couleur » : on
+          remplace le hero dark gradient olive par le pattern centré
+          /scanner — beige uni, kicker hairlines « Scanner · II »,
+          H1 Fredoka, sous-titre Inter, toggle au-dessous. Cohérence
+          visuelle absolue entre les 2 modes du scanner. */}
+      <section style={{ padding: "44px 26px 8px", textAlign: "center" }}>
+        <div style={{ maxWidth: 1000, margin: "0 auto" }}>
+          {/* Kicker chapitré — réf. livre Sanzo Wada (Scanner Chapitre II) */}
+          <div style={{
+            display: "inline-flex", alignItems: "center", gap: 14,
+            fontFamily: fonts.sans, fontSize: 10, letterSpacing: "0.4em",
+            textTransform: "uppercase", color: palette.inkSoft,
+            fontWeight: 600, margin: "0 0 14px",
+          }}>
+            <span aria-hidden style={{ width: 32, height: 1, background: "currentColor", opacity: 0.4 }} />
+            <span style={{ color: palette.bordeaux }}>Scanner · II</span>
+            <span aria-hidden style={{ width: 32, height: 1, background: "currentColor", opacity: 0.4 }} />
+          </div>
 
           <h1 style={{
             fontFamily: fonts.display, fontWeight: 700,
-            fontSize: "clamp(38px, 6vw, 52px)",
-            lineHeight: 1.05, margin: "26px 0 14px",
-            textShadow: "0 2px 20px rgba(0,0,0,.3)",
-            maxWidth: "16ch",
+            fontSize: "clamp(32px, 5.4vw, 44px)", margin: "0 0 12px",
+            color: palette.ink,
+            letterSpacing: "-0.01em",
+            lineHeight: 1.08,
           }}>
             Une pièce que vous avez.<br />
-            Trois qui s'accordent.
+            Trois qui s&apos;accordent.
           </h1>
+
           <p style={{
-            fontFamily: fonts.body,
-            fontSize: 17, maxWidth: "48ch",
-            color: "rgba(250,248,244,.95)", lineHeight: 1.55,
+            color: palette.inkSoft,
+            maxWidth: "52ch", margin: "0 auto",
+            fontSize: 15, lineHeight: 1.6,
           }}>
-            Photographiez ce pull, ce jean, cette veste. WADA détecte la couleur, la
-            rattache à un accord de Sanzo Wada, et compose les pièces qui l'habitent.
+            Photographiez ce pull, ce jean, cette veste. WADA détecte la couleur, la rattache à un accord de Sanzo Wada, et compose les pièces qui l&apos;habitent.
           </p>
+
           <p style={{
-            fontSize: 13, color: "rgba(250,248,244,.85)", marginTop: 10,
+            fontSize: 12, color: palette.inkSoft, marginTop: 10,
+            fontStyle: "italic", opacity: 0.85,
           }}>
-            <strong>Tout reste sur votre appareil.</strong> Aucune photo n'est envoyée à WADA.
+            <strong style={{ fontStyle: "normal" }}>Tout reste sur votre appareil.</strong> Aucune photo n&apos;est envoyée à WADA.
           </p>
+
+          <div style={{ marginTop: 24 }}>
+            <ScanModeToggle active="vetement" />
+          </div>
         </div>
       </section>
 
-      {/* ═══ ÉTAT INITIAL — sélecteurs + upload ═══ */}
+      {/* ═══ ÉTAT INITIAL — sélecteurs + upload ═══
+          Brief 2026-05-26 : carte panel cohérente avec /scanner — même
+          fond #FBF9F5, border line, radius 24, padding 34, shadow soft.
+          Chaque étape : numéro chiffré 01/02/03/04 en kicker bordeaux
+          + titre uppercase + chips. */}
       {!outfit && (
         <section style={{
-          maxWidth: 1040, margin: "-90px auto 0",
-          padding: "0 26px",
-          position: "relative", zIndex: 4,
+          maxWidth: 1000, margin: "30px auto 0",
+          padding: "0 max(24px, env(safe-area-inset-right)) 0 max(24px, env(safe-area-inset-left))",
         }}>
           <div style={{
-            background: palette.cream,
-            border: `1px solid ${palette.line}`,
-            borderRadius: 20,
-            padding: "28px 32px",
-            boxShadow: shadow,
+            background: "var(--wada-card-bg-strong, #FBF9F5)",
+            border: `1px solid var(--wada-border, ${palette.line})`,
+            borderRadius: 24,
+            padding: 34,
+            boxShadow: "0 8px 30px rgba(30,30,30,.06)",
           }}>
-            <p style={kickerStyle}>1. Pour qui composer la tenue ?</p>
+            {/* Étape 01 — Genre */}
+            <NumberedStep n="01" title="Pour qui composer la tenue ?" />
             <ChipRow>
               {(["femme", "homme", "unisexe"] as Gender[]).map((g) => (
                 <Chip key={g} active={gender === g} onClick={() => setGender(g)}>
@@ -353,25 +345,21 @@ export default function ComposerPage() {
               ))}
             </ChipRow>
 
-            <p style={kickerStyle}>2. Quelle pièce avez-vous ?</p>
+            {/* Étape 02 — Pièce */}
+            <NumberedStep n="02" title="Quelle pièce avez-vous ?" />
             <ChipRow>
               {PIECE_OPTIONS.map((p) => (
                 <Chip key={p.slug} active={anchorSlot === p.slug} onClick={() => {
                   setAnchorSlot(p.slug);
-                  setPieceLabel(null);  // reset si l'utilisateur change de slot
+                  setPieceLabel(null);
                 }}>
                   {p.label}
                 </Chip>
               ))}
             </ChipRow>
 
-            {/* Brief « Scanner Un vêtement » §2 (26/05) — type/style
-                de la pièce : sans ça WADA proposait une tenue habillée
-                autour de chaussures de running. Choix optionnel mais
-                fortement encouragé : si vide → registre Classique par
-                défaut. La sélection ici dicte le `style=` passé à
-                /api/products et au moteur outfitComposer. */}
-            <p style={kickerStyle}>3. De quel style est cette {anchorSlot === "haut" ? "pièce du haut" : anchorSlot === "bas" ? "pièce du bas" : anchorSlot === "chaussures" ? "chaussure" : "veste"} ?</p>
+            {/* Étape 03 — Style */}
+            <NumberedStep n="03" title={`De quel style est cette ${anchorSlot === "haut" ? "pièce du haut" : anchorSlot === "bas" ? "pièce du bas" : anchorSlot === "chaussures" ? "chaussure" : "veste"} ?`} />
             <ChipRow>
               {(STYLE_BY_SLOT[anchorSlot] || []).map((s) => (
                 <Chip
@@ -384,26 +372,32 @@ export default function ComposerPage() {
               ))}
             </ChipRow>
 
-            <p style={kickerStyle}>4. Une photo de votre pièce</p>
+            {/* Étape 04 — Photo */}
+            <NumberedStep n="04" title="Une photo de votre pièce" />
             <div style={{
-              marginTop: 8, padding: 24,
-              border: `2px dashed ${palette.olive}`,
-              borderRadius: 16,
+              marginTop: 12, padding: "34px 20px",
+              border: `1.5px dashed var(--wada-border, ${palette.line})`,
+              borderRadius: 18,
               textAlign: "center",
-              background: "rgba(168,178,154,.06)",
+              background: palette.beige,
+              transition: "border-color .2s ease",
             }}>
               {imgPreview ? (
-                <img src={imgPreview} alt="" style={{ maxHeight: 220, borderRadius: 12, marginBottom: 14 }} />
+                <img src={imgPreview} alt="" style={{ maxHeight: 220, borderRadius: 12, marginBottom: 14, maxWidth: "100%", objectFit: "contain" }} />
               ) : (
-                <div aria-hidden style={{
-                  fontFamily: fonts.display, fontSize: 40, color: palette.olive,
-                  marginBottom: 8, fontWeight: 700,
-                }}>
-                  ◇
-                </div>
+                /* Aperture SVG — même icône que /scanner pour cohérence visuelle */
+                <svg
+                  aria-hidden
+                  width="38" height="38" viewBox="0 0 38 38"
+                  style={{ display: "block", margin: "0 auto 12px", color: palette.olive }}
+                >
+                  <circle cx="19" cy="19" r="17" fill="none" stroke="currentColor" strokeWidth="1" opacity="0.55" />
+                  <circle cx="19" cy="19" r="10" fill="none" stroke="currentColor" strokeWidth="1" />
+                  <circle cx="19" cy="19" r="2.5" fill="currentColor" />
+                </svg>
               )}
               {loading ? (
-                <p style={{ color: palette.inkSoft, fontStyle: "italic" }}>
+                <p style={{ color: palette.inkSoft, fontStyle: "italic", margin: 0 }}>
                   Analyse en cours…
                 </p>
               ) : (
@@ -412,15 +406,16 @@ export default function ComposerPage() {
                     type="button"
                     onClick={() => fileRef.current?.click()}
                     style={{
-                      fontFamily: fonts.sans, fontSize: 14,
-                      padding: "12px 28px", borderRadius: 999,
+                      fontFamily: fonts.sans, fontSize: 16,
+                      padding: "13px 28px", borderRadius: 999,
                       background: palette.bordeaux, color: palette.cream,
                       border: "none", cursor: "pointer", fontWeight: 500,
                     }}
                   >
+                    <span aria-hidden style={{ marginRight: 6 }}>📷</span>
                     Choisir une photo
                   </button>
-                  <p style={{ marginTop: 12, fontSize: 12, color: palette.inkSoft }}>
+                  <p style={{ marginTop: 12, fontSize: 12, color: palette.inkSoft, margin: "12px 0 0", fontStyle: "italic" }}>
                     JPG / PNG · max 8 Mo · analyse instantanée
                   </p>
                 </>
@@ -431,7 +426,11 @@ export default function ComposerPage() {
                 accept="image/*"
                 capture="environment"
                 onChange={onFileChange}
-                style={{ display: "none" }}
+                style={{
+                  position: "absolute", width: 1, height: 1,
+                  padding: 0, margin: -1, overflow: "hidden",
+                  clip: "rect(0,0,0,0)", whiteSpace: "nowrap", border: 0,
+                }}
               />
             </div>
           </div>
@@ -606,6 +605,37 @@ const kickerStyle: React.CSSProperties = {
   color: palette.ink,
 };
 
+/* Brief design 2026-05-26 : étape numérotée alignée sur /scanner —
+   numéro chiffré bordeaux serif + titre uppercase ink letter-spaced.
+   Signature livre Sanzo Wada (accords numérotés). Marge top 28 sauf
+   sur la 1ère étape pour respiration uniforme. */
+function NumberedStep({ n, title }: { n: string; title: string }) {
+  return (
+    <div style={{
+      display: "grid", gridTemplateColumns: "32px 1fr",
+      gap: 14, alignItems: "baseline",
+      margin: n === "01" ? "0 0 6px" : "28px 0 6px",
+      paddingTop: n === "01" ? 0 : 18,
+      borderTop: n === "01" ? "none" : `1px solid var(--wada-border, ${palette.line})`,
+    }}>
+      <span style={{
+        fontFamily: fonts.display, fontWeight: 600,
+        fontSize: 13, color: palette.bordeaux,
+        letterSpacing: "0.04em",
+      }}>
+        {n}
+      </span>
+      <span style={{
+        fontFamily: fonts.sans, fontSize: 12,
+        letterSpacing: "0.15em", textTransform: "uppercase",
+        color: palette.ink, fontWeight: 600,
+      }}>
+        {title}
+      </span>
+    </div>
+  );
+}
+
 const sectionLabelStyle: React.CSSProperties = {
   fontSize: 11, letterSpacing: "0.28em",
   textTransform: "uppercase",
@@ -613,18 +643,9 @@ const sectionLabelStyle: React.CSSProperties = {
   margin: "34px 0 14px",
 };
 
-function modeBtnStyle(active: boolean): React.CSSProperties {
-  return {
-    fontFamily: fonts.sans, fontSize: 13,
-    padding: "9px 18px", borderRadius: 999,
-    border: "none",
-    background: active ? palette.bordeaux : "transparent",
-    color: palette.cream,
-    cursor: active ? "default" : "pointer",
-    textDecoration: "none",
-    fontWeight: active ? 600 : 500,
-  };
-}
+/* modeBtnStyle retiré 2026-05-26 — l'ancien toggle inline (pill blanc
+   sur fond dark) est remplacé par <ScanModeToggle active="vetement" />
+   pour cohérence absolue avec /scanner. */
 
 function ChipRow({ children }: { children: React.ReactNode }) {
   return <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>{children}</div>;
