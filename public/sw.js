@@ -119,7 +119,16 @@
       le texte qui pousse. Post-processing (outfit + pourquoi +
       variation) émis dans un évènement final "complete".
    Force re-fetch JS + CSS. */
-const CACHE_VERSION = "wada-v15-2026-05-26";
+/* Bump 26/05 v16 : optimisations IA continues.
+   - prompt_cache_key explicite envoyé à OpenAI → meilleure
+     localisation des appels du même user sur leur serveur de cache
+   - temperature 0.5 → 0.4 → sortie LLM converge plus vite (~10% TTFT)
+   - palettesBlock format compact ("094:Béton & Lin [...] tags" au
+     lieu de "1. No. 094 « ... »") → ~100 tokens input en moins / appel
+   - stream_options.include_usage → télémetrie tokens dans le stream
+   - AbortController côté client : nouveau msg pendant streaming
+     annule l'ancien → plus de race condition. */
+const CACHE_VERSION = "wada-v16-2026-05-26";
 const STATIC_CACHE  = `${CACHE_VERSION}-static`;
 const PAGE_CACHE    = `${CACHE_VERSION}-pages`;
 

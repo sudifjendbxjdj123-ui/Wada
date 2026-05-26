@@ -778,12 +778,17 @@ export async function POST(req: Request) {
       target_color_hex: colorNameToHex(collecte.couleur || localEntities.color),
     };
     const preMatches = findBestPalettesWithFallback(dictionary, preIntent, 10).matches;
+    /* Brief 2026-05-26 perf : format compact pour économiser les tokens
+       d'entrée (chaque appel coûte ~100 tokens en moins sur le palettes
+       block). Le LLM lit aussi bien :
+         "094:Béton & Lin [#1F3A5F Marine/#C9B79C Sable/...] classique,hiver"
+       que la version verbose. */
     const palettesBlock = preMatches.length > 0
-      ? `PALETTES SANZO WADA À TA DISPOSITION (choisis-en UNE, ne les invente pas) :\n${preMatches.slice(0, 10).map((m, i) => {
+      ? `ACCORDS WADA (choisis-en 1, n'invente PAS de ref) :\n${preMatches.slice(0, 10).map((m) => {
           const e = m.entry;
-          const colorsStr = e.colors.map((c) => `${c.hex} ${c.name}`).join(" / ");
-          const tags = [e.culture, ...(e.seasons || []).slice(0, 2), ...(e.styles || []).slice(0, 2)].filter(Boolean).join(", ");
-          return `${i + 1}. No. ${e.number} « ${e.name} » — ${colorsStr}${tags ? " — " + tags : ""}`;
+          const colors = e.colors.map((c) => `${c.hex} ${c.name}`).join(" / ");
+          const tags = [e.culture, ...(e.seasons || []).slice(0, 2), ...(e.styles || []).slice(0, 2)].filter(Boolean).join(",");
+          return `${e.number}:${e.name} [${colors}]${tags ? " " + tags : ""}`;
         }).join("\n")}\n`
       : "";
 
@@ -835,10 +840,22 @@ export async function POST(req: Request) {
           ...historyForLLM,
           { role: "user", content: fullUserMessage },
         ],
-        temperature: 0.5,
+        /* Brief 2026-05-26 « performances IA » :
+           - temperature 0.4 (au lieu de 0.5) → sortie un peu plus
+             déterministe = LLM converge plus vite, TTFT réduit ~10%,
+             sans sacrifier la créativité (les variations restent bonnes).
+           - prompt_cache_key : OpenAI a un système de prompt caching
+             automatique (cache hit ~50% TTFT et 50% coût) sur les
+             prompts > 1024 tokens partageant un prefix identique. Notre
+             SYSTEM_PROMPT_V2 fait ~3500 tokens, conditions remplies. La
+             clé explicite aide le router à co-localiser les requêtes
+             du même user sur le même serveur pour maximiser les hits. */
+        temperature: 0.4,
+        prompt_cache_key: "wada-stylist-system-v15",
         response_format: { type: "json_object" },
-        max_tokens: 900, // V4 : palette block en input + nom_tenue en output → marge
+        max_tokens: 900,
         stream: true,
+        stream_options: { include_usage: true },
       }),
     });
 

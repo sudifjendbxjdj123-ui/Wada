@@ -451,6 +451,12 @@ export default function StylistPage() {
     }
   }
 
+  /* Brief 2026-05-26 perf — AbortController : si l'user envoie un nouveau
+     message alors que le précédent est encore en streaming, on annule
+     l'ancien appel. Évite les race conditions où un delta tardif viendrait
+     écraser la bulle de la NOUVELLE conversation. */
+  const inFlightAbortRef = useRef<AbortController | null>(null);
+
   /* Scroll vers le bas à chaque nouvelle bulle */
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
@@ -1086,6 +1092,14 @@ export default function StylistPage() {
       occasion: state.occasion,
     };
 
+    /* Annule la requête précédente si l'user envoie un nouveau message
+       avant la fin du stream précédent. */
+    if (inFlightAbortRef.current) {
+      inFlightAbortRef.current.abort();
+    }
+    const abortController = new AbortController();
+    inFlightAbortRef.current = abortController;
+
     /* Effet « réfléchit » : 3 points qui pulsent. Reste affiché jusqu'à
        l'arrivée du PREMIER delta SSE, après quoi il sera REMPLACÉ par
        le texte streamé (via updateStreamingText). */
@@ -1100,6 +1114,7 @@ export default function StylistPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ query, userPrefs, collecte, history: chatHistoryRef.current }),
+        signal: abortController.signal,
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
@@ -1163,9 +1178,18 @@ export default function StylistPage() {
         addBot("Petit souci technique de mon côté. Vous pouvez réessayer ?");
       }
     } catch (err) {
+      // Annulation volontaire (user a envoyé un nouveau msg) → silent.
+      if (err instanceof Error && err.name === "AbortError") {
+        return;
+      }
       console.error("[stylist] callLLM error:", err);
       clearTransient();
       addBot("Petit souci technique de mon côté. Vous pouvez réessayer ?");
+    } finally {
+      // Libère la référence si c'est bien CE controller qui était in-flight
+      if (inFlightAbortRef.current === abortController) {
+        inFlightAbortRef.current = null;
+      }
     }
   }
 
