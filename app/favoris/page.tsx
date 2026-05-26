@@ -1,32 +1,21 @@
 "use client";
 import Link from "next/link";
-import { useState, useEffect } from "react";
-import { dictionary, cultureLabels } from "@/lib/data";
+import { dictionary } from "@/lib/data";
 import { ink, paper, subtle, seal, border, sectionLabel, textSecondary } from "@/lib/styles";
 import BackButton from "@/components/BackButton";
 import PaletteCard from "@/components/PaletteCard";
+/* Brief client 2026-05-26 : unification favoris via useFavorites().
+   Avant la page gérait son propre state + localStorage en parallèle de
+   PaletteCard → 2 sources de vérité qui pouvaient se désynchroniser.
+   Maintenant : 1 hook, sync inter-onglets gratuite, retrait depuis le
+   ♡ dans la card propage instantanément. */
+import { useFavorites } from "@/hooks/useFavorites";
 
 export default function FavorisPage() {
-  const [favorites, setFavorites] = useState<string[]>([]);
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-    const fv = localStorage.getItem("wada-favorites");
-    if (fv) { try { setFavorites(JSON.parse(fv)); } catch {} }
-  }, []);
-
-  const removeFromFavorites = (number: string) => {
-    const next = favorites.filter((n) => n !== number);
-    setFavorites(next);
-    localStorage.setItem("wada-favorites", JSON.stringify(next));
-  };
+  const { favorites, clear, hydrated } = useFavorites();
 
   const clearAll = () => {
-    if (confirm("Vider tous les favoris ?")) {
-      setFavorites([]);
-      localStorage.removeItem("wada-favorites");
-    }
+    if (confirm("Vider tous les favoris ?")) clear();
   };
 
   const favPalettes = dictionary.filter((d) => favorites.includes(d.number));
@@ -42,14 +31,14 @@ export default function FavorisPage() {
             <h1 className="wada-hero-title wada-text-3d-ink" style={{ fontSize: 56, fontWeight: 400, letterSpacing: "-0.01em", margin: 0, fontStyle: "italic", lineHeight: 1, fontFamily: "'Inter', sans-serif" }}>
               Mes favoris
             </h1>
-            {mounted && (
+            {hydrated && (
               <p style={{ fontSize: 16, color: subtle, fontStyle: "italic", marginTop: 24, fontFamily: "'Inter', sans-serif" }}>
                 {favPalettes.length} {favPalettes.length > 1 ? "palettes sauvegardées" : favPalettes.length === 0 ? "palette sauvegardée" : "palette sauvegardée"}
               </p>
             )}
           </header>
 
-          {!mounted ? null : favPalettes.length === 0 ? (
+          {!hydrated ? null : favPalettes.length === 0 ? (
             <section style={{ textAlign: "center", padding: "60px 24px", border: `1px solid ${border}`, background: "rgba(255,255,255,0.4)", maxWidth: 600, margin: "0 auto" }}>
               <p style={{ fontSize: 18, fontStyle: "italic", color: textSecondary, marginBottom: 28, fontFamily: "'Inter', sans-serif" }}>
                 Vous n'avez pas encore de favoris.
@@ -64,16 +53,15 @@ export default function FavorisPage() {
           ) : (
             <>
               <section style={{ marginBottom: 60 }}>
+                {/* Brief client 2026-05-26 : le ♡ favori est maintenant
+                    intégré dans PaletteCard (top-right des bandes, rond
+                    cream → bordeaux quand actif). Plus besoin du bouton
+                    « ♥ retirer » externe — un clic sur le ♡ dans la card
+                    retire la palette des favoris (re-render auto via
+                    useFavorites() qui écoute le storage). */}
                 <div className="wada-palettes-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 32 }}>
                   {favPalettes.map((p) => (
-                    <article key={p.number} style={{ position: "relative" }}>
-                      <PaletteCard entry={p} />
-                      <button onClick={() => removeFromFavorites(p.number)} aria-label="Retirer des favoris" style={{ position: "absolute", top: 14, right: 14, background: paper, border: `1px solid ${border}`, color: seal, fontSize: 18, width: 32, height: 32, borderRadius: "50%", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1, transition: "all 0.2s ease", zIndex: 5 }}
-                        onMouseEnter={(ev) => { ev.currentTarget.style.background = seal; ev.currentTarget.style.color = paper; }}
-                        onMouseLeave={(ev) => { ev.currentTarget.style.background = paper; ev.currentTarget.style.color = seal; }}>
-                        ♥
-                      </button>
-                    </article>
+                    <PaletteCard key={p.number} entry={p} />
                   ))}
                 </div>
               </section>

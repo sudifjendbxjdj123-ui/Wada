@@ -22,6 +22,12 @@ import { dictionary, type DictionaryEntry } from "@/lib/data";
 import { colorFamily } from "@/lib/outfitComposer";
 import { scoreOutfit } from "@/lib/colorEngine";
 import BackButton from "@/components/BackButton";
+/* Brief client 2026-05-26 : « Un seul composant <PaletteCard> partout
+   (grille, scanner, cultures, favoris) ». L'ancien PaletteCardEditorial
+   inline (défini en bas de ce fichier) est retiré au profit du composant
+   partagé qui sert maintenant TOUTES les pages. */
+import PaletteCard from "@/components/PaletteCard";
+import { useFavorites } from "@/hooks/useFavorites";
 
 const palette = {
   bg: "#EFEBE3",
@@ -116,7 +122,13 @@ export default function PalettesPage() {
   const [query, setQuery] = useState("");
   const [sortMode, setSortMode] = useState<SortMode>("number");
   const [view, setView] = useState<ViewMode>("large");
-  const [favorites, setFavorites] = useState<Set<string>>(new Set());
+  /* Brief 2026-05-26 — unification : la page lit les favoris via le même
+     hook useFavorites() que PaletteCard. Avant on avait 2 sources de
+     vérité (Set local + hook dans la card) qui pouvaient désynchroniser.
+     Maintenant : 1 hook, 1 localStorage, 1 sync inter-onglets gratuite. */
+  const { favorites } = useFavorites();
+  const favoritesSet = useMemo(() => new Set(favorites), [favorites]);
+
   // Brief Étape 2.1 (2026-05-26) : pagination 24 + bouton « Voir plus ».
   // Charger 348 cards d'un coup tuait les perfs sur mobile 4G.
   const PAGE_SIZE = 24;
@@ -125,23 +137,6 @@ export default function PalettesPage() {
   useEffect(() => {
     setPageCount(PAGE_SIZE);
   }, [filter, query, sortMode]);
-
-  useEffect(() => {
-    try {
-      const fv = localStorage.getItem("wada-favorites");
-      if (fv) setFavorites(new Set(JSON.parse(fv)));
-    } catch {}
-  }, []);
-
-  const toggleFavorite = (num: string) => {
-    setFavorites((prev) => {
-      const next = new Set(prev);
-      if (next.has(num)) next.delete(num);
-      else next.add(num);
-      try { localStorage.setItem("wada-favorites", JSON.stringify([...next])); } catch {}
-      return next;
-    });
-  };
 
   /* Annote chaque palette avec familles + harmony % — memoisé pour les 348 */
   const annotated = useMemo(() => {
@@ -167,14 +162,14 @@ export default function PalettesPage() {
     if (sortMode === "az") list = [...list].sort((a, b) => a.entry.name.localeCompare(b.entry.name, "fr"));
     else if (sortMode === "harmony") list = [...list].sort((a, b) => b.harmony - a.harmony);
     else if (sortMode === "popular") list = [...list].sort((a, b) => {
-      const af = favorites.has(a.entry.number) ? 1 : 0;
-      const bf = favorites.has(b.entry.number) ? 1 : 0;
+      const af = favoritesSet.has(a.entry.number) ? 1 : 0;
+      const bf = favoritesSet.has(b.entry.number) ? 1 : 0;
       if (af !== bf) return bf - af;
       return a.entry.number.localeCompare(b.entry.number);
     });
     else list = [...list].sort((a, b) => a.entry.number.localeCompare(b.entry.number));
     return list;
-  }, [annotated, filter, query, sortMode, favorites]);
+  }, [annotated, filter, query, sortMode, favoritesSet]);
 
   return (
     <main style={{
@@ -347,16 +342,8 @@ export default function PalettesPage() {
                 : "repeat(auto-fill, minmax(180px, 1fr))",
               gap: view === "large" ? 20 : 16,
             }}>
-              {filtered.slice(0, pageCount).map(({ entry, families, gradient, harmony }) => (
-                <PaletteCardEditorial
-                  key={entry.number}
-                  entry={entry}
-                  gradient={gradient}
-                  harmony={harmony}
-                  family={[...families].find((f) => f !== "toutes") || "neutres"}
-                  isFavorite={favorites.has(entry.number)}
-                  onToggleFavorite={() => toggleFavorite(entry.number)}
-                />
+              {filtered.slice(0, pageCount).map(({ entry }) => (
+                <PaletteCard key={entry.number} entry={entry} />
               ))}
             </div>
             {/* « Voir plus » — affiche +24 palettes à chaque clic, jusqu'à
@@ -445,141 +432,9 @@ export default function PalettesPage() {
   );
 }
 
-/* ──────────────────────────────────────────────────────────────────────
-   PaletteCardEditorial — photo gradient + swatches + body riche
-   ────────────────────────────────────────────────────────────────────── */
-/* ──────────────────────────────────────────────────────────────────────
-   PaletteCardEditorial — refonte 2026-05-26 (brief « palettes pro »).
-   3 bandes verticales 150px (hover : 1ère bande s'élargit), n° top-left
-   filigrane, ♡ top-right rond, nom serif + culture en bas. Card cream,
-   border line, shadow soft, hover translateY -5px.
-   ────────────────────────────────────────────────────────────────────── */
-function PaletteCardEditorial({
-  entry, isFavorite, onToggleFavorite,
-}: {
-  entry: DictionaryEntry;
-  // gradient/harmony/family conservés en props pour compat (non utilisés
-  // ici — la card épure le visuel selon le brief).
-  gradient: string;
-  harmony: number;
-  family: Family;
-  isFavorite: boolean;
-  onToggleFavorite: () => void;
-}) {
-  // Label culture lisible FR (premier des cultureLabels match)
-  const cultureFR = entry.culture
-    ? entry.culture[0].toUpperCase() + entry.culture.slice(1)
-    : "";
-
-  return (
-    <Link
-      href={`/palette/${entry.number}`}
-      className="wada-palette-card"
-      style={{
-        background: "#FBF9F5",
-        border: `1px solid ${palette.line}`,
-        borderRadius: 16,
-        overflow: "hidden",
-        boxShadow: "0 6px 22px rgba(30,30,30,.05)",
-        cursor: "pointer",
-        textDecoration: "none",
-        color: "inherit",
-        display: "block",
-        transition: "transform 0.35s cubic-bezier(.22,1,.36,1), box-shadow 0.35s cubic-bezier(.22,1,.36,1)",
-      }}
-      onMouseEnter={(ev) => {
-        ev.currentTarget.style.transform = "translateY(-5px)";
-        ev.currentTarget.style.boxShadow = "0 18px 46px rgba(30,30,30,.12)";
-      }}
-      onMouseLeave={(ev) => {
-        ev.currentTarget.style.transform = "translateY(0)";
-        ev.currentTarget.style.boxShadow = "0 6px 22px rgba(30,30,30,.05)";
-      }}
-    >
-      {/* ─── 3-4 bandes de couleur verticales, h:150 ─── */}
-      <div className="wada-palette-bands" style={{
-        position: "relative",
-        display: "flex",
-        height: 150,
-      }}>
-        {entry.colors.map((c, i) => (
-          <span
-            key={i}
-            title={`${c.name} ${c.hex}`}
-            style={{
-              flex: 1,
-              background: c.hex,
-              transition: "flex 0.35s cubic-bezier(.22,1,.36,1)",
-            }}
-          />
-        ))}
-
-        {/* N° top-left — filigrane blanc, faible opacité */}
-        <span style={{
-          position: "absolute",
-          top: 11, left: 12,
-          fontFamily: fonts.display,
-          fontWeight: 600,
-          fontSize: 11,
-          color: "rgba(255,255,255,.9)",
-          textShadow: "0 1px 3px rgba(0,0,0,.3)",
-          letterSpacing: "0.04em",
-          pointerEvents: "none",
-        }}>
-          N°{entry.number}
-        </span>
-
-        {/* ♡ Favori top-right — rond cream avec hover bordeaux */}
-        <button
-          type="button"
-          aria-label={isFavorite ? "Retirer des favoris" : "Ajouter aux favoris"}
-          onClick={(e) => { e.preventDefault(); e.stopPropagation(); onToggleFavorite(); }}
-          style={{
-            position: "absolute",
-            top: 10, right: 10,
-            width: 30, height: 30,
-            borderRadius: "50%",
-            border: "none",
-            background: isFavorite ? palette.bordeaux : "rgba(255,255,255,.82)",
-            color: isFavorite ? "#fff" : palette.bordeaux,
-            fontSize: 14,
-            cursor: "pointer",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            transition: "background 0.2s, color 0.2s",
-          }}
-        >
-          {isFavorite ? "♥" : "♡"}
-        </button>
-      </div>
-
-      {/* ─── Body : nom serif + culture filigrane ─── */}
-      <div style={{ padding: "13px 15px 15px" }}>
-        <p style={{
-          fontFamily: fonts.serif,
-          fontWeight: 500,
-          fontSize: 18,
-          color: palette.ink,
-          lineHeight: 1.15,
-          margin: 0,
-        }}>
-          {entry.name}
-        </p>
-        {cultureFR && (
-          <p style={{
-            fontSize: 11,
-            letterSpacing: "0.08em",
-            textTransform: "uppercase",
-            color: "#9a9388",
-            marginTop: 4,
-            margin: "4px 0 0",
-          }}>
-            {cultureFR}
-          </p>
-        )}
-      </div>
-    </Link>
-  );
-}
+/* PaletteCardEditorial supprimé 2026-05-26 — promu en composant partagé
+   components/PaletteCard.tsx, utilisé maintenant par /palettes, /scanner,
+   /cultures, /favoris (brief client : un seul composant carte partout). */
 
 function PromoFeat({ icon, label, desc }: { icon: string; label: string; desc: string }) {
   return (

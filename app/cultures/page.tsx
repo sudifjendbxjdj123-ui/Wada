@@ -4,6 +4,10 @@ import { cultures, dictionary, enc } from "@/lib/data";
 import { ink, paper, subtle, seal, border, sectionLabel, textSecondary } from "@/lib/styles";
 import BackButton from "@/components/BackButton";
 import ExternalLink from "@/components/ExternalLink";
+/* Brief client 2026-05-26 : un seul composant PaletteCard partout —
+   les mini-vignettes inline (3 bandes 110px sans culture ni ♡) sont
+   remplacées par le PaletteCard partagé pour cohérence sitewide. */
+import PaletteCard from "@/components/PaletteCard";
 
 export default function CulturesPage() {
   return (
@@ -97,14 +101,7 @@ export default function CulturesPage() {
                         <p style={{ ...sectionLabel, marginBottom: 18 }}>Palettes WADA</p>
                         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
                           {cultPalettes.map((p) => (
-                            <Link key={p.number} href={`/palette/${p.number}`} style={{ textDecoration: "none", color: ink }}>
-                              <div style={{ cursor: "pointer" }}>
-                                <div className="wada-palette-bands" style={{ display: "flex", height: 110, border: `1px solid ${border}` }}>
-                                  {p.colors.map((c) => (<div key={c.hex} style={{ flex: 1, background: c.hex }} />))}
-                                </div>
-                                <p style={{ fontSize: 11, fontStyle: "italic", margin: "8px 0 0", fontFamily: "'Inter', sans-serif" }}>{p.name}</p>
-                              </div>
-                            </Link>
+                            <PaletteCard key={p.number} entry={p} />
                           ))}
                         </div>
                       </div>

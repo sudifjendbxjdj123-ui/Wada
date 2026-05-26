@@ -12,7 +12,11 @@ import BackButton from "@/components/BackButton";
 import HandArrow from "@/components/HandArrow";
 import SketchUnderline from "@/components/SketchUnderline";
 import Reveal from "@/components/Reveal";
-import PaletteCardMatisse from "@/components/PaletteCardMatisse";
+/* Brief client 2026-05-26 : un seul composant PaletteCard partout —
+   l'ancien PaletteCardMatisse (décoratif Matisse cut-out / Pantone) est
+   supprimé. À propos utilise maintenant la même carte propre que la
+   grille /palettes. */
+import PaletteCard from "@/components/PaletteCard";
 
 // Police titres unifiée brief 2026-05-21 : Bagel Fat One sitewide
 // (cohérence d'identité avec /, /atelier, /palettes, /palette/[n], /stylist).
@@ -217,12 +221,10 @@ export default function AboutPage() {
                   Wada — transformée en tenue moderne, portable, shoppable.
                 </p>
               </div>
-              <div style={{
-                background: paper, border: `1px solid ${border}`, borderRadius: cardRadius,
-                overflow: "hidden",
-                boxShadow: "var(--wada-shadow-3)",
-              }}>
-                <PaletteCardMatisse entry={rosée} height={420} />
+              <div>
+                {/* PaletteCard a déjà son propre encadrement (border +
+                    shadow + radius 16) — on retire le wrapper double. */}
+                <PaletteCard entry={rosée} />
               </div>
             </div>
           </Reveal>

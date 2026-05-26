@@ -47,7 +47,13 @@
    (brief : « réduire les plus gros pour ne pas faire lourd »).
    Force re-fetch CSS+JS chez tous les clients pour qu'ils voient
    la nouvelle typo dès le prochain lancement. */
-const CACHE_VERSION = "wada-v7-2026-05-26";
+/* Bump 26/05 v8 : brief client « Unifier les cartes de palette sur
+   tout le site avec le style « propre » de la grille /palettes ».
+   PaletteCardMatisse SUPPRIMÉ (fichier deleted). Un seul composant
+   <PaletteCard> partagé partout : /palettes, /scanner, /cultures,
+   /favoris, /about, WadaVisual. ♡ favori intégré dans la card via
+   useFavorites(), plus de bouton ✕ externe sur /favoris. */
+const CACHE_VERSION = "wada-v8-2026-05-26";
 const STATIC_CACHE  = `${CACHE_VERSION}-static`;
 const PAGE_CACHE    = `${CACHE_VERSION}-pages`;
 

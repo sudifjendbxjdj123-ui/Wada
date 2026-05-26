@@ -3,7 +3,10 @@ import type { DictionaryEntry } from "@/lib/data";
 import { dictionary } from "@/lib/data";
 import { iconForItem, PieceIcon } from "@/lib/icons";
 import { ink, paper, subtle, border, cardBg, fontHeading, fontLabel, mojo } from "@/lib/styles";
-import PaletteCardMatisse from "./PaletteCardMatisse";
+/* Brief client 2026-05-26 : PaletteCardMatisse supprimé sitewide.
+   Ce wrapper a déjà son propre header (N°) et footer (nom + culture +
+   couleurs), donc on rend juste les bandes pleines directement, pas
+   besoin d'importer la PaletteCard complète (qui dupliquerait header/footer). */
 // OutfitAvatar n'est plus utilisé ici — variant "outfit-stack" rend désormais
 // une vraie photo Unsplash tintée par la palette (cf. lignes 130-180).
 
@@ -335,10 +338,18 @@ function BookPage({ entry, dark }: { entry: DictionaryEntry; dark: boolean }) {
           ))}
         </div>
       </div>
-      {/* Silhouette empilée */}
-      {/* Moodboard Matisse compact — formes organiques + Pantone overlay */}
-      <div style={{ flex: 1, minHeight: 220 }}>
-        <PaletteCardMatisse entry={entry} height={220} />
+      {/* Bandes de couleur pleines — alignées sur le visuel /palettes
+          unifié (brief client 26/05). Plus de cellules organiques cut-out,
+          plus de mini-cartes superposées : juste les couleurs. */}
+      <div style={{ flex: 1, minHeight: 220, display: "flex" }}>
+        {entry.colors.map((c) => (
+          <span
+            key={c.hex}
+            title={`${c.name} ${c.hex}`}
+            style={{ flex: 1, background: c.hex }}
+            aria-hidden="true"
+          />
+        ))}
       </div>
       {/* Pied : nom italique + culture + noms de couleurs (réf. Brume du matin) */}
       <div style={{ padding: "14px 16px 16px", borderTop: `1px solid ${dark ? "rgba(255,255,255,0.12)" : border}`, textAlign: "center", background: cardBgLocal }}>
