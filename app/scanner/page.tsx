@@ -154,50 +154,39 @@ export default function ScannerPage() {
            que le contenu reste dans la zone safe. */
         padding: "0 max(24px, env(safe-area-inset-right)) 0 max(24px, env(safe-area-inset-left))",
       }}>
-        {/* ─── HERO ÉDITORIAL CENTRÉ ───
-            Brief design 2026-05-26 : hairline + numéro de chapitre type
-            livre Sanzo Wada (signature éditoriale WADA). */}
-        <div style={{ padding: "44px 0 8px", textAlign: "center" }}>
+        {/* ─── HERO ÉPURÉ ───
+            Brief client 2026-05-26 : « trop d'information, plus ludique
+            plus instinctif ». On retire le kicker chapitre, le paragraphe
+            marketing et la colonne 01/02/03. H1 court + toggle =
+            entrée directe dans l'action. */}
+        <div style={{ padding: "48px 0 4px", textAlign: "center" }}>
           <Reveal>
-            {/* Hairline centrale + numéro chapitre (réf. livre Sanzo Wada) */}
-            <div style={{
-              display: "inline-flex", alignItems: "center", gap: 14,
-              fontFamily: fonts.sans, fontSize: 10, letterSpacing: "0.4em",
-              textTransform: "uppercase", color: "var(--wada-text-secondary, #6f685f)",
-              fontWeight: 600, margin: "0 0 14px",
-            }}>
-              <span aria-hidden style={{
-                width: 32, height: 1, background: "currentColor", opacity: 0.4,
-              }} />
-              <span style={{ color: fallback.bordeaux }}>Scanner · I</span>
-              <span aria-hidden style={{
-                width: 32, height: 1, background: "currentColor", opacity: 0.4,
-              }} />
+            <div style={{ marginBottom: 22 }}>
+              <ScanModeToggle active="couleur" />
             </div>
             <h1 style={{
               fontFamily: fonts.display, fontWeight: 700,
-              fontSize: "clamp(32px, 5.4vw, 44px)", margin: "0 0 12px",
+              fontSize: "clamp(34px, 5.6vw, 48px)", margin: "0 0 4px",
               color: "var(--wada-ink, #1E1E1E)",
               letterSpacing: "-0.01em",
             }}>
-              Trouvez votre couleur exacte.
+              Quelle couleur ?
             </h1>
             <p style={{
               color: "var(--wada-text-secondary, #6f685f)",
-              maxWidth: "52ch", margin: "0 auto",
-              fontSize: 15, lineHeight: 1.6,
+              margin: 0, fontSize: 14, fontStyle: "italic",
             }}>
-              Photographiez une couleur ou un vêtement — WADA lit la teinte vraie et propose les palettes qui s'accordent.
+              Une photo, ou une teinte parmi les essentielles.
             </p>
-            <div style={{ marginTop: 24 }}>
-              <ScanModeToggle active="couleur" />
-            </div>
           </Reveal>
         </div>
 
-        {/* ─── PANEL 2-COL ───
-            Brief design 2026-05-26 : grille avec hairline vertical médian
-            (séparateur éditorial discret, signature DA WADA). */}
+        {/* ─── PANEL ÉPURÉ ───
+            Brief client : « ludique + instinctif ». Une seule colonne
+            centrée : drop zone → boutons → bandeau couleur détectée →
+            grille 12 essentielles. Suppression de la colonne marketing
+            01/02/03 (« Précision », « Sans inscription », « 348 palettes »)
+            qui surchargeait sans aider à l'action. */}
         <section
           className="wada-scanner-panel"
           style={{
@@ -206,11 +195,8 @@ export default function ScannerPage() {
             borderRadius: 24,
             padding: 34,
             boxShadow: "0 8px 30px rgba(30,30,30,.06)",
-            margin: "30px 0 0",
-            display: "grid",
-            gridTemplateColumns: "1fr 1px 1fr",
-            gap: 38,
-            alignItems: "stretch",
+            margin: "26px auto 0",
+            maxWidth: 580,
           }}
         >
           {/* COLONNE GAUCHE — drop zone + détection */}
@@ -442,122 +428,30 @@ export default function ScannerPage() {
             </div>
           </div>
 
-          {/* HAIRLINE DIVIDER vertical — entre les 2 colonnes, signature
-              éditoriale (cf. mise en page d'un livre de couleur). */}
-          <div
-            aria-hidden
-            style={{
-              background: "var(--wada-border, rgba(30,30,30,.10))",
-              width: 1,
-              alignSelf: "stretch",
-              margin: "8px 0",
-            }}
-          />
-
-          {/* COLONNE DROITE — info */}
-          <div>
-            <h2 style={{
-              fontFamily: fonts.display, fontWeight: 700,
-              fontSize: "clamp(26px, 3.4vw, 34px)", lineHeight: 1.1,
-              color: "var(--wada-ink, #1E1E1E)", margin: 0,
-              letterSpacing: "-0.01em",
-            }}>
-              La teinte vraie, pas une approximation.
-            </h2>
-            <p style={{
-              color: "var(--wada-text-secondary, #6f685f)",
-              margin: "14px 0 22px",
-              fontSize: 14, lineHeight: 1.6,
-            }}>
-              WADA détecte la couleur dans votre navigateur et la rattache à l'accord de Sanzo Wada le plus proche.
-            </p>
-
-            {/* Brief design 2026-05-26 : numérotation 01/02/03 chiffres
-                serif en kicker remplace les ✓. Signature éditoriale livre
-                Sanzo Wada (les accords numérotés). */}
-            {[
-              { t: "Précision", d: "analyse pondérée, ignore le bruit." },
-              { t: "Sans inscription", d: "tout reste sur votre appareil." },
-              { t: "348 palettes", d: "le dictionnaire complet, à portée." },
-            ].map((b, i) => (
-              <div key={b.t} style={{
-                display: "grid", gridTemplateColumns: "32px 1fr",
-                gap: 14, marginBottom: 14,
-                paddingTop: i === 0 ? 0 : 14,
-                borderTop: i === 0 ? "none" : "1px solid var(--wada-border, rgba(30,30,30,.07))",
-              }}>
-                <span style={{
-                  fontFamily: fonts.display, fontWeight: 600,
-                  fontSize: 13, color: fallback.bordeaux,
-                  letterSpacing: "0.04em",
-                  paddingTop: 1,
-                }}>
-                  {String(i + 1).padStart(2, "0")}
-                </span>
-                <div>
-                  <div style={{
-                    fontFamily: fonts.sans, fontSize: 11,
-                    letterSpacing: "0.18em", textTransform: "uppercase",
-                    color: "var(--wada-ink, #1E1E1E)", fontWeight: 600,
-                    marginBottom: 2,
-                  }}>
-                    {b.t}
-                  </div>
-                  <div style={{
-                    fontSize: 13, color: "var(--wada-text-secondary, #6f685f)",
-                    lineHeight: 1.45,
-                  }}>
-                    {b.d}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* ─── ESSENTIELLES — raccourcis swatches nommées ───
-            Brief design 2026-05-26 : on passe en grille uniforme avec
-            nom de couleur sous chaque pastille (réf. swatch book Sanzo
-            Wada). Plus de hover lift + ring bordeaux quand actif. */}
-        <section style={{
-          margin: "30px 0 0",
-          background: "var(--wada-card-bg-strong, #FBF9F5)",
-          border: "1px solid var(--wada-border, rgba(30,30,30,.10))",
-          borderRadius: 24,
-          padding: "30px 30px 26px",
-          textAlign: "center",
-        }}>
+          {/* SÉPARATEUR « ou » + 12 essentielles inline.
+              Brief client : « ludique + instinctif ». Les 12 teintes
+              essentielles ne sont plus dans une section séparée — elles
+              sont ICI, juste sous le bandeau couleur détectée, dans le
+              même flow vertical. L'utilisateur a 2 chemins visibles
+              simultanément : photo OU tap sur une essentielle. */}
           <div style={{
-            display: "inline-flex", alignItems: "center", gap: 14,
-            fontFamily: fonts.sans, fontSize: 10, letterSpacing: "0.4em",
-            textTransform: "uppercase", color: fallback.bordeaux, fontWeight: 600,
-            margin: "0 0 12px",
+            display: "flex", alignItems: "center", gap: 12,
+            margin: "22px 0 16px",
           }}>
-            <span aria-hidden style={{ width: 24, height: 1, background: "currentColor", opacity: 0.4 }} />
-            Raccourcis · II
-            <span aria-hidden style={{ width: 24, height: 1, background: "currentColor", opacity: 0.4 }} />
+            <div aria-hidden style={{ flex: 1, height: 1, background: "var(--wada-border, rgba(30,30,30,.10))" }} />
+            <span style={{
+              fontSize: 10, letterSpacing: "0.35em", textTransform: "uppercase",
+              color: "var(--wada-text-secondary, #6f685f)", fontWeight: 600,
+            }}>
+              ou une essentielle
+            </span>
+            <div aria-hidden style={{ flex: 1, height: 1, background: "var(--wada-border, rgba(30,30,30,.10))" }} />
           </div>
-          <h3 style={{
-            fontFamily: fonts.display, fontWeight: 700,
-            fontSize: 24, margin: "4px 0 4px",
-            color: "var(--wada-ink, #1E1E1E)",
-            letterSpacing: "-0.01em",
-          }}>
-            Ou choisissez parmi les essentielles
-          </h3>
-          <p style={{
-            fontSize: 12, color: "var(--wada-text-secondary, #6f685f)",
-            fontStyle: "italic", margin: "4px 0 0",
-          }}>
-            12 teintes signature pour démarrer un accord
-          </p>
+
           <div className="wada-essentials-grid" style={{
             display: "grid",
-            gridTemplateColumns: "repeat(12, 1fr)",
-            gap: 12,
-            marginTop: 22,
-            maxWidth: 760,
-            marginInline: "auto",
+            gridTemplateColumns: "repeat(6, 1fr)",
+            gap: 14,
           }}>
             {ESSENTIALS.map(({ hex, name }) => {
               const active = color?.toLowerCase() === hex.toLowerCase();
@@ -571,16 +465,13 @@ export default function ScannerPage() {
                   style={{
                     display: "flex", flexDirection: "column",
                     alignItems: "center", gap: 6,
-                    background: "transparent",
-                    border: "none",
-                    cursor: "pointer",
-                    padding: 0,
+                    background: "transparent", border: "none",
+                    cursor: "pointer", padding: 0,
                     transition: "transform .25s ease",
                   }}
                 >
                   <span aria-hidden style={{
-                    width: 44, height: 44,
-                    borderRadius: "50%",
+                    width: 46, height: 46, borderRadius: "50%",
                     background: hex,
                     border: `2px solid ${active ? fallback.bordeaux : "var(--wada-card-bg-strong, #FBF9F5)"}`,
                     boxShadow: active
@@ -602,6 +493,9 @@ export default function ScannerPage() {
             })}
           </div>
         </section>
+
+        {/* Essentielles déplacées DANS le panel principal (brief client
+            « moins d'info, plus instinctif ») — section standalone retirée. */}
 
         {/* ─── RÉSULTATS — apparaît après un scan ─── */}
         {results.length > 0 && (

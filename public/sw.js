@@ -174,7 +174,23 @@
    - Aperture SVG au lieu de ◇ emoji
    - Drop zone hairline dashed beige comme /scanner
    Force re-fetch JS. */
-const CACHE_VERSION = "wada-v20-2026-05-26";
+/* Bump 26/05 v21 : épuration radicale /scanner + /composer.
+   Brief client : « trop d'information, plus ludique plus instinctif ».
+   - Hero : kicker chapitre I/II hairlines RETIRÉ
+   - H1 court : « Quelle couleur ? » / « Quelle pièce ? »
+   - Sous-titre 1 ligne italique : « Une photo, ou une teinte parmi
+     les essentielles » / « Une photo, et WADA compose autour »
+   - Toggle en TÊTE (entrée directe dans le mode)
+   - Colonne marketing 01/02/03 RETIRÉE (Précision/Sans inscription/
+     348 palettes) — c'était de la landing page, pas un outil
+   - 12 essentielles fusionnées DANS le panel principal (grille 6 cols
+     desktop, 4 cols mobile) → 1 seule carte, deux chemins visibles
+     simultanément : photo OU tap teinte
+   - /composer : NumberedStep 01/02/03/04 → MiniLabel uppercase
+     discret. Le formulaire EST son propre label.
+   - Drop zone /composer : pas de mention « JPG/PNG max 8 Mo »
+   Force re-fetch JS + CSS. */
+const CACHE_VERSION = "wada-v21-2026-05-26";
 const STATIC_CACHE  = `${CACHE_VERSION}-static`;
 const PAGE_CACHE    = `${CACHE_VERSION}-pages`;
 

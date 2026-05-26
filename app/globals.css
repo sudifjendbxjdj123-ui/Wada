@@ -551,11 +551,10 @@ body::after {
 .wada-essential-swatch:focus-visible > span:first-child {
   box-shadow: 0 0 0 2px var(--wada-bordeaux, #6B3A32), 0 0 0 4px var(--wada-paper, #F4EFE7) !important;
 }
-@media (max-width: 720px) {
-  /* Mobile : 6 par rangée plutôt que 12, sinon les ronds deviennent
-     minuscules sur iPhone SE 375px. */
+@media (max-width: 520px) {
+  /* Très petit écran (iPhone SE 375px) : 4 par rangée, ronds plus grands. */
   .wada-essentials-grid {
-    grid-template-columns: repeat(6, 1fr) !important;
+    grid-template-columns: repeat(4, 1fr) !important;
   }
 }
 

@@ -266,77 +266,53 @@ export default function ComposerPage() {
     }}>
       <BackButton fallback="/atelier" />
 
-      {/* ═══════════════════ HERO ÉDITORIAL CENTRÉ ═══════════════════
-          Brief 2026-05-26 « rends-le pareil que Une couleur » : on
-          remplace le hero dark gradient olive par le pattern centré
-          /scanner — beige uni, kicker hairlines « Scanner · II »,
-          H1 Fredoka, sous-titre Inter, toggle au-dessous. Cohérence
-          visuelle absolue entre les 2 modes du scanner. */}
-      <section style={{ padding: "44px 26px 8px", textAlign: "center" }}>
+      {/* ═══════════════════ HERO ÉPURÉ ═══════════════════
+          Brief client : « ludique + instinctif ». H1 court, toggle en
+          tête, plus de paragraphe explicatif (le formulaire parle de
+          lui-même via ses chips). */}
+      <section style={{ padding: "48px 26px 4px", textAlign: "center" }}>
         <div style={{ maxWidth: 1000, margin: "0 auto" }}>
-          {/* Kicker chapitré — réf. livre Sanzo Wada (Scanner Chapitre II) */}
-          <div style={{
-            display: "inline-flex", alignItems: "center", gap: 14,
-            fontFamily: fonts.sans, fontSize: 10, letterSpacing: "0.4em",
-            textTransform: "uppercase", color: palette.inkSoft,
-            fontWeight: 600, margin: "0 0 14px",
-          }}>
-            <span aria-hidden style={{ width: 32, height: 1, background: "currentColor", opacity: 0.4 }} />
-            <span style={{ color: palette.bordeaux }}>Scanner · II</span>
-            <span aria-hidden style={{ width: 32, height: 1, background: "currentColor", opacity: 0.4 }} />
-          </div>
-
-          <h1 style={{
-            fontFamily: fonts.display, fontWeight: 700,
-            fontSize: "clamp(32px, 5.4vw, 44px)", margin: "0 0 12px",
-            color: palette.ink,
-            letterSpacing: "-0.01em",
-            lineHeight: 1.08,
-          }}>
-            Une pièce que vous avez.<br />
-            Trois qui s&apos;accordent.
-          </h1>
-
-          <p style={{
-            color: palette.inkSoft,
-            maxWidth: "52ch", margin: "0 auto",
-            fontSize: 15, lineHeight: 1.6,
-          }}>
-            Photographiez ce pull, ce jean, cette veste. WADA détecte la couleur, la rattache à un accord de Sanzo Wada, et compose les pièces qui l&apos;habitent.
-          </p>
-
-          <p style={{
-            fontSize: 12, color: palette.inkSoft, marginTop: 10,
-            fontStyle: "italic", opacity: 0.85,
-          }}>
-            <strong style={{ fontStyle: "normal" }}>Tout reste sur votre appareil.</strong> Aucune photo n&apos;est envoyée à WADA.
-          </p>
-
-          <div style={{ marginTop: 24 }}>
+          <div style={{ marginBottom: 22 }}>
             <ScanModeToggle active="vetement" />
           </div>
+          <h1 style={{
+            fontFamily: fonts.display, fontWeight: 700,
+            fontSize: "clamp(34px, 5.6vw, 48px)", margin: "0 0 4px",
+            color: palette.ink,
+            letterSpacing: "-0.01em",
+          }}>
+            Quelle pièce ?
+          </h1>
+          <p style={{
+            color: palette.inkSoft,
+            margin: 0, fontSize: 14, fontStyle: "italic",
+          }}>
+            Une photo, et WADA compose autour.
+          </p>
         </div>
       </section>
 
-      {/* ═══ ÉTAT INITIAL — sélecteurs + upload ═══
-          Brief 2026-05-26 : carte panel cohérente avec /scanner — même
-          fond #FBF9F5, border line, radius 24, padding 34, shadow soft.
-          Chaque étape : numéro chiffré 01/02/03/04 en kicker bordeaux
-          + titre uppercase + chips. */}
+      {/* ═══ CARTE D'ACTION ÉPURÉE ═══
+          Brief client « moins d'info, plus instinctif » : on retire les
+          étapes 01/02/03/04 numérotées qui transformaient la page en
+          questionnaire administratif. Maintenant : 3 lignes de chips
+          compactes (le formulaire EST son propre label) + drop zone
+          photo en bas. L'utilisateur balaye en 5 secondes, comprend
+          tout, clique. */}
       {!outfit && (
         <section style={{
-          maxWidth: 1000, margin: "30px auto 0",
+          maxWidth: 580, margin: "26px auto 0",
           padding: "0 max(24px, env(safe-area-inset-right)) 0 max(24px, env(safe-area-inset-left))",
         }}>
           <div style={{
             background: "var(--wada-card-bg-strong, #FBF9F5)",
             border: `1px solid var(--wada-border, ${palette.line})`,
             borderRadius: 24,
-            padding: 34,
+            padding: 30,
             boxShadow: "0 8px 30px rgba(30,30,30,.06)",
           }}>
-            {/* Étape 01 — Genre */}
-            <NumberedStep n="01" title="Pour qui composer la tenue ?" />
+            {/* Mini-label + chips genre */}
+            <MiniLabel>Pour qui</MiniLabel>
             <ChipRow>
               {(["femme", "homme", "unisexe"] as Gender[]).map((g) => (
                 <Chip key={g} active={gender === g} onClick={() => setGender(g)}>
@@ -345,8 +321,7 @@ export default function ComposerPage() {
               ))}
             </ChipRow>
 
-            {/* Étape 02 — Pièce */}
-            <NumberedStep n="02" title="Quelle pièce avez-vous ?" />
+            <MiniLabel>La pièce</MiniLabel>
             <ChipRow>
               {PIECE_OPTIONS.map((p) => (
                 <Chip key={p.slug} active={anchorSlot === p.slug} onClick={() => {
@@ -358,8 +333,7 @@ export default function ComposerPage() {
               ))}
             </ChipRow>
 
-            {/* Étape 03 — Style */}
-            <NumberedStep n="03" title={`De quel style est cette ${anchorSlot === "haut" ? "pièce du haut" : anchorSlot === "bas" ? "pièce du bas" : anchorSlot === "chaussures" ? "chaussure" : "veste"} ?`} />
+            <MiniLabel>Son style</MiniLabel>
             <ChipRow>
               {(STYLE_BY_SLOT[anchorSlot] || []).map((s) => (
                 <Chip
@@ -372,10 +346,10 @@ export default function ComposerPage() {
               ))}
             </ChipRow>
 
-            {/* Étape 04 — Photo */}
-            <NumberedStep n="04" title="Une photo de votre pièce" />
+            {/* Drop zone — aperture SVG + bouton bordeaux. Pas de titre,
+                pas de mention "JPG / PNG max 8 Mo" : le bouton se suffit. */}
             <div style={{
-              marginTop: 12, padding: "34px 20px",
+              marginTop: 22, padding: "30px 20px",
               border: `1.5px dashed var(--wada-border, ${palette.line})`,
               borderRadius: 18,
               textAlign: "center",
@@ -383,13 +357,12 @@ export default function ComposerPage() {
               transition: "border-color .2s ease",
             }}>
               {imgPreview ? (
-                <img src={imgPreview} alt="" style={{ maxHeight: 220, borderRadius: 12, marginBottom: 14, maxWidth: "100%", objectFit: "contain" }} />
+                <img src={imgPreview} alt="" style={{ maxHeight: 200, borderRadius: 12, marginBottom: 14, maxWidth: "100%", objectFit: "contain" }} />
               ) : (
-                /* Aperture SVG — même icône que /scanner pour cohérence visuelle */
                 <svg
                   aria-hidden
                   width="38" height="38" viewBox="0 0 38 38"
-                  style={{ display: "block", margin: "0 auto 12px", color: palette.olive }}
+                  style={{ display: "block", margin: "0 auto 14px", color: palette.olive }}
                 >
                   <circle cx="19" cy="19" r="17" fill="none" stroke="currentColor" strokeWidth="1" opacity="0.55" />
                   <circle cx="19" cy="19" r="10" fill="none" stroke="currentColor" strokeWidth="1" />
@@ -401,24 +374,19 @@ export default function ComposerPage() {
                   Analyse en cours…
                 </p>
               ) : (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => fileRef.current?.click()}
-                    style={{
-                      fontFamily: fonts.sans, fontSize: 16,
-                      padding: "13px 28px", borderRadius: 999,
-                      background: palette.bordeaux, color: palette.cream,
-                      border: "none", cursor: "pointer", fontWeight: 500,
-                    }}
-                  >
-                    <span aria-hidden style={{ marginRight: 6 }}>📷</span>
-                    Choisir une photo
-                  </button>
-                  <p style={{ marginTop: 12, fontSize: 12, color: palette.inkSoft, margin: "12px 0 0", fontStyle: "italic" }}>
-                    JPG / PNG · max 8 Mo · analyse instantanée
-                  </p>
-                </>
+                <button
+                  type="button"
+                  onClick={() => fileRef.current?.click()}
+                  style={{
+                    fontFamily: fonts.sans, fontSize: 16,
+                    padding: "13px 28px", borderRadius: 999,
+                    background: palette.bordeaux, color: palette.cream,
+                    border: "none", cursor: "pointer", fontWeight: 500,
+                  }}
+                >
+                  <span aria-hidden style={{ marginRight: 6 }}>📷</span>
+                  Photographier la pièce
+                </button>
               )}
               <input
                 ref={fileRef}
@@ -605,34 +573,19 @@ const kickerStyle: React.CSSProperties = {
   color: palette.ink,
 };
 
-/* Brief design 2026-05-26 : étape numérotée alignée sur /scanner —
-   numéro chiffré bordeaux serif + titre uppercase ink letter-spaced.
-   Signature livre Sanzo Wada (accords numérotés). Marge top 28 sauf
-   sur la 1ère étape pour respiration uniforme. */
-function NumberedStep({ n, title }: { n: string; title: string }) {
+/* Brief client 2026-05-26 « ludique + instinctif » : on remplace les
+   étapes 01/02/03/04 par des MiniLabel discrets (text-transform uppercase
+   10px). Le formulaire est son propre label, plus besoin de numérotation. */
+function MiniLabel({ children }: { children: React.ReactNode }) {
   return (
-    <div style={{
-      display: "grid", gridTemplateColumns: "32px 1fr",
-      gap: 14, alignItems: "baseline",
-      margin: n === "01" ? "0 0 6px" : "28px 0 6px",
-      paddingTop: n === "01" ? 0 : 18,
-      borderTop: n === "01" ? "none" : `1px solid var(--wada-border, ${palette.line})`,
+    <p style={{
+      fontFamily: fonts.sans, fontSize: 10,
+      letterSpacing: "0.32em", textTransform: "uppercase",
+      color: palette.inkSoft, fontWeight: 600,
+      margin: "18px 0 8px",
     }}>
-      <span style={{
-        fontFamily: fonts.display, fontWeight: 600,
-        fontSize: 13, color: palette.bordeaux,
-        letterSpacing: "0.04em",
-      }}>
-        {n}
-      </span>
-      <span style={{
-        fontFamily: fonts.sans, fontSize: 12,
-        letterSpacing: "0.15em", textTransform: "uppercase",
-        color: palette.ink, fontWeight: 600,
-      }}>
-        {title}
-      </span>
-    </div>
+      {children}
+    </p>
   );
 }
 
