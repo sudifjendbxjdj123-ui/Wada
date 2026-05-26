@@ -128,7 +128,18 @@
    - stream_options.include_usage → télémetrie tokens dans le stream
    - AbortController côté client : nouveau msg pendant streaming
      annule l'ancien → plus de race condition. */
-const CACHE_VERSION = "wada-v16-2026-05-26";
+/* Bump 26/05 v17 : améliorations LOGIQUE IA :
+   1. Cohérence accord sur ajustements — collecte.accord envoyé au LLM,
+      gardé sur « plus chaud / sans veste / moins cher ». Plus de saut
+      de palette à chaque tour.
+   2. Liste avoid persistante (localStorage wada-avoid) — couleurs/pièces
+      refusées par l'user mémorisées entre sessions. Le LLM ne les
+      propose jamais.
+   3. Anti-répétition — recentPieces (10 dernières pièces) envoyé au LLM,
+      qui varie sur les ajustements rapprochés. Plus de « chemise écru »
+      3 fois de suite.
+   Force re-fetch JS. */
+const CACHE_VERSION = "wada-v17-2026-05-26";
 const STATIC_CACHE  = `${CACHE_VERSION}-static`;
 const PAGE_CACHE    = `${CACHE_VERSION}-pages`;
 

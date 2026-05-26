@@ -126,10 +126,30 @@ COMMENT TU COMPOSES
   champ "pourquoi" du JSON, pas dans "reponse".
 - Tu proposes 1 variation possible (« ou, plus audacieux : … ») dans le champ "variation", facultatif.
 
-AJUSTEMENTS EN DIRECT
+AJUSTEMENTS EN DIRECT — IMPÉRATIF DE COHÉRENCE
 - La personne peut affiner en langage naturel (« plus chaud », « sans veste », « plus habillé »,
   « une autre couleur », « moins cher »). Tu renvoies la tenue modifiée + une phrase courte, sans tout
   recommencer, en gardant l'ancre.
+- COHÉRENCE ACCORD : si l'état de collecte contient un accord en cours (ex. collecte.accord = { ref:
+  "094", nom: "Béton & Lin" }) et que la nouvelle demande est un AJUSTEMENT (« plus chaud », « sans
+  veste », « plus décontracté », « moins cher »...), tu DOIS RÉUTILISER le même accord. Tu ne changes
+  d'accord QUE si l'user le demande explicitement (« je voudrais une autre palette », « du bleu plutôt
+  que du vert », « change la couleur dominante »).
+  → Résultat : le look reste cohérent au fil des tours, on n'a pas l'impression que tout recommence.
+
+ANTI-RÉPÉTITION
+- Si collecte.recent_pieces contient une liste de pièces récemment proposées (ex. ["Chemise écru
+  manches bouffantes", "Pantalon sombre droit", "Gilet long cuir"]), tu ÉVITES de re-proposer
+  EXACTEMENT les mêmes types. Tu varies : changes la coupe, le matériau, la longueur, le détail.
+  → Résultat : ajustement = vraie variation, pas le même look avec un mot différent.
+
+PRÉFÉRENCES NÉGATIVES (avoid)
+- Si collecte.avoid.colors contient des couleurs (ex. ["jaune", "rose"]), tu ne les utilises JAMAIS
+  dans la tenue ni dans la variation, même si l'accord en suggère.
+- Si collecte.avoid.pieces contient des pièces (ex. ["jupe", "short", "crop top"]), tu ne les
+  proposes JAMAIS. Choisis l'alternative la plus proche (jupe → pantalon, short → bermuda…).
+- Si l'user dit dans son message « je déteste X » ou « pas de Y », tu n'utilises pas X/Y dans la
+  tenue (et le frontend ajoutera X/Y à collecte.avoid pour les tours suivants).
 
 ACHAT (ne pas inventer)
 - Pour chaque pièce proposée, tu donnes : type (ex. « chemise oxford »), couleur, et le genre. Tu ne
@@ -192,9 +212,23 @@ B) Tu peux composer → tu réponds + tenue + pourquoi + variation optionnelle :
       "couleurNom": "Écru", "hex": "#EFE7D6", "genre": "femme|homme|unisexe", "ancre": false }
   ],
   "variation": "optionnel — 1 phrase plus audacieuse",
-  "collecte": { "piece": null, "couleur": "Écru", "style": "Décontracté", "occasion": "Soirée" }
+  "collecte": {
+    "piece": null, "couleur": "Écru", "style": "Décontracté", "occasion": "Soirée",
+    "accord": { "ref": "168", "nom": "Corsaire" },
+    "avoid": { "colors": ["jaune"], "pieces": [] }
+  }
 }
 Pas de texte hors du JSON.
+
+Note IMPORTANTE sur collecte.accord :
+- Au mode "tenue", tu DOIS écrire le champ "accord" dans collecte avec ref (sans "No. ") et nom.
+  Ex. accord {"ref":"No. 168","nom":"Corsaire"} → collecte.accord {"ref":"168","nom":"Corsaire"}.
+- Le frontend re-renverra cette valeur au tour suivant. C'est comme ça que tu sais quel accord garder.
+
+Note sur collecte.avoid :
+- Si l'user dit dans son message « je déteste X » / « pas de Y » / « plus jamais Z », tu AJOUTES X/Y/Z
+  à collecte.avoid.colors (si c'est une couleur) ou avoid.pieces (si c'est une pièce).
+- Sinon, tu RECOPIES la collecte.avoid précédente telle quelle (ne perds pas l'historique).
 
 Convention nom_tenue :
 - Court (1-3 mots), commence par majuscule, en français.
@@ -683,7 +717,19 @@ export async function POST(req: Request) {
     // Brief conversationnel 2026-05-23 : le client peut envoyer l'état de
     // collecte accumulé (piece/couleur/style/occasion) pour que le LLM
     // sache ce qui a déjà été demandé et ne repose pas la question.
-    const collecte: { piece?: string|null; couleur?: string|null; style?: string|null; occasion?: string|null } = body.collecte || {};
+    /* Brief 2026-05-26 « ameliore la logique IA » :
+       - accord : la palette en cours (gardée sur ajustements)
+       - avoid : pièces/couleurs explicitement refusées par l'user
+       - recent_pieces : pièces récemment proposées (anti-répétition) */
+    const collecte: {
+      piece?: string|null;
+      couleur?: string|null;
+      style?: string|null;
+      occasion?: string|null;
+      accord?: { ref?: string; nom?: string } | null;
+      avoid?: { colors?: string[]; pieces?: string[] };
+      recent_pieces?: string[];
+    } = body.collecte || {};
     /* Brief 2026-05-26 « ameliore le encore » : historique conversationnel.
        Le client envoie les N derniers tours (user + assistant) pour que le
        LLM ait la mémoire des échanges précédents. Indispensable pour les
@@ -749,8 +795,17 @@ export async function POST(req: Request) {
        Inclut le profil (genre/style/budget) ET l'état de collecte
        conversationnel (ce qui a déjà été dit) pour que le LLM ne
        repose pas une question déjà répondue. */
-    const collecteBlock = (collecte.piece || collecte.couleur || collecte.style || collecte.occasion)
-      ? `ÉTAT DE LA CONVERSATION (déjà collecté) :\n${JSON.stringify(collecte, null, 2)}\n`
+    /* Brief « ameliore la logique IA » : on injecte l'état de collecte
+       enrichi avec accord (palette en cours, à garder sur ajustements),
+       avoid (couleurs/pièces refusées), recent_pieces (anti-répétition).
+       Le LLM sait ainsi quoi conserver, quoi éviter, quoi ne pas répéter. */
+    const hasCollecte = !!(
+      collecte.piece || collecte.couleur || collecte.style || collecte.occasion ||
+      collecte.accord || (collecte.avoid?.colors?.length) || (collecte.avoid?.pieces?.length) ||
+      (collecte.recent_pieces?.length)
+    );
+    const collecteBlock = hasCollecte
+      ? `ÉTAT DE LA CONVERSATION (impératif : applique les règles AJUSTEMENTS / ANTI-RÉPÉTITION / AVOID) :\n${JSON.stringify(collecte, null, 2)}\n`
       : "";
 
     /* Brief 2026-05-26 « ameliore encore » : on PRÉ-CALCULE les 10
@@ -954,7 +1009,19 @@ export async function POST(req: Request) {
          `variation` (option audacieuse). Le `champ` élargi accepte budget,
          genre, mood, saison en plus des 4 originaux. */
     type V2Slot = { slot: string; type: string; couleurNom: string; hex: string; genre?: string; ancre: boolean };
-    type V2Collecte = { piece?: string|null; couleur?: string|null; style?: string|null; occasion?: string|null };
+    /* Brief 2026-05-26 « ameliore la logique IA » : V2Collecte enrichi avec
+       - accord : ref/nom de la palette en cours, gardée sur les ajustements
+       - avoid : couleurs/pièces explicitement refusées par l'user (persistant)
+       - recent_pieces : pièces récemment proposées (anti-répétition) */
+    type V2Collecte = {
+      piece?: string|null;
+      couleur?: string|null;
+      style?: string|null;
+      occasion?: string|null;
+      accord?: { ref?: string; nom?: string } | null;
+      avoid?: { colors?: string[]; pieces?: string[] };
+      recent_pieces?: string[];
+    };
     type V2Output = {
       mode?: "question" | "tenue";
       reponse?: string;

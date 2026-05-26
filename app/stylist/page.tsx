@@ -394,6 +394,13 @@ interface State {
      ajustement. Calculé dans `compose()`, propagé via setState. */
   accordNumber: string | null;
   accordName: string | null;
+  /* Brief 2026-05-26 « ameliore la logique IA » :
+     - avoid : couleurs / pièces refusées par l'user (persistant inter-sessions
+       via localStorage wada-avoid) → le LLM ne les propose JAMAIS
+     - recentPieces : 10 dernières pièces proposées (anti-répétition sur
+       ajustements rapprochés) */
+  avoid: { colors: string[]; pieces: string[] };
+  recentPieces: string[];
 }
 
 function emptyState(): State {
@@ -402,6 +409,8 @@ function emptyState(): State {
     couleur: null, couleurHex: null, style: null, occasion: null,
     pieces: null,
     accordNumber: null, accordName: null,
+    avoid: { colors: [], pieces: [] },
+    recentPieces: [],
   };
 }
 
@@ -464,6 +473,35 @@ export default function StylistPage() {
 
   /* Démarre la conversation au mount */
   useEffect(() => { start(); /* eslint-disable-next-line */ }, []);
+
+  /* Brief 2026-05-26 « ameliore la logique IA » — hydrate l'avoid list
+     depuis localStorage au mount. Les couleurs/pièces refusées par l'user
+     persistent entre les sessions : si on a dit « je déteste le jaune »
+     lundi, le LLM ne proposera pas de jaune mardi non plus.
+     Cap à 20 entries par catégorie pour éviter l'inflation infinie. */
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("wada-avoid");
+      if (!raw) return;
+      const stored = JSON.parse(raw);
+      if (stored && typeof stored === "object") {
+        setState((s) => ({
+          ...s,
+          avoid: {
+            colors: Array.isArray(stored.colors) ? stored.colors.slice(0, 20) : [],
+            pieces: Array.isArray(stored.pieces) ? stored.pieces.slice(0, 20) : [],
+          },
+        }));
+      }
+    } catch { /* localStorage indispo (private mode etc.), on continue sans */ }
+  }, []);
+
+  /** Persiste l'avoid list dans localStorage à chaque update. */
+  function persistAvoid(avoid: { colors: string[]; pieces: string[] }) {
+    try {
+      localStorage.setItem("wada-avoid", JSON.stringify(avoid));
+    } catch { /* silent */ }
+  }
 
   function addBot(html: string) {
     setBubbles((prev) => [...prev, { who: "bot", html }]);
@@ -963,7 +1001,12 @@ export default function StylistPage() {
    *  legacy). Identique dans les 2 cas — partagé entre le path stream
    *  et le path legacy. */
   function handleComplete(data: {
-    collecte?: { piece?: string|null; couleur?: string|null; style?: string|null; occasion?: string|null };
+    collecte?: {
+      piece?: string|null; couleur?: string|null; style?: string|null; occasion?: string|null;
+      accord?: { ref?: string; nom?: string } | null;
+      avoid?: { colors?: string[]; pieces?: string[] };
+      recent_pieces?: string[];
+    };
     mode?: "question" | "tenue";
     reponse?: string;
     options?: string[];
@@ -976,14 +1019,25 @@ export default function StylistPage() {
     nom_tenue?: string;
     entities?: { styling_advice?: string };
   }) {
-    /* Propage la collecte LLM dans le state local */
+    /* Propage la collecte LLM dans le state local — incluant les nouveaux
+       champs accord/avoid. Le LLM peut ajouter à avoid si l'user a dit
+       « je déteste X » dans son dernier message ; on absorbe et on persiste. */
     if (data.collecte) {
+      const newAvoid = data.collecte.avoid && (data.collecte.avoid.colors?.length || data.collecte.avoid.pieces?.length)
+        ? {
+            colors: Array.from(new Set([...(state.avoid.colors), ...(data.collecte.avoid.colors || [])])).slice(0, 20),
+            pieces: Array.from(new Set([...(state.avoid.pieces), ...(data.collecte.avoid.pieces || [])])).slice(0, 20),
+          }
+        : state.avoid;
+      if (newAvoid !== state.avoid) persistAvoid(newAvoid);
+
       setState((s) => ({
         ...s,
         piece: data.collecte!.piece ?? s.piece,
         couleur: data.collecte!.couleur ?? s.couleur,
         style: data.collecte!.style ?? s.style,
         occasion: data.collecte!.occasion ?? s.occasion,
+        avoid: newAvoid,
       }));
     }
 
@@ -1019,7 +1073,18 @@ export default function StylistPage() {
       }
       addBot(reponse);
       addOutfit(pieces);
-      setState((s) => ({ ...s, pieces, accordNumber: accordRef, accordName }));
+      /* Brief « ameliore la logique IA » : on push les types de pièces
+         proposées dans recentPieces (capé à 10), pour l'anti-répétition
+         au tour suivant. Le LLM verra "déjà proposé : chemise écru,
+         pantalon brun, gilet cuir..." et variera. */
+      const newPieceTypes = pieces.filter((p) => !p.ancre).map((p) => p.type);
+      setState((s) => ({
+        ...s,
+        pieces,
+        accordNumber: accordRef,
+        accordName,
+        recentPieces: [...newPieceTypes, ...s.recentPieces].slice(0, 10),
+      }));
 
       const pourquoiText = data.pourquoi || pourquoiFor(state.couleur);
       const variationText = data.variation;
@@ -1085,11 +1150,20 @@ export default function StylistPage() {
   async function callLLM(query: string) {
     setChips([]);
     const userPrefs = readUserPrefs();
+    /* Brief « ameliore la logique IA » : on envoie collecte enrichie au LLM :
+       - accord en cours (gardée sur ajustements)
+       - avoid colors/pieces (jamais reproposées)
+       - recent_pieces (anti-répétition sur ajustements rapprochés) */
     const collecte = {
       piece: state.piece,
       couleur: state.couleur,
       style: state.style,
       occasion: state.occasion,
+      accord: state.accordNumber
+        ? { ref: state.accordNumber, nom: state.accordName || undefined }
+        : null,
+      avoid: state.avoid,
+      recent_pieces: state.recentPieces,
     };
 
     /* Annule la requête précédente si l'user envoie un nouveau message
