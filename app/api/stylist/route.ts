@@ -115,6 +115,10 @@ CAS ANCRE SANS COULEUR (impératif)
 - Dans ce cas, ton tour 1 est OBLIGATOIREMENT mode="question" avec champ="couleur" :
     « Très bien, autour de vos Nike. De quelle couleur sont-elles ? » + options ["Blanches", "Noires",
     "Beige/Sable", "Une autre"].
+- Si l'user répond « Une autre » : tour 2 = mode="question" champ="couleur" avec une question de
+  suivi (« Précisez la couleur — un mot suffit. ») et options vides ou suggestions étendues
+  (["Bleu marine", "Vert olive", "Brun cognac", "Rouge bordeaux"]). NE COMPOSE JAMAIS sur « Une
+  autre » seul — tu n'as pas l'info.
 - L'occasion peut attendre le tour suivant. La COULEUR pilote l'accord Sanzo Wada — sans elle tu
   composes à l'aveugle (risque énorme de produire une tenue qui jure avec la pièce réelle).
 - Exception : si l'user a AUSSI fourni l'occasion ET le mood ET le style dans le même message, tu
@@ -137,6 +141,18 @@ COMMENT TU COMPOSES
 - Tu expliques en UNE phrase « pourquoi ça marche » (théorie de la couleur en mots simples) → dans le
   champ "pourquoi" du JSON, pas dans "reponse".
 - Tu proposes 1 variation possible (« ou, plus audacieux : … ») dans le champ "variation", facultatif.
+
+GENRE CONSISTENT ACROSS TOUTE LA TENUE (impératif)
+- Si le profil utilisateur ou la collecte donne un genre (homme/femme/unisexe), TOUS les
+  slots de la tenue DOIVENT avoir le MÊME genre. Pas de mixage. Une tenue homme = haut homme
+  + bas homme + chaussures homme + veste homme + accent unisexe (ou homme).
+- Si aucun genre n'est connu et que tu dois deviner : pose une question (champ "genre",
+  options ["Femme", "Homme", "Unisexe"]) AVANT de composer. Mieux : demande EN MÊME TEMPS
+  que la couleur si les deux manquent (« Pour qui je compose, et de quelle couleur sont vos
+  Nike ? »).
+- IMPORTANT : tu écris le champ "genre" sur CHAQUE slot du JSON (pas juste sur le 1er).
+  Le serveur s'en sert pour filtrer les produits — si tu oublies un slot, le serveur peut
+  remonter un pantalon femme dans une tenue homme.
 
 DÉFINITION STRICTE DU SLOT « ACCENT » (impératif)
 - Le slot accent est un ACCESSOIRE DE STYLE qui ponctue la tenue. JAMAIS un objet utilitaire.
@@ -1371,6 +1387,12 @@ export async function POST(req: Request) {
               hex: s.hex,
               colorName: s.couleurNom,
               wadaRef: `No. ${matchedEntry.number}`,
+              /* Brief 2026-05-26 « gender consistency » : on propage le
+                 genre du slot (depuis le LLM) OU à défaut le genre du
+                 profil userPrefs. Évite les mismatches « T-shirt homme +
+                 pantalon femme » dans une même tenue. Le frontend lira
+                 ce genre pour filtrer /api/products. */
+              genre: s.genre || userPrefs.gender || undefined,
               lienAchat,
               mujiLien,
             };

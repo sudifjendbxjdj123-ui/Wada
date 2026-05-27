@@ -113,6 +113,13 @@ export interface OutfitSlot {
   hex: string;          // couleur du slot
   colorName: string;    // ex: "Taupe"
   wadaRef?: string;     // ex: "No. 016" — référence palette Wada
+  /* Brief 2026-05-26 « gender consistency » : genre du slot (femme/homme/
+     unisexe). Le LLM le pose par slot, le serveur le propage ici, le
+     frontend l'envoie à /api/products pour filtrer correctement les
+     produits MUJI. Avant : si state.genre était null (free-text user),
+     les produits leakaient sur les 2 genres → pantalon femme dans une
+     tenue homme. */
+  genre?: string;
   // Brief « couche achat » 2026-05-25 : URLs attachées par le serveur
   // (jamais par le LLM). Le UI lit ces champs en priorité pour les boutons.
   lienAchat?: string;   // recherche Amazon pré-remplie + tag wadastyle-21

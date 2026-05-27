@@ -244,7 +244,26 @@
    Clic sur la carte → /palette/[number]. Pont éditorial direct
    entre la tenue composée par l'IA et la page palette source.
    Force re-fetch JS. */
-const CACHE_VERSION = "wada-v25-2026-05-26";
+/* Bump 26/05 v26 : 2 bugs logique IA fixés sur screenshot live.
+   1. GENDER CONSISTENCY : observé en live = T-shirt pour homme +
+      Pantalon pour femme + Pull pour femme dans la MÊME tenue.
+      Fix end-to-end :
+      · lib/outfitComposer : OutfitSlot type ajoute genre?: string
+      · /api/stylist : propage s.genre du LLM → composed_outfit.slots[].genre,
+        fallback userPrefs.gender si LLM oublie
+      · OutfitPiece type frontend ajoute genre?
+      · handleComplete extrait dominantGenre (1er slot LLM avec genre OU
+        state.genre OU localStorage wada-gender) et l'applique en fallback
+      · OutfitBubble useMujiForSlot prend effectiveGenre = piece.genre
+        || prop genre → filtre /api/products correctement
+      · System prompt : nouvelle section GENRE CONSISTENT ACROSS TOUTE
+        LA TENUE — si genre inconnu, DEMANDE-le avant de composer
+   2. « UNE AUTRE » COULEUR : observé en live = user clique « Une autre »,
+      LLM compose au pif avec couleur inventée. Fix : si réponse user =
+      « Une autre », tour 2 = question follow-up « Précisez la couleur »
+      avec options suggestions étendues. JAMAIS de composition à l'aveugle.
+   Force re-fetch JS. */
+const CACHE_VERSION = "wada-v26-2026-05-26";
 const STATIC_CACHE  = `${CACHE_VERSION}-static`;
 const PAGE_CACHE    = `${CACHE_VERSION}-pages`;
 

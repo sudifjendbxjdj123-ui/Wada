@@ -368,6 +368,11 @@ interface OutfitPiece {
   couleurNom: string;
   /** True si c'est la pièce existante du client (« à vous ✓ »). */
   ancre: boolean;
+  /** Brief 2026-05-26 « gender consistency » : genre du slot (femme/homme
+   *  /unisexe). Vient du LLM via composed_outfit.slots[].genre. Passé à
+   *  useMujiForSlot pour filtrer correctement les produits MUJI et éviter
+   *  les mismatches « T-shirt homme + pantalon femme » dans la même tenue. */
+  genre?: string;
 }
 
 /* Brief V3 (2026-05-26) — `transient` permet d'afficher un placeholder
@@ -1040,7 +1045,7 @@ export default function StylistPage() {
     reponse?: string;
     options?: string[];
     composed_outfit?: {
-      slots?: Array<{ slot: string; role: string; label: string; hex: string; colorName: string }>;
+      slots?: Array<{ slot: string; role: string; label: string; hex: string; colorName: string; genre?: string }>;
       palette?: { entry?: { number?: string; name?: string; colors?: Array<{ hex: string; name: string }> } };
     };
     pourquoi?: string;
@@ -1084,6 +1089,17 @@ export default function StylistPage() {
     /* Mode "tenue" : compose à partir de composed_outfit serveur */
     const composed = data.composed_outfit;
     if (composed?.slots?.length) {
+      /* Brief 2026-05-26 « gender consistency » : on récupère le genre
+         dominant de la tenue. Priorité : 1. genre majoritaire des slots
+         (LLM a posé), 2. state.genre (chip flow), 3. userPrefs.gender
+         (localStorage). Sert de fallback pour les slots où le LLM a
+         oublié de poser le genre. */
+      const slotGenres = composed.slots.map((s) => s.genre).filter((g): g is string => !!g);
+      const dominantGenre = slotGenres[0]
+        || state.genre?.toLowerCase()
+        || (typeof window !== "undefined" ? localStorage.getItem("wada-gender") : null)
+        || null;
+
       const pieces: OutfitPiece[] = composed.slots.map((s) => ({
         badge: s.role === "owned" ? "Votre pièce" : s.role === "accent" ? "Touche" : "Proposé",
         role: slotToRole(s.slot),
@@ -1091,6 +1107,9 @@ export default function StylistPage() {
         hex: s.hex,
         couleurNom: s.colorName,
         ancre: s.role === "owned",
+        /* Genre par slot, avec fallback vers le dominant pour garantir
+           la cohérence à travers toute la tenue. */
+        genre: s.genre || dominantGenre || undefined,
       }));
       const reponse = data.reponse || data.entities?.styling_advice || "Voilà ce que je composerais.";
       const accordRef = composed.palette?.entry?.number || null;
@@ -1708,12 +1727,18 @@ function PieceCard({
   /* Brief 2026-05-28 (variété) : seed unique par (couleur+style+role)
      pour que deux tenues stylist différentes ne donnent pas les mêmes
      produits MUJI. Stable au reload, varié entre tenues. */
-  const seed = piece.ancre ? null : `${piece.hex}-${piece.role}-${style || ""}-${genre || ""}`;
+  /* Brief 2026-05-26 « gender consistency » : on prend d'abord le genre
+     POSÉ PAR LE LLM sur le slot lui-même (piece.genre), puis fallback
+     sur le genre passé en prop (state.genre du chat). Avant : on ne
+     prenait QUE le prop → si state.genre était null (free-text user),
+     les produits MUJI leakaient sur les 2 genres. */
+  const effectiveGenre = piece.genre || genre || null;
+  const seed = piece.ancre ? null : `${piece.hex}-${piece.role}-${style || ""}-${effectiveGenre || ""}`;
   const mujiProduct = useMujiForSlot(
     piece.ancre ? null : roleToApiSlot(piece.role),
     piece.ancre ? null : piece.hex,
     style || null,
-    genre || null,
+    effectiveGenre,
     seed,
   );
 
