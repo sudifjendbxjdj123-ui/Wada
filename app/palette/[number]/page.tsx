@@ -273,6 +273,12 @@ export default function PalettePage({ params }: { params: Promise<{ number: stri
               >
                 {isFavorite ? "♥" : "♡"}
               </button>
+              {/* Brief client 2026-05-27 « mets le vrai logo Pinterest » —
+                  avant on avait juste un « P » texte bordeaux (placeholder).
+                  Maintenant : vrai pictogramme officiel Pinterest (cercle
+                  rouge #E60023 + glyphe « P » blanc), proportions et tracé
+                  fidèles à brand.pinterest.com (path SVG simplifié, libre
+                  d'utilisation pour boutons "Save"/"Pin it"). */}
               <a
                 href={`https://www.pinterest.com/pin/create/button/?url=${encodeURIComponent(`https://www.wada.style/palette/${entry.number}`)}&media=${encodeURIComponent(`https://www.wada.style/palette/${entry.number}/opengraph-image`)}&description=${encodeURIComponent(
                   `${entry.name} — accord No. ${entry.number} du dictionnaire Sanzo Wada. ${entry.colors.map((c) => c.name).join(", ")}. La tenue qui va avec cette palette sur WADA. #palette #couleur #tenue #mode #SanzoWada`
@@ -285,14 +291,22 @@ export default function PalettePage({ params }: { params: Promise<{ number: stri
                   width: 42, height: 42, borderRadius: "50%",
                   border: `1px solid ${palette.line}`,
                   background: palette.cream,
-                  color: "#E60023",
-                  fontSize: 16, fontWeight: 700, cursor: "pointer",
+                  cursor: "pointer",
                   textDecoration: "none",
                   display: "inline-flex", alignItems: "center", justifyContent: "center",
                   transition: `all 0.2s ${ease}`,
+                  overflow: "hidden",
                 }}
               >
-                P
+                <svg
+                  width="22"
+                  height="22"
+                  viewBox="0 0 24 24"
+                  fill="#E60023"
+                  aria-hidden
+                >
+                  <path d="M12 0C5.373 0 0 5.372 0 12c0 5.084 3.163 9.426 7.627 11.174-.105-.949-.2-2.405.042-3.441.218-.937 1.407-5.965 1.407-5.965s-.359-.719-.359-1.782c0-1.668.967-2.914 2.171-2.914 1.023 0 1.518.769 1.518 1.69 0 1.029-.655 2.568-.994 3.995-.283 1.194.599 2.169 1.777 2.169 2.133 0 3.772-2.249 3.772-5.495 0-2.873-2.064-4.882-5.012-4.882-3.414 0-5.418 2.561-5.418 5.207 0 1.031.397 2.137.893 2.738a.36.36 0 0 1 .083.343c-.091.378-.293 1.193-.333 1.361-.053.218-.173.265-.4.16-1.494-.696-2.428-2.879-2.428-4.633 0-3.772 2.74-7.235 7.895-7.235 4.144 0 7.366 2.953 7.366 6.899 0 4.117-2.595 7.43-6.199 7.43-1.211 0-2.348-.629-2.738-1.372l-.745 2.84c-.269 1.04-.997 2.345-1.485 3.139C9.572 23.812 10.766 24 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0z"/>
+                </svg>
               </a>
             </div>
           </div>

@@ -352,7 +352,12 @@
    5. Query param occasion aligné : bureau/quotidien/sorties pour que
      /ma-tenue compose correctement.
    Force re-fetch HTML. */
-const CACHE_VERSION = "wada-v31-2026-05-27";
+/* Bump v32 28/05 : brief client « le logo Pinterest n'est pas bien
+   mets le vrai ». Bouton « P » texte bordeaux (placeholder) remplacé
+   par le vrai logo officiel Pinterest (SVG cercle rouge #E60023 +
+   glyphe blanc, path fidèle à brand.pinterest.com). Force re-fetch
+   HTML pour que les clients voient le nouveau pictogramme. */
+const CACHE_VERSION = "wada-v32-2026-05-28";
 const STATIC_CACHE  = `${CACHE_VERSION}-static`;
 const PAGE_CACHE    = `${CACHE_VERSION}-pages`;
 
