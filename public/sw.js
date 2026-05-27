@@ -295,7 +295,27 @@
      · bouton ✕ retirer
      · relative time « il y a 2h » / « hier » / date
    Force re-fetch JS + HTML. */
-const CACHE_VERSION = "wada-v28-2026-05-26";
+/* Bump 26/05 v29 : fix matching description LLM ↔ produit Awin.
+   Brief client suite à note 75/100 : « description LLM dit Chemise
+   fluide beige mais produit Awin renvoyé est un Pull col rond ».
+   Cause : /api/products était appelé avec slot+color+style+genre mais
+   PAS le type précis. Solution :
+   1. Nouveau helper extractTypeKeyword(libellé, slot) côté serveur
+      avec une whitelist de mots-clés par slot (polo, t-shirt, chemise,
+      pull, hoodie pour haut ; pantalon, jean, chino pour bas ;
+      blazer, manteau, veste, bomber, trench pour veste ; sneakers,
+      derbies, mocassins, bottes pour chaussures ; foulard, ceinture,
+      casquette, pochette, sac pour accent)
+   2. OutfitSlot type ajoute typeKeyword?: string
+   3. /api/stylist propage le keyword extrait dans composed_outfit.slots
+   4. OutfitPiece + handleComplete absorbent le keyword
+   5. useMujiForSlot accepte typeKeyword param, l'envoie comme q= à
+      /api/products → filtre full-text AND sur les tokens restreint
+      aux produits dont le nom contient ce mot
+   6. Seed inclut le keyword pour que 2 types différents (Chemise →
+      Pull sur ajustement) donnent vraiment 2 produits différents
+   Force re-fetch JS. */
+const CACHE_VERSION = "wada-v29-2026-05-26";
 const STATIC_CACHE  = `${CACHE_VERSION}-static`;
 const PAGE_CACHE    = `${CACHE_VERSION}-pages`;
 

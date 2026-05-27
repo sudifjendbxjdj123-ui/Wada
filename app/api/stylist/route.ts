@@ -864,6 +864,100 @@ function detectTheme(query: string): typeof THEME_PROFILES[string] | null {
 /** Détecte si l'user demande explicitement une variété/surprise. */
 const SURPRISE_PATTERN = /\bsurprends?[\s-]?moi\b|\bhasard\b|\bal[ée]atoire\b|\bvari[ée]t[ée]\b|\bétonnez\b|\bsurprise\b/i;
 
+/* ──────────────────────────────────────────────────────────────────────
+   EXTRACTION DE TYPE-KEYWORD PAR SLOT
+   ──────────────────────────────────────────────────────────────────────
+   Brief 2026-05-26 « ameliore le matching description ↔ produit » :
+   Avant, useMujiForSlot envoyait à /api/products juste slot+color+style.
+   Le LLM disait « Chemise fluide beige » mais l'API ramenait un « Pull
+   ras du cou » (mauvais type, bonne couleur) → discordance description
+   /photo frustrante.
+
+   Maintenant : on EXTRAIT du libellé LLM (s.type) le mot-clé de type
+   le plus pertinent (« chemise », « polo », « blazer »…) et on le passe
+   à /api/products comme `q=`. Le filtre full-text de products restreint
+   alors aux produits dont le nom contient ce mot. Résultat : si le LLM
+   dit chemise, on n'a plus de pulls. */
+const TYPE_KEYWORDS_BY_SLOT: Record<string, RegExp[]> = {
+  haut: [
+    /\bpolo(?:s)?\b/i,
+    /\bt[\s-]?shirts?\b/i,
+    /\bchemises?\b/i,
+    /\bpull(?:s|over)?\b/i,
+    /\bhoodies?\b/i,
+    /\bsweat(?:s|shirt)?\b/i,
+    /\bmarini[èe]res?\b/i,
+    /\bd[ée]bardeurs?\b/i,
+    /\bsurchemises?\b/i,
+    /\bblouses?\b/i,
+    /\btop(?:s)?\b/i,
+    /\bcardigans?\b/i,
+    /\bcols?\s+roul[ée]s?\b/i,
+  ],
+  bas: [
+    /\bpantalons?\b/i,
+    /\bjeans?\b/i,
+    /\bchinos?\b/i,
+    /\bjoggings?\b/i,
+    /\bcargos?\b/i,
+    /\bshorts?\b/i,
+    /\bjupes?\b/i,
+    /\bbermudas?\b/i,
+  ],
+  veste: [
+    /\bblazers?\b/i,
+    /\bmanteaux?\b/i,
+    /\bvestes?\b/i,
+    /\bbombers?\b/i,
+    /\bgilets?\b/i,
+    /\btrench(?:[\s-]?coat)?s?\b/i,
+    /\bsurchemises?\b/i,
+    /\bparkas?\b/i,
+    /\bcardigans?\b/i,
+    /\bcabans?\b/i,
+  ],
+  chaussures: [
+    /\bsneakers?\b/i,
+    /\bderbies?\b/i,
+    /\bmocassins?\b/i,
+    /\bbottes?\b/i,
+    /\bbottines?\b/i,
+    /\bbaskets?\b/i,
+    /\bescarpins?\b/i,
+    /\bballerines?\b/i,
+  ],
+  accent: [
+    /\bceintures?\b/i,
+    /\bfoulards?\b/i,
+    /\b[ée]charpes?\b/i,
+    /\bcasquettes?\b/i,
+    /\bchapeaux?\b/i,
+    /\bpanama\b/i,
+    /\bfedora\b/i,
+    /\bpochettes?\b/i,
+    /\bsacs?\b/i,
+    /\bcravates?\b/i,
+    /\blunettes?\b/i,
+    /\bmontres?\b/i,
+    /\bbracelets?\b/i,
+    /\bbroche\b/i,
+    /\bbandanas?\b/i,
+  ],
+};
+
+/** Extrait le 1er type-keyword reconnu dans le libellé LLM. Retourne
+ *  null si rien ne matche (le frontend passera alors juste slot+color). */
+function extractTypeKeyword(slotType: string | undefined, slot: string): string | null {
+  if (!slotType) return null;
+  const patterns = TYPE_KEYWORDS_BY_SLOT[slot.toLowerCase()];
+  if (!patterns) return null;
+  for (const re of patterns) {
+    const m = slotType.match(re);
+    if (m) return m[0].toLowerCase().replace(/s$/, ""); // singularise (sneakers → sneaker)
+  }
+  return null;
+}
+
 /** Dédup d'arrays optionnels — utile pour fusionner local + LLM */
 function dedupArr(a?: string[], b?: string[]): string[] | undefined {
   const all = [...(a || []), ...(b || [])];
@@ -1393,6 +1487,10 @@ export async function POST(req: Request) {
                  pantalon femme » dans une même tenue. Le frontend lira
                  ce genre pour filtrer /api/products. */
               genre: s.genre || userPrefs.gender || undefined,
+              /* Brief 2026-05-26 « matching description ↔ produit » :
+                 on extrait le type-keyword du libellé LLM. Pour les ancres
+                 (Vos Nike blanches), pas besoin (pas de fetch produit). */
+              typeKeyword: s.ancre ? undefined : (extractTypeKeyword(s.type, s.slot) || undefined),
               lienAchat,
               mujiLien,
             };

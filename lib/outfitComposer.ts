@@ -120,6 +120,13 @@ export interface OutfitSlot {
      les produits leakaient sur les 2 genres → pantalon femme dans une
      tenue homme. */
   genre?: string;
+  /* Brief 2026-05-26 « matching description ↔ produit » : mot-clé de
+     type extrait du libellé LLM (« chemise » de « Chemise fluide beige »,
+     « blazer » de « Blazer cachemire camel »). Passé à /api/products
+     comme `q=` → restreint la recherche aux produits dont le nom contient
+     ce mot. Évite les substitutions floues (Chemise → Pull) qui rendaient
+     incohérente la description vs la photo. */
+  typeKeyword?: string;
   // Brief « couche achat » 2026-05-25 : URLs attachées par le serveur
   // (jamais par le LLM). Le UI lit ces champs en priorité pour les boutons.
   lienAchat?: string;   // recherche Amazon pré-remplie + tag wadastyle-21

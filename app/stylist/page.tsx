@@ -46,6 +46,12 @@ function useMujiForSlot(
   style: string | null,
   genre: string | null,
   seed: string | null,
+  /* Brief 2026-05-26 « matching description ↔ produit » : type-keyword
+     extrait du libellé LLM côté serveur. Si fourni, on l'envoie comme
+     q= à /api/products → la recherche full-text restreint aux produits
+     dont le nom contient ce mot. Plus de Pull retourné quand le LLM
+     dit Chemise. */
+  typeKeyword?: string | null,
 ) {
   const [product, setProduct] = useState<{
     nom: string;
@@ -72,6 +78,11 @@ function useMujiForSlot(
        homme reçoit des jupes femme. */
     if (genre) params.set("genre", genre.toLowerCase());
     if (seed) params.set("seed", seed);
+    /* Brief 2026-05-26 « matching description ↔ produit » : si on a
+       extrait un type-keyword côté serveur (chemise, blazer, sneakers…),
+       on le passe en q= → /api/products applique son filtre full-text
+       AND sur les tokens, restreint aux produits dont le nom le contient. */
+    if (typeKeyword) params.set("q", typeKeyword);
 
     fetch(`/api/products?${params}`)
       .then((r) => r.ok ? r.json() : null)
@@ -101,7 +112,7 @@ function useMujiForSlot(
       })
       .catch(() => { /* silencieux — fallback Amazon */ });
     return () => { cancelled = true; };
-  }, [slot, colorHex, style, genre, seed]);
+  }, [slot, colorHex, style, genre, seed, typeKeyword]);
 
   return product;
 }
@@ -375,6 +386,12 @@ interface OutfitPiece {
    *  useMujiForSlot pour filtrer correctement les produits MUJI et éviter
    *  les mismatches « T-shirt homme + pantalon femme » dans la même tenue. */
   genre?: string;
+  /** Brief 2026-05-26 « matching description ↔ produit » : mot-clé de type
+   *  extrait du libellé LLM (« chemise », « blazer », « sneakers »…) côté
+   *  serveur. Passé à /api/products comme q= → filtre full-text restreint
+   *  aux produits dont le nom contient ce mot. Évite que « Chemise fluide
+   *  beige » du LLM renvoie un Pull. */
+  typeKeyword?: string;
 }
 
 /* Brief V3 (2026-05-26) — `transient` permet d'afficher un placeholder
@@ -1054,7 +1071,7 @@ export default function StylistPage() {
     reponse?: string;
     options?: string[];
     composed_outfit?: {
-      slots?: Array<{ slot: string; role: string; label: string; hex: string; colorName: string; genre?: string }>;
+      slots?: Array<{ slot: string; role: string; label: string; hex: string; colorName: string; genre?: string; typeKeyword?: string }>;
       palette?: { entry?: { number?: string; name?: string; colors?: Array<{ hex: string; name: string }> } };
     };
     pourquoi?: string;
@@ -1119,6 +1136,8 @@ export default function StylistPage() {
         /* Genre par slot, avec fallback vers le dominant pour garantir
            la cohérence à travers toute la tenue. */
         genre: s.genre || dominantGenre || undefined,
+        /* Type-keyword extrait par le serveur depuis le libellé LLM. */
+        typeKeyword: s.typeKeyword || undefined,
       }));
       const reponse = data.reponse || data.entities?.styling_advice || "Voilà ce que je composerais.";
       const accordRef = composed.palette?.entry?.number || null;
@@ -1774,13 +1793,18 @@ function PieceCard({
      prenait QUE le prop → si state.genre était null (free-text user),
      les produits MUJI leakaient sur les 2 genres. */
   const effectiveGenre = piece.genre || genre || null;
-  const seed = piece.ancre ? null : `${piece.hex}-${piece.role}-${style || ""}-${effectiveGenre || ""}`;
+  const seed = piece.ancre ? null : `${piece.hex}-${piece.role}-${style || ""}-${effectiveGenre || ""}-${piece.typeKeyword || ""}`;
   const mujiProduct = useMujiForSlot(
     piece.ancre ? null : roleToApiSlot(piece.role),
     piece.ancre ? null : piece.hex,
     style || null,
     effectiveGenre,
     seed,
+    /* Brief « matching description ↔ produit » : on passe le type-keyword
+       extrait par le serveur. Le seed inclut maintenant le keyword pour
+       que 2 ajustements avec types différents (chemise → pull) donnent
+       des produits différents au même slot. */
+    piece.typeKeyword || null,
   );
 
   return (
