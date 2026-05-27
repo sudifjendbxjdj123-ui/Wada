@@ -30,6 +30,8 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import BackButton from "@/components/BackButton";
+import { useSavedOutfits, type SavedOutfit } from "@/hooks/useSavedOutfits";
+import { showToast } from "@/lib/toast";
 import { amazonSearch } from "@/lib/amazonAffiliate";
 import { dictionary, type DictionaryEntry } from "@/lib/data";
 import { analyzeColor } from "@/lib/colorEngine";
@@ -475,6 +477,13 @@ export default function StylistPage() {
      l'ancien appel. Évite les race conditions où un delta tardif viendrait
      écraser la bulle de la NOUVELLE conversation. */
   const inFlightAbortRef = useRef<AbortController | null>(null);
+
+  /* Brief 2026-05-26 « ameliore tout le reste possible » — save outfits.
+     Hook qui persiste les tenues dans localStorage (wada-saved-outfits)
+     + sync inter-onglets. La dernière tenue composée est gardée en ref
+     pour que le chip « Garder cette tenue » sache quoi sauver. */
+  const { save: saveOutfit } = useSavedOutfits();
+  const lastComposedRef = useRef<Omit<SavedOutfit, "id" | "savedAt"> | null>(null);
 
   /* Scroll vers le bas à chaque nouvelle bulle */
   useEffect(() => {
@@ -1115,6 +1124,26 @@ export default function StylistPage() {
       const accordRef = composed.palette?.entry?.number || null;
       const accordName = composed.palette?.entry?.name || null;
 
+      /* Brief 2026-05-26 « save outfits » : on stocke la tenue complète
+         dans une ref pour que le chip « Garder cette tenue » puisse
+         l'archiver dans localStorage sans passer par le state React. */
+      lastComposedRef.current = {
+        nomTenue: data.nom_tenue || reponse.split(".")[0].trim() || "Tenue",
+        accordRef: accordRef || undefined,
+        accordName: accordName || undefined,
+        accordColors: (composed.palette?.entry?.colors as Array<{ hex: string; name: string }> | undefined) || [],
+        pieces: pieces.map((p) => ({
+          role: p.role,
+          type: p.type,
+          hex: p.hex,
+          couleurNom: p.couleurNom,
+          ancre: p.ancre,
+          genre: p.genre,
+        })),
+        reponse: data.reponse,
+        pourquoi: data.pourquoi,
+      };
+
       clearTransient();
       /* Brief 2026-05-26 « continue d'ameliorer » : la bulle nom_tenue
          est maintenant un VRAI accord-card cliquable. Le user voit en
@@ -1171,7 +1200,12 @@ export default function StylistPage() {
              zéro sans recharger la page. Utile quand l'utilisateur veut
              changer de scénario complet (« là c'était une soirée, je
              veux maintenant un look bureau »). */
+          /* Brief 2026-05-26 « save outfits » : nouveau chip primary
+             « Garder cette tenue » → archive dans localStorage + toast.
+             Placé en tête car c'est l'action positive après validation.
+             Si l'user veut ajuster, les autres chips restent dispo. */
           const adjustChips: { label: string; primary?: boolean }[] = [
+            { label: "Garder cette tenue", primary: true },
             { label: "Plus chaud" },
             { label: "Sans veste" },
             { label: "Plus décontracté" },
@@ -1180,12 +1214,19 @@ export default function StylistPage() {
             { label: "Recommencer" },
           ];
           if (variationText) {
-            adjustChips.unshift({ label: "Essayer la variation", primary: true });
-          } else {
-            adjustChips.push({ label: "C'est parfait", primary: true });
+            /* Variation prend la place du primary, garder reste secondaire */
+            adjustChips[0] = { label: "Essayer la variation", primary: true };
+            adjustChips.splice(1, 0, { label: "Garder cette tenue" });
           }
           setChips(adjustChips);
           setNextChipHandler(() => (label: string) => {
+            if (label === "Garder cette tenue") {
+              if (lastComposedRef.current) {
+                saveOutfit(lastComposedRef.current);
+                showToast("Tenue gardée — retrouvez-la dans vos favoris ✓");
+              }
+              return;
+            }
             if (label === "Recommencer") {
               start();
               return;

@@ -279,7 +279,23 @@
    si pas de produit MUJI matché. Même fix que /ma-tenue (commit
    précédent) maintenant appliqué sur /composer.
    Force re-fetch JS. */
-const CACHE_VERSION = "wada-v27-2026-05-26";
+/* Bump 26/05 v28 : save outfit + view sur /favoris.
+   Brief client « ameliore tout le reste possible » (gap UX majeur :
+   composer une tenue dans /stylist et la perdre était frustrant).
+   - Nouveau hook useSavedOutfits (localStorage wada-saved-outfits,
+     20 max FIFO, sync inter-onglets via storage event)
+   - /stylist : chip primary « Garder cette tenue » dans les
+     ajustements après outfit + toast confirmation
+   - /favoris refondue : section « Palettes » + section « Mes tenues »
+     côte à côte. Cards SavedOutfitCard avec :
+     · mini-bandes de l'accord (cliquables vers /palette/[ref])
+     · kicker LA TENUE + nom Fredoka
+     · ref Sanzo Wada + nom accord
+     · liste 5 pièces avec pastille couleur + role + type
+     · bouton ✕ retirer
+     · relative time « il y a 2h » / « hier » / date
+   Force re-fetch JS + HTML. */
+const CACHE_VERSION = "wada-v28-2026-05-26";
 const STATIC_CACHE  = `${CACHE_VERSION}-static`;
 const PAGE_CACHE    = `${CACHE_VERSION}-pages`;
 
