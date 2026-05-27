@@ -357,7 +357,15 @@
    par le vrai logo officiel Pinterest (SVG cercle rouge #E60023 +
    glyphe blanc, path fidèle à brand.pinterest.com). Force re-fetch
    HTML pour que les clients voient le nouveau pictogramme. */
-const CACHE_VERSION = "wada-v32-2026-05-28";
+/* Bump v33 28/05 : brief client « le site offre-t-il la traduction
+   pour les anglais ? » → ajout d'un bouton EN dans le Nav (desktop
+   right side + drawer mobile). Pas d'i18n complet (348 palettes
+   éditoriales = plusieurs semaines), à la place proxy officiel
+   Google translate.goog : www-wada-style.translate.goog/<path>
+   ?_x_tr_sl=fr&_x_tr_tl=en. Gratuit, fonctionne sur 100 % du site,
+   barre Google native pour revenir en FR. Force re-fetch HTML pour
+   que les clients voient le nouveau bouton dans le header. */
+const CACHE_VERSION = "wada-v33-2026-05-28";
 const STATIC_CACHE  = `${CACHE_VERSION}-static`;
 const PAGE_CACHE    = `${CACHE_VERSION}-pages`;
 

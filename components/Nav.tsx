@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ink } from "@/lib/styles";
 import ThemeToggle from "@/components/ThemeToggle";
+import LangButton from "@/components/LangButton";
 
 /**
  * Nav — header WADA global (brief 2026-05-28 v4 — audit UX).
@@ -250,6 +251,13 @@ export default function Nav() {
           <span className="wada-nav-theme">
             <ThemeToggle />
           </span>
+          {/* Brief client 2026-05-28 « traduction anglaise » — bouton EN
+              qui passe par le proxy Google translate.goog. Caché ≤880px
+              (même règle que .wada-nav-compte/.wada-nav-theme : sur mobile
+              l'option est dans le drawer pour ne pas surcharger le header). */}
+          <span className="wada-nav-lang-wrapper">
+            <LangButton variant="pill" />
+          </span>
           <Link
             href="/tarifs"
             style={{
@@ -306,7 +314,8 @@ export default function Nav() {
               display: inline-flex !important;
             }
             :global(.wada-nav-compte),
-            :global(.wada-nav-theme) {
+            :global(.wada-nav-theme),
+            :global(.wada-nav-lang-wrapper) {
               display: none !important;
             }
           }
@@ -389,6 +398,12 @@ export default function Nav() {
               </span>
               <ThemeToggle />
             </div>
+
+            {/* Brief client 2026-05-28 « traduction anglaise » — option
+                Language dans le drawer mobile (versant pill cachée ≤880px
+                via CSS plus haut). Le LangButton variant="drawer-row"
+                produit déjà une ligne complète avec borderBottom. */}
+            <LangButton variant="drawer-row" />
 
             {/* Sections de liens */}
             {DRAWER_SECTIONS.map((section) => (
