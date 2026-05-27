@@ -226,7 +226,17 @@
       changer AU MOINS 2 slots non-ancre, OU la matière dominante, OU
       la couleur signature.
    Force re-fetch JS. */
-const CACHE_VERSION = "wada-v23-2026-05-26";
+/* Bump 26/05 v24 : polish UX stylist :
+   1. Écran d'accueil : 5 quick-start chips concrètes (Bureau lundi,
+      J'ai un pull noir, Soirée samedi, Surprends-moi, J'ai déjà une
+      pièce). Un clic = prompt direct au LLM. Plus de message vague.
+   2. nom_tenue prominent : kicker LA TENUE + titre Fredoka 22px
+      au lieu d'un mini-kicker 10px isolé. Vraie identité de la
+      composition.
+   3. Chip « Recommencer » dans les ajustements : reset complet sans
+      recharger la page. Utile pour changer de scénario.
+   Force re-fetch JS. */
+const CACHE_VERSION = "wada-v24-2026-05-26";
 const STATIC_CACHE  = `${CACHE_VERSION}-static`;
 const PAGE_CACHE    = `${CACHE_VERSION}-pages`;
 

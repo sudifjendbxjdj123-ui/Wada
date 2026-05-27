@@ -516,17 +516,38 @@ export default function StylistPage() {
     setTimeout(fn, 450);
   }
 
-  /* ─── Étape 0 : reset + question d'ouverture ─── */
+  /* ─── Étape 0 : reset + question d'ouverture ───
+     Brief 2026-05-26 « continue d'ameliorer » : on remplace le message
+     d'accueil vague (« On compose ensemble. Vous avez déjà une pièce
+     ou vous partez de zéro ? ») par une invitation concrète + 5
+     suggestions cliquables qui couvrent les cas typiques. L'user voit
+     immédiatement ce qu'on peut lui demander, sans avoir à inventer
+     la formulation. Une suggestion = un prompt direct envoyé au LLM. */
   function start() {
     setBubbles([]);
     setChips([]);
     setState(emptyState());
     setDone(false);
-    addBot("Bonjour 👋 On compose ensemble. Vous avez déjà une pièce à mettre en valeur, ou vous partez de zéro ?");
+    chatHistoryRef.current = [];
+    addBot("Dites-moi tout. Une occasion, une pièce, une humeur — je compose autour.");
     setChips([
+      { label: "Bureau lundi" },
+      { label: "J'ai un pull noir" },
+      { label: "Soirée samedi" },
+      { label: "Surprends-moi", primary: true },
       { label: "J'ai déjà une pièce" },
-      { label: "Composez-moi une tenue complète", primary: true },
     ]);
+    /* Hijack du prochain clic : les 4 suggestions concrètes envoient
+       directement le texte au LLM. « J'ai déjà une pièce » garde
+       l'ancien flow chip (utilisateurs qui préfèrent le guidage). */
+    setNextChipHandler(() => (label: string) => {
+      if (label === "J'ai déjà une pièce") {
+        return onMode(label);
+      }
+      addMe(label);
+      pushHistory("user", label);
+      callLLM(label);
+    });
   }
 
   /* ─── Étape 1 : choix mode ─── */
@@ -1068,8 +1089,11 @@ export default function StylistPage() {
       const accordName = composed.palette?.entry?.name || null;
 
       clearTransient();
+      /* Brief 2026-05-26 « continue d'ameliorer » : nom_tenue rendu plus
+         prominent — kicker LA TENUE + titre Fredoka 22px ink. Vraie
+         identité de la composition. */
       if (data.nom_tenue && typeof data.nom_tenue === "string") {
-        addBot(`<span style="display:inline-block;font-size:10px;letter-spacing:0.35em;text-transform:uppercase;color:#6B3A32;font-weight:600">${data.nom_tenue}</span>`);
+        addBot(`<div style="display:flex;flex-direction:column;gap:4px;padding:4px 0"><span style="font-family:'Inter',sans-serif;font-size:9px;letter-spacing:0.4em;text-transform:uppercase;color:#6B3A32;font-weight:600">La tenue</span><span style="font-family:'Fredoka',sans-serif;font-size:22px;font-weight:600;color:#1E1E1E;line-height:1.1;letter-spacing:-0.005em">${data.nom_tenue}</span></div>`);
       }
       addBot(reponse);
       addOutfit(pieces);
@@ -1109,12 +1133,18 @@ export default function StylistPage() {
         }
         setTimeout(() => {
           addBot("Je peux l'ajuster — dites-moi.");
+          /* Brief 2026-05-26 « continue d'ameliorer » : ajout d'un chip
+             « Recommencer » en fin de liste qui reset la conversation à
+             zéro sans recharger la page. Utile quand l'utilisateur veut
+             changer de scénario complet (« là c'était une soirée, je
+             veux maintenant un look bureau »). */
           const adjustChips: { label: string; primary?: boolean }[] = [
             { label: "Plus chaud" },
             { label: "Sans veste" },
             { label: "Plus décontracté" },
             { label: "Une autre couleur" },
             { label: "Moins cher" },
+            { label: "Recommencer" },
           ];
           if (variationText) {
             adjustChips.unshift({ label: "Essayer la variation", primary: true });
@@ -1122,17 +1152,19 @@ export default function StylistPage() {
             adjustChips.push({ label: "C'est parfait", primary: true });
           }
           setChips(adjustChips);
-          if (variationText) {
-            setNextChipHandler(() => (label: string) => {
-              if (label === "Essayer la variation") {
-                addMe("Essayer la variation");
-                pushHistory("user", `Essaie cette variation : ${variationText}`);
-                callLLM(`Essaie cette variation : ${variationText}`);
-              } else {
-                onAdjust(label);
-              }
-            });
-          }
+          setNextChipHandler(() => (label: string) => {
+            if (label === "Recommencer") {
+              start();
+              return;
+            }
+            if (label === "Essayer la variation" && variationText) {
+              addMe("Essayer la variation");
+              pushHistory("user", `Essaie cette variation : ${variationText}`);
+              callLLM(`Essaie cette variation : ${variationText}`);
+              return;
+            }
+            onAdjust(label);
+          });
           setDone(true);
         }, variationText ? 950 : 650);
       }, 450);
