@@ -28,6 +28,7 @@
  *   - Bouton « Recommencer » visible après composition
  */
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import BackButton from "@/components/BackButton";
 import { amazonSearch } from "@/lib/amazonAffiliate";
 import { dictionary, type DictionaryEntry } from "@/lib/data";
@@ -373,10 +374,14 @@ interface OutfitPiece {
    « Le styliste réfléchit… » pendant l'appel LLM, qu'on retire au moment
    où la vraie réponse arrive. Effet streaming sans implémenter de vrai
    streaming (qui demande du parsing JSON incrémental côté serveur). */
+/* Brief 2026-05-26 « continue d'ameliorer » : nouveau bubble type "accord"
+   pour rendre la palette Sanzo Wada du LLM comme une mini-carte cliquable.
+   Pont éditorial direct entre la tenue composée et la page palette. */
 type Bubble =
   | { who: "bot"; html: string; transient?: boolean }
   | { who: "me"; text: string }
-  | { who: "outfit"; pieces: OutfitPiece[] };
+  | { who: "outfit"; pieces: OutfitPiece[] }
+  | { who: "accord"; ref: string; name: string; colors: Array<{ hex: string; name: string }>; nomTenue?: string };
 
 interface State {
   mode: Mode;
@@ -511,6 +516,9 @@ export default function StylistPage() {
   }
   function addOutfit(pieces: OutfitPiece[]) {
     setBubbles((prev) => [...prev, { who: "outfit", pieces }]);
+  }
+  function addAccord(ref: string, name: string, colors: Array<{ hex: string; name: string }>, nomTenue?: string) {
+    setBubbles((prev) => [...prev, { who: "accord", ref, name, colors, nomTenue }]);
   }
   function botDelay(fn: () => void) {
     setTimeout(fn, 450);
@@ -1089,10 +1097,16 @@ export default function StylistPage() {
       const accordName = composed.palette?.entry?.name || null;
 
       clearTransient();
-      /* Brief 2026-05-26 « continue d'ameliorer » : nom_tenue rendu plus
-         prominent — kicker LA TENUE + titre Fredoka 22px ink. Vraie
-         identité de la composition. */
-      if (data.nom_tenue && typeof data.nom_tenue === "string") {
+      /* Brief 2026-05-26 « continue d'ameliorer » : la bulle nom_tenue
+         est maintenant un VRAI accord-card cliquable. Le user voit en
+         un coup d'œil la palette Sanzo Wada qui ancre la tenue +
+         peut cliquer pour aller sur /palette/[number]. Pont éditorial
+         direct entre /stylist et le dictionnaire des accords. */
+      const accordColorsForBubble = composed.palette?.entry?.colors;
+      if (accordRef && accordName && accordColorsForBubble?.length) {
+        addAccord(accordRef, accordName, accordColorsForBubble, data.nom_tenue || undefined);
+      } else if (data.nom_tenue && typeof data.nom_tenue === "string") {
+        /* Fallback : pas de palette détectée → bulle nom_tenue HTML simple. */
         addBot(`<div style="display:flex;flex-direction:column;gap:4px;padding:4px 0"><span style="font-family:'Inter',sans-serif;font-size:9px;letter-spacing:0.4em;text-transform:uppercase;color:#6B3A32;font-weight:600">La tenue</span><span style="font-family:'Fredoka',sans-serif;font-size:22px;font-weight:600;color:#1E1E1E;line-height:1.1;letter-spacing:-0.005em">${data.nom_tenue}</span></div>`);
       }
       addBot(reponse);
@@ -1352,6 +1366,9 @@ export default function StylistPage() {
             if (b.who === "outfit") {
               return <OutfitBubble key={i} pieces={b.pieces} genre={state.genre} style={state.style} />;
             }
+            if (b.who === "accord") {
+              return <AccordBubble key={i} accordRef={b.ref} accordName={b.name} colors={b.colors} nomTenue={b.nomTenue} />;
+            }
             if (b.who === "me") {
               return (
                 <div
@@ -1508,6 +1525,108 @@ export default function StylistPage() {
    Réutilise le pattern SlotCard (marque + via Amazon + prix + Acheter)
    pour cohérence avec /ma-tenue.
    ══════════════════════════════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════════════════════
+   AccordBubble — carte cliquable montrant l'accord Sanzo Wada de la
+   tenue + nom de tenue en titre. Pont vers /palette/[number].
+   Brief 2026-05-26 « continue d'ameliorer » : connection éditoriale
+   directe entre la tenue composée et la page palette source.
+   ══════════════════════════════════════════════════════════════════════ */
+function AccordBubble({
+  accordRef, accordName, colors, nomTenue,
+}: {
+  accordRef: string;
+  accordName: string;
+  colors: Array<{ hex: string; name: string }>;
+  nomTenue?: string;
+}) {
+  return (
+    <Link
+      href={`/palette/${accordRef}`}
+      style={{
+        alignSelf: "stretch",
+        background: palette.cream,
+        border: `1px solid ${palette.line}`,
+        borderRadius: 18,
+        padding: "18px 20px",
+        textDecoration: "none",
+        color: "inherit",
+        display: "block",
+        transition: "transform 0.25s ease, box-shadow 0.25s ease",
+        cursor: "pointer",
+      }}
+      onMouseEnter={(ev) => {
+        ev.currentTarget.style.transform = "translateY(-2px)";
+        ev.currentTarget.style.boxShadow = "0 12px 32px rgba(30,30,30,.10)";
+      }}
+      onMouseLeave={(ev) => {
+        ev.currentTarget.style.transform = "translateY(0)";
+        ev.currentTarget.style.boxShadow = "none";
+      }}
+    >
+      {/* Header : kicker LA TENUE + nom_tenue Fredoka */}
+      {nomTenue && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 4, marginBottom: 14 }}>
+          <span style={{
+            fontFamily: fonts.sans, fontSize: 9, letterSpacing: "0.4em",
+            textTransform: "uppercase", color: palette.bordeaux, fontWeight: 600,
+          }}>
+            La tenue
+          </span>
+          <span style={{
+            fontFamily: fonts.display, fontSize: 22, fontWeight: 600,
+            color: palette.ink, lineHeight: 1.1, letterSpacing: "-0.005em",
+          }}>
+            {nomTenue}
+          </span>
+        </div>
+      )}
+
+      {/* Mini palette : bandes pleines des couleurs de l'accord */}
+      <div style={{
+        display: "flex", height: 48, borderRadius: 10, overflow: "hidden",
+        border: `1px solid ${palette.line}`,
+      }}>
+        {colors.slice(0, 5).map((c) => (
+          <span
+            key={c.hex}
+            title={`${c.name} · ${c.hex}`}
+            style={{ flex: 1, background: c.hex }}
+            aria-hidden="true"
+          />
+        ))}
+      </div>
+
+      {/* Footer : ref accord + indicateur clic */}
+      <div style={{
+        display: "flex", justifyContent: "space-between", alignItems: "center",
+        marginTop: 12, gap: 12,
+      }}>
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <span style={{
+            fontFamily: fonts.sans, fontSize: 9, letterSpacing: "0.32em",
+            textTransform: "uppercase", color: palette.inkSoft, fontWeight: 600,
+          }}>
+            Sanzo Wada · No. {accordRef}
+          </span>
+          <div style={{
+            fontFamily: fonts.display, fontSize: 15, fontWeight: 600,
+            color: palette.ink, marginTop: 2, lineHeight: 1.2,
+            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+          }}>
+            {accordName}
+          </div>
+        </div>
+        <span style={{
+          fontSize: 11, color: palette.bordeaux, fontWeight: 600,
+          letterSpacing: "0.04em", whiteSpace: "nowrap",
+        }}>
+          Voir l&apos;accord →
+        </span>
+      </div>
+    </Link>
+  );
+}
+
 function OutfitBubble({ pieces, genre, style }: { pieces: OutfitPiece[]; genre: string | null; style: string | null }) {
   return (
     <div

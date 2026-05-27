@@ -236,7 +236,15 @@
    3. Chip « Recommencer » dans les ajustements : reset complet sans
       recharger la page. Utile pour changer de scénario.
    Force re-fetch JS. */
-const CACHE_VERSION = "wada-v24-2026-05-26";
+/* Bump 26/05 v25 : accord-card cliquable dans le chat styliste.
+   La bulle nom_tenue devient une vraie carte Sanzo Wada :
+     · Kicker LA TENUE + nom Fredoka 22px
+     · 4-5 bandes de couleur pleines (accord visible)
+     · Footer : « Sanzo Wada · No. XXX » + nom + « Voir l'accord → »
+   Clic sur la carte → /palette/[number]. Pont éditorial direct
+   entre la tenue composée par l'IA et la page palette source.
+   Force re-fetch JS. */
+const CACHE_VERSION = "wada-v25-2026-05-26";
 const STATIC_CACHE  = `${CACHE_VERSION}-static`;
 const PAGE_CACHE    = `${CACHE_VERSION}-pages`;
 
