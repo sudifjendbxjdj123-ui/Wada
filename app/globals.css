@@ -559,6 +559,24 @@ body::after {
 }
 
 /* ───────────────────────────────────────────────────────────
+   PALETTE [number] — 3 variant cards (« Choisissez votre look »).
+   Brief 2026-05-26 : ces cards sont l'action principale, donc on
+   leur donne un hover plus marqué — lift 4px + shadow renforcée +
+   le bouton bordeaux passe en ink (négatif WADA) pour signaler le
+   focus. Cohérent avec le reste du site.
+   ─────────────────────────────────────────────────────────── */
+.wada-variant-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 16px 40px rgba(30, 30, 30, 0.14) !important;
+}
+.wada-variant-card:hover span[style*="background: rgb(107, 58, 50)"],
+.wada-variant-card:hover span[style*="background:#6B3A32"] {
+  /* Le pill CTA bordeaux passe en ink au hover. Sélecteur sur le
+     style inline `background: ...` (palette.bordeaux résolue par React). */
+  background: #1E1E1E !important;
+}
+
+/* ───────────────────────────────────────────────────────────
    STYLIST « réfléchit » — 3 dots qui pulsent en cascade.
    Brief 2026-05-26 « ameliore le encore ». Signal visuel
    pendant l'appel LLM (latence 1-3 s typique). Les 3 spans

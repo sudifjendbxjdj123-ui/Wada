@@ -190,7 +190,26 @@
      discret. Le formulaire EST son propre label.
    - Drop zone /composer : pas de mention « JPG/PNG max 8 Mo »
    Force re-fetch JS + CSS. */
-const CACHE_VERSION = "wada-v21-2026-05-26";
+/* Bump 26/05 v22 : refonte UX /palette/[number] — action principale claire.
+   Brief client : « voir la tenue est perdu au milieu de tout ».
+   - Hero épuré : retire les 3 features pills (Matières naturelles /
+     Couleurs exclusives / Fabriqué avec soin) qui étaient du marketing
+   - Retire le bouton solo « Voir la tenue » noir dans la colonne droite
+     (faisait DOUBLON avec les 3 cards « Choisissez votre look »)
+   - ♡ + Pinterest réduits (42px au lieu de 48) — actions secondaires
+   - Les 3 cards de look DEVIENNENT l'action principale :
+     · kicker bordeaux fort « Voir cette palette en tenue »
+     · H2 plus grand (clamp 28-36px)
+     · Sous-titre italique « 3 façons de porter [palette] aujourd'hui »
+     · Chaque card a maintenant un CTA pill bordeaux pleine largeur
+       « Voir ce look → » au lieu d'un petit lien texte
+     · Padding card 20/22, hover lift -4px + shadow renforcée
+   - Retire les 4 pills marketing (Curation lente / Sans inscription /
+     Affiliation transparente / 348 palettes) qui étaient de la landing
+     page B2C
+   - « Affiner à votre style » reste comme optionnel collapsible
+   Force re-fetch JS + CSS. */
+const CACHE_VERSION = "wada-v22-2026-05-26";
 const STATIC_CACHE  = `${CACHE_VERSION}-static`;
 const PAGE_CACHE    = `${CACHE_VERSION}-pages`;
 

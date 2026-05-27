@@ -215,7 +215,15 @@ export default function PalettePage({ params }: { params: Promise<{ number: stri
             })}
           </div>
 
-          {/* RIGHT — info */}
+          {/* RIGHT — info épurée
+              Brief client 2026-05-26 « rends la plus pertinente, on
+              comprend pas le voir la tenue perdu au milieu ».
+              On retire : les 3 features pills (matières/couleurs/soin =
+              marketing) ET le bouton solo « Voir la tenue » qui faisait
+              doublon avec les 3 cards « Choisissez votre look » plus
+              bas. Maintenant : kicker + nom + 1 phrase italique + ♡ + P
+              dans une rangée discrète. L'action principale (voir une
+              tenue) est entièrement portée par les 3 cards de look. */}
           <div>
             <p style={{
               fontFamily: fonts.display, fontWeight: 600,
@@ -229,6 +237,7 @@ export default function PalettePage({ params }: { params: Promise<{ number: stri
               fontFamily: fonts.display, fontWeight: 700,
               fontSize: "clamp(36px, 5vw, 50px)",
               lineHeight: 1.02, margin: "8px 0",
+              letterSpacing: "-0.01em",
             }}>
               {entry.name}
             </h1>
@@ -236,60 +245,29 @@ export default function PalettePage({ params }: { params: Promise<{ number: stri
               fontFamily: fonts.body, fontStyle: "italic",
               fontSize: 18, color: palette.inkSoft,
               maxWidth: "32ch",
+              margin: "10px 0 24px",
             }}>
               {entry.description}
             </p>
 
-            <div style={{
-              display: "flex", gap: 16, flexWrap: "wrap",
-              margin: "20px 0 0", fontSize: 12, color: palette.inkSoft,
-            }}>
-              <span>◇ Matières naturelles</span>
-              <span>◈ Couleurs exclusives</span>
-              <span>✦ Fabriqué avec soin</span>
-            </div>
-
-            {/* CTA UNIQUE — brief 2026-05-27 clarté :
-                avant on avait DEUX boutons « Composer ma tenue » (en haut)
-                + « Voir ma tenue » (dans la section affinage) qui faisaient
-                la même chose et embrouillaient. Désormais : UN SEUL CTA
-                principal « Voir la tenue ». L'affinage devient optionnel
-                replié (cf. <details> plus bas) + 3 variantes de look. */}
-            <div style={{ display: "flex", gap: 12, marginTop: 26, flexWrap: "wrap" }}>
-              <Link href={`/ma-tenue?palette=${entry.number}`} style={{
-                fontFamily: fonts.sans, fontSize: 15,
-                padding: "16px 28px", borderRadius: 999,
-                background: palette.ink, color: palette.cream,
-                border: "none", cursor: "pointer", textDecoration: "none",
-                display: "inline-flex", alignItems: "center", gap: 8,
-                transition: `transform 0.35s ${ease}`,
-                fontWeight: 500,
-              }}>
-                <span>Voir la tenue</span>
-                <span aria-hidden style={{ fontSize: 16 }}>→</span>
-              </Link>
+            {/* ♡ favori + Pinterest : actions secondaires discrètes,
+                petites tailles. Plus de gros CTA bordeaux ici. */}
+            <div style={{ display: "flex", gap: 10 }}>
               <button
                 type="button"
                 onClick={toggleFavorite}
                 aria-label={isFavorite ? "Retirer des favoris" : "Ajouter aux favoris"}
                 style={{
-                  width: 48, height: 48, borderRadius: "50%",
+                  width: 42, height: 42, borderRadius: "50%",
                   border: `1px solid ${isFavorite ? palette.bordeaux : palette.line}`,
                   background: isFavorite ? palette.bordeaux : palette.cream,
                   color: isFavorite ? "#fff" : palette.bordeaux,
-                  fontSize: 18, cursor: "pointer",
+                  fontSize: 16, cursor: "pointer",
                   transition: `all 0.2s ${ease}`,
                 }}
               >
                 {isFavorite ? "♥" : "♡"}
               </button>
-              {/* Brief Pinterest §7 (25/05) — bouton « Épingler » :
-                  Ouvre Pinterest dans un nouvel onglet avec image OG + titre +
-                  URL pré-remplis. Le visiteur n'a plus qu'à choisir son tableau
-                  et cliquer « Save ». Format pinterest.com/pin/create/button/
-                  est le pattern officiel Pinterest, robuste à long terme.
-                  Description suit le modèle du brief : nom palette + 3 couleurs +
-                  hashtags. */}
               <a
                 href={`https://www.pinterest.com/pin/create/button/?url=${encodeURIComponent(`https://www.wada.style/palette/${entry.number}`)}&media=${encodeURIComponent(`https://www.wada.style/palette/${entry.number}/opengraph-image`)}&description=${encodeURIComponent(
                   `${entry.name} — accord No. ${entry.number} du dictionnaire Sanzo Wada. ${entry.colors.map((c) => c.name).join(", ")}. La tenue qui va avec cette palette sur WADA. #palette #couleur #tenue #mode #SanzoWada`
@@ -299,11 +277,11 @@ export default function PalettePage({ params }: { params: Promise<{ number: stri
                 aria-label="Épingler cette palette sur Pinterest"
                 title="Épingler sur Pinterest"
                 style={{
-                  width: 48, height: 48, borderRadius: "50%",
+                  width: 42, height: 42, borderRadius: "50%",
                   border: `1px solid ${palette.line}`,
                   background: palette.cream,
-                  color: "#E60023",  /* rouge Pinterest officiel */
-                  fontSize: 18, fontWeight: 700, cursor: "pointer",
+                  color: "#E60023",
+                  fontSize: 16, fontWeight: 700, cursor: "pointer",
                   textDecoration: "none",
                   display: "inline-flex", alignItems: "center", justifyContent: "center",
                   transition: `all 0.2s ${ease}`,
@@ -315,29 +293,37 @@ export default function PalettePage({ params }: { params: Promise<{ number: stri
           </div>
         </div>
 
-        {/* ═══════════════════ 3 VARIANTES — brief 2026-05-27 ═══════════════════
-            « Plus de choix : proposer 3 variantes de look à partir de
-            l'accord » — Classique / Décontracté / Habillé. Chaque carte
-            envoie sur /ma-tenue avec un override style+occasion qui force
-            le registre engine à composer la bonne tenue.
-
+        {/* ═══════════════════ 3 LOOKS — action principale ═══════════════════
+            Brief client 2026-05-26 : « voir la tenue est perdu au milieu de
+            tout ». L'ancien CTA solo dans la colonne droite faisait doublon
+            avec ces 3 variantes. On en a fait L'ACTION principale :
+            titre plus grand, kicker bordeaux, cards plus aérées, CTA
+            « Voir ce look → » explicite et bordeaux sur chaque card.
             Sémantique d'override (cf. /ma-tenue lit ?style= & ?occasion=) :
               - classique  → style=Classique, occasion=quotidien
               - casual     → style=Minimal,   occasion=quotidien
               - dressy     → style=Old money, occasion=sorties */}
         <p style={{
           textAlign: "center", fontSize: 11,
-          letterSpacing: "0.28em", textTransform: "uppercase",
-          color: palette.olive, margin: "60px 0 6px",
+          letterSpacing: "0.32em", textTransform: "uppercase",
+          color: palette.bordeaux, fontWeight: 600,
+          margin: "72px 0 8px",
         }}>
-          3 façons de la porter
+          Voir cette palette en tenue
         </p>
         <h2 style={{
           textAlign: "center", fontFamily: fonts.display, fontWeight: 700,
-          fontSize: 26, marginBottom: 20, color: palette.ink,
+          fontSize: "clamp(28px, 3.6vw, 36px)", marginBottom: 6, color: palette.ink,
+          letterSpacing: "-0.01em",
         }}>
           Choisissez votre look
         </h2>
+        <p style={{
+          textAlign: "center", fontFamily: fonts.body, fontStyle: "italic",
+          fontSize: 14, color: palette.inkSoft, marginBottom: 28,
+        }}>
+          3 façons de porter {entry.name.toLowerCase()} aujourd&apos;hui.
+        </p>
         <div className="wada-palette-variants" style={{
           display: "grid",
           gridTemplateColumns: "repeat(3, 1fr)",
@@ -445,18 +431,12 @@ export default function PalettePage({ params }: { params: Promise<{ number: stri
           </div>
         </details>
 
-        {/* ═══════════════════ TRUST 4 colonnes ═══════════════════ */}
-        <section className="wada-palette-trust" style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(4, 1fr)",
-          gap: 20,
-          margin: "54px 0 0",
-        }}>
-          <TrustItem icon="◇" label="Curation lente" desc="Une sélection de boutiques curées éditorialement." />
-          <TrustItem icon="↻" label="Sans inscription" desc="Aucune donnée gardée par défaut." />
-          <TrustItem icon="◈" label="Affiliation transparente" desc="Le tag wada.style reste visible partout." />
-          <TrustItem icon="✦" label="348 palettes" desc="100 ans d'éditorial Sanzo Wada." />
-        </section>
+        {/* Section TRUST (4 pills Curation/Sans inscription/Affiliation/
+            348 palettes) RETIRÉE — brief client 2026-05-26 « rends la
+            plus pertinente, trop d'information ». Ces 4 pills étaient
+            de la landing page B2C, pas une info utile sur cette palette
+            spécifique. Garde-fous confidentialité + transparence affilié
+            restent visibles dans le footer global. */}
 
         {/* ═══════════════════ PNAV — prev/next dark banner ═══════════════════
             Bug fix 2026-05-21 : on n'affiche le lien que si la palette
@@ -667,40 +647,56 @@ function VariantCard({ href, title, desc, previewColors, variant }: {
   previewColors: string[];
   variant: "classique" | "decontracte" | "habille";
 }) {
+  /* Brief client 2026-05-26 : ces cards sont l'action principale de
+     la page palette. Rendu plus aéré (padding 22 au lieu de 15), CTA
+     final transformé en pill bordeaux pleine largeur — l'utilisateur
+     voit ce qui se passe au clic sans ambiguïté. Hover lift -3px. */
   return (
-    <Link href={href} style={{
-      display: "block",
-      background: palette.cream,
-      border: `1px solid ${palette.line}`,
-      borderRadius: 18,
-      overflow: "hidden",
-      boxShadow: shadow,
-      textDecoration: "none",
-      color: "inherit",
-      transition: `transform 0.3s ${ease}`,
-    }}>
+    <Link
+      href={href}
+      className="wada-variant-card"
+      style={{
+        display: "flex", flexDirection: "column",
+        background: palette.cream,
+        border: `1px solid ${palette.line}`,
+        borderRadius: 20,
+        overflow: "hidden",
+        boxShadow: "0 8px 30px rgba(30,30,30,.07)",
+        textDecoration: "none",
+        color: "inherit",
+        transition: `transform 0.3s ${ease}, box-shadow 0.3s ${ease}`,
+      }}
+    >
       <VariantColorStrip variant={variant} colors={previewColors} />
-      <div style={{ padding: "15px 16px" }}>
+      <div style={{ padding: "20px 22px 22px", display: "flex", flexDirection: "column", flex: 1 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, color: palette.bordeaux, marginBottom: 6 }}>
           <VariantSilhouette variant={variant} />
           <h3 style={{
             fontFamily: fonts.display, fontWeight: 600,
-            fontSize: 18, color: palette.ink, margin: 0,
+            fontSize: 19, color: palette.ink, margin: 0,
+            letterSpacing: "-0.005em",
           }}>
             {title}
           </h3>
         </div>
         <p style={{
-          fontSize: 13, color: palette.inkSoft,
-          margin: "4px 0 8px", lineHeight: 1.5,
+          fontSize: 13.5, color: palette.inkSoft,
+          margin: "4px 0 18px", lineHeight: 1.5,
+          flex: 1,
         }}>
           {desc}
         </p>
+        {/* CTA pill bordeaux pleine largeur — l'action est ÉVIDENTE. */}
         <span style={{
-          fontSize: 13, color: palette.bordeaux,
-          fontWeight: 500,
+          display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8,
+          background: palette.bordeaux, color: palette.cream,
+          padding: "12px 18px", borderRadius: 999,
+          fontFamily: fonts.sans, fontSize: 14, fontWeight: 500,
+          letterSpacing: "0.01em",
+          transition: `background 0.2s ${ease}`,
         }}>
-          Voir le look →
+          Voir ce look
+          <span aria-hidden style={{ fontSize: 15 }}>→</span>
         </span>
       </div>
     </Link>
