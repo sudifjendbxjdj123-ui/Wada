@@ -308,48 +308,62 @@ export default function PalettePage({ params }: { params: Promise<{ number: stri
               - classique  → style=Classique, occasion=quotidien
               - casual     → style=Minimal,   occasion=quotidien
               - dressy     → style=Old money, occasion=sorties */}
-        {/* Section action principale — fusionnée en 1 titre clair.
-            Brief client 2026-05-26 « ameliore plus intuitif » :
-            avant 3 lignes header (kicker bordeaux + H2 + sous-titre
-            italique) prenaient ~120px de hauteur visuelle. Maintenant :
-            une seule question H2 directe à 48px du hero — les 3 cards
-            sont visibles bien plus tôt. */}
+        {/* Section action principale — refonte intuitive 2026-05-27.
+            Brief client : « savoir quel type de tenue le client veut ».
+            Avant : titres abstraits (« Ce look » / « Plus décontracté »
+            / « Plus habillé ») obligeaient à lire la desc pour comprendre.
+            Maintenant chaque card mène avec une PASTILLE OCCASION
+            explicite (Au bureau / Au quotidien / En soirée) puis un nom
+            de tenue + 4 chips de pièces concrètes. Le client choisit
+            en 2 secondes selon son besoin réel. */}
         <h2 style={{
           textAlign: "center", fontFamily: fonts.display, fontWeight: 700,
-          fontSize: "clamp(26px, 3.4vw, 34px)", margin: "48px 0 22px",
+          fontSize: "clamp(26px, 3.4vw, 34px)", margin: "48px 0 10px",
           color: palette.ink, letterSpacing: "-0.01em",
         }}>
           Comment porter <em style={{ fontStyle: "italic", fontWeight: 600 }}>{entry.name.toLowerCase()}</em> ?
         </h2>
+        <p style={{
+          textAlign: "center", fontSize: 14, color: palette.inkSoft,
+          margin: "0 auto 26px", maxWidth: 480,
+        }}>
+          Choisissez l'occasion — WADA compose la tenue adaptée.
+        </p>
         <div className="wada-palette-variants" style={{
           display: "grid",
           gridTemplateColumns: "repeat(3, 1fr)",
           gap: 18,
         }}>
-          {/* Brief UX client (26/05) — 3 variantes différenciées
-              visuellement :
-                - Classique : silhouette blazer + bandes structurées
-                - Décontracté : silhouette tee + bandes douces espacées
-                - Habillé : silhouette robe-long + bandes étroites premium
-              Plus de mêmes 3 barres identiques sur les 3 cartes. */}
+          {/* 3 occasions distinctes — visuellement et sémantiquement.
+              Query param `occasion` aligné sur le contexte réel pour que
+              /ma-tenue puisse l'utiliser dans la composition. */}
           <VariantCard
-            href={`/ma-tenue?palette=${entry.number}&style=Classique&occasion=quotidien`}
-            title="Ce look"
-            desc="Tailoring net — blazer, chemise, derbies."
+            href={`/ma-tenue?palette=${entry.number}&style=Classique&occasion=bureau`}
+            occasion="Au bureau"
+            occasionIcon="briefcase"
+            title="Tailoring classique"
+            desc="Blazer impeccable, chemise et derbies — autorité tranquille."
+            pieces={["Blazer", "Chemise", "Pantalon", "Derbies"]}
             previewColors={entry.colors.slice(0, 4).map((c) => c.hex)}
             variant="classique"
           />
           <VariantCard
             href={`/ma-tenue?palette=${entry.number}&style=Minimal&occasion=quotidien`}
-            title="Plus décontracté"
-            desc="Tee, chino, sneakers — facile et chaud."
+            occasion="Au quotidien"
+            occasionIcon="sun"
+            title="Casual chic"
+            desc="Tee, chino et sneakers — confortable sans négliger l'allure."
+            pieces={["T-shirt", "Chino", "Sneakers", "Veste légère"]}
             previewColors={entry.colors.slice(0, 4).map((c) => c.hex)}
             variant="decontracte"
           />
           <VariantCard
             href={`/ma-tenue?palette=${entry.number}&style=Old%20money&occasion=sorties`}
-            title="Plus habillé"
-            desc="Soirée — pièces nobles, accent sombre."
+            occasion="En soirée"
+            occasionIcon="moon"
+            title="Tenue habillée"
+            desc="Pièces nobles, accent sombre — pour un dîner ou une sortie."
+            pieces={["Pull fin", "Pantalon", "Chaussures cuir", "Accessoire"]}
             previewColors={entry.colors.slice(0, 4).map((c) => c.hex)}
             variant="habille"
           />
@@ -662,17 +676,57 @@ function VariantColorStrip({ variant, colors }: { variant: "classique" | "decont
   );
 }
 
-function VariantCard({ href, title, desc, previewColors, variant }: {
+/**
+ * OccasionIcon — pictogramme contextuel (mallette/soleil/lune) qui dit
+ * INSTANTANÉMENT à quelle situation correspond la tenue. Brief client
+ * 2026-05-27 « savoir quel type de tenue le client veut » : avant la
+ * silhouette vêtement seule était ambiguë, maintenant la double signa-
+ * lisation (occasion + silhouette) verrouille le sens.
+ */
+function OccasionIcon({ kind }: { kind: "briefcase" | "sun" | "moon" }) {
+  const common = { width: 14, height: 14, viewBox: "0 0 16 16", fill: "none", stroke: "currentColor", strokeWidth: 1.6, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
+  if (kind === "briefcase") {
+    return (
+      <svg {...common} aria-hidden>
+        <rect x="2" y="5" width="12" height="9" rx="1.5" />
+        <path d="M6 5V3.5A1 1 0 0 1 7 2.5h2a1 1 0 0 1 1 1V5" />
+        <path d="M2 9h12" />
+      </svg>
+    );
+  }
+  if (kind === "sun") {
+    return (
+      <svg {...common} aria-hidden>
+        <circle cx="8" cy="8" r="3" />
+        <path d="M8 1.5v1.6M8 12.9v1.6M1.5 8h1.6M12.9 8h1.6M3.4 3.4l1.1 1.1M11.5 11.5l1.1 1.1M3.4 12.6l1.1-1.1M11.5 4.5l1.1-1.1" />
+      </svg>
+    );
+  }
+  return (
+    <svg {...common} aria-hidden>
+      <path d="M13.2 9.7A5.5 5.5 0 1 1 6.3 2.8a4.5 4.5 0 0 0 6.9 6.9z" />
+    </svg>
+  );
+}
+
+function VariantCard({ href, occasion, occasionIcon, title, desc, pieces, previewColors, variant }: {
   href: string;
+  occasion: string;
+  occasionIcon: "briefcase" | "sun" | "moon";
   title: string;
   desc: string;
+  pieces: string[];
   previewColors: string[];
   variant: "classique" | "decontracte" | "habille";
 }) {
-  /* Brief client 2026-05-26 : ces cards sont l'action principale de
-     la page palette. Rendu plus aéré (padding 22 au lieu de 15), CTA
-     final transformé en pill bordeaux pleine largeur — l'utilisateur
-     voit ce qui se passe au clic sans ambiguïté. Hover lift -3px. */
+  /* Brief client 2026-05-27 — intuitivité MAX :
+     1. Pastille OCCASION en haut (« Au bureau » + icône mallette) =
+        le client comprend en 1 coup d'œil à quelle situation ça sert.
+     2. Titre nom-de-tenue plus parlant (« Tailoring classique » au
+        lieu de « Ce look »).
+     3. Chips de pièces concrètes (Blazer · Chemise · …) = le client
+        sait ce qu'il va recevoir avant même de cliquer.
+     4. CTA pill bordeaux conservé — action évidente. */
   return (
     <Link
       href={href}
@@ -690,7 +744,24 @@ function VariantCard({ href, title, desc, previewColors, variant }: {
       }}
     >
       <VariantColorStrip variant={variant} colors={previewColors} />
-      <div style={{ padding: "20px 22px 22px", display: "flex", flexDirection: "column", flex: 1 }}>
+      <div style={{ padding: "18px 22px 22px", display: "flex", flexDirection: "column", flex: 1 }}>
+        {/* Pastille OCCASION — la signalisation primaire de la card.
+            Position en haut, isolée, hyper lisible. */}
+        <span style={{
+          display: "inline-flex", alignItems: "center", gap: 6,
+          alignSelf: "flex-start",
+          fontFamily: fonts.sans, fontSize: 10.5, fontWeight: 600,
+          letterSpacing: "0.14em", textTransform: "uppercase",
+          color: palette.bordeaux,
+          background: "rgba(107,58,50,.07)",
+          padding: "5px 10px", borderRadius: 999,
+          marginBottom: 12,
+        }}>
+          <OccasionIcon kind={occasionIcon} />
+          {occasion}
+        </span>
+
+        {/* Titre + silhouette vêtement (signalisation secondaire) */}
         <div style={{ display: "flex", alignItems: "center", gap: 10, color: palette.bordeaux, marginBottom: 6 }}>
           <VariantSilhouette variant={variant} />
           <h3 style={{
@@ -703,11 +774,34 @@ function VariantCard({ href, title, desc, previewColors, variant }: {
         </div>
         <p style={{
           fontSize: 13.5, color: palette.inkSoft,
-          margin: "4px 0 18px", lineHeight: 1.5,
-          flex: 1,
+          margin: "4px 0 14px", lineHeight: 1.5,
         }}>
           {desc}
         </p>
+
+        {/* Chips PIÈCES — le client voit AVANT de cliquer ce qu'il
+            recevra. Plus de surprise, choix éclairé. */}
+        <div style={{
+          display: "flex", flexWrap: "wrap", gap: 5,
+          margin: "0 0 18px", flex: 1, alignContent: "flex-start",
+        }}>
+          {pieces.map((p) => (
+            <span
+              key={p}
+              style={{
+                fontFamily: fonts.sans, fontSize: 11.5,
+                color: palette.inkSoft,
+                background: palette.beige,
+                border: `1px solid ${palette.line}`,
+                padding: "3px 9px", borderRadius: 6,
+                letterSpacing: "0.005em",
+              }}
+            >
+              {p}
+            </span>
+          ))}
+        </div>
+
         {/* CTA pill bordeaux pleine largeur — l'action est ÉVIDENTE. */}
         <span style={{
           display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8,

@@ -337,7 +337,22 @@
      des 3 looks fixes.
    5. Affiner section : margin 40px → 32px.
    Force re-fetch HTML. */
-const CACHE_VERSION = "wada-v30-2026-05-26";
+/* Bump v31 27/05 : brief client « savoir quel type de tenue le client
+   veut ». Refonte intuitive des 3 cards de la page palette :
+   1. Pastille OCCASION en haut de chaque card (« Au bureau » + icône
+     mallette / « Au quotidien » + soleil / « En soirée » + lune) — le
+     client comprend la situation cible en 1 coup d'œil.
+   2. Titres descriptifs : « Tailoring classique » / « Casual chic » /
+     « Tenue habillée » au lieu de « Ce look » / « Plus décontracté » /
+     « Plus habillé » (abstraits).
+   3. Chips PIÈCES (Blazer · Chemise · Pantalon · Derbies) en dessous
+     de la desc — le client sait ce qu'il recevra avant de cliquer.
+   4. Sous-titre H2 ajouté : « Choisissez l'occasion — WADA compose la
+     tenue adaptée » : la question implicite devient explicite.
+   5. Query param occasion aligné : bureau/quotidien/sorties pour que
+     /ma-tenue compose correctement.
+   Force re-fetch HTML. */
+const CACHE_VERSION = "wada-v31-2026-05-27";
 const STATIC_CACHE  = `${CACHE_VERSION}-static`;
 const PAGE_CACHE    = `${CACHE_VERSION}-pages`;
 
