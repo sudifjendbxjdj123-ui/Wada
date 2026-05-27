@@ -53,6 +53,14 @@ const EXCLUDE_HAUT_SUBTYPES = /\b(robe[\s-]*chemise|robe[\s-]*top|robe\s+en|robe
 /** Sacs volumineux/sport — pour l'accent on dé-priorise sans exclure. */
 const DEPRIORITIZE_ACCENT = /\b(sac\s+(boston|de\s+sport|de\s+voyage|polochon)|sac\s+banane|sac\s+à\s+dos)/i;
 
+/** Brief 2026-05-26 « IA pas optimale » verbatim : on voyait sortir
+ *  « Parapluie compact pliable » ou « Bob en sergé de coton » sur le
+ *  slot accent d'une tenue de sortie — pas du tout un accent de style.
+ *  Exclusion stricte des produits utilitaires/fonctionnels pour ACCENT.
+ *  Ces produits restent disponibles ailleurs (catalogue complet) mais
+ *  ne sortent JAMAIS comme accessoire de tenue. */
+const EXCLUDE_ACCENT = /\b(parapluie|umbrella|serviette|towel|gant(s)?\s+(de\s+ski|de\s+pluie)|cagoule|tour\s+de\s+cou|masque|porte[-\s]?cl[ée]|trousse|étui|protection|housse|sac\s+(à\s+linge|de\s+rangement)|jet|bouteille|gourde|stylo|carnet)/i;
+
 /** Pyjama/lingerie/maillot de bain — exclus partout. */
 const EXCLUDE_ALWAYS = /\b(pyjama|peignoir|short\s+de\s+bain|maillot\s+de\s+bain|sous[\s-]?v.tement|bain)/i;
 
@@ -154,6 +162,13 @@ export async function GET(req: Request) {
     // exclusions par slot
     if (slot === "chaussures" && EXCLUDE_SHOES_SUBTYPES.test(hay)) return false;
     if (slot === "haut" && EXCLUDE_HAUT_SUBTYPES.test(hay)) return false;
+    /* Brief 2026-05-26 « IA pas optimale » : le slot accent ne doit JAMAIS
+       renvoyer d'objet utilitaire (parapluie, gants ski, masque, porte-clé…).
+       Le screenshot client montrait « Parapluie compact pliable MUJI » et
+       « Bob en sergé de coton » sur l'accent d'une tenue de sortie — ridicule.
+       Maintenant : un parapluie sort du catalogue accessoires côté Awin
+       mais ne peut PLUS sortir comme accent de tenue. */
+    if (slot === "accent" && EXCLUDE_ACCENT.test(hay)) return false;
     return true;
   });
 

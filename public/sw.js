@@ -209,7 +209,24 @@
      page B2C
    - « Affiner à votre style » reste comme optionnel collapsible
    Force re-fetch JS + CSS. */
-const CACHE_VERSION = "wada-v22-2026-05-26";
+/* Bump 26/05 v23 : fix 3 bugs logique IA repérés en live :
+   1. Le LLM ne demandait PAS la couleur quand l'user disait « j'ai
+      des Nike » sans préciser → passait à « pour quelle occasion ? »
+      en composant à l'aveugle. Nouveau bloc CAS ANCRE SANS COULEUR
+      dans le system prompt : tour 1 = question couleur obligatoire
+      avec options ["Blanches", "Noires", "Beige/Sable", "Une autre"].
+   2. Le slot ACCENT proposait des parapluies et bobs MUJI sur des
+      tenues de sortie → catastrophique. Nouvelle section DÉFINITION
+      STRICTE DU SLOT ACCENT dans le prompt (whitelist foulard/ceinture
+      /lunettes/casquette/sac/pochette) + nouveau filtre EXCLUDE_ACCENT
+      dans /api/products qui bloque parapluie/gants ski/masque/porte-
+      clé/trousse/etc.
+   3. Les ajustements (« plus chaud », « moins cher ») renvoyaient une
+      tenue 95% identique. Nouvelle règle VARIATION SUR AJUSTEMENT :
+      changer AU MOINS 2 slots non-ancre, OU la matière dominante, OU
+      la couleur signature.
+   Force re-fetch JS. */
+const CACHE_VERSION = "wada-v23-2026-05-26";
 const STATIC_CACHE  = `${CACHE_VERSION}-static`;
 const PAGE_CACHE    = `${CACHE_VERSION}-pages`;
 
