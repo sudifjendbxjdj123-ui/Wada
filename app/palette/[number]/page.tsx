@@ -165,20 +165,25 @@ export default function PalettePage({ params }: { params: Promise<{ number: stri
           ← Retour
         </Link>
 
-        {/* ═══════════════════ HERO 2 COLONNES ═══════════════════ */}
+        {/* ═══════════════════ HERO 2 COLONNES ═══════════════════
+            Brief client 2026-05-26 « ameliore plus intuitif » : on
+            compacte la palette card (padding 26→20, font 23→19) pour
+            que les 3 looks soient visibles plus vite. La colonne droite
+            gagne en respiration et hiérarchie. */}
         <div className="wada-palette-hero" style={{
           display: "grid",
           gridTemplateColumns: "1fr 1fr",
           gap: 50,
-          alignItems: "center",
+          alignItems: "stretch",
           marginTop: 20,
         }}>
-          {/* LEFT — palette card avec swatches Pantone */}
+          {/* LEFT — palette card avec swatches WADA, compactée */}
           <div style={{
             borderRadius: 22,
             overflow: "hidden",
             boxShadow: shadow,
             border: `1px solid ${palette.line}`,
+            alignSelf: "start",
           }}>
             {entry.colors.map((c, i) => {
               const lum = luminance(c.hex);
@@ -188,26 +193,26 @@ export default function PalettePage({ params }: { params: Promise<{ number: stri
                   key={i}
                   style={{
                     display: "flex", alignItems: "center", justifyContent: "space-between",
-                    padding: "26px 24px",
+                    padding: "20px 22px",
                     background: c.hex,
                     color: txt,
                   }}
                 >
                   <div>
                     <p style={{
-                      fontSize: 10, letterSpacing: "0.18em",
-                      textTransform: "uppercase", opacity: 0.72,
+                      fontSize: 9, letterSpacing: "0.2em",
+                      textTransform: "uppercase", opacity: 0.7,
                     }}>
                       {refCode(c.hex)}
                     </p>
                     <p style={{
                       fontFamily: fonts.display, fontWeight: 600,
-                      fontSize: 23, marginTop: 3,
+                      fontSize: 19, marginTop: 3, letterSpacing: "-0.005em",
                     }}>
                       {c.name}
                     </p>
                   </div>
-                  <p style={{ fontSize: 11, opacity: 0.78, letterSpacing: "0.04em" }}>
+                  <p style={{ fontSize: 10, opacity: 0.78, letterSpacing: "0.04em" }}>
                     {c.hex.toUpperCase()}
                   </p>
                 </div>
@@ -303,27 +308,19 @@ export default function PalettePage({ params }: { params: Promise<{ number: stri
               - classique  → style=Classique, occasion=quotidien
               - casual     → style=Minimal,   occasion=quotidien
               - dressy     → style=Old money, occasion=sorties */}
-        <p style={{
-          textAlign: "center", fontSize: 11,
-          letterSpacing: "0.32em", textTransform: "uppercase",
-          color: palette.bordeaux, fontWeight: 600,
-          margin: "72px 0 8px",
-        }}>
-          Voir cette palette en tenue
-        </p>
+        {/* Section action principale — fusionnée en 1 titre clair.
+            Brief client 2026-05-26 « ameliore plus intuitif » :
+            avant 3 lignes header (kicker bordeaux + H2 + sous-titre
+            italique) prenaient ~120px de hauteur visuelle. Maintenant :
+            une seule question H2 directe à 48px du hero — les 3 cards
+            sont visibles bien plus tôt. */}
         <h2 style={{
           textAlign: "center", fontFamily: fonts.display, fontWeight: 700,
-          fontSize: "clamp(28px, 3.6vw, 36px)", marginBottom: 6, color: palette.ink,
-          letterSpacing: "-0.01em",
+          fontSize: "clamp(26px, 3.4vw, 34px)", margin: "48px 0 22px",
+          color: palette.ink, letterSpacing: "-0.01em",
         }}>
-          Choisissez votre look
+          Comment porter <em style={{ fontStyle: "italic", fontWeight: 600 }}>{entry.name.toLowerCase()}</em> ?
         </h2>
-        <p style={{
-          textAlign: "center", fontFamily: fonts.body, fontStyle: "italic",
-          fontSize: 14, color: palette.inkSoft, marginBottom: 28,
-        }}>
-          3 façons de porter {entry.name.toLowerCase()} aujourd&apos;hui.
-        </p>
         <div className="wada-palette-variants" style={{
           display: "grid",
           gridTemplateColumns: "repeat(3, 1fr)",
@@ -358,12 +355,37 @@ export default function PalettePage({ params }: { params: Promise<{ number: stri
           />
         </div>
 
+        {/* ═══ STYLISTE IA — alternative aux 3 looks fixes ═══
+            Brief client 2026-05-26 « ameliore plus intuitif » : pour
+            ceux qui veulent du sur-mesure plutôt qu'un des 3 looks
+            pré-composés, on les invite à dialoguer avec le styliste
+            IA. Ligne discrète sous les cards. */}
+        <p style={{
+          textAlign: "center", fontSize: 14,
+          color: palette.inkSoft, fontStyle: "italic",
+          margin: "26px 0 0",
+        }}>
+          Ou{" "}
+          <Link
+            href={`/stylist?palette=${entry.number}`}
+            style={{
+              color: palette.bordeaux, fontWeight: 600,
+              textDecoration: "underline", textDecorationThickness: 1,
+              textUnderlineOffset: 3,
+              fontStyle: "normal",
+            }}
+          >
+            dialoguez avec le styliste
+          </Link>{" "}
+          pour une tenue sur-mesure autour de cette palette.
+        </p>
+
         {/* ═══════════════════ AFFINER — replié optionnel (brief 2026-05-27) ═══
             La perso (registre + occasion + coupe + budget) reste accessible
             mais n'est plus le bloc principal du parcours. <details> = HTML
             natif, pas de JS, ouvrable au clavier (a11y native). */}
         <details className="wada-palette-affine" style={{
-          margin: "40px 0 0",
+          margin: "32px 0 0",
           background: palette.cream,
           border: `1px solid ${palette.line}`,
           borderRadius: 16,

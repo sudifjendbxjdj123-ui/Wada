@@ -315,7 +315,29 @@
    6. Seed inclut le keyword pour que 2 types différents (Chemise →
       Pull sur ajustement) donnent vraiment 2 produits différents
    Force re-fetch JS. */
-const CACHE_VERSION = "wada-v29-2026-05-26";
+/* Bump 26/05 v30 : /palette/[number] plus intuitif et compact.
+   Brief client (screenshot /palette/009 Osaka au thé) : « ameliore
+   cette page rends la plus intuitif pour le client la mise en page
+   tout ».
+   1. Palette card compactée : padding 26→20, font 23→19, RefCode
+     0.18em→0.2em. Hauteur totale -25%, les 3 looks remontent dans
+     le viewport (visibles dès le 1er coup d'œil sur desktop large).
+   2. Section header fusionnée : avant 3 lignes (kicker bordeaux
+     « VOIR CETTE PALETTE EN TENUE » + H2 « Choisissez votre look »
+     + sous-titre italique « 3 façons de porter... aujourd'hui »).
+     Après : 1 seule H2 directe « Comment porter osaka au thé ? »
+     avec le nom de palette en italique inline. Gain : ~80px de
+     hauteur, message plus clair.
+   3. Margin top section action : 72px → 48px. Cards plus proches
+     du hero, scroll réduit.
+   4. Nouveau CTA texte sous les 3 cards : « Ou dialoguez avec le
+     styliste pour une tenue sur-mesure autour de cette palette. »
+     → Link bordeaux underline /stylist?palette=XXX. Donne une
+     porte de sortie pour ceux qui veulent du LLM custom au lieu
+     des 3 looks fixes.
+   5. Affiner section : margin 40px → 32px.
+   Force re-fetch HTML. */
+const CACHE_VERSION = "wada-v30-2026-05-26";
 const STATIC_CACHE  = `${CACHE_VERSION}-static`;
 const PAGE_CACHE    = `${CACHE_VERSION}-pages`;
 
