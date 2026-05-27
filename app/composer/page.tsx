@@ -121,6 +121,15 @@ interface ComposerMujiProduct {
   prix: number;
   devise: string;
   url: string;
+  /* Brief 2026-05-26 « erreur entre couleurs palette et couleurs habits » :
+     on stocke aussi le nom de couleur RÉEL du produit MUJI (ex. « Brun
+     foncé », « Écru », « Noir ») au lieu de juste l'intention palette
+     (Camel, Moutarde, Olive). Affiché sous le nom de la pièce pour
+     éviter le mismatch label/photo (chino brun foncé étiqueté « Camel »
+     alors que la palette intent était camel mais le produit retourné
+     est brun foncé). */
+  couleurNom?: string;
+  couleurHex?: string;
 }
 function useComposerMuji(
   slot: Slot | null,
@@ -164,6 +173,8 @@ function useComposerMuji(
           prix: p.prix,
           devise: p.devise,
           url: p.urlProduit,
+          couleurNom: p.couleurNom,
+          couleurHex: p.hex,
         });
       })
       .catch(() => { /* silencieux — fallback swatch + Voir des pièces */ });
@@ -705,9 +716,26 @@ function ComposerSlotCard({ slot, gender, register }: {
         }}>
           {isOwned ? "Votre pièce" : (muji?.nom || slot.label)}
         </p>
-        <p style={{ fontSize: 12, fontStyle: "italic", color: palette.inkSoft }}>
-          {slot.colorName}
-        </p>
+        {/* Brief 2026-05-26 : couleur RÉELLE du produit MUJI (muji.couleurNom)
+            si on a un produit fetché, sinon intention palette (slot.colorName).
+            Évite le mismatch « Camel » écrit alors que la photo montre du
+            brun foncé. La pastille couleur prend le hex du produit aussi
+            pour cohérence visuelle stricte label/photo/pastille. */}
+        <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 2 }}>
+          <span
+            aria-hidden
+            style={{
+              display: "inline-block",
+              width: 9, height: 9, borderRadius: "50%",
+              background: (!isOwned && muji?.couleurHex) || slot.hex,
+              boxShadow: "0 0 0 1px rgba(30,30,30,0.12)",
+              flexShrink: 0,
+            }}
+          />
+          <p style={{ fontSize: 12, fontStyle: "italic", color: palette.inkSoft, margin: 0 }}>
+            {(!isOwned && muji?.couleurNom) || slot.colorName}
+          </p>
+        </div>
 
         {!isOwned && muji && (
           <>

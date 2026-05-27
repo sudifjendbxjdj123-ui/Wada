@@ -263,7 +263,23 @@
       « Une autre », tour 2 = question follow-up « Précisez la couleur »
       avec options suggestions étendues. JAMAIS de composition à l'aveugle.
    Force re-fetch JS. */
-const CACHE_VERSION = "wada-v26-2026-05-26";
+/* Bump 26/05 v27 : fix /composer — mismatch couleur palette vs habit.
+   Brief client (screenshot) : « erreur entre les couleurs palettes et
+   les couleurs des habits ». Sur l'accord Terracotta/Moutarde/Olive :
+   - Pantalon brun foncé étiqueté « Camel » (palette intent)
+   - Manteau écru étiqueté « Moutarde »
+   - Sneakers blanches étiquetées « Camel »
+   - Sac noir étiqueté « Moutarde »
+   Bug : useComposerMuji prenait nom/prix/image/url du produit MUJI
+   mais PAS couleurNom/hex. Du coup la card affichait slot.colorName
+   (palette intent) au lieu de la couleur RÉELLE du produit.
+   Fix : useComposerMuji renvoie maintenant couleurNom + couleurHex
+   du produit Awin. ComposerSlotCard affiche en priorité ces valeurs
+   avec une pastille couleur cohérente, fallback slot.colorName seulement
+   si pas de produit MUJI matché. Même fix que /ma-tenue (commit
+   précédent) maintenant appliqué sur /composer.
+   Force re-fetch JS. */
+const CACHE_VERSION = "wada-v27-2026-05-26";
 const STATIC_CACHE  = `${CACHE_VERSION}-static`;
 const PAGE_CACHE    = `${CACHE_VERSION}-pages`;
 
