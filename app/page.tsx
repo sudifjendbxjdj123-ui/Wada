@@ -1,5 +1,9 @@
 "use client";
 import { useEffect } from "react";
+/* Brief « appli efficace » §3 (2026-05-29) : bande Resume flottante au-
+   dessus de la vidéo hero si l'user a déjà visité une palette ou sauvé
+   une tenue. Le composant ne rend rien si pas d'état à reprendre. */
+import ResumeBanner from "@/components/ResumeBanner";
 /**
  * Home WADA — refonte 2026-05-26 (brief client).
  *
@@ -64,6 +68,11 @@ export default function Home() {
     >
       <a href="#main-content" className="wada-skip-link">Aller au contenu</a>
       <div id="main-content" />
+
+      {/* Bande Resume flottante — au-dessus de la vidéo (z-index 40 <
+          Nav 50). Ne rend rien si l'user n'a ni palette visitée ni
+          tenue sauvée, ou s'il a dismissé la bande pour la session. */}
+      <ResumeBanner />
 
       {/* ════════════════════════════════════════════════════════════════
           VIDÉO MANNEQUIN PLEIN ÉCRAN

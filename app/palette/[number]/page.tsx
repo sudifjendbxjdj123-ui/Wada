@@ -20,6 +20,10 @@ import { useState, useEffect, useMemo, use } from "react";
 import { dictionary, cultureLabels, type DictionaryEntry } from "@/lib/data";
 import { wadaRefCode as refCode } from "@/lib/utils";
 import { showToast } from "@/lib/toast";
+/* Brief « appli efficace » §3 (2026-05-29) : « un client ne doit jamais
+   repartir de zéro ». On enregistre chaque visite de palette pour que
+   la home affiche une bande « Reprends — {nom palette} ». */
+import { useLastPalette } from "@/hooks/useLastPalette";
 
 const palette = {
   beige: "#F4EFE7",
@@ -93,6 +97,15 @@ export default function PalettePage({ params }: { params: Promise<{ number: stri
       }
     } catch {}
   }, [entry]);
+
+  /* Brief « appli efficace » §3 : enregistre la palette visitée pour la
+     bande Resume de la home. Hook gère lui-même la dedup (pas d'écriture
+     si même n° que la dernière visite). */
+  const { record: recordPalette } = useLastPalette();
+  useEffect(() => {
+    if (!entry) return;
+    recordPalette(entry.number, entry.name);
+  }, [entry, recordPalette]);
 
   const toggleFavorite = () => {
     if (!entry) return;

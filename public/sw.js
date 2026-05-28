@@ -392,7 +392,14 @@
    principal « Scanner ma première couleur » + lien secondaire
    discret vers palettes (plus 2 boutons de même poids).
    Force re-fetch HTML pour pousser la nouvelle structure tabbar. */
-const CACHE_VERSION = "wada-v36-2026-05-29";
+/* Bump v37 29/05 : brief « appli efficace » §3 — bande Reprends ta
+   tenue sur home. Nouveau hook useLastPalette qui persiste la dernière
+   palette visitée (localStorage `wada-last-palette`). /palette/[number]
+   l'enregistre via useEffect. Home monte <ResumeBanner /> : pill
+   flottante crème+blur en top, priorise tenue sauvée > palette visitée,
+   dismissable session-only. Force re-fetch HTML pour pousser la home
+   + tracking palette. */
+const CACHE_VERSION = "wada-v37-2026-05-29";
 const STATIC_CACHE  = `${CACHE_VERSION}-static`;
 const PAGE_CACHE    = `${CACHE_VERSION}-pages`;
 
