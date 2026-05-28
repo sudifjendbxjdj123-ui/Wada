@@ -18,7 +18,20 @@ import Link from "next/link";
  * 18×18, opacity .65 → 1 au hover (géré via CSS .wada-social-icon).
  */
 function SocialIcons() {
-  const socials = [
+  /* Brief 2026-05-28 « donne le logo Pinterest sur le site WADA » :
+     compte officiel @wadastyle confirmé, on hardcode l'URL en fallback
+     pour que l'icône s'affiche immédiatement sans dépendre d'une env
+     var Vercel à poser à la main. L'env var prime toujours si définie
+     (flexibilité future : changer d'URL sans redeploy code).
+     Logo SVG = path officiel Pinterest (« P » dans cercle plein),
+     rendu en FILLED — d'où le flag `filled` ajouté ci-dessous. Les
+     autres icônes restent outline pour cohérence du jeu existant. */
+  const socials: Array<{
+    url: string | undefined;
+    label: string;
+    path: React.ReactNode;
+    filled?: boolean;
+  }> = [
     {
       url: process.env.NEXT_PUBLIC_INSTAGRAM_URL,
       label: "Instagram",
@@ -31,13 +44,18 @@ function SocialIcons() {
       ),
     },
     {
-      url: process.env.NEXT_PUBLIC_PINTEREST_URL,
+      /* Fallback hardcodé : compte WADA officiel @wadastyle.
+         Si l'env var est définie côté Vercel, elle prime. */
+      url: process.env.NEXT_PUBLIC_PINTEREST_URL || "https://www.pinterest.com/wadastyle/",
       label: "Pinterest",
+      filled: true,
+      /* Vrai logo Pinterest officiel (path simplifié, libre d'utili-
+         sation pour les boutons « Save »/« Follow » selon brand.
+         pinterest.com). Cercle plein + « P » blanc en négatif via
+         evenodd / contour interne du path. Rendu plus reconnaissable
+         que l'ancien glyphe schématique. */
       path: (
-        <>
-          <circle cx="12" cy="12" r="9" />
-          <path d="M10 7c0 2 2 3 2 5s-1 4-2 5l1.5-5.5L13 17" strokeLinecap="round" />
-        </>
+        <path d="M12 0C5.373 0 0 5.372 0 12c0 5.084 3.163 9.426 7.627 11.174-.105-.949-.2-2.405.042-3.441.218-.937 1.407-5.965 1.407-5.965s-.359-.719-.359-1.782c0-1.668.967-2.914 2.171-2.914 1.023 0 1.518.769 1.518 1.69 0 1.029-.655 2.568-.994 3.995-.283 1.194.599 2.169 1.777 2.169 2.133 0 3.772-2.249 3.772-5.495 0-2.873-2.064-4.882-5.012-4.882-3.414 0-5.418 2.561-5.418 5.207 0 1.031.397 2.137.893 2.738a.36.36 0 0 1 .083.343c-.091.378-.293 1.193-.333 1.361-.053.218-.173.265-.4.16-1.494-.696-2.428-2.879-2.428-4.633 0-3.772 2.74-7.235 7.895-7.235 4.144 0 7.366 2.953 7.366 6.899 0 4.117-2.595 7.43-6.199 7.43-1.211 0-2.348-.629-2.738-1.372l-.745 2.84c-.269 1.04-.997 2.345-1.485 3.139C9.572 23.812 10.766 24 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0z" />
       ),
     },
     {
@@ -80,9 +98,13 @@ function SocialIcons() {
           aria-label={s.label}
           className="wada-social-icon"
         >
+          {/* Pinterest = filled (logo officiel, glyph plein).
+              Autres = outline (cohérence du jeu existant). */}
           <svg
             width="18" height="18" viewBox="0 0 24 24"
-            fill="none" stroke="currentColor" strokeWidth="1.6"
+            fill={s.filled ? "currentColor" : "none"}
+            stroke={s.filled ? "none" : "currentColor"}
+            strokeWidth={s.filled ? 0 : 1.6}
             aria-hidden="true"
           >
             {s.path}
