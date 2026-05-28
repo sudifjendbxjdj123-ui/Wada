@@ -42,6 +42,39 @@ const THEME_INIT_SCRIPT = `
 }})();
 `;
 
+/* Fix 2026-05-28 — bug « Can't translate this page » sur translate.goog :
+   le proxy Google Translate ne sait pas traduire les payloads RSC de Next
+   16 (les navigations client-side renvoient un flux React Server
+   Components binaire, pas du HTML). Résultat : clic sur n'importe quel
+   lien dans la version traduite → page vide « Can't translate this page ».
+   Fix : si on détecte qu'on est sur un host *.translate.goog, on
+   intercepte tous les clics sur liens internes au capture phase et on
+   force window.location.assign() — full reload. Google ré-intercepte
+   alors la page HTML normalement et la traduction se met à jour.
+   Inline dans <head> pour être actif AVANT que le client router
+   hydrate les Link. */
+const TRANSLATE_PROXY_FIX = `
+(function(){try{
+  if (!/\\.translate\\.goog$/.test(location.hostname)) return;
+  document.addEventListener('click', function(e){
+    if (e.defaultPrevented || e.button !== 0) return;
+    if (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
+    var a = e.target && e.target.closest && e.target.closest('a[href]');
+    if (!a) return;
+    var href = a.getAttribute('href');
+    if (!href) return;
+    if (a.target && a.target !== '_self') return;
+    if (a.hasAttribute('download')) return;
+    // Ne traite que les liens internes (/, /palettes, etc.)
+    if (href[0] !== '/' || href.indexOf('//') === 0) return;
+    e.preventDefault();
+    // Garde le host translate.goog en utilisant location.assign
+    // sur le path uniquement — Google re-traduira la nouvelle page.
+    location.assign(href);
+  }, true);
+}catch(e){}})();
+`;
+
 /* Direction artistique typographique WADA — brief charte 2026-05-26 :
  *   Fredoka         — TITRES + LOGO (chubby ronde, voix de marque)
  *   Inter           — TEXTE COURANT (paragraphes, labels, prix, navigation)
@@ -167,6 +200,11 @@ export default function RootLayout({
             localStorage. Doit être en TOUT PREMIER dans <head> (avant le
             CSS) pour qu'aucune frame ne soit rendue avec le mauvais thème. */}
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+        {/* Fix proxy Google Translate (bug « Can't translate this page »
+            au changement de page). Doit être chargé AVANT l'hydratation
+            du router Next.js pour intercepter les clics au capture phase
+            avant que <Link> ne les attrape. */}
+        <script dangerouslySetInnerHTML={{ __html: TRANSLATE_PROXY_FIX }} />
 
         {/* Brief charte typo 2026-05-26 — 3 polices et c'est tout :
               Fredoka (titres + logo) · Inter (texte) · Noto Serif JP (kanji)

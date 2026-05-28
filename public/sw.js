@@ -365,7 +365,14 @@
    ?_x_tr_sl=fr&_x_tr_tl=en. Gratuit, fonctionne sur 100 % du site,
    barre Google native pour revenir en FR. Force re-fetch HTML pour
    que les clients voient le nouveau bouton dans le header. */
-const CACHE_VERSION = "wada-v33-2026-05-28";
+/* Bump v34 28/05 : fix « Can't translate this page » sur le proxy
+   translate.goog. Le client-side router Next 16 envoie des payloads
+   RSC binaires que Google Translate ne sait pas traduire → erreur
+   au moindre clic sur un lien interne. Patch : script dans <head>
+   qui détecte *.translate.goog et force window.location.assign sur
+   tous les liens internes → full reload → Google ré-intercepte la
+   page HTML. Force re-fetch HTML pour pousser le patch. */
+const CACHE_VERSION = "wada-v34-2026-05-28";
 const STATIC_CACHE  = `${CACHE_VERSION}-static`;
 const PAGE_CACHE    = `${CACHE_VERSION}-pages`;
 
