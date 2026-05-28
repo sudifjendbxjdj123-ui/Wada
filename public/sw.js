@@ -372,7 +372,18 @@
    qui détecte *.translate.goog et force window.location.assign sur
    tous les liens internes → full reload → Google ré-intercepte la
    page HTML. Force re-fetch HTML pour pousser le patch. */
-const CACHE_VERSION = "wada-v34-2026-05-28";
+/* Bump v35 29/05 : refonte /about orientée client (brief 8 points).
+   §1 hero raccourci en 1 ligne + sous-titre bénéfice. §2 « Chapitre 0X »
+   abandonnés au profit de labels courts (L'IDÉE / CE QUE FAIT WADA /
+   EN UN EXEMPLE / POUR TOUS LES BUDGETS / GRATUIT, SANS PIÈGE). §3
+   pictos SVG (cintre/étoile/étiquette/panier) au lieu de I/II/III/IV.
+   §4 3 palettes contrastées (002/094/071) au lieu d'1 seule. §5 CTA
+   intermédiaire après la section « 4 choses » (pas que celui en bas
+   de page). §6 bloc affiliation supprimé → 1 lien discret dans closing.
+   §7 copy retravaillée : « Bienvenue dans le dictionnaire » au lieu
+   de « Merci d'être là », « La tenue arrive » au lieu de « WADA aide
+   à construire le reste ». Force re-fetch HTML. */
+const CACHE_VERSION = "wada-v35-2026-05-29";
 const STATIC_CACHE  = `${CACHE_VERSION}-static`;
 const PAGE_CACHE    = `${CACHE_VERSION}-pages`;
 

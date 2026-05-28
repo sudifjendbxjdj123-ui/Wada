@@ -50,7 +50,15 @@ const phraseStyle = {
 };
 
 export default function AboutPage() {
-  const rosée = dictionary.find((d) => d.number === "002") || dictionary[0];
+  /* Brief §4 (2026-05-29) : 3 palettes contrastées pour la section
+     « En un exemple » — illustre mieux la diversité des 348 accords
+     qu'une seule palette douce. Mix : doux (002 Rosée du matin) +
+     neutre/minéral (094 Béton & Lin) + saturé (071) pour montrer
+     l'amplitude chromatique du dictionnaire. fallback dictionary[0]
+     si un n° manque (data sain attendu). */
+  const showcase = ["002", "094", "071"]
+    .map((n) => dictionary.find((d) => d.number === n))
+    .filter((p): p is NonNullable<typeof p> => Boolean(p));
 
   return (
     <main className="wada-page-opaque" style={{ minHeight: "100vh", fontFamily: fontBody, background: paper, color: ink }}>
@@ -80,20 +88,23 @@ export default function AboutPage() {
             <p style={{ ...sectionLabel, color: mojo, marginBottom: 24, fontWeight: 700, fontSize: 11, letterSpacing: "0.5em" }}>
               À propos
             </p>
+            {/* Brief client 2026-05-29 §1 : titre cassé (« : rendre… plus »
+                + « facile. » seul). Remplacé par une promesse courte et
+                frappante en 1 ligne + sous-titre orienté bénéfice client
+                (action → résultat). */}
             <h1 style={{
               ...headingStyle,
-              fontSize: "clamp(36px, 7vw, 84px)",
-              lineHeight: 1.05,
+              fontSize: "clamp(40px, 8vw, 92px)",
+              lineHeight: 1.02,
             }}>
-              {/* Brief audit live 2026-05-27 : retire le saut de ligne JSX
-                  après <br/> qui ajoutait un espace indent indésirable
-                  (« : rendre » → « :  rendre »). */}
-              WADA est né d'une <SketchUnderline color={mojo}>idée simple</SketchUnderline> :<br />rendre le style plus facile.
+              Rendre le style <SketchUnderline color={mojo}>plus facile.</SketchUnderline>
             </h1>
-            <p style={{ ...paragraphStyle, marginTop: 36, maxWidth: 640, marginLeft: "auto", marginRight: "auto" }}>
-              Pas besoin d'être expert en mode. Pas besoin de passer des heures
-              devant son armoire. WADA aide simplement à trouver des couleurs
-              et des vêtements qui vont bien ensemble.
+            <p style={{
+              ...paragraphStyle, marginTop: 28, maxWidth: 600,
+              marginLeft: "auto", marginRight: "auto",
+              fontSize: 20,
+            }}>
+              Pas besoin d'être expert en mode. Scannez une couleur — WADA construit la tenue qui va avec.
             </p>
           </Reveal>
         </div>
@@ -105,7 +116,10 @@ export default function AboutPage() {
       <section style={{ background: paper, padding: "96px 5%" }}>
         <div style={{ maxWidth: 720, margin: "0 auto" }}>
           <Reveal>
-            <p style={{ ...sectionLabel, color: seal, marginBottom: 18 }}>Chapitre 01 · L'idée</p>
+            {/* Brief §2 : labels « Chapitre 0X · Y » remplacés par
+                labels courts (ou retirés). Ne garder que 2-3 labels
+                visibles pour ne pas faire « sommaire de livre ». */}
+            <p style={{ ...sectionLabel, color: seal, marginBottom: 18 }}>L'IDÉE</p>
             <h2 style={{ ...headingStyle, fontSize: "clamp(28px, 4vw, 44px)", margin: "0 0 32px" }}>
               Tout est parti d'un problème très simple.
             </h2>
@@ -121,12 +135,14 @@ export default function AboutPage() {
               En 1933, il avait réuni <strong style={{ color: ink }}>348 combinaisons
               de couleurs</strong> pensées pour fonctionner naturellement ensemble.
             </p>
+            {/* Brief §7 ton client : « Et là, déclic. » retiré.
+                « C'est comme ça qu'est né WADA » → « C'est l'idée fondatrice de WADA ». */}
             <p style={paragraphStyle}>
-              Et là, déclic. Si des couleurs fonctionnent ensemble, alors une
-              tenue construite autour de ces couleurs fonctionne aussi.
+              Si des couleurs fonctionnent ensemble, alors une tenue
+              construite autour de ces couleurs fonctionne aussi.
             </p>
             <p style={{ ...phraseStyle, color: mojo, fontSize: 26, marginTop: 28 }}>
-              C'est comme ça qu'est né WADA.
+              C'est l'idée fondatrice de WADA.
             </p>
           </Reveal>
         </div>
@@ -138,7 +154,8 @@ export default function AboutPage() {
       <section className="wada-paper-grain" style={{ background: cardBg, padding: "80px 5%", borderTop: `1px solid ${border}` }}>
         <div style={{ maxWidth: 880, margin: "0 auto" }}>
           <Reveal>
-            <p style={{ ...sectionLabel, color: seal, marginBottom: 18, textAlign: "center" }}>Chapitre 02 · Ce que fait WADA</p>
+            {/* Brief §2 : « Chapitre 02 · Ce que fait WADA » → « CE QUE FAIT WADA ». */}
+            <p style={{ ...sectionLabel, color: seal, marginBottom: 18, textAlign: "center" }}>CE QUE FAIT WADA</p>
             <h2 style={{ ...headingStyle, fontSize: "clamp(28px, 4vw, 44px)", margin: "0 auto 36px", textAlign: "center", maxWidth: 700 }}>
               WADA transforme chaque palette en quatre choses.
             </h2>
@@ -148,22 +165,54 @@ export default function AboutPage() {
               gap: 24,
               marginTop: 40,
             }}>
+              {/* Brief §3 : pictos SVG au lieu de I/II/III/IV italiques —
+                  repère visuel concret par carte, scannable au coup d'œil. */}
               {[
-                { num: "I",   label: "Une tenue complète",    desc: "Composée pour fonctionner ensemble, du haut aux chaussures." },
-                { num: "II",  label: "Des idées de style",    desc: "Adaptées à votre humeur, à votre saison, à votre culture." },
-                { num: "III", label: "Des vêtements réels",   desc: "Choisis dans une sélection de boutiques curées, du vintage au luxe." },
-                { num: "IV",  label: "Des liens d'achat",     desc: "Directs, transparents, sans intermédiaire." },
+                {
+                  label: "Une tenue complète",
+                  desc: "Composée pour fonctionner ensemble, du haut aux chaussures.",
+                  icon: (
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M8 4l-3 2 1 4 2-1v11h8V9l2 1 1-4-3-2-2 2h-4z" />
+                    </svg>
+                  ),
+                },
+                {
+                  label: "Des idées de style",
+                  desc: "Adaptées à votre humeur, à votre saison, à votre culture.",
+                  icon: (
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M12 3l2.5 5.5L20 9l-4 4 1 6-5-3-5 3 1-6-4-4 5.5-.5L12 3z" />
+                    </svg>
+                  ),
+                },
+                {
+                  label: "Des vêtements réels",
+                  desc: "Choisis dans une sélection de boutiques curées, du vintage au luxe.",
+                  icon: (
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M3 8l3-4h12l3 4-9 12-9-12z" />
+                      <path d="M3 8h18" />
+                    </svg>
+                  ),
+                },
+                {
+                  label: "Des liens d'achat",
+                  desc: "Directs, transparents, sans intermédiaire.",
+                  icon: (
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="9" cy="20" r="1.4" />
+                      <circle cx="17" cy="20" r="1.4" />
+                      <path d="M3 4h2l3 12h11l2-8H6" />
+                    </svg>
+                  ),
+                },
               ].map((it) => (
-                <div key={it.num} style={{
+                <div key={it.label} style={{
                   background: paper, border: `1px solid ${border}`, borderRadius: cardRadius,
                   padding: "24px 22px",
                 }}>
-                  <p style={{
-                    fontFamily: fontBody, fontStyle: "italic", fontWeight: 500,
-                    fontSize: 22, color: mojo, margin: "0 0 12px", letterSpacing: 0,
-                  }}>
-                    {it.num}
-                  </p>
+                  <div style={{ color: mojo, marginBottom: 14 }}>{it.icon}</div>
                   <h3 style={{
                     fontFamily: fontBody, fontStyle: "italic", fontWeight: 500,
                     fontSize: 20, color: ink, margin: "0 0 10px", letterSpacing: "-0.01em",
@@ -176,56 +225,73 @@ export default function AboutPage() {
                 </div>
               ))}
             </div>
+            {/* Brief §7 : « Vous scannez une couleur, WADA aide à construire
+                le reste » → « Vous scannez une couleur. La tenue arrive. »
+                Plus net, plus orienté bénéfice. */}
             <p style={{
               ...phraseStyle, textAlign: "center",
               fontSize: 22, marginTop: 44, color: ink,
               maxWidth: 600, marginLeft: "auto", marginRight: "auto",
             }}>
-              Vous scannez une couleur, WADA aide à construire le reste.
+              Vous scannez une couleur. La tenue arrive.
             </p>
           </Reveal>
         </div>
       </section>
 
       {/* ════════════════════════════════════════════════════════════
+          BRIEF §5 : CTA intermédiaire — ne pas attendre la fin de page.
+          Pill plein largeur immédiatement après la section « 4 choses ».
+          Le CTA en bandeau noir final reste pour ceux qui ont tout lu.
+          ════════════════════════════════════════════════════════════ */}
+      <section style={{ background: paper, padding: "48px 5% 24px", textAlign: "center" }}>
+        <Link
+          href="/scanner"
+          style={{
+            ...btnPrimary,
+            padding: "16px 32px",
+            fontSize: 14,
+            letterSpacing: "0.06em",
+          }}
+          data-wada-btn
+        >
+          <span>Essayer WADA · Scanner une couleur</span>
+          <HandArrow size={22} color="#FFFFFF" />
+        </Link>
+        <p style={{ fontSize: 13, color: textSecondary, marginTop: 14, fontFamily: fontBody }}>
+          Gratuit, sans inscription.
+        </p>
+      </section>
+
+      {/* ════════════════════════════════════════════════════════════
           4. UNE PALETTE DEVIENT UNE TENUE — exemple visuel
+          Brief §4 (2026-05-29) : 1 palette pour illustrer 348 = sous-
+          vendeur. Maintenant 3 palettes contrastées côte à côte (Rosée
+          du matin / Béton & Lin / une 3e plus saturée). C'est la SEULE
+          preuve visuelle de la promesse — elle doit en mettre plein la
+          vue. Texte court à gauche, grille 3 cards à droite/dessous.
           ════════════════════════════════════════════════════════════ */}
       <section style={{ background: paper, padding: "96px 5%" }}>
         <div style={{ maxWidth: 1100, margin: "0 auto" }}>
           <Reveal>
+            <div style={{ textAlign: "center", maxWidth: 720, margin: "0 auto 40px" }}>
+              <p style={{ ...sectionLabel, color: seal, marginBottom: 18 }}>EN UN EXEMPLE</p>
+              <h2 style={{ ...headingStyle, fontSize: "clamp(28px, 4vw, 44px)", margin: "0 0 18px", lineHeight: 1.1 }}>
+                Une palette, une tenue, des pièces à acheter.
+              </h2>
+              <p style={{ ...paragraphStyle, marginTop: 14 }}>
+                Multiplié par 348.
+              </p>
+            </div>
             <div style={{
               display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: 48,
-              alignItems: "center",
-            }} className="wada-hero-grid">
-              <div>
-                <p style={{ ...sectionLabel, color: seal, marginBottom: 18 }}>Chapitre 03 · L'exemple</p>
-                <h2 style={{ ...headingStyle, fontSize: "clamp(28px, 4vw, 40px)", margin: "0 0 18px", lineHeight: 1.1 }}>
-                  Une palette devient une tenue.
-                </h2>
-                <p style={{
-                  fontFamily: fontBody, fontStyle: "italic", fontWeight: 500,
-                  fontSize: 28, color: mojo, margin: "0 0 12px", letterSpacing: "-0.01em",
-                }}>
-                  {rosée.name}
-                </p>
-                <p style={{
-                  fontFamily: fontLabel, fontSize: 11, letterSpacing: "0.3em",
-                  textTransform: "uppercase", color: subtle, margin: "0 0 24px", fontWeight: 600,
-                }}>
-                  {rosée.colors.map((c) => c.name).join(" · ")}
-                </p>
-                <p style={paragraphStyle}>
-                  Une palette douce inspirée du dictionnaire original de Sanzo
-                  Wada — transformée en tenue moderne, portable, shoppable.
-                </p>
-              </div>
-              <div>
-                {/* PaletteCard a déjà son propre encadrement (border +
-                    shadow + radius 16) — on retire le wrapper double. */}
-                <PaletteCard entry={rosée} />
-              </div>
+              gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+              gap: 20,
+              marginTop: 32,
+            }}>
+              {showcase.map((p) => (
+                <PaletteCard key={p.number} entry={p} />
+              ))}
             </div>
           </Reveal>
         </div>
@@ -238,7 +304,7 @@ export default function AboutPage() {
         <div style={{ maxWidth: 1100, margin: "0 auto" }}>
           <Reveal>
             <div style={{ textAlign: "center", maxWidth: 720, margin: "0 auto 48px" }}>
-              <p style={{ ...sectionLabel, color: seal, marginBottom: 18 }}>Chapitre 04 · Pour tous les budgets</p>
+              <p style={{ ...sectionLabel, color: seal, marginBottom: 18 }}>POUR TOUS LES BUDGETS</p>
               <h2 style={{ ...headingStyle, fontSize: "clamp(28px, 4vw, 44px)" }}>
                 Chaque palette s'adapte à votre budget.
               </h2>
@@ -320,7 +386,7 @@ export default function AboutPage() {
         <div style={{ maxWidth: 880, margin: "0 auto" }}>
           <Reveal>
             <div style={{ textAlign: "center", marginBottom: 56 }}>
-              <p style={{ ...sectionLabel, color: seal, marginBottom: 18 }}>Chapitre 05 · Le modèle</p>
+              <p style={{ ...sectionLabel, color: seal, marginBottom: 18 }}>GRATUIT, SANS PIÈGE</p>
               <h2 style={{ ...headingStyle, fontSize: "clamp(28px, 4vw, 44px)" }}>
                 Gratuit et <SketchUnderline color={mojo}>simple</SketchUnderline>.
               </h2>
@@ -404,18 +470,29 @@ export default function AboutPage() {
       <section style={{ background: paper, padding: "96px 5%" }}>
         <div style={{ maxWidth: 640, margin: "0 auto", textAlign: "center" }}>
           <Reveal>
+            {/* Brief §7 : « Merci d'être là » → « Bienvenue dans le
+                dictionnaire » (orienté accueil/utilisateur, pas auto-
+                congrat). Tagline plus directe sur l'indépendance. */}
             <h2 style={{ ...headingStyle, fontSize: "clamp(28px, 4.5vw, 44px)", marginBottom: 28 }}>
-              Merci d'être là.
+              Bienvenue dans le dictionnaire.
             </h2>
             <p style={{ ...paragraphStyle, fontSize: 17 }}>
-              WADA est encore indépendant, construit petit à petit avec beaucoup
-              d'attention. Et ce n'est que le début.
+              WADA est indépendant. Pas d'investisseur, pas de pub. Juste les couleurs et vous.
             </p>
             <p style={{
               fontFamily: fontLabel, fontSize: 11, letterSpacing: "0.4em",
               textTransform: "uppercase", color: subtle, margin: "44px 0 0", fontWeight: 600,
             }}>
               Genève · 2026
+            </p>
+            {/* Brief §6 : bloc affiliation déplacé en lien discret ici.
+                Plus de gros encart « Vous gérez un programme d'affiliation ? »
+                en bas de page qui parasitait le message client. */}
+            <p style={{ fontSize: 12, color: subtle, marginTop: 8, fontFamily: fontBody }}>
+              Vous êtes une marque ?{" "}
+              <Link href="/partenaires" style={{ color: subtle, textDecoration: "underline" }}>
+                Devenir partenaire
+              </Link>
             </p>
           </Reveal>
         </div>
@@ -463,71 +540,10 @@ export default function AboutPage() {
         </Reveal>
       </section>
 
-      {/* ═══ POUR LES MARQUES PARTENAIRES ═══
-          Encart court qui redirige les Account Managers Awin et les
-          responsables affiliation des marques vers /partenaires.
-          Discret, en bas, signal pro pour qui sait quoi chercher. */}
-      <section style={{ background: paper, padding: "64px 5% 96px", borderTop: `1px solid ${border}` }}>
-        <div style={{
-          maxWidth: 880, margin: "0 auto",
-          padding: "32px 36px",
-          background: "rgba(196,78,58,0.05)",
-          border: `1px solid ${border}`,
-          borderRadius: 16,
-          textAlign: "center",
-        }}>
-          <p style={{
-            fontFamily: fontLabel, fontSize: 11, fontWeight: 700,
-            letterSpacing: "0.4em", textTransform: "uppercase",
-            color: mojo, margin: "0 0 14px",
-          }}>
-            Pour les marques partenaires
-          </p>
-          <h3 style={{
-            fontFamily: fontBody, fontSize: 26, fontWeight: 500,
-            fontStyle: "italic", margin: "0 0 14px", color: ink,
-            letterSpacing: "-0.01em",
-          }}>
-            Vous gérez un programme d'affiliation ?
-          </h3>
-          <p style={{
-            fontFamily: fontBody, fontSize: 15, color: textSecondary,
-            margin: "0 auto 22px", maxWidth: 560, lineHeight: 1.6,
-          }}>
-            Audience cible, méthodes de promotion, engagements éditoriaux —
-            tout est détaillé pour les Account Managers et responsables affiliés.
-          </p>
-          <div style={{ display: "inline-flex", gap: 10, flexWrap: "wrap", justifyContent: "center" }}>
-            <Link
-              href="/partenaires"
-              style={{
-                display: "inline-flex", alignItems: "center", gap: 8,
-                padding: "12px 22px",
-                background: ink, color: paper,
-                fontFamily: fontLabel, fontSize: 11, fontWeight: 700,
-                letterSpacing: "0.25em", textTransform: "uppercase",
-                textDecoration: "none", borderRadius: 999,
-              }}
-            >
-              Pour les marques →
-            </Link>
-            <Link
-              href="/affiliation"
-              style={{
-                display: "inline-flex", alignItems: "center", gap: 8,
-                padding: "12px 22px",
-                background: "transparent", color: ink,
-                border: `1px solid ${ink}`,
-                fontFamily: fontLabel, fontSize: 11, fontWeight: 700,
-                letterSpacing: "0.25em", textTransform: "uppercase",
-                textDecoration: "none", borderRadius: 999,
-              }}
-            >
-              Affiliation transparence
-            </Link>
-          </div>
-        </div>
-      </section>
+      {/* ═══ POUR LES MARQUES PARTENAIRES — supprimé brief §6 (2026-05-29).
+          Le gros encart « Vous gérez un programme d'affiliation ? » brouillait
+          le message client. Remplacé par 1 lien discret dans la section closing
+          ci-dessus (« Vous êtes une marque ? Devenir partenaire »). */}
 
           </main>
   );
