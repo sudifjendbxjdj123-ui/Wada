@@ -5,28 +5,99 @@ import { usePathname } from "next/navigation";
 /**
  * MobileTabBar — barre d'onglets fixée en bas, visible uniquement ≤880px.
  *
- * Brief audit mobile 24/05 §1 : sur téléphone, le hamburger ☰ du Nav reste
- * accessible pour les destinations secondaires (Composer, About, Tarifs,
- * etc.), mais les 4 outils principaux méritent un accès permanent au pouce.
- * Pattern attendu sur une app mobile native.
+ * Refonte 2026-05-29 (brief client « appli efficace » §2) :
+ *   5 tabs au lieu de 4. Pattern app-native avec Scanner CENTRAL SURÉLEVÉ
+ *   bordeaux (« l'action cœur du produit »).
  *
- * Stack visible :
- *   [Scanner] [Palettes] [Styliste] [Compte]
+ *   ┌──────────────────────────────────────────────┐
+ *   │  Accueil   Palettes  [ SCAN ]  Styliste  ♡  │
+ *   │     ⌂        ▦          ◎         ✦        │
+ *   └──────────────────────────────────────────────┘
+ *                       ▲
+ *                  surélevé -14px,
+ *                  cercle bordeaux 56×56
  *
- * Le ✦ pour Styliste, ▦ pour Palettes, ◎ pour Scanner, ○ pour Compte
- * (glyphes neutres, pas de dépendance icon set). aria-current marque la
- * route active.
+ * Le Compte sort de la TabBar (il est déjà dans le drawer mobile +
+ * accessible via icône user dans le Nav desktop). Brief : 5 tabs max
+ * pour ne pas surcharger.
+ *
+ * Icônes SVG (1.6 stroke, currentColor) au lieu des glyphes ◎▦✦ basiques :
+ * repère visuel reconnaissable au coup d'œil — sensation app native.
  *
  * Position fixed bottom + safe-area-inset-bottom pour ne pas chevaucher
  * la barre gestuelle iPhone. Le body reçoit padding-bottom équivalent en
  * CSS pour que le contenu ne passe pas sous la barre.
  */
 
-const TABS: Array<{ href: string; label: string; icon: string }> = [
-  { href: "/scanner", label: "Scanner", icon: "◎" },
-  { href: "/palettes", label: "Palettes", icon: "▦" },
-  { href: "/stylist", label: "Styliste", icon: "✦" },
-  { href: "/compte", label: "Compte", icon: "○" },
+type IconKind = "home" | "grid" | "scan" | "stylist" | "heart";
+
+function Icon({ kind, size = 22 }: { kind: IconKind; size?: number }) {
+  const props = {
+    width: size,
+    height: size,
+    viewBox: "0 0 24 24",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: 1.7,
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const,
+    "aria-hidden": true,
+  };
+  switch (kind) {
+    case "home":
+      return (
+        <svg {...props}>
+          <path d="M3 11l9-7 9 7v9a2 2 0 0 1-2 2h-4v-7h-6v7H5a2 2 0 0 1-2-2v-9z" />
+        </svg>
+      );
+    case "grid":
+      return (
+        <svg {...props}>
+          <rect x="3" y="3" width="7" height="7" rx="1.5" />
+          <rect x="14" y="3" width="7" height="7" rx="1.5" />
+          <rect x="3" y="14" width="7" height="7" rx="1.5" />
+          <rect x="14" y="14" width="7" height="7" rx="1.5" />
+        </svg>
+      );
+    case "scan":
+      /* Viewfinder caméra : 4 coins + cercle central — signal scanner /
+         appareil photo, lisible en blanc sur le rond bordeaux. */
+      return (
+        <svg {...props} strokeWidth={2}>
+          <path d="M4 8V6a2 2 0 0 1 2-2h2" />
+          <path d="M16 4h2a2 2 0 0 1 2 2v2" />
+          <path d="M20 16v2a2 2 0 0 1-2 2h-2" />
+          <path d="M8 20H6a2 2 0 0 1-2-2v-2" />
+          <circle cx="12" cy="12" r="3.5" />
+        </svg>
+      );
+    case "stylist":
+      /* Sparkle / étoile à 4 branches : signal magique / IA. */
+      return (
+        <svg {...props}>
+          <path d="M12 3l2 6 6 2-6 2-2 6-2-6-6-2 6-2 2-6z" />
+        </svg>
+      );
+    case "heart":
+      return (
+        <svg {...props}>
+          <path d="M12 21s-7-4.5-9.5-9A5 5 0 0 1 12 6a5 5 0 0 1 9.5 6c-2.5 4.5-9.5 9-9.5 9z" />
+        </svg>
+      );
+  }
+}
+
+const TABS: Array<{
+  href: string;
+  label: string;
+  icon: IconKind;
+  hero?: boolean;
+}> = [
+  { href: "/", label: "Accueil", icon: "home" },
+  { href: "/palettes", label: "Palettes", icon: "grid" },
+  { href: "/scanner", label: "Scanner", icon: "scan", hero: true },
+  { href: "/stylist", label: "Styliste", icon: "stylist" },
+  { href: "/favoris", label: "Favoris", icon: "heart" },
 ];
 
 export default function MobileTabBar() {
@@ -35,7 +106,36 @@ export default function MobileTabBar() {
   return (
     <nav className="wada-tabbar" aria-label="Navigation mobile">
       {TABS.map((t) => {
-        const active = path === t.href || path.startsWith(t.href + "/");
+        /* « / » ne doit pas être actif sur /palettes parce qu'il
+           « startsWith /palettes ». Le test exact évite la collision. */
+        const active = t.href === "/"
+          ? path === "/"
+          : path === t.href || path.startsWith(t.href + "/");
+
+        if (t.hero) {
+          /* Bouton central SURÉLEVÉ — cercle bordeaux 56×56 qui dépasse
+             vers le haut de la barre. Le slot conserve son flex:1 pour
+             que les 4 autres tabs restent équirépartis, mais le rond
+             est positionné absolutely à la verticale.
+             aria-current pas posé (il est déjà visuellement distinct). */
+          return (
+            <Link
+              key={t.href}
+              href={t.href}
+              aria-label={t.label}
+              aria-current={active ? "page" : undefined}
+              className="wada-tabbar-link wada-tabbar-hero"
+            >
+              <span className="wada-tabbar-hero-bubble" aria-hidden="true">
+                <Icon kind={t.icon} size={26} />
+              </span>
+              <span className="wada-tabbar-label wada-tabbar-hero-label">
+                {t.label}
+              </span>
+            </Link>
+          );
+        }
+
         return (
           <Link
             key={t.href}
@@ -43,8 +143,8 @@ export default function MobileTabBar() {
             aria-current={active ? "page" : undefined}
             className="wada-tabbar-link"
           >
-            <span aria-hidden="true" className="wada-tabbar-icon">
-              {t.icon}
+            <span className="wada-tabbar-icon" aria-hidden="true">
+              <Icon kind={t.icon} />
             </span>
             <span className="wada-tabbar-label">{t.label}</span>
           </Link>

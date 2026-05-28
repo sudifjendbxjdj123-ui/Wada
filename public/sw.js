@@ -383,7 +383,16 @@
    §7 copy retravaillée : « Bienvenue dans le dictionnaire » au lieu
    de « Merci d'être là », « La tenue arrive » au lieu de « WADA aide
    à construire le reste ». Force re-fetch HTML. */
-const CACHE_VERSION = "wada-v35-2026-05-29";
+/* Bump v36 29/05 : brief client « appli efficace » §2 + §7 partiel.
+   MobileTabBar refondue : 5 tabs au lieu de 4 (Accueil + Palettes +
+   SCANNER central surélevé bordeaux 56×56 + Styliste + Favoris).
+   Icônes SVG propres au lieu des glyphes ◎▦✦○. Le Compte sort de
+   la tabbar (déjà dans drawer mobile).
+   /favoris état vide soigné : icône cœur visuelle + UN seul CTA
+   principal « Scanner ma première couleur » + lien secondaire
+   discret vers palettes (plus 2 boutons de même poids).
+   Force re-fetch HTML pour pousser la nouvelle structure tabbar. */
+const CACHE_VERSION = "wada-v36-2026-05-29";
 const STATIC_CACHE  = `${CACHE_VERSION}-static`;
 const PAGE_CACHE    = `${CACHE_VERSION}-pages`;
 

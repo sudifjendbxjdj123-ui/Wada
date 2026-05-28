@@ -2003,12 +2003,69 @@ a[data-wada-btn="ghost"]:hover {
     color: #C9A567;  /* doré WADA pour contraste sur fond sombre */
   }
   .wada-tabbar-icon {
-    font-size: 20px;
-    line-height: 1;
+    /* Refonte 2026-05-29 : icônes SVG au lieu de glyphes texte.
+       inline-flex pour centrer le SVG dans le slot. */
+    display: inline-flex; align-items: center; justify-content: center;
+    color: currentColor;
   }
   .wada-tabbar-label {
     font-size: 10px;
     letter-spacing: 0.05em;
+  }
+
+  /* ─── Brief 2026-05-29 §2 : bouton SCANNER central surélevé ───
+     Le slot conserve son flex:1 (équirépartition des 5 tabs) mais
+     la « bulle » bordeaux 56×56 est positionnée absolutely et
+     dépasse vers le haut de la barre via translateY négatif.
+     Signature visuelle d'app native — l'action cœur du produit
+     est immédiatement identifiable, doigt naturellement attiré
+     vers ce point pour scanner. */
+  .wada-tabbar-hero {
+    position: relative;
+    /* Le label hero est placé sous la bulle ; on réserve l'espace. */
+    padding-top: 28px !important;
+  }
+  .wada-tabbar-hero-bubble {
+    position: absolute;
+    top: -18px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: #6B3A32; /* bordeaux WADA */
+    color: #FAF8F4; /* crème */
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 6px 20px rgba(107, 58, 50, 0.42),
+                0 0 0 4px rgba(244, 239, 230, 0.96); /* halo fond tabbar pour découper visuellement la bulle */
+    transition: transform 0.18s ease, box-shadow 0.18s ease;
+  }
+  .wada-tabbar-hero:active .wada-tabbar-hero-bubble {
+    transform: translateX(-50%) scale(0.94);
+    box-shadow: 0 3px 12px rgba(107, 58, 50, 0.38),
+                0 0 0 4px rgba(244, 239, 230, 0.96);
+  }
+  /* En mode sombre : halo s'aligne sur le fond sombre de la tabbar. */
+  [data-theme="dark"] .wada-tabbar-hero-bubble {
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5),
+                0 0 0 4px rgba(20, 18, 14, 0.96);
+  }
+  .wada-tabbar-hero[aria-current="page"] .wada-tabbar-hero-bubble {
+    /* État actif (sur /scanner) : bordeaux plus sombre + ombre marquée. */
+    background: #5a3029;
+    box-shadow: 0 8px 24px rgba(107, 58, 50, 0.55),
+                0 0 0 4px rgba(244, 239, 230, 0.96);
+  }
+  .wada-tabbar-hero-label {
+    /* Label « Scanner » sous la bulle — toujours visible mais discret. */
+    margin-top: 2px;
+    color: #6B3A32;
+    font-weight: 600;
+  }
+  [data-theme="dark"] .wada-tabbar-hero-label {
+    color: #C9A567;
   }
 
   /* Pousse le contenu pour ne pas passer sous la tabbar.

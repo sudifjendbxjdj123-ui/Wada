@@ -48,21 +48,80 @@ export default function FavorisPage() {
           </header>
 
           {!hydrated || !outfitsHydrated ? null : totalCount === 0 ? (
-            <section style={{ textAlign: "center", padding: "60px 24px", border: `1px solid ${border}`, background: "rgba(255,255,255,0.4)", maxWidth: 600, margin: "0 auto" }}>
-              <p style={{ fontSize: 18, fontStyle: "italic", color: textSecondary, marginBottom: 28, fontFamily: "'Inter', sans-serif" }}>
-                Vous n&apos;avez pas encore de favoris.
-              </p>
-              <p style={{ fontSize: 14, color: subtle, fontStyle: "italic", marginBottom: 36, fontFamily: "'Inter', sans-serif", lineHeight: 1.6 }}>
-                Cliquez sur ♡ sur une palette, ou « Garder cette tenue » dans le styliste.
-              </p>
-              <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
-                <Link href="/palettes" style={{ background: ink, color: paper, padding: "16px 32px", fontSize: 11, letterSpacing: "0.4em", textTransform: "uppercase", textDecoration: "none", fontFamily: "'Inter', sans-serif", display: "inline-block" }}>
-                  Découvrir les palettes →
-                </Link>
-                <Link href="/stylist" style={{ background: "transparent", color: ink, border: `1px solid ${border}`, padding: "16px 32px", fontSize: 11, letterSpacing: "0.4em", textTransform: "uppercase", textDecoration: "none", fontFamily: "'Inter', sans-serif", display: "inline-block" }}>
-                  Composer une tenue →
-                </Link>
+            /* Brief client 2026-05-29 « appli efficace » §7 :
+               état vide soigné — UNE action principale (Scanner =
+               vraie porte d'entrée WADA), pas 2 boutons de même
+               poids. Grosse icône cœur visuelle + message direct
+               orienté action. Lien secondaire discret pour ceux
+               qui préfèrent explorer le dictionnaire. */
+            <section style={{
+              textAlign: "center",
+              padding: "60px 24px",
+              border: `1px solid ${border}`,
+              background: "rgba(255,255,255,0.4)",
+              borderRadius: 20,
+              maxWidth: 560,
+              margin: "0 auto",
+            }}>
+              {/* Grosse icône cœur stylisée — repère visuel immédiat */}
+              <div style={{
+                width: 72, height: 72, margin: "0 auto 24px",
+                borderRadius: "50%",
+                background: "rgba(107, 58, 50, 0.08)",
+                color: "#6B3A32",
+                display: "inline-flex", alignItems: "center", justifyContent: "center",
+              }}>
+                <svg
+                  width="34" height="34" viewBox="0 0 24 24"
+                  fill="none" stroke="currentColor" strokeWidth="1.6"
+                  strokeLinecap="round" strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M12 21s-7-4.5-9.5-9A5 5 0 0 1 12 6a5 5 0 0 1 9.5 6c-2.5 4.5-9.5 9-9.5 9z" />
+                </svg>
               </div>
+              <h2 style={{
+                fontFamily: "'Fredoka', sans-serif",
+                fontSize: 22, fontWeight: 600,
+                color: ink, margin: "0 0 12px",
+              }}>
+                Vos favoris vous attendent
+              </h2>
+              <p style={{
+                fontSize: 15, color: textSecondary,
+                margin: "0 auto 32px", maxWidth: 380,
+                fontFamily: "'Inter', sans-serif", lineHeight: 1.55,
+              }}>
+                Scannez une couleur pour démarrer — chaque palette ou tenue gardée apparaîtra ici.
+              </p>
+              {/* UN seul CTA principal — l'action évidente. */}
+              <Link
+                href="/scanner"
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: 10,
+                  background: "#6B3A32", color: "#FAF8F4",
+                  padding: "15px 30px", borderRadius: 999,
+                  fontSize: 14, fontWeight: 600, letterSpacing: "0.02em",
+                  textDecoration: "none",
+                  fontFamily: "'Inter', sans-serif",
+                  boxShadow: "0 8px 24px rgba(107, 58, 50, 0.28)",
+                }}
+              >
+                <span>Scanner ma première couleur</span>
+                <span aria-hidden style={{ fontSize: 16 }}>→</span>
+              </Link>
+              <p style={{
+                marginTop: 20, fontSize: 13,
+                color: subtle, fontFamily: "'Inter', sans-serif",
+              }}>
+                ou{" "}
+                <Link
+                  href="/palettes"
+                  style={{ color: subtle, textDecoration: "underline", textUnderlineOffset: 3 }}
+                >
+                  explorer les 348 palettes
+                </Link>
+              </p>
             </section>
           ) : (
             <>
