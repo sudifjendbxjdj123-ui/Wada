@@ -432,7 +432,15 @@
    autorise toujours play après gesture), (3) check après 6s
    v.played.length === 0 → dernière tentative. Force re-fetch HTML
    pour pousser le patch aux PWA installées. */
-const CACHE_VERSION = "wada-v41-2026-05-29";
+/* Bump v42 29/05 : vidéo home abandonnée, image fixe à la place.
+   La vidéo femme-wada-bg.mp4 (22 Mo) restait figée sur le poster
+   en PWA iOS standalone même après 3 layers de fix (retry events +
+   backoff + first-tap + check played). Le décodage 22 Mo dépasse le
+   budget mémoire/CPU iOS Safari standalone cold start. Le poster
+   .webp (152 Ko, 145× plus léger) devient le visuel principal — look
+   immersif conservé, démarrage instantané, zéro bug. Force re-fetch
+   HTML pour pousser le patch aux PWA installées. */
+const CACHE_VERSION = "wada-v42-2026-05-29";
 const STATIC_CACHE  = `${CACHE_VERSION}-static`;
 const PAGE_CACHE    = `${CACHE_VERSION}-pages`;
 

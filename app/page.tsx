@@ -1,8 +1,8 @@
 "use client";
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 /* Brief « appli efficace » §3 (2026-05-29) : bande Resume flottante au-
-   dessus de la vidéo hero si l'user a déjà visité une palette ou sauvé
-   une tenue. Le composant ne rend rien si pas d'état à reprendre. */
+   dessus du hero si l'user a déjà visité une palette ou sauvé une tenue.
+   Le composant ne rend rien si pas d'état à reprendre. */
 import ResumeBanner from "@/components/ResumeBanner";
 /**
  * Home WADA — refonte 2026-05-26 (brief client).
@@ -48,119 +48,18 @@ export default function Home() {
     return () => document.body.classList.remove("wada-home-immersive");
   }, []);
 
-  /* Fix bug 2026-05-29 : « la vidéo ne démarre pas parfois sur l'appli ».
-     Cas connus où l'attribut autoPlay HTML rate silencieusement :
-       - WebView Capacitor (iOS) au cold start de la PWA
-       - Onglet inactif au moment du mount (page chargée en background)
-       - iOS Low Power Mode (impossible à contourner, on tente quand même)
-       - Réseau lent : la vidéo n'est pas chargée avant le play() implicite
-       - BFcache iOS au retour back/forward → vidéo restaurée pause
-     Stratégie : on garde autoPlay (le « happy path » couvre 95 %), on
-     ajoute un retry programmatique sur 3 events qui couvrent les autres
-     cas. play() retourne une Promise — on catch pour ne pas crasher
-     l'app avec « NotAllowedError ». Si tous les retries ratent, le
-     poster reste affiché (déjà en place) : pas de page « morte ».  */
-  const videoRef = useRef<HTMLVideoElement>(null);
-  useEffect(() => {
-    const v = videoRef.current;
-    if (!v) return;
-
-    const tryPlay = () => {
-      if (!v.paused) return; // déjà en cours
-      const p = v.play();
-      if (p && typeof p.catch === "function") {
-        p.catch(() => {
-          /* Échec silencieux — le poster reste visible. On ne logge
-             pas en console pour ne pas polluer la prod. Les retries
-             ci-dessous tenteront à nouveau quand les conditions
-             changent (canplay, visibilité, pageshow). */
-        });
-      }
-    };
-
-    /* 1er essai immédiat au mount (en plus de l'autoPlay HTML). */
-    tryPlay();
-
-    /* canplay = vidéo a assez de buffer pour démarrer. Important sur
-       réseau lent : autoPlay rate parfois parce que le 1er frame n'est
-       pas prêt au moment où le browser tente. */
-    const onCanPlay = () => tryPlay();
-    v.addEventListener("canplay", onCanPlay);
-    v.addEventListener("loadeddata", onCanPlay);
-
-    /* visibilitychange : l'utilisateur revient sur l'onglet (ou ouvre
-       la PWA depuis le multitâche). iOS pause souvent la vidéo en
-       background — au retour, elle doit reprendre. */
-    const onVisibility = () => {
-      if (document.visibilityState === "visible") tryPlay();
-    };
-    document.addEventListener("visibilitychange", onVisibility);
-
-    /* pageshow avec event.persisted = restauration BFcache iOS Safari
-       (back/forward depuis une autre page). La vidéo est gelée — il
-       faut explicitement la rejouer. */
-    const onPageShow = (e: PageTransitionEvent) => {
-      if (e.persisted) tryPlay();
-    };
-    window.addEventListener("pageshow", onPageShow);
-
-    /* ─── Renfort 2026-05-29 : cold start PWA iOS toujours en panne ───
-       Symptôme client : « la vidéo ne démarre pas quand j'ouvre l'app ».
-       iOS Safari standalone (PWA depuis le home screen) refuse parfois
-       autoplay au tout premier launch, même avec muted+playsInline. Les
-       retries event-based ne suffisent pas si la condition iOS ne change
-       jamais. On ajoute 3 garde-fous :
-
-       1. BACKOFF RETRY — 5 tentatives échelonnées (100ms, 300ms, 800ms,
-          2s, 5s). Couvre le cas où le décodeur vidéo n'était pas prêt
-          à 100ms mais l'est à 800ms.
-       2. FIRST-TAP FALLBACK — un listener pointerdown/touchstart sur
-          document tente play() au tout premier user gesture. iOS
-          accepte TOUJOURS play() après un gesture utilisateur, même
-          PWA. Listener auto-retiré après le 1er trigger.
-       3. CHECK « A RÉELLEMENT JOUÉ » — après 6s, si v.played.length
-          est encore 0 (= la vidéo n'a JAMAIS joué une seule frame),
-          on retente une dernière fois. Capte le cas iOS où play() a
-          résolu sans erreur mais la vidéo est restée freezée. */
-
-    const backoffDelays = [100, 300, 800, 2000, 5000];
-    const backoffTimers: number[] = [];
-    backoffDelays.forEach((ms) => {
-      const t = window.setTimeout(() => tryPlay(), ms);
-      backoffTimers.push(t);
-    });
-
-    const onFirstGesture = () => {
-      tryPlay();
-      /* Une fois que le user a interagi, iOS autorise play() partout —
-         on n'a plus besoin du listener. */
-      document.removeEventListener("pointerdown", onFirstGesture);
-      document.removeEventListener("touchstart", onFirstGesture);
-    };
-    document.addEventListener("pointerdown", onFirstGesture, { passive: true });
-    document.addEventListener("touchstart", onFirstGesture, { passive: true });
-
-    const playedCheck = window.setTimeout(() => {
-      if (v.played.length === 0) {
-        /* La vidéo n'a jamais joué une seule frame en 6s. Soit Low
-           Power Mode (rien à faire), soit iOS standalone refuse. On
-           retente un coup au cas où, puis on lâche prise (le poster
-           reste, c'est acceptable). */
-        tryPlay();
-      }
-    }, 6000);
-
-    return () => {
-      v.removeEventListener("canplay", onCanPlay);
-      v.removeEventListener("loadeddata", onCanPlay);
-      document.removeEventListener("visibilitychange", onVisibility);
-      window.removeEventListener("pageshow", onPageShow);
-      document.removeEventListener("pointerdown", onFirstGesture);
-      document.removeEventListener("touchstart", onFirstGesture);
-      backoffTimers.forEach((t) => clearTimeout(t));
-      clearTimeout(playedCheck);
-    };
-  }, []);
+  /* ═══ Décision 2026-05-29 — vidéo abandonnée, image fixe à la place ═══
+     Le fichier femme-wada-bg.mp4 (22 Mo) ne démarre pas en PWA iOS
+     standalone même après 3 layers de fix (autoPlay + retry events +
+     backoff + first-tap + final check). Le décodage 22 Mo dépasse le
+     budget mémoire/CPU autorisé par iOS Safari standalone au cold start.
+     Bascule en image fixe :
+       - Le poster .webp (152 Ko) qui servait déjà de fallback devient
+         le visuel principal — 145× plus léger, charge instantanément.
+       - Look immersif conservé (100svh × 100vw, object-fit: cover).
+       - Zéro risque iOS / zéro JS bricolé / zéro Low Power Mode issue.
+     Si plus tard on veut ré-essayer la vidéo, il faudra ré-encoder en
+     ~2-3 Mo (H.264 baseline, faststart, 720p max). */
 
   return (
     <main
@@ -189,39 +88,24 @@ export default function Home() {
       <ResumeBanner />
 
       {/* ════════════════════════════════════════════════════════════════
-          VIDÉO MANNEQUIN PLEIN ÉCRAN
-          - autoplay + muted + playsinline = autoplay garanti iOS/Android/PWA
-          - loop = boucle infinie sans bouton replay
-          - poster = image webp affichée IMMÉDIATEMENT (avant le 1er frame
-            vidéo) + en fallback si le browser refuse l'autoplay
-          - preload="auto" = télécharge la vidéo dès le mount (la home est
-            la 1ère impression, on veut qu'elle joue tout de suite)
+          IMAGE MANNEQUIN PLEIN ÉCRAN
+          Décision 29/05 : la vidéo .mp4 (22 Mo) ne démarre pas en PWA
+          iOS standalone — le décodage cold start dépasse le budget
+          ressources autorisé par iOS Safari standalone. On garde le
+          poster .webp (152 Ko, 145× plus léger) comme visuel principal.
           - object-fit: cover = couvre tout l'écran, recadre intelligemment
+          - fetchpriority="high" = priorité au chargement (1ère impression)
+          - decoding="async" = ne bloque pas le rendu pendant le décode
+          - aria-hidden = c'est un visuel décoratif, pas du contenu
           ════════════════════════════════════════════════════════════════ */}
-      <video
-        ref={videoRef}
-        autoPlay
-        muted
-        loop
-        playsInline
-        // disablePictureInPicture = pas de bouton PiP sur la vidéo de fond
-        disablePictureInPicture
-        // controlsList empêche le download via menu contextuel
-        controlsList="nodownload nofullscreen noremoteplayback"
-        poster="/hero/femme-wada-bg-photo.webp"
-        preload="auto"
+      <img
+        src="/hero/femme-wada-bg-photo.webp"
+        alt=""
         aria-hidden="true"
-        /* Fix 2026-05-29 « vidéo ne démarre pas parfois sur l'appli ».
-           onLoadedData : trigger un play() supplémentaire dès que la 1ère
-           frame est prête — sécurise les cas où autoPlay HTML rate parce
-           que la vidéo n'était pas encore décodée au mount.  */
-        onLoadedData={(e) => {
-          const v = e.currentTarget;
-          if (v.paused) {
-            const p = v.play();
-            if (p && typeof p.catch === "function") p.catch(() => {});
-          }
-        }}
+        /* fetchPriority (camelCase) supporté par React 18.3+, équivalent
+           à fetchpriority HTML — priorité haute pour la 1ère impression. */
+        fetchPriority="high"
+        decoding="async"
         style={{
           position: "absolute",
           inset: 0,
@@ -232,12 +116,7 @@ export default function Home() {
           zIndex: 0,
           pointerEvents: "none",
         }}
-      >
-        <source src="/hero/femme-wada-bg.mp4" type="video/mp4" />
-        {/* Fallback texte si la balise video n'est pas supportée
-            (browsers très anciens) — le poster s'affiche quand même
-            via l'attribut poster ci-dessus. */}
-      </video>
+      />
 
       {/* ────────────────────────────────────────────────────────────────
           OVERLAY GRADIENT — assombrissement bas pour lisibilité du texte
