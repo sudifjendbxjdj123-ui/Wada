@@ -27,6 +27,11 @@ import { useLastPalette } from "@/hooks/useLastPalette";
 /* Brief « appli efficace » §6 (2026-05-29) : repère « Ensuite : … »
    pour montrer la prochaine étape du tunnel WADA. */
 import NextStepHint from "@/components/NextStepHint";
+/* Brief « Onboarding + profil + switcher » Phase 3 (2026-05-29) :
+   chips de pièces dans les 3 cards filtrés par genre + badge perso
+   « Composées pour vous » + propagation du profil vers /ma-tenue. */
+import ProfileChip from "@/components/ProfileChip";
+import { useProfile } from "@/hooks/useProfile";
 
 const palette = {
   beige: "#F4EFE7",
@@ -46,6 +51,31 @@ const fonts = {
 
 const shadow = "0 12px 48px rgba(30,30,30,.09)";
 const ease = "cubic-bezier(.22,1,.36,1)";
+
+/* Brief « Onboarding + profil + switcher » Phase 3 (2026-05-29) :
+   chips de pièces filtrés par genre dans les 3 cards occasion.
+   Femme : blazer fluide / mocassins / boucles dorées / pantalon fluide
+   Homme : blazer / derbies / chemise / pochette de costume
+
+   Indexation par (occasion → genre → chips[4]). Le hook useProfile
+   donne le genre courant ; on lit directement la bonne ligne. */
+const PIECES_BY_OCCASION: Record<
+  "bureau" | "quotidien" | "soiree",
+  Record<"Femme" | "Homme", string[]>
+> = {
+  bureau: {
+    Femme: ["Blazer fluide", "Chemise", "Pantalon fluide", "Mocassins"],
+    Homme: ["Blazer", "Chemise oxford", "Pantalon", "Derbies"],
+  },
+  quotidien: {
+    Femme: ["T-shirt", "Chino", "Sneakers blanches", "Veste légère"],
+    Homme: ["T-shirt", "Chino", "Sneakers", "Surchemise"],
+  },
+  soiree: {
+    Femme: ["Pull fin", "Pantalon droit", "Escarpins cuir", "Boucles dorées"],
+    Homme: ["Pull fin", "Pantalon", "Chaussures cuir", "Pochette de costume"],
+  },
+};
 
 /* refCode (référence couleur format WADA) est désormais importé depuis
    lib/utils.ts (cf. brief « Remplacer PANTONE » 25/05) — implémentation
@@ -109,6 +139,13 @@ export default function PalettePage({ params }: { params: Promise<{ number: stri
     if (!entry) return;
     recordPalette(entry.number, entry.name);
   }, [entry, recordPalette]);
+
+  /* Brief « Onboarding + profil + switcher » Phase 3 :
+     Le profil filtre les chips de pièces (Femme vs Homme) et se propage
+     en query param `genre` vers /ma-tenue pour que la composition tienne
+     compte du genre dès le clic « Voir ce look ». */
+  const { effective: prof } = useProfile();
+  const profGenreParam = prof.genre.toLowerCase(); // "femme" | "homme"
 
   const toggleFavorite = () => {
     if (!entry) return;
@@ -359,41 +396,48 @@ export default function PalettePage({ params }: { params: Promise<{ number: stri
         }}>
           Choisissez l'occasion — WADA compose la tenue adaptée.
         </p>
+        {/* Brief Phase 3 : badge perso au-dessus des 3 cards, centré.
+            Visible uniquement après hydratation, clic ouvre le switcher. */}
+        <div style={{ display: "flex", justifyContent: "center", marginBottom: 18 }}>
+          <ProfileChip variant="block" />
+        </div>
+
         <div className="wada-palette-variants" style={{
           display: "grid",
           gridTemplateColumns: "repeat(3, 1fr)",
           gap: 18,
         }}>
           {/* 3 occasions distinctes — visuellement et sémantiquement.
-              Query param `occasion` aligné sur le contexte réel pour que
-              /ma-tenue puisse l'utiliser dans la composition. */}
+              Brief Phase 3 : chips de pièces différenciés Femme/Homme
+              (cf. PIECES_BY_OCCASION dans helpers en bas du fichier),
+              et le genre est propagé en query param vers /ma-tenue. */}
           <VariantCard
-            href={`/ma-tenue?palette=${entry.number}&style=Classique&occasion=bureau`}
+            href={`/ma-tenue?palette=${entry.number}&style=Classique&occasion=bureau&genre=${profGenreParam}`}
             occasion="Au bureau"
             occasionIcon="briefcase"
             title="Tailoring classique"
             desc="Blazer impeccable, chemise et derbies — autorité tranquille."
-            pieces={["Blazer", "Chemise", "Pantalon", "Derbies"]}
+            pieces={PIECES_BY_OCCASION.bureau[prof.genre]}
             previewColors={entry.colors.slice(0, 4).map((c) => c.hex)}
             variant="classique"
           />
           <VariantCard
-            href={`/ma-tenue?palette=${entry.number}&style=Minimal&occasion=quotidien`}
+            href={`/ma-tenue?palette=${entry.number}&style=Minimal&occasion=quotidien&genre=${profGenreParam}`}
             occasion="Au quotidien"
             occasionIcon="sun"
             title="Casual chic"
             desc="Tee, chino et sneakers — confortable sans négliger l'allure."
-            pieces={["T-shirt", "Chino", "Sneakers", "Veste légère"]}
+            pieces={PIECES_BY_OCCASION.quotidien[prof.genre]}
             previewColors={entry.colors.slice(0, 4).map((c) => c.hex)}
             variant="decontracte"
           />
           <VariantCard
-            href={`/ma-tenue?palette=${entry.number}&style=Old%20money&occasion=sorties`}
+            href={`/ma-tenue?palette=${entry.number}&style=Old%20money&occasion=sorties&genre=${profGenreParam}`}
             occasion="En soirée"
             occasionIcon="moon"
             title="Tenue habillée"
             desc="Pièces nobles, accent sombre — pour un dîner ou une sortie."
-            pieces={["Pull fin", "Pantalon", "Chaussures cuir", "Accessoire"]}
+            pieces={PIECES_BY_OCCASION.soiree[prof.genre]}
             previewColors={entry.colors.slice(0, 4).map((c) => c.hex)}
             variant="habille"
           />

@@ -169,10 +169,31 @@ function MaTenueContent() {
      surchargent localStorage uniquement pour cette navigation. */
   useEffect(() => {
     try {
+      /* Brief « Onboarding + profil + switcher » Phase 3 (2026-05-29) :
+         le nouveau profil `wada.profile` (genre/budget/style) prime sur
+         les anciennes clés `wada-gender` / `wada-prefs`. Mapping :
+           profile.genre "Femme"/"Homme" → wada-gender lowercase
+           profile.style "Minimaliste"/"Classique"/... → prefs.style
+           profile.budget label → prefs.budget numeric (150 / 400 / 2000)
+         Si query params explicites (?genre, ?style) → ils gagnent. */
+      const profileRaw = localStorage.getItem("wada.profile");
+      const profile = profileRaw ? JSON.parse(profileRaw) : null;
       const g = localStorage.getItem("wada-gender");
       const p = localStorage.getItem("wada-prefs");
       const initial: WadaPrefs = { ...DEFAULT_PREFS };
-      if (g === "femme" || g === "homme" || g === "unisexe") initial.gender = g;
+      /* Genre : query (?genre) > profile > legacy. La query param est
+         lue plus bas via searchParams, on touche pas ici. */
+      const profileGender = profile?.genre === "Femme" ? "femme"
+        : profile?.genre === "Homme" ? "homme"
+        : null;
+      if (profileGender) initial.gender = profileGender;
+      else if (g === "femme" || g === "homme" || g === "unisexe") initial.gender = g;
+      if (profile?.style) initial.style = profile.style;
+      if (profile?.budget) {
+        initial.budget = profile.budget === "< 150€" ? 150
+          : profile.budget === "150–400€" ? 400
+          : 2000;
+      }
       if (p) {
         const parsed = JSON.parse(p);
         Object.assign(initial, parsed);

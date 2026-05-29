@@ -477,7 +477,20 @@
    Le cron est déjà multi-feeds via AWIN_DATAFEED_URLS. Pour activer TBF :
    ajouter {"slug":"the-business-fashion","url":"<URL TBF>"} dans la var
    d'env Vercel. Aucun changement front. */
-const CACHE_VERSION = "wada-v46-2026-05-29";
+/* Bump v47 29/05 : Phase 3 « Onboarding + profil + switcher » —
+   intégration du profil dans les pages :
+   - components/ProfileChip : badge « Composées pour vous · {profil} »,
+     clic ouvre le switcher.
+   - /palette/[number] : ProfileChip au-dessus des 3 cards. Chips pièces
+     filtrées par genre via PIECES_BY_OCCASION (Femme : blazer fluide /
+     mocassins / boucles ; Homme : blazer / derbies / pochette). Genre
+     propagé en query param vers /ma-tenue.
+   - /ma-tenue : lit wada.profile en priorité (genre, style, budget en
+     seuil numérique), fallback sur les anciennes clés wada-gender/prefs.
+   - /stylist : userPrefs() lit wada.profile en priorité avant les clés
+     legacy, injecte automatiquement le profil dans la collecte LLM.
+   Force re-fetch HTML pour pousser les changements client. */
+const CACHE_VERSION = "wada-v47-2026-05-29";
 const STATIC_CACHE  = `${CACHE_VERSION}-static`;
 const PAGE_CACHE    = `${CACHE_VERSION}-pages`;
 

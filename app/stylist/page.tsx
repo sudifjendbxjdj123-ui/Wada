@@ -962,15 +962,41 @@ export default function StylistPage() {
     size?: string;
   } {
     try {
+      /* Brief « Onboarding + profil + switcher » Phase 3 (2026-05-29) :
+         le profil global (wada.profile) prime sur les anciennes clés
+         (wada-gender / wada-prefs) qui restent en fallback pour les
+         users qui ont configuré avant le nouvel onboarding. Le hook
+         useProfile gère wada.profile côté UI ; ici on lit directement
+         pour ne pas violer les rules-of-hooks (helper appelé hors render). */
+      const profileRaw = localStorage.getItem("wada.profile");
+      const profile = profileRaw ? JSON.parse(profileRaw) : null;
+
       const prefs = JSON.parse(localStorage.getItem("wada-prefs") || "{}");
       const genderRaw = localStorage.getItem("wada-gender");
-      const gender = (genderRaw === "femme" || genderRaw === "homme" || genderRaw === "unisexe")
+      const genderLegacy = (genderRaw === "femme" || genderRaw === "homme" || genderRaw === "unisexe")
         ? genderRaw
         : null;
+
+      /* Genre : profile prime → legacy → state. */
+      const profileGender = profile?.genre === "Femme" ? "femme"
+        : profile?.genre === "Homme" ? "homme"
+        : null;
+
+      /* Style : profile prime → state local → prefs legacy. */
+      const profileStyle = profile?.style; // "Minimaliste"|"Classique"|"Streetwear"|"Décontracté"
+
+      /* Budget : on convertit le profile label en seuil numérique pour
+         que le LLM continue de comprendre. < 150€ → 150, 150-400€ →
+         400, Premium → 2000. Sert d'indicateur, pas de filtre strict. */
+      const profileBudgetNumeric = profile?.budget === "< 150€" ? 150
+        : profile?.budget === "150–400€" ? 400
+        : profile?.budget === "Premium" ? 2000
+        : undefined;
+
       return {
-        gender: gender || state.genre?.toLowerCase() as "femme" | "homme" | "unisexe" | null,
-        style: state.style || prefs.style,
-        budget: prefs.budget,
+        gender: profileGender || genderLegacy || (state.genre?.toLowerCase() as "femme" | "homme" | "unisexe" | null),
+        style: profileStyle || state.style || prefs.style,
+        budget: profileBudgetNumeric ?? prefs.budget,
         morpho: prefs.morpho,
         size: prefs.size,
       };
