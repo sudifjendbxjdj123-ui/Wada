@@ -132,12 +132,18 @@ export default function InstallPage() {
             Vous pouvez désinstaller à tout moment — sans compte, sans suivi.
           </p>
           <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
+            {/* Brief §9 (2026-05-29) : « mêmes mots partout ». Le CTA
+                « Commencer le scanner » devient « Scanner une couleur »
+                pour s'aligner sur la home + MobileTabBar (« Scanner »).
+                « Voir les palettes » → « Explorer les palettes » pour
+                rester cohérent avec la formule employée dans /favoris
+                et le bandeau noir de /about. */}
             <Link href="/scanner" style={btnPrimary}>
-              <span>Commencer le scanner</span>
+              <span>Scanner une couleur</span>
               <HandArrow size={24} color={paper} />
             </Link>
             <Link href="/palettes" style={btnOutline}>
-              Voir les palettes
+              Explorer les palettes
             </Link>
           </div>
         </div>

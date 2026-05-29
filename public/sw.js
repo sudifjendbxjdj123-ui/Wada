@@ -399,7 +399,15 @@
    flottante crème+blur en top, priorise tenue sauvée > palette visitée,
    dismissable session-only. Force re-fetch HTML pour pousser la home
    + tracking palette. */
-const CACHE_VERSION = "wada-v37-2026-05-29";
+/* Bump v38 29/05 : brief « appli efficace » §6 — repères « Ensuite : … »
+   pour transformer le site en flux narratif. Nouveau composant
+   NextStepHint posé sur /palette/[number] (« Choisissez un look pour
+   voir la tenue à acheter ») et /ma-tenue (« Garder cette tenue · Voir
+   mes favoris »). Plus jamais de cul-de-sac : chaque écran indique
+   l'étape suivante. + §9 micro audit libellés : « Commencer le scanner »
+   → « Scanner une couleur » sur /install pour cohérence avec home/tabbar.
+   Force re-fetch HTML. */
+const CACHE_VERSION = "wada-v38-2026-05-29";
 const STATIC_CACHE  = `${CACHE_VERSION}-static`;
 const PAGE_CACHE    = `${CACHE_VERSION}-pages`;
 

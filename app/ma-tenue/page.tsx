@@ -40,6 +40,8 @@ import {
 } from "@/lib/styles";
 import ExternalLink from "@/components/ExternalLink";
 import Reveal from "@/components/Reveal";
+/* Brief « appli efficace » §6 (2026-05-29) : repère « Ensuite : … ». */
+import NextStepHint from "@/components/NextStepHint";
 
 /* Mapping piece-slot → fichier image flat-lay dans /public/hero/items/.
    Le client voit une vraie photo, pas un SVG dessin. */
@@ -844,6 +846,17 @@ function MaTenueContent() {
           </p>
         </section>
       )}
+
+      {/* Brief « appli efficace » §6 (2026-05-29) : repère « Ensuite »
+          pour ne jamais laisser le client en cul-de-sac. Après la tenue,
+          on propose la suite logique : sauver dans favoris ou scanner
+          une autre couleur. */}
+      <section style={{ padding: "0 5% 24px" }}>
+        <NextStepHint
+          label="Garder cette tenue · Voir mes favoris"
+          href="/favoris"
+        />
+      </section>
 
       {/* Lien retour vers le profil pour ajuster */}
       <section style={{ padding: "0 5% 80px", textAlign: "center" }}>

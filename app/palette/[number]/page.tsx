@@ -24,6 +24,9 @@ import { showToast } from "@/lib/toast";
    repartir de zéro ». On enregistre chaque visite de palette pour que
    la home affiche une bande « Reprends — {nom palette} ». */
 import { useLastPalette } from "@/hooks/useLastPalette";
+/* Brief « appli efficace » §6 (2026-05-29) : repère « Ensuite : … »
+   pour montrer la prochaine étape du tunnel WADA. */
+import NextStepHint from "@/components/NextStepHint";
 
 const palette = {
   beige: "#F4EFE7",
@@ -493,6 +496,16 @@ export default function PalettePage({ params }: { params: Promise<{ number: stri
             </div>
           </div>
         </details>
+
+        {/* Brief « appli efficace » §6 — repère « Ensuite : … » qui
+            indique que choisir un look mène à la tenue à acheter.
+            Vise les utilisateurs qui ont scrollé jusqu'ici sans
+            cliquer sur les 3 cards (peut-être hésitants) — on
+            réaffirme la direction du tunnel. */}
+        <NextStepHint
+          label="Choisissez un look pour voir la tenue à acheter"
+          href={`/ma-tenue?palette=${entry.number}&style=Classique&occasion=bureau`}
+        />
 
         {/* Section TRUST (4 pills Curation/Sans inscription/Affiliation/
             348 palettes) RETIRÉE — brief client 2026-05-26 « rends la
