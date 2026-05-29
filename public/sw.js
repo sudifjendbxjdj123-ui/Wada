@@ -414,7 +414,16 @@
    canplay, loadeddata, visibilitychange, pageshow (BFcache iOS). Si
    tous les retries ratent, le poster reste affiché (pas de page morte).
    Force re-fetch HTML pour pousser le fix aux clients PWA. */
-const CACHE_VERSION = "wada-v39-2026-05-29";
+/* Bump v40 29/05 : fix « chaussure blanche au lieu de noire » sur
+   /ma-tenue. /api/products avait un tri ΔE mais aucun seuil max + la
+   rotation seed POOL_SIZE=12 piochait parfois dans le fond du pool
+   un produit catastrophiquement éloigné de la consigne. Ajout d'une
+   garde double dans route.ts : plafond ΔE ≤ 60 + garde luminance
+   (consigne sombre L<28 refuse L>62, consigne claire L>75 refuse
+   L<35). Fallback gracieux si pool vide. Le bug ne touchait que les
+   réponses API → pas besoin de purger le cache HTML, mais on bump
+   pour invalider le SW cache des call /api/products. */
+const CACHE_VERSION = "wada-v40-2026-05-29";
 const STATIC_CACHE  = `${CACHE_VERSION}-static`;
 const PAGE_CACHE    = `${CACHE_VERSION}-pages`;
 

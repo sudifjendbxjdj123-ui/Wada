@@ -30,7 +30,7 @@
  */
 import { readAllProducts } from "@/lib/productStore";
 import type { ProduitAwin } from "@/lib/schema";
-import { deltaEHex } from "@/lib/colorDistance";
+import { deltaEHex, hexToLab } from "@/lib/colorDistance";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -220,46 +220,91 @@ export async function GET(req: Request) {
     return aDist - bDist;
   });
 
+  /* ─── Fix 2026-05-29 « chaussure blanche au lieu de noire » ───
+     Bug client : la rotation seed POOL_SIZE=12 piochait parfois dans
+     le fond du pool un produit avec ΔE très éloigné de la consigne
+     (ex. chaussure blanche pour une consigne noir). Cause : aucun
+     plafond ΔE, aucun garde-fou luminance. Quand le catalogue Muji
+     est pauvre sur un slot/genre donné, le top-12 contenait des
+     candidats trop divergents.
+
+     Fix double :
+       1. PLAFOND ΔE absolu : on rejette tout candidat avec
+          ΔE > MAX_DELTA_E (60 = différence visible massive).
+       2. GARDE LUMINANCE : si la consigne est sombre (L<28) on rejette
+          les candidats clairs (L>62) et inversement. Empêche les
+          mismatchs noir↔blanc même quand ΔE LAB est faussement bas
+          (cas rare mais qui survient sur des produits aux couleurs
+          neutres mal taggées).
+
+     Fallback : si le pool valide est VIDE après ces gardes, on prend
+     quand même le meilleur candidat disponible (sort par ΔE) plutôt
+     que renvoyer une liste vide. Mieux vaut un mauvais match qu'aucun. */
+  const MAX_DELTA_E = 60;
+  /* Calcul du L de la consigne pour la garde luminance. Si pas de
+     colorHex valide → on saute la garde (palette-driven, ΔE-only). */
+  const targetL = isValidHex && colorHex
+    ? hexToLab(colorHex.trim())[0]
+    : null;
+
+  function passesColorGuard(p: ProduitAwin): boolean {
+    if (!isValidHex || !colorHex) return true; // pas de consigne couleur précise
+    const dE = deltaEHex(p.hex, colorHex);
+    if (dE > MAX_DELTA_E) return false;
+    if (targetL !== null) {
+      const [productL] = hexToLab(p.hex);
+      /* Consigne sombre (noir / anthracite / marine profond) refuse clair. */
+      if (targetL < 28 && productL > 62) return false;
+      /* Consigne claire (blanc / crème / écru) refuse sombre. */
+      if (targetL > 75 && productL < 35) return false;
+    }
+    return true;
+  }
+
+  const colorValid = filtered.filter(passesColorGuard);
+  const filteredForOutput = colorValid.length > 0 ? colorValid : filtered;
+
   /* Variété par seed — brief 2026-05-28 :
      Au lieu de toujours retourner le top-1 (qui donne la MÊME tenue à
      toutes les palettes), on hash le seed et on pivote dans la fenêtre
      top-POOL_SIZE. Garde l'ordre pertinent (les meilleurs candidats au
      début) mais varie le pick selon (palette + slot + style).
 
-     Algo :
-       - Pool = top 12 candidats triés
-       - Offset = (hash(seed) modulo pool.length)
-       - On rotate le pool : pool[offset..] + pool[..offset]
-       - On garde le sort relatif pour les positions suivantes du pool
-       - slice(0, limit) sur le pool rotaté
+     Sans seed → comportement legacy (pas de rotation).
 
-     Sans seed → comportement legacy (pas de rotation). */
+     Maj 29/05 : rotation appliquée APRÈS le filtre couleur ci-dessus,
+     donc le pool varié ne contient que des candidats couleur-valides. */
   const POOL_SIZE = 12;
-  if (seed && filtered.length > 1) {
+  let finalList = filteredForOutput;
+  if (seed && finalList.length > 1) {
     let hash = 0;
     for (let i = 0; i < seed.length; i++) {
       hash = (hash * 31 + seed.charCodeAt(i)) | 0;
     }
-    const poolSize = Math.min(POOL_SIZE, filtered.length);
+    const poolSize = Math.min(POOL_SIZE, finalList.length);
     const offset = Math.abs(hash) % poolSize;
     if (offset > 0) {
-      const pool = filtered.slice(0, poolSize);
-      const rest = filtered.slice(poolSize);
+      const pool = finalList.slice(0, poolSize);
+      const rest = finalList.slice(poolSize);
       const rotated = [...pool.slice(offset), ...pool.slice(0, offset)];
-      filtered = [...rotated, ...rest];
+      finalList = [...rotated, ...rest];
     }
   }
 
-  const products: ProduitAwin[] = filtered.slice(0, limit);
+  const products: ProduitAwin[] = finalList.slice(0, limit);
 
   return Response.json(
     {
       products,
-      total: filtered.length,
+      total: finalList.length,
       source: "kv",
       filters_applied: {
         slot, palette, genre, style, merchant,
         formal_style: isFormalStyle(style),
+        /* Visibilité debug : utile pour diagnostiquer les cas où la
+           garde couleur a rejeté beaucoup de produits (pool clipped). */
+        color_guard_kept: colorValid.length,
+        color_guard_dropped: filtered.length - colorValid.length,
       },
     },
     {
