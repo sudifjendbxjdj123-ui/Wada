@@ -440,7 +440,14 @@
    .webp (152 Ko, 145× plus léger) devient le visuel principal — look
    immersif conservé, démarrage instantané, zéro bug. Force re-fetch
    HTML pour pousser le patch aux PWA installées. */
-const CACHE_VERSION = "wada-v42-2026-05-29";
+/* Bump v43 29/05 : vidéo home remise en progressive enhancement.
+   Brief « remet la vidéo » : l'image .webp charge toujours en fond
+   (z-index 0, 152 Ko instantané). La vidéo .mp4 monte par-dessus
+   (z-index 1, opacity 0 → 1 sur event `playing`). Si la vidéo ne
+   joue jamais (PWA iOS, Low Power Mode, etc.), l'image reste visible —
+   zéro bug perçu côté client. Retries identiques v41 (backoff, canplay,
+   visibilitychange, pageshow, first-tap). Force re-fetch HTML. */
+const CACHE_VERSION = "wada-v43-2026-05-29";
 const STATIC_CACHE  = `${CACHE_VERSION}-static`;
 const PAGE_CACHE    = `${CACHE_VERSION}-pages`;
 

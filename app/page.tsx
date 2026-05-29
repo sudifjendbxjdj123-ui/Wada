@@ -1,5 +1,5 @@
 "use client";
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 /* Brief « appli efficace » §3 (2026-05-29) : bande Resume flottante au-
    dessus du hero si l'user a déjà visité une palette ou sauvé une tenue.
    Le composant ne rend rien si pas d'état à reprendre. */
@@ -48,18 +48,83 @@ export default function Home() {
     return () => document.body.classList.remove("wada-home-immersive");
   }, []);
 
-  /* ═══ Décision 2026-05-29 — vidéo abandonnée, image fixe à la place ═══
-     Le fichier femme-wada-bg.mp4 (22 Mo) ne démarre pas en PWA iOS
-     standalone même après 3 layers de fix (autoPlay + retry events +
-     backoff + first-tap + final check). Le décodage 22 Mo dépasse le
-     budget mémoire/CPU autorisé par iOS Safari standalone au cold start.
-     Bascule en image fixe :
-       - Le poster .webp (152 Ko) qui servait déjà de fallback devient
-         le visuel principal — 145× plus léger, charge instantanément.
-       - Look immersif conservé (100svh × 100vw, object-fit: cover).
-       - Zéro risque iOS / zéro JS bricolé / zéro Low Power Mode issue.
-     Si plus tard on veut ré-essayer la vidéo, il faudra ré-encoder en
-     ~2-3 Mo (H.264 baseline, faststart, 720p max). */
+  /* ═══ Stratégie hybride 2026-05-29 — image + vidéo en progressive enhancement ═══
+     Le client veut le mannequin animé. Mais la vidéo .mp4 (22 Mo) bloquait
+     en PWA iOS standalone. Solution : on charge TOUJOURS l'image .webp
+     en fond (152 Ko, instantané), et on monte la vidéo par-dessus
+     UNIQUEMENT quand elle est prête à jouer. Si la vidéo échoue (iOS PWA,
+     Low Power Mode, réseau), l'image reste et le visiteur ne voit aucun
+     bug — juste la home statique au lieu d'animée.
+
+     Flow :
+       1. Image .webp affichée immédiatement en z-index 0
+       2. Vidéo .mp4 rendue par-dessus en z-index 1 avec opacity 0
+       3. Event `playing` → fade-in opacity 1 (0.6s) → la vidéo prend le relais
+       4. Si `playing` ne se déclenche jamais → opacity reste 0 → image visible
+
+     Retries identiques à v41 : backoff, canplay, visibilitychange,
+     pageshow, first-tap. Le « cap d'échec gracieux » est désormais
+     impossible à percevoir côté visiteur. */
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [videoReady, setVideoReady] = useState(false);
+
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v) return;
+
+    const tryPlay = () => {
+      if (!v.paused) return;
+      const p = v.play();
+      if (p && typeof p.catch === "function") p.catch(() => {});
+    };
+
+    /* `playing` event = la vidéo a vraiment commencé à jouer (pas juste
+       chargée). C'est le signal qui déclenche le fade-in par-dessus
+       l'image. Si jamais reçu → l'image reste visible (pas de bug). */
+    const onPlaying = () => setVideoReady(true);
+    v.addEventListener("playing", onPlaying);
+
+    tryPlay();
+    const onCanPlay = () => tryPlay();
+    v.addEventListener("canplay", onCanPlay);
+    v.addEventListener("loadeddata", onCanPlay);
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") tryPlay();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    const onPageShow = (e: PageTransitionEvent) => {
+      if (e.persisted) tryPlay();
+    };
+    window.addEventListener("pageshow", onPageShow);
+
+    /* Backoff retry — 5 tentatives échelonnées pour cold start lent. */
+    const backoffDelays = [100, 300, 800, 2000, 5000];
+    const backoffTimers: number[] = [];
+    backoffDelays.forEach((ms) => {
+      const t = window.setTimeout(() => tryPlay(), ms);
+      backoffTimers.push(t);
+    });
+
+    /* First-tap fallback : iOS PWA débloque toujours play() après gesture. */
+    const onFirstGesture = () => {
+      tryPlay();
+      document.removeEventListener("pointerdown", onFirstGesture);
+      document.removeEventListener("touchstart", onFirstGesture);
+    };
+    document.addEventListener("pointerdown", onFirstGesture, { passive: true });
+    document.addEventListener("touchstart", onFirstGesture, { passive: true });
+
+    return () => {
+      v.removeEventListener("playing", onPlaying);
+      v.removeEventListener("canplay", onCanPlay);
+      v.removeEventListener("loadeddata", onCanPlay);
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("pageshow", onPageShow);
+      document.removeEventListener("pointerdown", onFirstGesture);
+      document.removeEventListener("touchstart", onFirstGesture);
+      backoffTimers.forEach((t) => clearTimeout(t));
+    };
+  }, []);
 
   return (
     <main
@@ -88,23 +153,19 @@ export default function Home() {
       <ResumeBanner />
 
       {/* ════════════════════════════════════════════════════════════════
-          IMAGE MANNEQUIN PLEIN ÉCRAN
-          Décision 29/05 : la vidéo .mp4 (22 Mo) ne démarre pas en PWA
-          iOS standalone — le décodage cold start dépasse le budget
-          ressources autorisé par iOS Safari standalone. On garde le
-          poster .webp (152 Ko, 145× plus léger) comme visuel principal.
-          - object-fit: cover = couvre tout l'écran, recadre intelligemment
-          - fetchpriority="high" = priorité au chargement (1ère impression)
-          - decoding="async" = ne bloque pas le rendu pendant le décode
-          - aria-hidden = c'est un visuel décoratif, pas du contenu
+          HERO PLEIN ÉCRAN — image + vidéo en progressive enhancement
+          Brief 2026-05-29 : on garde la vidéo mais on ne dépend plus
+          d'elle. L'image .webp (152 Ko) charge instantanément en fond,
+          la vidéo .mp4 se monte par-dessus en fade-in QUAND elle est
+          prête. Si la vidéo échoue (PWA iOS / Low Power / réseau),
+          l'image reste affichée — aucun bug visible côté client.
           ════════════════════════════════════════════════════════════════ */}
+
+      {/* COUCHE 1 : image toujours présente, z-index 0 */}
       <img
         src="/hero/femme-wada-bg-photo.webp"
         alt=""
         aria-hidden="true"
-        /* fetchPriority (camelCase) supporté par React 18.3+, équivalent
-           à fetchpriority HTML — priorité haute pour la 1ère impression. */
-        fetchPriority="high"
         decoding="async"
         style={{
           position: "absolute",
@@ -118,16 +179,47 @@ export default function Home() {
         }}
       />
 
+      {/* COUCHE 2 : vidéo par-dessus, opacity 0→1 quand elle joue.
+          Tant que `playing` ne s'est pas déclenché, opacity reste 0 et
+          l'image en dessous fait le rendu — c'est la garantie zéro-bug. */}
+      <video
+        ref={videoRef}
+        autoPlay
+        muted
+        loop
+        playsInline
+        disablePictureInPicture
+        controlsList="nodownload nofullscreen noremoteplayback"
+        poster="/hero/femme-wada-bg-photo.webp"
+        preload="auto"
+        aria-hidden="true"
+        style={{
+          position: "absolute",
+          inset: 0,
+          width: "100%",
+          height: "100%",
+          objectFit: "cover",
+          objectPosition: "center",
+          zIndex: 1,
+          pointerEvents: "none",
+          opacity: videoReady ? 1 : 0,
+          transition: "opacity 0.6s ease-out",
+        }}
+      >
+        <source src="/hero/femme-wada-bg.mp4" type="video/mp4" />
+      </video>
+
       {/* ────────────────────────────────────────────────────────────────
           OVERLAY GRADIENT — assombrissement bas pour lisibilité du texte
           Top reste presque transparent (laisse voir le visage du mannequin).
-          ──────────────────────────────────────────────────────────────── */}
+          z-index 2 (au-dessus image z=0 et vidéo z=1). Contenu texte
+          repassé en z-index 3. */}
       <div
         aria-hidden
         style={{
           position: "absolute",
           inset: 0,
-          zIndex: 1,
+          zIndex: 2,
           pointerEvents: "none",
           background: "linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0) 40%, rgba(0,0,0,0.35) 70%, rgba(0,0,0,0.65) 100%)",
         }}
@@ -147,7 +239,7 @@ export default function Home() {
           // + 64px pour laisser respirer au-dessus de la MobileTabBar (qui
           // fait ~64px de hauteur sur mobile ≤880px).
           bottom: "calc(96px + env(safe-area-inset-bottom, 0px))",
-          zIndex: 2,
+          zIndex: 3,
           padding: "0 22px",
           display: "flex",
           flexDirection: "column",
