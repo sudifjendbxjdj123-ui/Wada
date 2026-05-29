@@ -44,6 +44,18 @@ function SocialIcons() {
       ),
     },
     {
+      /* Brief 2026-05-29 « ajouter le logo TikTok » — compte officiel
+         @wadastyle confirmé. Vrai logo TikTok officiel (note de musique
+         filled, libre d'usage en SVG monochrome). Hardcodé en fallback
+         comme Pinterest. Ordre demandé : Instagram · TikTok · Pinterest. */
+      url: process.env.NEXT_PUBLIC_TIKTOK_URL || "https://www.tiktok.com/@wadastyle",
+      label: "TikTok",
+      filled: true,
+      path: (
+        <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5.8 20.1a6.34 6.34 0 0 0 10.86-4.43V8.93a8.16 8.16 0 0 0 4.77 1.52V7a4.85 4.85 0 0 1-1.84-.31z" />
+      ),
+    },
+    {
       /* Fallback hardcodé : compte WADA officiel @wadastyle.
          Si l'env var est définie côté Vercel, elle prime. */
       url: process.env.NEXT_PUBLIC_PINTEREST_URL || "https://www.pinterest.com/wadastyle/",
@@ -56,20 +68,6 @@ function SocialIcons() {
          que l'ancien glyphe schématique. */
       path: (
         <path d="M12 0C5.373 0 0 5.372 0 12c0 5.084 3.163 9.426 7.627 11.174-.105-.949-.2-2.405.042-3.441.218-.937 1.407-5.965 1.407-5.965s-.359-.719-.359-1.782c0-1.668.967-2.914 2.171-2.914 1.023 0 1.518.769 1.518 1.69 0 1.029-.655 2.568-.994 3.995-.283 1.194.599 2.169 1.777 2.169 2.133 0 3.772-2.249 3.772-5.495 0-2.873-2.064-4.882-5.012-4.882-3.414 0-5.418 2.561-5.418 5.207 0 1.031.397 2.137.893 2.738a.36.36 0 0 1 .083.343c-.091.378-.293 1.193-.333 1.361-.053.218-.173.265-.4.16-1.494-.696-2.428-2.879-2.428-4.633 0-3.772 2.74-7.235 7.895-7.235 4.144 0 7.366 2.953 7.366 6.899 0 4.117-2.595 7.43-6.199 7.43-1.211 0-2.348-.629-2.738-1.372l-.745 2.84c-.269 1.04-.997 2.345-1.485 3.139C9.572 23.812 10.766 24 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0z" />
-      ),
-    },
-    {
-      url: process.env.NEXT_PUBLIC_TIKTOK_URL,
-      label: "TikTok",
-      /* Logo TikTok stylisé — la note de musique caractéristique. Pas le
-         logo officiel rainbow (trademark Bytedance, à éviter en SVG inline
-         pour ne pas s'exposer à un takedown). Forme reconnaissable :
-         croche + queue tordue. */
-      path: (
-        <>
-          <path d="M9 8.5v8a3 3 0 1 1-3-3" strokeLinecap="round" strokeLinejoin="round" />
-          <path d="M9 8.5c0-2 0-3.5 0-5h2.5c.3 2.5 1.7 4 4 4" strokeLinecap="round" strokeLinejoin="round" />
-        </>
       ),
     },
     {
@@ -98,8 +96,8 @@ function SocialIcons() {
           aria-label={s.label}
           className="wada-social-icon"
         >
-          {/* Pinterest = filled (logo officiel, glyph plein).
-              Autres = outline (cohérence du jeu existant). */}
+          {/* Pinterest + TikTok = filled (logos officiels, glyph plein).
+              Instagram + X = outline (cohérence du jeu existant). */}
           <svg
             width="18" height="18" viewBox="0 0 24 24"
             fill={s.filled ? "currentColor" : "none"}
