@@ -37,7 +37,12 @@ export default async function OpenGraphImage() {
           alignItems: "center",
           justifyContent: "center",
           padding: 80,
-          fontFamily: "serif",
+          /* Brief 2026-05-29 « zéro serif partout » : l'OG image utilisait
+             encore le mot-clé générique "serif". Aligné sur la charte
+             chubby : sans-serif système (Next.js ImageResponse ne charge
+             pas Fredoka, on prend le fallback navigateur OG = Helvetica/
+             Arial qui correspond visuellement à Inter du site). */
+          fontFamily: "sans-serif",
         }}
       >
         {/* Kicker */}

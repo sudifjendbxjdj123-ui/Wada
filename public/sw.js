@@ -447,7 +447,14 @@
    joue jamais (PWA iOS, Low Power Mode, etc.), l'image reste visible —
    zéro bug perçu côté client. Retries identiques v41 (backoff, canplay,
    visibilitychange, pageshow, first-tap). Force re-fetch HTML. */
-const CACHE_VERSION = "wada-v43-2026-05-29";
+/* Bump v44 29/05 : audit final « une seule police de titre partout ».
+   Confirmation : tous les h1/h2/h3 du source utilisent Fredoka.
+   Règle globale h1-h6 → Fredoka !important en place. OG image (seul
+   « serif » restant) basculée sur sans-serif. Si certains clients
+   voient encore du serif sur Mes favoris / Trouvez votre couleur /
+   Quelle combinaison vous parle ? → c'était du cache SW pré-v43.
+   Ce bump force re-fetch HTML pour qu'ils voient le code à jour. */
+const CACHE_VERSION = "wada-v44-2026-05-29";
 const STATIC_CACHE  = `${CACHE_VERSION}-static`;
 const PAGE_CACHE    = `${CACHE_VERSION}-pages`;
 
