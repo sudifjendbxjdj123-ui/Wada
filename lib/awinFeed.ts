@@ -304,6 +304,37 @@ function parseCategory(categoryName?: string): ProductCategorie | null {
   return null;
 }
 
+/**
+ * Brief 2026-05-29 (intégration TBF) : certains flux Awin n'ont pas de
+ * `category_name` exploitable (TBF a "Home Accessories" pour tous, ce qui
+ * est faux). On infère alors le slot depuis le nom du produit via une
+ * liste de mots-clés. Si même ça ne matche pas → null, le produit est
+ * dropped (vraiment hors mode).
+ *
+ * Mapping minimaliste piloté par brief TBF : t-shirt/shirt/polo/hoodie/
+ * sweater/knit/tee/top → haut ; pants/jeans/trousers/shorts → bas ;
+ * jacket/coat/blazer/parka/vest → veste ; sneakers/shoes/boots/loafers/
+ * sandals → chaussures ; bracelet/necklace/bag/wallet/sunglasses/belt/
+ * hat/cap/scarf → accent.
+ */
+const PRODUCT_NAME_TO_SLOT: Array<[RegExp, ProductCategorie]> = [
+  /* Ordre : on teste les plus spécifiques d'abord pour éviter qu'un
+     « jean shirt » tombe en bas (jean). */
+  [/\b(blazer|sport[\s-]?coat|tuxedo|smoking|veste|jacket|coat|parka|trench|puffer|gilet|vest|cardigan|overcoat|peacoat)\b/i, "veste"],
+  [/\b(sneakers?|trainers?|shoes?|boots?|loafers?|sandals?|derbies|derbys?|oxford\s+shoes?|moccasins?|brogues?|chaussures?)\b/i, "chaussures"],
+  [/\b(t[\s-]?shirt|tee|polo|shirt|hoodie|sweater|sweatshirt|jumper|knit|knitwear|pullover|cardigan|blouse|tank|top|chemise|chemisier|pull)\b/i, "haut"],
+  [/\b(pants|trousers?|jeans?|chinos?|shorts?|bermuda|leggings?|joggers?|slacks?|pantalon)\b/i, "bas"],
+  [/\b(bracelet|necklace|chain|ring|earrings?|bag|tote|backpack|clutch|pouch|wallet|cardholder|sunglasses?|eyewear|belt|hat|cap|beanie|scarf|tie|bowtie|pocket\s*square|cufflinks?|watch|sac|ceinture|chapeau|montre|cravate)\b/i, "accent"],
+];
+
+function inferCategoryFromProductName(name: string): ProductCategorie | null {
+  if (!name) return null;
+  for (const [pattern, slot] of PRODUCT_NAME_TO_SLOT) {
+    if (pattern.test(name)) return slot;
+  }
+  return null;
+}
+
 /** Slug marchand depuis le nom (« Sézane » → « sezane »). */
 function slugMerchant(name: string): string {
   return name
@@ -322,16 +353,39 @@ export function normalizeAwinProduct(raw: RawAwinProduct): ProduitAwin | null {
   if (!raw.aw_product_id || !raw.product_name || !raw.aw_deep_link) return null;
   if (!raw.merchant_name) return null;
 
+  /* Brief TBF 2026-05-29 — exclure les brands « (do not use)* » :
+     The Business Fashion a une entrée bizarre "(do not use)COMME DES
+     GARÇONS BLACK" qu'il faut filtrer. */
+  if (raw.brand_name && /^\(do[\s-]?not[\s-]?use\)/i.test(raw.brand_name.trim())) {
+    return null;
+  }
+
   // Brief Muji 2026-05-27 §4 — exclure underwear/nightwear de l'affichage public
   if (isExcludedCategory(raw.category_name)) return null;
 
-  const category = parseCategory(raw.category_name);
+  const merchantSlug = slugMerchant(raw.merchant_name);
+
+  /* Brief TBF 2026-05-29 — fallback slot par inférence :
+     TBF a `category_name` vide ou « Home Accessories » pour TOUS les
+     produits → parseCategory retourne null → tout serait dropped.
+     Fallback : inférer le slot depuis product_name (mots-clés t-shirt/
+     pants/jacket/sneakers/bag…). Pour MUJI le parseCategory matche
+     correctement donc on n'utilise pas le fallback. */
+  let category = parseCategory(raw.category_name);
+  if (!category) {
+    category = inferCategoryFromProductName(raw.product_name);
+  }
   if (!category) return null; // produit hors mode (ex. accessoires électroniques)
 
-  const price = parseFloatSafe(raw.search_price || raw.store_price || raw.display_price);
-  if (price === null) return null;
-
-  const merchantSlug = slugMerchant(raw.merchant_name);
+  const rawPrice = parseFloatSafe(raw.search_price || raw.store_price || raw.display_price);
+  if (rawPrice === null) return null;
+  /* Brief TBF 2026-05-29 — conversion GBP → EUR :
+     The Business Fashion publie en GBP. WADA affiche tout en EUR pour
+     cohérence sitewide. Taux fixe 1.17 (moyenne lissée 2024-2026). À
+     remplacer par un fetch xchange-rates si on veut un taux dynamique
+     (mais 1.17 ± 3 % toléré pour un usage produit pas comptable). */
+  const isGBP = (raw.currency || "").toUpperCase() === "GBP";
+  const price = isGBP ? Math.round(rawPrice * 1.17 * 100) / 100 : rawPrice;
   const hex = colorNameToHex(raw.colour);
   /* Brief audit live 2026-05-28 — bug genre :
      Avant on regardait `custom_1`, `brand_name`, `product_name` — mais le
@@ -340,13 +394,24 @@ export function normalizeAwinProduct(raw: RawAwinProduct): ProduitAwin | null {
      recevait des jupes/écharpes femme.
      Fix : on prend `category_name` en PREMIER (« Men's Tops », « Women's
      Trousers » sont 100 % fiables côté Muji), puis les anciens candidats. */
-  const gender = parseGender(
+  let gender = parseGender(
     raw.category_name,
     raw.merchant_product_category_path,
     raw.custom_1,
     raw.brand_name,
     raw.product_name,
   );
+  /* Brief TBF 2026-05-29 — TBF est officiellement « Luxury Menswear » :
+     `Fashion:suitable_for` est vide pour TOUS les produits, donc le
+     parseGender ci-dessus retourne « inconnu » → un homme avec un
+     profil filtré ne verrait JAMAIS de produits TBF. Fix : on force
+     genre=homme si le produit vient de TBF (slug = the-business-fashion)
+     et que parseGender n'a rien trouvé. Quelques pièces unisex
+     (Birkenstock, Comme des Garçons) sont déjà captées par le pattern
+     « unisex » dans parseGender — sinon homme par défaut. */
+  if (merchantSlug === "the-business-fashion" && gender === "inconnu") {
+    gender = "homme";
+  }
   const sizes = raw.product_size
     ? raw.product_size.split(/[,;|]/).map((s) => s.trim()).filter(Boolean)
     : undefined;
@@ -412,7 +477,10 @@ export function normalizeAwinProduct(raw: RawAwinProduct): ProduitAwin | null {
     couleurNom: raw.colour,
     hex,
     prix: price,
-    devise: (raw.currency as "EUR" | "CHF" | "USD" | "GBP") || "EUR",
+    /* Brief TBF 2026-05-29 : si le flux était en GBP, on a converti le
+       prix en EUR au-dessus → on tagge devise=EUR pour cohérence
+       d'affichage. Autres devises restent comme telles. */
+    devise: isGBP ? "EUR" : ((raw.currency as "EUR" | "CHF" | "USD" | "GBP") || "EUR"),
     tailles: sizes,
     enStock: inStock,
     /* Image principale : brief Muji utilise `aw_image_url` (200×200 détouré).
@@ -454,7 +522,13 @@ export function normalizeAwinProduct(raw: RawAwinProduct): ProduitAwin | null {
 function dedupByModelAndColour(products: ProduitAwin[]): ProduitAwin[] {
   const groups = new Map<string, ProduitAwin[]>();
   for (const p of products) {
-    const key = `${p.nom.toLowerCase()}::${(p.couleurNom || "").toLowerCase()}`;
+    /* Brief TBF 2026-05-29 — clé enrichie avec la marque :
+       Sur MUJI, tous les produits ont marque="MUJI" donc la clé ne
+       change pas (comportement identique). Sur TBF (522 marques),
+       deux produits avec le même `nom` mais marques différentes
+       (rare mais possible : « Cashmere Sweater » Brunello vs Tom
+       Ford) ne sont plus dédupés à tort. */
+    const key = `${(p.marque || "").toLowerCase()}::${p.nom.toLowerCase()}::${(p.couleurNom || "").toLowerCase()}`;
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key)!.push(p);
   }

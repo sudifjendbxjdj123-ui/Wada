@@ -466,7 +466,18 @@
    - Logo TikTok ajouté au Footer (Instagram · TikTok · Pinterest)
    - Vidéo home : audit final, fontFamily OG → sans-serif
    Force re-fetch HTML pour pousser overlay/badge aux clients. */
-const CACHE_VERSION = "wada-v45-2026-05-29";
+/* Bump v46 29/05 : intégration code TBF (The Business Fashion) côté
+   parser. Extension lib/awinFeed.ts SANS casser MUJI :
+   - filter brand_name "(do not use)*" exclu
+   - inferCategoryFromProductName : fallback slot par mots-clés du nom
+     si category_name est vide (cas TBF)
+   - GBP → EUR : conversion ×1.17 si currency=GBP, tag devise=EUR
+   - genre=homme par défaut pour TBF (luxury menswear, Fashion:suitable_for vide)
+   - dedup clé enrichie (marque, nom, couleur)
+   Le cron est déjà multi-feeds via AWIN_DATAFEED_URLS. Pour activer TBF :
+   ajouter {"slug":"the-business-fashion","url":"<URL TBF>"} dans la var
+   d'env Vercel. Aucun changement front. */
+const CACHE_VERSION = "wada-v46-2026-05-29";
 const STATIC_CACHE  = `${CACHE_VERSION}-static`;
 const PAGE_CACHE    = `${CACHE_VERSION}-pages`;
 
