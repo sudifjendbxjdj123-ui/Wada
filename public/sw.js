@@ -454,7 +454,19 @@
    voient encore du serif sur Mes favoris / Trouvez votre couleur /
    Quelle combinaison vous parle ? → c'était du cache SW pré-v43.
    Ce bump force re-fetch HTML pour qu'ils voient le code à jour. */
-const CACHE_VERSION = "wada-v44-2026-05-29";
+/* Bump v45 29/05 : brief « Onboarding + profil + switcher ».
+   - hooks/useProfile : type Profile {genre,budget,style}, localStorage
+     `wada.profile`, sync inter-onglets, défaut Femme · 150–400€ · Minimaliste
+   - OnboardingOverlay : 3 questions plein écran au 1er accès, bouton
+     « Passer » pose le défaut, transition douce à la sortie
+   - ProfileBadge dans Nav : avatar bordeaux F/H + label + chevron,
+     caché label ≤880px (mobile)
+   - ProfileSwitcher modal : 3 segmented controls, modif live (state
+     React + storage event sync), bouton Appliquer ferme
+   - Logo TikTok ajouté au Footer (Instagram · TikTok · Pinterest)
+   - Vidéo home : audit final, fontFamily OG → sans-serif
+   Force re-fetch HTML pour pousser overlay/badge aux clients. */
+const CACHE_VERSION = "wada-v45-2026-05-29";
 const STATIC_CACHE  = `${CACHE_VERSION}-static`;
 const PAGE_CACHE    = `${CACHE_VERSION}-pages`;
 

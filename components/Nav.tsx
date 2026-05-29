@@ -4,6 +4,9 @@ import { useEffect, useState } from "react";
 import { ink } from "@/lib/styles";
 import ThemeToggle from "@/components/ThemeToggle";
 import LangButton from "@/components/LangButton";
+/* Brief 2026-05-29 « Onboarding + profil + switcher » §3 :
+   ProfileBadge = pastille avatar+label dans la nav, clic → switcher modal. */
+import ProfileBadge from "@/components/ProfileBadge";
 
 /**
  * Nav — header WADA global (brief 2026-05-28 v4 — audit UX).
@@ -258,6 +261,11 @@ export default function Nav() {
           <span className="wada-nav-lang-wrapper">
             <LangButton variant="pill" />
           </span>
+          {/* Brief 2026-05-29 « Onboarding + profil + switcher » §3 :
+              pastille profil visible en permanence dans la nav. Sur
+              mobile (≤880px), seul l'avatar reste visible (label caché
+              via CSS interne au composant) — gain de place header. */}
+          <ProfileBadge />
           <Link
             href="/tarifs"
             style={{

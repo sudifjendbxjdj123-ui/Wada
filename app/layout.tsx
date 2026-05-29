@@ -12,6 +12,11 @@ import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
 import InstallPrompt from "@/components/InstallPrompt";
 import GoogleAnalytics from "@/components/GoogleAnalytics";
 import Toast from "@/components/Toast";
+/* Brief 2026-05-29 « Onboarding + profil + switcher » : overlay 3
+   questions au premier accès. Le composant ne rend rien si le profil
+   existe déjà — donc safe à monter globalement, le user existant ne
+   voit JAMAIS l'overlay. */
+import OnboardingOverlay from "@/components/OnboardingOverlay";
 /* Brief P2 (24/05) — Vercel Web Analytics : zéro cookie, conforme à la
    promesse « pas de tracking publicitaire ». Coexiste avec GoogleAnalytics
    (qui peut être désactivé plus tard si on veut un setup pur sans-cookie). */
@@ -316,6 +321,8 @@ export default function RootLayout({
             `wada-toast` sur window ; n'importe quel composant peut appeler
             `showToast("Ajouté à vos favoris ✓")` depuis `@/lib/toast`. */}
         <Toast />
+        {/* Onboarding overlay : ne rend rien si profile déjà en localStorage. */}
+        <OnboardingOverlay />
         <Analytics />
         <ServiceWorkerRegister />
         <InstallPrompt />
