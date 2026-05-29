@@ -1,5 +1,5 @@
 "use client";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 /* Brief « appli efficace » §3 (2026-05-29) : bande Resume flottante au-
    dessus de la vidéo hero si l'user a déjà visité une palette ou sauvé
    une tenue. Le composant ne rend rien si pas d'état à reprendre. */
@@ -48,6 +48,70 @@ export default function Home() {
     return () => document.body.classList.remove("wada-home-immersive");
   }, []);
 
+  /* Fix bug 2026-05-29 : « la vidéo ne démarre pas parfois sur l'appli ».
+     Cas connus où l'attribut autoPlay HTML rate silencieusement :
+       - WebView Capacitor (iOS) au cold start de la PWA
+       - Onglet inactif au moment du mount (page chargée en background)
+       - iOS Low Power Mode (impossible à contourner, on tente quand même)
+       - Réseau lent : la vidéo n'est pas chargée avant le play() implicite
+       - BFcache iOS au retour back/forward → vidéo restaurée pause
+     Stratégie : on garde autoPlay (le « happy path » couvre 95 %), on
+     ajoute un retry programmatique sur 3 events qui couvrent les autres
+     cas. play() retourne une Promise — on catch pour ne pas crasher
+     l'app avec « NotAllowedError ». Si tous les retries ratent, le
+     poster reste affiché (déjà en place) : pas de page « morte ».  */
+  const videoRef = useRef<HTMLVideoElement>(null);
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v) return;
+
+    const tryPlay = () => {
+      if (!v.paused) return; // déjà en cours
+      const p = v.play();
+      if (p && typeof p.catch === "function") {
+        p.catch(() => {
+          /* Échec silencieux — le poster reste visible. On ne logge
+             pas en console pour ne pas polluer la prod. Les retries
+             ci-dessous tenteront à nouveau quand les conditions
+             changent (canplay, visibilité, pageshow). */
+        });
+      }
+    };
+
+    /* 1er essai immédiat au mount (en plus de l'autoPlay HTML). */
+    tryPlay();
+
+    /* canplay = vidéo a assez de buffer pour démarrer. Important sur
+       réseau lent : autoPlay rate parfois parce que le 1er frame n'est
+       pas prêt au moment où le browser tente. */
+    const onCanPlay = () => tryPlay();
+    v.addEventListener("canplay", onCanPlay);
+    v.addEventListener("loadeddata", onCanPlay);
+
+    /* visibilitychange : l'utilisateur revient sur l'onglet (ou ouvre
+       la PWA depuis le multitâche). iOS pause souvent la vidéo en
+       background — au retour, elle doit reprendre. */
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") tryPlay();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+
+    /* pageshow avec event.persisted = restauration BFcache iOS Safari
+       (back/forward depuis une autre page). La vidéo est gelée — il
+       faut explicitement la rejouer. */
+    const onPageShow = (e: PageTransitionEvent) => {
+      if (e.persisted) tryPlay();
+    };
+    window.addEventListener("pageshow", onPageShow);
+
+    return () => {
+      v.removeEventListener("canplay", onCanPlay);
+      v.removeEventListener("loadeddata", onCanPlay);
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("pageshow", onPageShow);
+    };
+  }, []);
+
   return (
     <main
       style={{
@@ -85,6 +149,7 @@ export default function Home() {
           - object-fit: cover = couvre tout l'écran, recadre intelligemment
           ════════════════════════════════════════════════════════════════ */}
       <video
+        ref={videoRef}
         autoPlay
         muted
         loop
@@ -96,6 +161,17 @@ export default function Home() {
         poster="/hero/femme-wada-bg-photo.webp"
         preload="auto"
         aria-hidden="true"
+        /* Fix 2026-05-29 « vidéo ne démarre pas parfois sur l'appli ».
+           onLoadedData : trigger un play() supplémentaire dès que la 1ère
+           frame est prête — sécurise les cas où autoPlay HTML rate parce
+           que la vidéo n'était pas encore décodée au mount.  */
+        onLoadedData={(e) => {
+          const v = e.currentTarget;
+          if (v.paused) {
+            const p = v.play();
+            if (p && typeof p.catch === "function") p.catch(() => {});
+          }
+        }}
         style={{
           position: "absolute",
           inset: 0,

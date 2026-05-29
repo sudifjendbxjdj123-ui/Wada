@@ -407,7 +407,14 @@
    l'étape suivante. + §9 micro audit libellés : « Commencer le scanner »
    → « Scanner une couleur » sur /install pour cohérence avec home/tabbar.
    Force re-fetch HTML. */
-const CACHE_VERSION = "wada-v38-2026-05-29";
+/* Bump v39 29/05 : fix « la vidéo ne démarre pas parfois sur l'appli ».
+   La home Capacitor/iOS rate parfois autoPlay (Low Power Mode, onglet
+   en background au mount, BFcache retour, réseau lent). Ajout d'un
+   useEffect avec play() programmatique au mount + retry sur events
+   canplay, loadeddata, visibilitychange, pageshow (BFcache iOS). Si
+   tous les retries ratent, le poster reste affiché (pas de page morte).
+   Force re-fetch HTML pour pousser le fix aux clients PWA. */
+const CACHE_VERSION = "wada-v39-2026-05-29";
 const STATIC_CACHE  = `${CACHE_VERSION}-static`;
 const PAGE_CACHE    = `${CACHE_VERSION}-pages`;
 
