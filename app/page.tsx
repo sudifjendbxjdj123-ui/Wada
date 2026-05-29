@@ -104,11 +104,61 @@ export default function Home() {
     };
     window.addEventListener("pageshow", onPageShow);
 
+    /* ─── Renfort 2026-05-29 : cold start PWA iOS toujours en panne ───
+       Symptôme client : « la vidéo ne démarre pas quand j'ouvre l'app ».
+       iOS Safari standalone (PWA depuis le home screen) refuse parfois
+       autoplay au tout premier launch, même avec muted+playsInline. Les
+       retries event-based ne suffisent pas si la condition iOS ne change
+       jamais. On ajoute 3 garde-fous :
+
+       1. BACKOFF RETRY — 5 tentatives échelonnées (100ms, 300ms, 800ms,
+          2s, 5s). Couvre le cas où le décodeur vidéo n'était pas prêt
+          à 100ms mais l'est à 800ms.
+       2. FIRST-TAP FALLBACK — un listener pointerdown/touchstart sur
+          document tente play() au tout premier user gesture. iOS
+          accepte TOUJOURS play() après un gesture utilisateur, même
+          PWA. Listener auto-retiré après le 1er trigger.
+       3. CHECK « A RÉELLEMENT JOUÉ » — après 6s, si v.played.length
+          est encore 0 (= la vidéo n'a JAMAIS joué une seule frame),
+          on retente une dernière fois. Capte le cas iOS où play() a
+          résolu sans erreur mais la vidéo est restée freezée. */
+
+    const backoffDelays = [100, 300, 800, 2000, 5000];
+    const backoffTimers: number[] = [];
+    backoffDelays.forEach((ms) => {
+      const t = window.setTimeout(() => tryPlay(), ms);
+      backoffTimers.push(t);
+    });
+
+    const onFirstGesture = () => {
+      tryPlay();
+      /* Une fois que le user a interagi, iOS autorise play() partout —
+         on n'a plus besoin du listener. */
+      document.removeEventListener("pointerdown", onFirstGesture);
+      document.removeEventListener("touchstart", onFirstGesture);
+    };
+    document.addEventListener("pointerdown", onFirstGesture, { passive: true });
+    document.addEventListener("touchstart", onFirstGesture, { passive: true });
+
+    const playedCheck = window.setTimeout(() => {
+      if (v.played.length === 0) {
+        /* La vidéo n'a jamais joué une seule frame en 6s. Soit Low
+           Power Mode (rien à faire), soit iOS standalone refuse. On
+           retente un coup au cas où, puis on lâche prise (le poster
+           reste, c'est acceptable). */
+        tryPlay();
+      }
+    }, 6000);
+
     return () => {
       v.removeEventListener("canplay", onCanPlay);
       v.removeEventListener("loadeddata", onCanPlay);
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("pageshow", onPageShow);
+      document.removeEventListener("pointerdown", onFirstGesture);
+      document.removeEventListener("touchstart", onFirstGesture);
+      backoffTimers.forEach((t) => clearTimeout(t));
+      clearTimeout(playedCheck);
     };
   }, []);
 

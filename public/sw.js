@@ -423,7 +423,16 @@
    L<35). Fallback gracieux si pool vide. Le bug ne touchait que les
    réponses API → pas besoin de purger le cache HTML, mais on bump
    pour invalider le SW cache des call /api/products. */
-const CACHE_VERSION = "wada-v40-2026-05-29";
+/* Bump v41 29/05 : renfort vidéo cold start PWA iOS. Le fix v39 ne
+   suffisait pas pour le tout premier launch de l'app (iOS Safari
+   standalone refuse parfois autoplay même avec muted+playsInline).
+   Ajout de 3 garde-fous : (1) backoff retry 5 tentatives à 100ms /
+   300ms / 800ms / 2s / 5s, (2) first-tap fallback — pointerdown ou
+   touchstart sur document tente play() au 1er user gesture (iOS
+   autorise toujours play après gesture), (3) check après 6s
+   v.played.length === 0 → dernière tentative. Force re-fetch HTML
+   pour pousser le patch aux PWA installées. */
+const CACHE_VERSION = "wada-v41-2026-05-29";
 const STATIC_CACHE  = `${CACHE_VERSION}-static`;
 const PAGE_CACHE    = `${CACHE_VERSION}-pages`;
 
