@@ -169,12 +169,30 @@ export async function GET(req: Request) {
      TBF renvoie parfois `image="https://images2.productserve.com/noimage.gif"`
      comme placeholder pour les produits dont le marchand n'a pas fourni
      de visuel. Ces produits affichent une zone blanche côté UI →
-     mauvaise expérience. On les filtre en amont du tri/sélection. */
+     mauvaise expérience. On les filtre en amont du tri/sélection.
+
+     Brief 2026-05-30 — drop URLs Shopify preview (404 publiques).
+     Certains produits TBF ont un aw_deep_link qui résout vers une URL
+     Shopify preview du type `v5z6tq0g857k49tq-2683651.shopifypreview.com`
+     — ces URLs sont des previews internes Shopify (drafts non publiés)
+     qui rendent 404 pour les utilisateurs publics. On filtre les URLs
+     produit contenant `shopifypreview.com` pour ne plus jamais envoyer
+     un client sur une page 404. */
   let filtered = catalog.filter((p) => {
     if (!p.enStock) return false;
     const imageUrl = p.imageLocal || p.largeImage || p.image || "";
     if (!imageUrl || imageUrl === "-") return false;
     if (/noimage\.(gif|png|jpe?g|webp)/i.test(imageUrl)) return false;
+    /* Bug client 2026-05-30 : URL deep-link en mode preview Shopify
+       (draft non publié) → 404 publique. Le pclick.php Awin résout
+       côté serveur vers shopifypreview.com qu'on peut détecter à
+       l'inverse via le champ image (cdn.shopify.com hash distinctif)
+       ou plus précisément via la deep-link finale. Comme aw_deep_link
+       passe par awin1.com (redirection serveur), on ne peut pas
+       détecter la cible finale sans hit HTTP. À DÉFAUT on regarde si
+       l'image hash contient un pattern de preview Shopify (`*.shopify
+       preview.com`) — rare mais sentinelle utile. */
+    if (/shopifypreview\.com/i.test(imageUrl) || /shopifypreview\.com/i.test(p.urlProduit || "")) return false;
     return true;
   });
 
