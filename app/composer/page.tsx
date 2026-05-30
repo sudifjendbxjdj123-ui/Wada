@@ -278,29 +278,58 @@ export default function ComposerPage() {
     }}>
       <BackButton fallback="/atelier" />
 
-      {/* ═══════════════════ HERO ÉPURÉ ═══════════════════
-          Brief client : « ludique + instinctif ». H1 court, toggle en
-          tête, plus de paragraphe explicatif (le formulaire parle de
-          lui-même via ses chips). */}
-      <section style={{ padding: "48px 26px 4px", textAlign: "center" }}>
-        <div style={{ maxWidth: 1000, margin: "0 auto" }}>
-          <div style={{ marginBottom: 22 }}>
+      {/* ═══════════════════ HERO ÉDITORIAL ═══════════════════
+          Brief 2026-05-30 (mockup référence) : titre impactant +
+          bulle d'explication conversationnelle + sparkles décoratifs.
+          Cohérent avec /scanner (même DA pour les 2 modes). */}
+      <section style={{ padding: "56px 26px 4px", textAlign: "center", position: "relative" }}>
+        <div style={{ maxWidth: 1000, margin: "0 auto", position: "relative" }}>
+          {/* Sparkles décoratifs */}
+          <span aria-hidden style={{ position: "absolute", top: 40, left: "12%", fontSize: 14, color: palette.olive, opacity: 0.5 }}>✦</span>
+          <span aria-hidden style={{ position: "absolute", top: 80, right: "10%", fontSize: 18, color: palette.bordeaux, opacity: 0.45 }}>✦</span>
+          <span aria-hidden style={{ position: "absolute", top: 200, left: "8%", fontSize: 12, color: palette.bordeaux, opacity: 0.4 }}>✦</span>
+          <span aria-hidden style={{ position: "absolute", top: 220, right: "15%", fontSize: 16, color: palette.olive, opacity: 0.5 }}>✦</span>
+
+          <div style={{ marginBottom: 26 }}>
             <ScanModeToggle active="vetement" />
           </div>
           <h1 style={{
             fontFamily: fonts.display, fontWeight: 700,
-            fontSize: "clamp(34px, 5.6vw, 48px)", margin: "0 0 4px",
+            fontSize: "clamp(42px, 7.5vw, 76px)", margin: "0 0 24px",
             color: palette.ink,
-            letterSpacing: "-0.01em",
+            letterSpacing: "-0.015em",
+            lineHeight: 1.02,
           }}>
-            Quelle pièce ?
+            Scannez un vêtement
           </h1>
-          <p style={{
-            color: palette.inkSoft,
-            margin: 0, fontSize: 14, fontStyle: "italic",
+
+          {/* Bulle conversationnelle — pareille au scanner couleur. */}
+          <div style={{
+            display: "inline-block",
+            position: "relative",
+            maxWidth: 460,
+            background: palette.cream,
+            border: `1px solid ${palette.line}`,
+            borderRadius: 22,
+            padding: "18px 24px",
+            boxShadow: "0 8px 22px -8px rgba(30,30,30,0.1)",
+            textAlign: "left",
+            fontFamily: fonts.sans,
+            fontSize: 15,
+            lineHeight: 1.55,
+            color: palette.ink,
           }}>
-            Une photo, et WADA compose autour.
-          </p>
+            Photographiez une <strong style={{ color: palette.bordeaux }}>pièce</strong> que vous aimez — WADA détecte la <strong style={{ color: palette.bordeaux }}>couleur</strong> et compose une tenue complète autour.
+            <span aria-hidden style={{
+              position: "absolute",
+              bottom: -8, left: "50%",
+              transform: "translateX(-50%) rotate(45deg)",
+              width: 14, height: 14,
+              background: palette.cream,
+              borderRight: `1px solid ${palette.line}`,
+              borderBottom: `1px solid ${palette.line}`,
+            }} />
+          </div>
         </div>
       </section>
 

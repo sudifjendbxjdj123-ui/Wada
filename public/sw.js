@@ -564,7 +564,14 @@
    avec ?q= pré-rempli. /stylist lit le param au mount et envoie
    directement le message au LLM (skip écran d'accueil chips). Force
    re-fetch HTML pour pousser la nouvelle UI. */
-const CACHE_VERSION = "wada-v54-2026-05-30";
+/* Bump v55 30/05 : refonte hero /scanner et /composer (inspiration
+   mockup « Cosmetic Safety Scanner »). Titres Fredoka 76px max +
+   bulle conversationnelle crème avec queue + sparkles décoratifs.
+   /scanner : « Scannez une couleur » + bulle « Photographiez un mur,
+   une fleur, un tissu… » /composer : « Scannez un vêtement » + bulle
+   « Photographiez une pièce que vous aimez… ». Drop zone allégée
+   (titre redondant retiré). Force re-fetch HTML. */
+const CACHE_VERSION = "wada-v55-2026-05-30";
 const STATIC_CACHE  = `${CACHE_VERSION}-static`;
 const PAGE_CACHE    = `${CACHE_VERSION}-pages`;
 

@@ -159,25 +159,63 @@ export default function ScannerPage() {
             plus instinctif ». On retire le kicker chapitre, le paragraphe
             marketing et la colonne 01/02/03. H1 court + toggle =
             entrée directe dans l'action. */}
-        <div style={{ padding: "48px 0 4px", textAlign: "center" }}>
+        {/* ─── HERO ÉDITORIAL ───
+            Brief 2026-05-30 (mockup référence « Cosmetic Safety Scanner ») :
+            titre impactant + bulle conversationnelle qui explique en 1
+            phrase. Plus de paragraphe italique sec — la bulle simule un
+            styliste qui parle au client. Sparkles décoratifs autour pour
+            la signature visuelle. */}
+        <div style={{ padding: "56px 0 4px", textAlign: "center", position: "relative" }}>
+          {/* Sparkles décoratifs (4 étoiles dispersées) */}
+          <span aria-hidden style={{ position: "absolute", top: 40, left: "12%", fontSize: 14, color: fallback.olive, opacity: 0.5 }}>✦</span>
+          <span aria-hidden style={{ position: "absolute", top: 80, right: "10%", fontSize: 18, color: fallback.bordeaux, opacity: 0.45 }}>✦</span>
+          <span aria-hidden style={{ position: "absolute", top: 180, left: "8%", fontSize: 12, color: fallback.bordeaux, opacity: 0.4 }}>✦</span>
+          <span aria-hidden style={{ position: "absolute", top: 200, right: "15%", fontSize: 16, color: fallback.olive, opacity: 0.5 }}>✦</span>
+
           <Reveal>
-            <div style={{ marginBottom: 22 }}>
+            <div style={{ marginBottom: 26 }}>
               <ScanModeToggle active="couleur" />
             </div>
             <h1 style={{
               fontFamily: fonts.display, fontWeight: 700,
-              fontSize: "clamp(34px, 5.6vw, 48px)", margin: "0 0 4px",
+              fontSize: "clamp(42px, 7.5vw, 76px)", margin: "0 0 24px",
               color: "var(--wada-ink, #1E1E1E)",
-              letterSpacing: "-0.01em",
+              letterSpacing: "-0.015em",
+              lineHeight: 1.02,
             }}>
-              Quelle couleur ?
+              Scannez une couleur
             </h1>
-            <p style={{
-              color: "var(--wada-text-secondary, #6f685f)",
-              margin: 0, fontSize: 14, fontStyle: "italic",
+
+            {/* Bulle conversationnelle — style chat bubble crème avec
+                petite queue. Le contenu explique en langage naturel
+                les 3 moyens d'utiliser le scanner. */}
+            <div style={{
+              display: "inline-block",
+              position: "relative",
+              maxWidth: 460,
+              background: "var(--wada-card-bg-strong, #FBF9F5)",
+              border: "1px solid var(--wada-border, rgba(30,30,30,.10))",
+              borderRadius: 22,
+              padding: "18px 24px",
+              boxShadow: "0 8px 22px -8px rgba(30,30,30,0.1)",
+              textAlign: "left",
+              fontFamily: fonts.sans,
+              fontSize: 15,
+              lineHeight: 1.55,
+              color: "var(--wada-ink, #1E1E1E)",
             }}>
-              Une photo, ou une teinte parmi les essentielles.
-            </p>
+              Photographiez un <strong style={{ color: fallback.bordeaux }}>mur</strong>, une <strong style={{ color: fallback.bordeaux }}>fleur</strong>, un <strong style={{ color: fallback.bordeaux }}>tissu</strong> — WADA trouve la palette Sanzo Wada qui s'en rapproche le plus.
+              {/* Queue de la bulle */}
+              <span aria-hidden style={{
+                position: "absolute",
+                bottom: -8, left: "50%",
+                transform: "translateX(-50%) rotate(45deg)",
+                width: 14, height: 14,
+                background: "var(--wada-card-bg-strong, #FBF9F5)",
+                borderRight: "1px solid var(--wada-border, rgba(30,30,30,.10))",
+                borderBottom: "1px solid var(--wada-border, rgba(30,30,30,.10))",
+              }} />
+            </div>
           </Reveal>
         </div>
 
@@ -273,19 +311,10 @@ export default function ScannerPage() {
                     <circle cx="19" cy="19" r="10" fill="none" stroke="currentColor" strokeWidth="1" />
                     <circle cx="19" cy="19" r="2.5" fill="currentColor" />
                   </svg>
-                  <h3 style={{
-                    fontFamily: fonts.display, fontWeight: 500,
-                    fontSize: 20, margin: "12px 0 4px",
-                    color: "var(--wada-ink, #1E1E1E)",
-                  }}>
-                    Déposez ou photographiez
-                  </h3>
-                  <p style={{
-                    fontSize: 12, color: "var(--wada-text-secondary, #6f685f)",
-                    margin: 0, fontStyle: "italic", letterSpacing: "0.01em",
-                  }}>
-                    Un mur, une fleur, un tissu
-                  </p>
+                  {/* Brief 2026-05-30 : titres devenus redondants avec la
+                      bulle d'explication du hero. On ne garde que
+                      l'aperture SVG comme repère visuel + les 2 boutons
+                      d'action immédiats. Moins de mots = action claire. */}
                   <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 16 }}>
                     {/* preventDefault sur les boutons à l'intérieur du
                         <label> : empêche le label de re-déclencher l'input
