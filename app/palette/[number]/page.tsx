@@ -471,78 +471,13 @@ export default function PalettePage({ params }: { params: Promise<{ number: stri
           pour une tenue sur-mesure autour de cette palette.
         </p>
 
-        {/* ═══════════════════ AFFINER — replié optionnel (brief 2026-05-27) ═══
-            La perso (registre + occasion + coupe + budget) reste accessible
-            mais n'est plus le bloc principal du parcours. <details> = HTML
-            natif, pas de JS, ouvrable au clavier (a11y native). */}
-        <details className="wada-palette-affine" style={{
-          margin: "32px 0 0",
-          background: palette.cream,
-          border: `1px solid ${palette.line}`,
-          borderRadius: 16,
-          overflow: "hidden",
-        }}>
-          <summary style={{
-            display: "flex", justifyContent: "space-between", alignItems: "center",
-            padding: "18px 22px",
-            cursor: "pointer",
-            listStyle: "none",
-          }}>
-            <span style={{
-              fontFamily: fonts.display, fontWeight: 600,
-              fontSize: 18, color: palette.ink,
-            }}>
-              Affiner à votre style
-            </span>
-            <span style={{ fontSize: 13, color: palette.inkSoft }}>
-              Optionnel — ouvrir ▾
-            </span>
-          </summary>
-
-          <div style={{ padding: "0 22px 22px" }}>
-            <p style={{ fontSize: 13, color: palette.inkSoft, marginBottom: 14 }}>
-              WADA ajuste la tenue à votre profil (registre, occasion, coupe, budget).
-            </p>
-
-            <div className="wada-perso-rows" style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: "16px 36px",
-            }}>
-              <PersoRow label="Registre" options={REGISTRES} value={registre} onChange={setRegistre} />
-              <PersoRow label="Occasion" options={OCCASIONS} value={occasion} onChange={setOccasion} />
-              <PersoRow label="Coupe" options={COUPES} value={coupe} onChange={setCoupe} />
-              <PersoRow label="Budget" options={BUDGETS} value={budget} onChange={setBudget} />
-            </div>
-
-            <div style={{
-              marginTop: 20,
-              borderTop: `1px solid ${palette.line}`,
-              paddingTop: 16,
-              display: "flex", alignItems: "center", gap: 14,
-              flexWrap: "wrap",
-            }}>
-              <p style={{
-                fontFamily: fonts.body, fontStyle: "italic",
-                fontSize: 14, color: palette.inkSoft,
-                flex: 1, minWidth: 240,
-              }}>
-                {summaryAdvice}
-              </p>
-              <Link href={`/ma-tenue?palette=${entry.number}&style=${encodeURIComponent(registre)}&occasion=${encodeURIComponent(occasion.toLowerCase())}`} style={{
-                fontFamily: fonts.sans, fontSize: 13,
-                padding: "11px 20px", borderRadius: 999,
-                background: palette.ink, color: palette.cream,
-                border: "none", textDecoration: "none",
-                display: "inline-flex", alignItems: "center", gap: 8,
-                fontWeight: 500,
-              }}>
-                <span>Voir la tenue affinée</span>
-                <span aria-hidden style={{ fontSize: 14 }}>→</span>
-              </Link>
-            </div>
-          </div>
-        </details>
+        {/* Brief 2026-05-30 : accordéon « Affiner à votre style » SUPPRIMÉ.
+            Devenu redondant depuis l'ajout du bloc ProfileQuickChips
+            au-dessus des 3 cards d'occasion (chips Pour qui / Budget /
+            Style / Saison / Tendance accessibles en 1 clic sans avoir
+            à ouvrir un menu). Les anciennes REGISTRES / OCCASIONS /
+            COUPES / BUDGETS (state local) sont remplacés par useProfile
+            global synchronisé avec le ProfileSwitcher. */}
 
         {/* Brief « appli efficace » §6 — repère « Ensuite : … » qui
             indique que choisir un look mène à la tenue à acheter.
@@ -778,7 +713,7 @@ function ProfileQuickChips() {
       </div>
 
       {/* Style */}
-      <div style={{ ...rowStyle, marginBottom: 0 }}>
+      <div style={rowStyle}>
         <span style={labelStyle}>Style&nbsp;?</span>
         {(["Minimaliste", "Classique", "Streetwear", "Décontracté"] as const).map((s) => {
           const active = effective.style === s;
@@ -791,6 +726,49 @@ function ProfileQuickChips() {
               style={{ ...chipBase, ...(active ? chipActive : chipIdle) }}
             >
               {s}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Saison — propage à l'API products via ?season=
+          (lib/seasonDetect filtre cachemire/laine vs lin/soie). */}
+      <div style={rowStyle}>
+        <span style={labelStyle}>Saison&nbsp;?</span>
+        {(["Toute saison", "Hiver", "Mi-saison", "Été"] as const).map((s) => {
+          const active = (effective.saison || "Toute saison") === s;
+          return (
+            <button
+              key={s}
+              type="button"
+              onClick={() => save({ saison: s })}
+              aria-pressed={active}
+              style={{ ...chipBase, ...(active ? chipActive : chipIdle) }}
+            >
+              {s}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Tendance / Vibe — affecte le ton de la curation. Stocké dans
+          le profil pour usage futur (filtrage matières, contexte LLM
+          styliste). « Tendance » = mode actuelle / streetwear de saison.
+          « Sobre » = quiet luxury. « Audacieux » = pièces signature
+          marquées. « Confortable » = matières souples, coupes amples. */}
+      <div style={{ ...rowStyle, marginBottom: 0 }}>
+        <span style={labelStyle}>Tendance&nbsp;?</span>
+        {(["Sobre", "Audacieux", "Confortable", "Tendance"] as const).map((t) => {
+          const active = (effective.tendance || "Sobre") === t;
+          return (
+            <button
+              key={t}
+              type="button"
+              onClick={() => save({ tendance: t })}
+              aria-pressed={active}
+              style={{ ...chipBase, ...(active ? chipActive : chipIdle) }}
+            >
+              {t}
             </button>
           );
         })}

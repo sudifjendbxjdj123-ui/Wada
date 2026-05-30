@@ -1250,6 +1250,15 @@ function useMujiProduct(
           if (profile?.budget === "< 150€") params.set("maxPrice", "150");
           else if (profile?.budget === "150–400€") params.set("maxPrice", "400");
           // Premium : pas de plafond
+          /* Saison choisie par le client via chip sur /palette/[number].
+             Mapping label profil → tag interne API :
+               « Hiver » → hiver,automne (couvre les 2 saisons froides)
+               « Été »   → été,printemps
+               « Mi-saison » → automne,printemps
+               « Toute saison » → on ne passe rien (pas de filtre) */
+          if (profile?.saison === "Hiver") params.set("season", "hiver,automne");
+          else if (profile?.saison === "Été") params.set("season", "été,printemps");
+          else if (profile?.saison === "Mi-saison") params.set("season", "automne,printemps");
         }
       } catch {}
     }

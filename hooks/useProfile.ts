@@ -20,17 +20,27 @@ import { useCallback, useEffect, useState } from "react";
 export type Genre = "Femme" | "Homme";
 export type Budget = "< 150€" | "150–400€" | "Premium";
 export type Style = "Minimaliste" | "Classique" | "Streetwear" | "Décontracté";
+/* Brief 2026-05-30 : nouvelles dimensions optionnelles ajoutées au
+   bloc « Composées pour vous » sur /palette/[number]. */
+export type Saison = "Toute saison" | "Hiver" | "Mi-saison" | "Été";
+export type Tendance = "Sobre" | "Audacieux" | "Confortable" | "Tendance";
 
 export interface Profile {
   genre: Genre;
   budget: Budget;
   style: Style;
+  /* Optionnels — défaut « Toute saison / Sobre ». Le client peut
+     les ajuster en 1 clic sur la page palette. */
+  saison?: Saison;
+  tendance?: Tendance;
 }
 
 export const DEFAULT_PROFILE: Profile = {
   genre: "Femme",
   budget: "150–400€",
   style: "Minimaliste",
+  saison: "Toute saison",
+  tendance: "Sobre",
 };
 
 const STORAGE_KEY = "wada.profile";
@@ -40,15 +50,22 @@ const STORAGE_KEY = "wada.profile";
 const GENRES: Genre[] = ["Femme", "Homme"];
 const BUDGETS: Budget[] = ["< 150€", "150–400€", "Premium"];
 const STYLES: Style[] = ["Minimaliste", "Classique", "Streetwear", "Décontracté"];
+const SAISONS: Saison[] = ["Toute saison", "Hiver", "Mi-saison", "Été"];
+const TENDANCES: Tendance[] = ["Sobre", "Audacieux", "Confortable", "Tendance"];
 
 function isValidProfile(raw: unknown): raw is Profile {
   if (!raw || typeof raw !== "object") return false;
   const p = raw as Record<string, unknown>;
-  return (
-    GENRES.includes(p.genre as Genre) &&
-    BUDGETS.includes(p.budget as Budget) &&
-    STYLES.includes(p.style as Style)
-  );
+  /* Validation stricte des 3 champs OBLIGATOIRES. Les 2 nouveaux
+     (saison, tendance) sont optionnels : si présents on les valide,
+     sinon undefined OK. Rétrocompat avec les profils créés avant
+     l'ajout des champs. */
+  if (!GENRES.includes(p.genre as Genre)) return false;
+  if (!BUDGETS.includes(p.budget as Budget)) return false;
+  if (!STYLES.includes(p.style as Style)) return false;
+  if (p.saison !== undefined && !SAISONS.includes(p.saison as Saison)) return false;
+  if (p.tendance !== undefined && !TENDANCES.includes(p.tendance as Tendance)) return false;
+  return true;
 }
 
 export function useProfile() {

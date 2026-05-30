@@ -535,7 +535,17 @@
    change le profil. Sync inter-onglets via storage event : les 3 cards
    et leurs query params (genre/style/maxPrice) se mettent à jour
    automatiquement. Force re-fetch HTML. */
-const CACHE_VERSION = "wada-v51-2026-05-30";
+/* Bump v52 30/05 : sur /palette/[number] :
+   - Accordéon « Affiner à votre style » SUPPRIMÉ (redondant avec le
+     bloc de chips au-dessus).
+   - 2 nouvelles dimensions ajoutées au bloc « Composées pour vous » :
+     Saison (Toute saison / Hiver / Mi-saison / Été) + Tendance (Sobre
+     / Audacieux / Confortable / Tendance). Le client a maintenant 5
+     axes ajustables en 1 clic.
+   - Profile type étendu : saison? + tendance? (optionnels, rétrocompat).
+   - /ma-tenue propage la saison à l'API products (?season=).
+   Force re-fetch HTML. */
+const CACHE_VERSION = "wada-v52-2026-05-30";
 const STATIC_CACHE  = `${CACHE_VERSION}-static`;
 const PAGE_CACHE    = `${CACHE_VERSION}-pages`;
 
