@@ -365,15 +365,21 @@ export function normalizeAwinProduct(raw: RawAwinProduct): ProduitAwin | null {
 
   const merchantSlug = slugMerchant(raw.merchant_name);
 
-  /* Brief TBF 2026-05-29 — fallback slot par inférence :
-     TBF a `category_name` vide ou « Home Accessories » pour TOUS les
-     produits → parseCategory retourne null → tout serait dropped.
-     Fallback : inférer le slot depuis product_name (mots-clés t-shirt/
-     pants/jacket/sneakers/bag…). Pour MUJI le parseCategory matche
-     correctement donc on n'utilise pas le fallback. */
-  let category = parseCategory(raw.category_name);
-  if (!category) {
+  /* Brief TBF 2026-05-29 — slot par inférence depuis product_name :
+     TBF a `category_name = "Home Accessories"` MENSONGER pour TOUS les
+     produits (vérifié ingestion 30/05 : ce string matchait CATEGORY_MAPPING
+     "accessories"→"accent" et faisait tomber sneakers/pulls/pantalons en
+     accent). Fix : pour TBF on IGNORE complètement category_name et on
+     passe DIRECTEMENT à l'inférence par mots-clés du nom. Pour les autres
+     marchands (MUJI) on garde le pipeline standard parseCategory → fallback. */
+  let category: ProductCategorie | null;
+  if (merchantSlug === "the-business-fashion") {
     category = inferCategoryFromProductName(raw.product_name);
+  } else {
+    category = parseCategory(raw.category_name);
+    if (!category) {
+      category = inferCategoryFromProductName(raw.product_name);
+    }
   }
   if (!category) return null; // produit hors mode (ex. accessoires électroniques)
 
