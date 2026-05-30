@@ -20,6 +20,7 @@
 
 import type { ProduitAwin, ProductCategorie, ProductGenre } from "./schema";
 import { nearestWadaPalette } from "./wadaPaletteMatch";
+import { brandToRegistre } from "./brandRegistre";
 
 /* ──────────────────────────────────────────────────────────────────────
    Schema CSV Awin — colonnes utilisées (sur ~30 disponibles)
@@ -539,6 +540,10 @@ export function normalizeAwinProduct(raw: RawAwinProduct): ProduitAwin | null {
     urlProduit: raw.aw_deep_link, // déjà tracké Awin, on ne re-wrappe pas
     paletteRef: match?.paletteRef,
     paletteDistance: match?.distance,
+    /* Brief 2026-05-30 §1 : tag registre depuis la marque réelle.
+       Marques inconnues → undefined (le composer pourra utiliser un
+       fallback ou exclure du sort selon le contexte). */
+    brandRegistre: brandToRegistre(marque) || undefined,
   };
 }
 

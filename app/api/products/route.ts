@@ -32,6 +32,7 @@ import { readAllProducts } from "@/lib/productStore";
 import type { ProduitAwin } from "@/lib/schema";
 import { deltaEHex, hexToLab } from "@/lib/colorDistance";
 import { dictionary } from "@/lib/data";
+import { styleToRegistre, brandToRegistreOrFallback } from "@/lib/brandRegistre";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -210,6 +211,20 @@ export async function GET(req: Request) {
     filtered = filtered.filter((p) => {
       const hay = `${p.nom} ${p.description || ""}`.toLowerCase();
       return !EXCLUDE_FORMAL.test(hay);
+    });
+  }
+
+  /* Brief 2026-05-30 « logique de composition cohérente » §1 :
+     filtrer par REGISTRE de marque pour ne JAMAIS mélanger Brunello
+     Cucinelli (classique) avec Amiri (streetwear) dans une même tenue.
+     Mapping du style profil utilisateur → registre catalogue via
+     styleToRegistre(). Une marque non-classée fallback en `classique`
+     (lib/brandRegistre.brandToRegistreOrFallback). */
+  const targetRegistre = styleToRegistre(style);
+  if (targetRegistre) {
+    filtered = filtered.filter((p) => {
+      const productRegistre = p.brandRegistre || brandToRegistreOrFallback(p.marque || p.marchand);
+      return productRegistre === targetRegistre;
     });
   }
 

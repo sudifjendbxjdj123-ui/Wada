@@ -138,6 +138,13 @@ export interface ProduitAwin {
   /** Distance ΔE2000 à la couleur la plus proche de la palette de
    *  référence. < 15 = match strict, 15-25 = approchant, > 25 = éloigné. */
   paletteDistance?: number;
+  /** Brief 2026-05-30 « logique de composition tenue cohérente » §1 :
+   *  registre stylistique de la MARQUE (différent du registre du SLOT).
+   *  Calculé à l'ingestion via lib/brandRegistre.ts depuis brand_name.
+   *  4 valeurs : classique | streetwear | minimaliste | decontracte.
+   *  Le composer filtre par registre pour ne pas mélanger Brunello
+   *  Cucinelli (classique) avec Amiri (streetwear) dans la même tenue. */
+  brandRegistre?: "classique" | "streetwear" | "minimaliste" | "decontracte";
 }
 
 /* ──────────────────────────────────────────────────────────────────────

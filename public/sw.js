@@ -503,7 +503,20 @@
      hero) au toast discret bas-droit, fond noir charbon + kanji 和
      dans vignette dégradée or. Visible mais non envahissant.
    Force re-fetch HTML pour pousser la nouvelle structure. */
-const CACHE_VERSION = "wada-v48-2026-05-30";
+/* Bump v49 30/05 : brief « logique de composition tenue cohérente »
+   §1 (registre unique). Plus jamais de Brunello + Amiri + Stone Island
+   dans la même tenue.
+   - lib/brandRegistre.ts : table 130+ marques → 4 registres (classique
+     / streetwear / minimaliste / decontracte). Mapping style profil
+     utilisateur → registre catalogue. MUJI = decontracte, Brunello
+     Cucinelli = classique, Amiri = streetwear, Jacquemus = minimaliste.
+   - ProduitAwin étendu avec champ brandRegistre.
+   - lib/awinFeed.ts tag chaque produit ingéré.
+   - /api/products filtre par registre quand style fourni : un user
+     « Classique » ne voit QUE du classique (Brunello/Tom Ford/Zegna…),
+     pas du streetwear ou du minimaliste.
+   Force re-fetch HTML. */
+const CACHE_VERSION = "wada-v49-2026-05-30";
 const STATIC_CACHE  = `${CACHE_VERSION}-static`;
 const PAGE_CACHE    = `${CACHE_VERSION}-pages`;
 
