@@ -80,14 +80,21 @@ export default function ResumeBanner() {
 
   return (
     <div className="wada-resume-banner" role="region" aria-label="Reprise rapide">
+      {/* Brief refonte 2026-05-30 : passé du pill flottant centré en haut
+          (qui mangeait l'image hero) à un TOAST DISCRET en bas à droite.
+          Fond noir charbon + kanji 和 dans une vignette dégradée or, label
+          REPRENDRE en kicker majuscules, nom palette en Fredoka. Croix de
+          dismiss session. Visible mais non envahissant. */}
       <Link
         href={href}
         className="wada-resume-link"
         aria-label={`${kicker} : ${title}`}
       >
-        <span className="wada-resume-kicker">{kicker}</span>
-        <span className="wada-resume-arrow" aria-hidden>→</span>
-        <span className="wada-resume-title">{title}</span>
+        <span className="wada-resume-icon" aria-hidden>和</span>
+        <span className="wada-resume-text">
+          <span className="wada-resume-kicker">{kicker}</span>
+          <span className="wada-resume-title">{title} →</span>
+        </span>
       </Link>
       <button
         type="button"
@@ -100,102 +107,101 @@ export default function ResumeBanner() {
       <style jsx>{`
         :global(.wada-resume-banner) {
           position: fixed;
-          /* Sous le Nav (~70px) + safe-area iOS. */
-          top: calc(78px + env(safe-area-inset-top, 0px));
-          left: 50%;
-          transform: translateX(-50%);
+          /* Bas à droite, au-dessus de la MobileTabBar éventuelle (≤880px). */
+          bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+          right: 24px;
           z-index: 40;
           display: inline-flex;
           align-items: center;
-          gap: 4px;
-          padding: 4px 4px 4px 16px;
-          background: rgba(250, 248, 244, 0.94);
-          backdrop-filter: blur(16px);
-          -webkit-backdrop-filter: blur(16px);
-          border: 1px solid rgba(107, 58, 50, 0.18);
-          border-radius: 999px;
-          box-shadow: 0 10px 32px rgba(0, 0, 0, 0.18);
-          color: #1E1E1E;
+          gap: 12px;
+          padding: 12px 14px 12px 12px;
+          background: #222;
+          border-radius: 14px;
+          box-shadow: 0 14px 40px -12px rgba(0,0,0,.4);
+          color: #f3eddf;
           font-family: 'Inter', sans-serif;
-          font-size: 13px;
-          max-width: calc(100vw - 32px);
+          max-width: 320px;
           animation: wada-resume-slide 0.4s cubic-bezier(.22,1,.36,1);
+        }
+        @media (max-width: 880px) {
+          /* Décale au-dessus de la MobileTabBar (~62px). */
+          :global(.wada-resume-banner) {
+            bottom: calc(80px + env(safe-area-inset-bottom, 0px));
+            right: 16px;
+            max-width: calc(100vw - 32px);
+          }
         }
         :global(.wada-resume-link) {
           display: inline-flex;
           align-items: center;
-          gap: 8px;
+          gap: 12px;
           color: inherit;
           text-decoration: none;
-          padding: 7px 0;
-          max-width: 100%;
-          overflow: hidden;
+          min-width: 0;
+        }
+        :global(.wada-resume-icon) {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 28px;
+          height: 28px;
+          flex-shrink: 0;
+          border-radius: 8px;
+          background: linear-gradient(135deg, #caa479, #8a6f4a);
+          color: #fff;
+          font-family: 'Noto Serif JP', 'Fredoka', sans-serif;
+          font-size: 14px;
+          font-weight: 700;
+        }
+        :global(.wada-resume-text) {
+          display: inline-flex;
+          flex-direction: column;
+          min-width: 0;
         }
         :global(.wada-resume-kicker) {
-          font-size: 11px;
+          font-family: 'Inter', sans-serif;
+          font-size: 10.5px;
           font-weight: 600;
           letter-spacing: 0.08em;
           text-transform: uppercase;
-          color: #6B3A32;
-          white-space: nowrap;
-        }
-        :global(.wada-resume-arrow) {
-          color: #6B3A32;
-          font-size: 13px;
-          opacity: 0.7;
+          color: rgba(243,237,223,.7);
+          line-height: 1.2;
         }
         :global(.wada-resume-title) {
           font-family: 'Fredoka', sans-serif;
-          font-weight: 600;
+          font-weight: 500;
           font-size: 14px;
-          color: #1E1E1E;
+          color: #fff;
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
-          max-width: 200px;
+          max-width: 220px;
+          line-height: 1.3;
         }
         :global(.wada-resume-close) {
-          width: 30px; height: 30px;
-          border-radius: 50%;
-          background: rgba(30, 30, 30, 0.06);
+          background: none;
           border: none;
-          color: #6a6259;
+          color: #f3eddf;
+          opacity: 0.55;
           cursor: pointer;
           font-size: 18px;
           line-height: 1;
+          padding: 4px 6px;
           display: inline-flex;
           align-items: center;
           justify-content: center;
           flex-shrink: 0;
-          transition: background 0.18s ease, color 0.18s ease;
+          transition: opacity 0.18s ease;
         }
-        :global(.wada-resume-close:hover) {
-          background: rgba(107, 58, 50, 0.1);
-          color: #6B3A32;
         }
         @keyframes wada-resume-slide {
           from {
             opacity: 0;
-            transform: translate(-50%, -8px);
+            transform: translateY(12px);
           }
           to {
             opacity: 1;
-            transform: translate(-50%, 0);
-          }
-        }
-        /* Mobile : encore plus compact + max-width plus serré pour ne pas
-           déborder du viewport. */
-        @media (max-width: 480px) {
-          :global(.wada-resume-banner) {
-            font-size: 12px;
-            padding: 3px 3px 3px 14px;
-          }
-          :global(.wada-resume-title) {
-            font-size: 13px;
-            max-width: 140px;
-          }
-          :global(.wada-resume-kicker) {
-            font-size: 10px;
+            transform: translateY(0);
           }
         }
         @media (prefers-reduced-motion: reduce) {

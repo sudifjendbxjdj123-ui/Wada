@@ -4,9 +4,14 @@ import { useEffect, useState } from "react";
 import { ink } from "@/lib/styles";
 import ThemeToggle from "@/components/ThemeToggle";
 import LangButton from "@/components/LangButton";
-/* Brief 2026-05-29 « Onboarding + profil + switcher » §3 :
-   ProfileBadge = pastille avatar+label dans la nav, clic → switcher modal. */
-import ProfileBadge from "@/components/ProfileBadge";
+/* Brief refonte Nav 2026-05-30 (maquette épurée) :
+   - ProfileBadge + ThemeToggle + LangButton individuels du header
+     SUPPRIMÉS du header desktop.
+   - ProfileMenu = nouveau composant qui fusionne avatar compact + dropdown
+     contenant : Compte / Favoris / Changer style / Thème / Langue.
+   - Logo passe à gauche à côté des liens (au lieu de centré absolument).
+   - Bouton « Abonnement » passe en ghost (outline bordeaux). */
+import ProfileMenu from "@/components/ProfileMenu";
 
 /**
  * Nav — header WADA global (brief 2026-05-28 v4 — audit UX).
@@ -134,9 +139,9 @@ export default function Nav() {
           boxShadow: "0 1px 0 rgba(7,7,2,.08)",
         }}
       >
-        {/* ─── Gauche : hamburger mobile + liens desktop ─── */}
-        <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
-          {/* Hamburger — visible uniquement ≤880px (cf. style jsx en bas) */}
+        {/* ─── Gauche : hamburger mobile + LOGO + liens desktop ─── */}
+        <div style={{ display: "flex", alignItems: "center", gap: 28 }}>
+          {/* Hamburger — visible uniquement ≤880px */}
           <button
             type="button"
             aria-label="Ouvrir le menu"
@@ -165,12 +170,35 @@ export default function Nav() {
             </span>
           </button>
 
-          {/* Liens desktop */}
+          {/* Brief refonte 2026-05-30 : logo passe À GAUCHE avec les liens,
+              au lieu d'être centré absolument. La nav est plus claire à
+              parcourir d'un coup d'œil. */}
+          <Link
+            href="/"
+            aria-label="Accueil WADA"
+            className="wada-nav-center"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              textDecoration: "none",
+              color: fgColor,
+              fontFamily: "'Fredoka', sans-serif",
+              fontWeight: 700,
+              fontSize: "1.5rem",
+              letterSpacing: "0.02em",
+              lineHeight: 1,
+            }}
+          >
+            <span>WADA</span>
+            <span className="wada-jp" style={{ marginLeft: 4 }}>和田</span>
+          </Link>
+
+          {/* Liens desktop — collés au logo, plus de gap absolu */}
           <div
             className="wada-nav-links"
             style={{
               display: "flex",
-              gap: 26,
+              gap: 22,
               alignItems: "center",
               fontSize: "0.95rem",
               fontWeight: 500,
@@ -185,6 +213,7 @@ export default function Nav() {
                   color: fgColor,
                   textDecoration: "none",
                   position: "relative",
+                  opacity: 0.85,
                 }}
               >
                 {l.label}
@@ -193,100 +222,47 @@ export default function Nav() {
           </div>
         </div>
 
-        {/* ─── Centre : logo WADA和田 → / ─── */}
-        <Link
-          href="/"
-          aria-label="Accueil WADA"
-          className="wada-nav-center"
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            textDecoration: "none",
-            color: fgColor,
-            fontFamily: "'Fredoka', sans-serif",
-            fontWeight: 700,
-            fontSize: "1.5rem",
-            letterSpacing: "0.02em",
-            lineHeight: 1,
-          }}
-        >
-          <span>WADA</span>
-          <span className="wada-jp" style={{ marginLeft: 4 }}>和田</span>
-        </Link>
-
-        {/* ─── Droite : Compte + ThemeToggle + bouton « Abonnement » ───
-             Brief audit 2026-05-28 N7 : icône compte ajoutée pour offrir
-             un accès direct à /compte sans passer par le drawer. */}
+        {/* ─── Droite : Abonnement (ghost) + ProfileMenu ─── */}
         <div
           className="wada-nav-right"
           style={{ display: "flex", alignItems: "center", gap: 12 }}
         >
-          {/* Brief mobile (26/05) — décongestion header :
-              `wada-nav-compte` et `wada-nav-theme` cachés ≤880px via CSS
-              en bas de fichier. Le Compte est déjà dans la MobileTabBar
-              du bas, le ThemeToggle est dans le drawer en option « Thème
-              sombre ». Header mobile ne montre plus que ☰ / logo /
-              Abonnement (3 éléments au lieu de 5 → respire). */}
-          <Link
-            href="/compte"
-            aria-label="Mon compte"
-            className="wada-nav-compte"
-            style={{
-              display: "inline-flex", alignItems: "center", justifyContent: "center",
-              width: 36, height: 36, borderRadius: "50%",
-              color: fgColor,
-              textDecoration: "none",
-              border: `1px solid var(--wada-border, rgba(30,30,30,.12))`,
-              background: "transparent",
-              transition: "background .2s ease, border-color .2s ease",
-            }}
-          >
-            <svg
-              aria-hidden
-              width="18" height="18" viewBox="0 0 24 24"
-              fill="none" stroke="currentColor" strokeWidth="1.6"
-              strokeLinecap="round" strokeLinejoin="round"
-            >
-              <circle cx="12" cy="8" r="4" />
-              <path d="M4 21c0-4 4-7 8-7s8 3 8 7" />
-            </svg>
-          </Link>
-          <span className="wada-nav-theme">
-            <ThemeToggle />
-          </span>
-          {/* Brief client 2026-05-28 « traduction anglaise » — bouton EN
-              qui passe par le proxy Google translate.goog. Caché ≤880px
-              (même règle que .wada-nav-compte/.wada-nav-theme : sur mobile
-              l'option est dans le drawer pour ne pas surcharger le header). */}
-          <span className="wada-nav-lang-wrapper">
-            <LangButton variant="pill" />
-          </span>
-          {/* Brief 2026-05-29 « Onboarding + profil + switcher » §3 :
-              pastille profil visible en permanence dans la nav. Sur
-              mobile (≤880px), seul l'avatar reste visible (label caché
-              via CSS interne au composant) — gain de place header. */}
-          <ProfileBadge />
+          {/* Brief refonte 2026-05-30 : Abonnement en GHOST (contour
+              bordeaux + transparent intérieur) au lieu du plein bordeaux.
+              Moins agressif, conserve la couleur d'identité. */}
           <Link
             href="/tarifs"
+            className="wada-nav-tarifs"
             style={{
-              fontFamily: "'Merriweather Sans', 'Inter', sans-serif",
-              fontSize: "0.95rem",
-              fontWeight: 600,
-              color: "#FFFFFF",
+              fontFamily: "'Fredoka', sans-serif",
+              fontSize: "0.9rem",
+              fontWeight: 500,
+              color: PLUM,
               textDecoration: "none",
-              background: PLUM,
+              background: "transparent",
               border: `1px solid ${PLUM}`,
               borderRadius: "6.25rem",
-              padding: "11px 22px",
+              padding: "9px 18px",
               lineHeight: 1,
-              transition: "background .25s ease",
+              transition: "background .22s ease, color .22s ease",
               whiteSpace: "nowrap",
             }}
-            onMouseEnter={(ev) => { ev.currentTarget.style.background = PLUM_DARK; }}
-            onMouseLeave={(ev) => { ev.currentTarget.style.background = PLUM; }}
+            onMouseEnter={(ev) => {
+              ev.currentTarget.style.background = PLUM;
+              ev.currentTarget.style.color = "#FFFFFF";
+            }}
+            onMouseLeave={(ev) => {
+              ev.currentTarget.style.background = "transparent";
+              ev.currentTarget.style.color = PLUM;
+            }}
           >
             Abonnement
           </Link>
+
+          {/* Brief refonte 2026-05-30 : nouveau ProfileMenu remplace
+              ProfileBadge + ThemeToggle + LangButton du header. L'avatar
+              est cliquable et déploie un dropdown avec ces options. */}
+          <ProfileMenu />
         </div>
 
         <style jsx>{`

@@ -490,7 +490,20 @@
    - /stylist : userPrefs() lit wada.profile en priorité avant les clés
      legacy, injecte automatiquement le profil dans la collecte LLM.
    Force re-fetch HTML pour pousser les changements client. */
-const CACHE_VERSION = "wada-v47-2026-05-29";
+/* Bump v48 30/05 : refonte Nav épurée (brief maquette HTML).
+   - Logo passe à gauche avec les liens (au lieu de centré absolu).
+   - Icône Compte + ThemeToggle + LangButton retirés du header
+     desktop, regroupés dans un nouveau composant ProfileMenu (avatar
+     38×38 + point vert + dropdown avec Compte / Favoris / Changer
+     style / Thème / Langue).
+   - Avatar tooltip au hover : « Femme · 150–400€ · Minimaliste ».
+   - Bouton Abonnement passe en GHOST (contour bordeaux + transparent),
+     moins agressif que le plein.
+   - ResumeBanner repassé du pill centré en haut (mangeait l'image
+     hero) au toast discret bas-droit, fond noir charbon + kanji 和
+     dans vignette dégradée or. Visible mais non envahissant.
+   Force re-fetch HTML pour pousser la nouvelle structure. */
+const CACHE_VERSION = "wada-v48-2026-05-30";
 const STATIC_CACHE  = `${CACHE_VERSION}-static`;
 const PAGE_CACHE    = `${CACHE_VERSION}-pages`;
 
