@@ -46,12 +46,16 @@ const ALLOWED_HOSTS = [
      en whitelist, le proxy bloque → cartes produit TBF avec zone
      blanche au lieu de la photo. Ces CDN sont publics, pas de risque
      SSRF accru (ils ne servent pas de services internes). */
-  "shopify.com",         // cdn.shopify.com (TBF majoritaire)
-  "cloudfront.net",      // AWS CDN (utilisé par plusieurs marques luxury)
-  "amazonaws.com",       // S3 direct
-  "cloudinary.com",      // CDN très courant en e-commerce
-  "akamaized.net",       // Akamai (gros marchands)
-  "scene7.com",          // Adobe Scene7 (utilisé par certaines marques)
+  "shopify.com",                  // cdn.shopify.com (TBF majoritaire)
+  "farfetch-contents.com",        // cdn-images.farfetch-contents.com — TBF
+                                  //   majoritaire pour Rick Owens / Belstaff /
+                                  //   Jacquemus / Bathing Ape (Farfetch est le
+                                  //   distributeur réseau de ces marques luxury).
+  "cloudfront.net",               // AWS CDN (utilisé par plusieurs marques luxury)
+  "amazonaws.com",                // S3 direct
+  "cloudinary.com",               // CDN très courant en e-commerce
+  "akamaized.net",                // Akamai (gros marchands)
+  "scene7.com",                   // Adobe Scene7 (utilisé par certaines marques)
 ];
 
 function isAllowedHost(u: URL): boolean {
