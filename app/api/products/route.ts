@@ -31,6 +31,7 @@
 import { readAllProducts } from "@/lib/productStore";
 import type { ProduitAwin } from "@/lib/schema";
 import { deltaEHex, hexToLab } from "@/lib/colorDistance";
+import { dictionary } from "@/lib/data";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -189,30 +190,51 @@ export async function GET(req: Request) {
     });
   }
 
-  // ─── ÉTAPE 2 : scoring + tri ──────────────────────────────────────
-  // Brief : type → registre → genre déjà filtrés. ΔE est LE DERNIER tri.
-  // Bonus : on dé-priorise (sans exclure) les pièces accent encombrantes.
-  filtered.sort((a, b) => {
-    // 1. Match palette strict en tête (si palette passée)
-    if (palette) {
-      const aPaletteMatch = a.paletteRef === palette ? 0 : 1;
-      const bPaletteMatch = b.paletteRef === palette ? 0 : 1;
-      if (aPaletteMatch !== bPaletteMatch) return aPaletteMatch - bPaletteMatch;
-    }
+  /* ─── Fix 2026-05-30 « toujours pas de photo TBF » ──────────────────
+     L'ancien sort priorisait `paletteRef === palette` STRICT. Or TBF a
+     paletteRef inféré par couleur (Black sneakers → palette 289 noir),
+     donc AUCUN TBF n'a paletteRef=162 (Tweed & Encre Pierre/Sable/
+     Vermillon). Conséquence : MUJI dominait le top sur toute palette
+     spécifique, TBF invisible.
 
-    // 2. Dépriorisation des accent encombrants
+     Nouveau sort : on calcule la min(ΔE) entre le hex du PRODUIT et
+     CHAQUE couleur de la palette demandée. Tri par cette distance.
+     Un TBF taupe matche aussi bien Tweed & Encre qu'un MUJI taupe,
+     même si paletteRef ≠ 162. */
+  const targetColorsForSort = palette
+    ? (dictionary.find((d) => d.number === palette)?.colors.map((c) => c.hex) || [])
+    : [];
+
+  function minPaletteDistance(productHex: string): number {
+    if (targetColorsForSort.length === 0) return Infinity;
+    let min = Infinity;
+    for (const c of targetColorsForSort) {
+      const d = deltaEHex(productHex, c);
+      if (d < min) min = d;
+    }
+    return min;
+  }
+
+  // ─── ÉTAPE 2 : scoring + tri ──────────────────────────────────────
+  filtered.sort((a, b) => {
+    // 1. Dépriorisation des accent encombrants
     if (slot === "accent") {
       const aDeprio = DEPRIORITIZE_ACCENT.test(a.nom.toLowerCase()) ? 1 : 0;
       const bDeprio = DEPRIORITIZE_ACCENT.test(b.nom.toLowerCase()) ? 1 : 0;
       if (aDeprio !== bDeprio) return aDeprio - bDeprio;
     }
 
-    // 3. ΔE2000 — soit vs la couleur précise demandée (?color=<hex>,
-    //    cas /stylist), soit vs la palette de référence du produit
-    //    (paletteDistance, cas /ma-tenue).
+    // 2. ΔE2000 — soit vs couleur précise demandée (?color=<hex>,
+    //    cas /stylist), soit vs min(couleurs de la palette demandée),
+    //    soit vs paletteDistance du produit (cas sans palette).
     if (isValidHex && colorHex) {
       const aDist = deltaEHex(a.hex, colorHex);
       const bDist = deltaEHex(b.hex, colorHex);
+      return aDist - bDist;
+    }
+    if (palette) {
+      const aDist = minPaletteDistance(a.hex);
+      const bDist = minPaletteDistance(b.hex);
       return aDist - bDist;
     }
     const aDist = a.paletteDistance ?? Infinity;
