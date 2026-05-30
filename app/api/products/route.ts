@@ -70,6 +70,14 @@ const DEPRIORITIZE_ACCENT = /\b(sac\s+(boston|de\s+sport|de\s+voyage|polochon)|s
  *  ne sortent JAMAIS comme accessoire de tenue. */
 const EXCLUDE_ACCENT = /\b(parapluie|umbrella|serviette|towel|gant(s)?\s+(de\s+ski|de\s+pluie)|cagoule|tour\s+de\s+cou|masque|porte[-\s]?cl[ée]|trousse|étui|protection|housse|sac\s+(à\s+linge|de\s+rangement)|jet|bouteille|gourde|stylo|carnet)/i;
 
+/** Brief 2026-05-30 — accent à motifs RETIRÉ.
+ *  Cas client : sur palette Encre/Noyer/Os (neutres sobres), un Burberry
+ *  duffle bag "check-pattern" est ressorti — visuellement carreaux verts
+ *  sapin + crème + noir + jaune moutarde, donc 4 couleurs imprévues
+ *  hors palette. Notre matching couleur ne sait pas analyser les motifs.
+ *  Solution : exclure les produits à pattern explicite du slot accent. */
+const EXCLUDE_ACCENT_PATTERN = /\b(check[\s-]?pattern|checked|tartan|plaid|stripe[ds]?|striped|printed|graphic|paisley|floral|camouflage|leopard|zebra)\b/i;
+
 /** Pyjama/lingerie/maillot de bain — exclus partout. */
 const EXCLUDE_ALWAYS = /\b(pyjama|peignoir|short\s+de\s+bain|maillot\s+de\s+bain|sous[\s-]?v.tement|bain)/i;
 
@@ -82,7 +90,7 @@ const EXCLUDE_ALWAYS = /\b(pyjama|peignoir|short\s+de\s+bain|maillot\s+de\s+bain
  *    - `sandales?` (sans qualifier) : auparavant on n'excluait que les
  *      sandales d'intérieur via EXCLUDE_SHOES_SUBTYPES ; en registre
  *      habillé toute sandale jure → on les exclut maintenant. */
-const EXCLUDE_FORMAL = /\b(surv.tement|jogging|sweat\s*à?\s*capuche|à\s+capuchon|à\s+capuche|capuchon|hoodie|pyjama|sac\s+(boston|de\s+sport|de\s+voyage)|pantoufle|mule|chausson|claquette|tongs?|crocs|sandales?|deperlant|d.perlant|ripstop)/i;
+const EXCLUDE_FORMAL = /\b(surv.tement|jogging|sweat\s*à?\s*capuche|à\s+capuchon|à\s+capuche|capuchon|hoodie|pyjama|sac\s+(boston|de\s+sport|de\s+voyage)|pantoufle|mule|chausson|claquette|tongs?|crocs|sandales?|deperlant|d.perlant|ripstop|track[\s-]?pants?|track[\s-]?suit|joggers?|cargo[\s-]?pants?)/i;
 
 const FORMAL_STYLES = new Set([
   "classique",
@@ -191,6 +199,9 @@ export async function GET(req: Request) {
        Maintenant : un parapluie sort du catalogue accessoires côté Awin
        mais ne peut PLUS sortir comme accent de tenue. */
     if (slot === "accent" && EXCLUDE_ACCENT.test(hay)) return false;
+    /* Brief 2026-05-30 : pas d'accent à motifs (carreaux/tartan/printed/
+       paisley/etc.) — ajoute des couleurs imprévues hors palette. */
+    if (slot === "accent" && EXCLUDE_ACCENT_PATTERN.test(hay)) return false;
     return true;
   });
 
