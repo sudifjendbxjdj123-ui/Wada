@@ -1623,7 +1623,15 @@ function PieceCard({
                 letterSpacing: "0.01em",
               }}
             >
-              {mujiProduct ? "Acheter sur MUJI →" : "Acheter →"}
+              {/* Brief 2026-05-30 : label dynamique selon le marchand réel.
+                  Avant : « Acheter sur MUJI » même pour les produits TBF
+                  (Brunello, Tom Ford…) → confusion utilisateur qui pensait
+                  cliquer sur MUJI et atterrissait sur The Business Fashion.
+                  Maintenant : « Acheter sur {marchand} » qui reflète le
+                  marchand affilié réel. */}
+              {mujiProduct
+                ? `Acheter sur ${mujiProduct.marchand || "MUJI"} →`
+                : "Acheter →"}
             </a>
             {/* Brief finition (24/05) §7 — transparence affiliation :
                 la divulgation footer ne suffit pas, on indique aussi

@@ -545,7 +545,19 @@
    - Profile type étendu : saison? + tendance? (optionnels, rétrocompat).
    - /ma-tenue propage la saison à l'API products (?season=).
    Force re-fetch HTML. */
-const CACHE_VERSION = "wada-v52-2026-05-30";
+/* Bump v53 30/05 : bouton « Acheter sur MUJI » dynamique → « Acheter
+   sur {marchand} » qui reflète le vrai marchand affilié (MUJI / The
+   Business Fashion). Avant, un produit Brunello affichait « Acheter
+   sur MUJI » → confusion utilisateur qui croyait MUJI et atterrissait
+   chez TBF.
+   Note sur le bug « redirige vers la home » : le test direct curl du
+   lien Awin pclick.php redirige bien vers la page produit TBF. Si
+   l'user voit la home, c'est probablement que le cookie de session
+   Awin n'a pas été posé (Safari ITP / navigation privée / bloqueurs
+   3rd party). Aucun fix code possible côté nous — c'est Awin → TBF qui
+   fallback à la home quand la session manque. Le label correct
+   évite au moins la confusion produit. Force re-fetch HTML. */
+const CACHE_VERSION = "wada-v53-2026-05-30";
 const STATIC_CACHE  = `${CACHE_VERSION}-static`;
 const PAGE_CACHE    = `${CACHE_VERSION}-pages`;
 

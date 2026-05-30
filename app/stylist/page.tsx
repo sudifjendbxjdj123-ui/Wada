@@ -2010,7 +2010,9 @@ function PieceCard({
                   padding: "8px 12px",
                 }}
               >
-                Acheter sur MUJI →
+                {/* Brief 2026-05-30 : label dynamique selon marchand réel
+                    (MUJI / The Business Fashion / autre flux futur). */}
+                Acheter sur {mujiProduct.marchand || "MUJI"} →
               </a>
             </div>
           ) : amzUrl ? (
