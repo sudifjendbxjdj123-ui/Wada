@@ -396,11 +396,14 @@ export default function PalettePage({ params }: { params: Promise<{ number: stri
         }}>
           Choisissez l'occasion — WADA compose la tenue adaptée.
         </p>
-        {/* Brief Phase 3 : badge perso au-dessus des 3 cards, centré.
-            Visible uniquement après hydratation, clic ouvre le switcher. */}
-        <div style={{ display: "flex", justifyContent: "center", marginBottom: 18 }}>
-          <ProfileChip variant="block" />
-        </div>
+        {/* Brief 2026-05-30 : sur la page palette, les questions
+            (genre / budget / style) doivent être DEMANDÉES au client
+            directement, pas cachées dans un accordéon « Affiner à votre
+            style » replié. Le client voit immédiatement les 3 axes,
+            ajuste en 1 clic, et les 3 cards d'occasion + leurs query
+            params se mettent à jour automatiquement (via useProfile +
+            sync inter-onglets storage event). */}
+        <ProfileQuickChips />
 
         <div className="wada-palette-variants" style={{
           display: "grid",
@@ -658,6 +661,136 @@ function PersoRow({ label, options, value, onChange }: {
               }}
             >
               {opt}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * ProfileQuickChips — bloc 3 lignes de chips interactifs sur la page
+ * palette. Permet au client de répondre EN UN CLIC aux 3 questions du
+ * profil (genre / budget / style) sans aller dans le menu profil.
+ *
+ * Brief 2026-05-30 : « il faudrait faire les demande au clients (prix,
+ * sexe, tendance, envie, occasion etc etc) ». L'occasion reste portée
+ * par les 3 cards sous le bloc. Les 3 autres dimensions (genre / budget
+ * / style) deviennent des chips ici.
+ *
+ * Au clic : useProfile.save({field: value}) → sync inter-onglets via
+ * storage event → les 3 cards en dessous lisent useProfile et leurs
+ * query params (genre / style / maxPrice) se mettent à jour.
+ */
+function ProfileQuickChips() {
+  const { effective, save, hydrated } = useProfile();
+
+  if (!hydrated) {
+    // Skeleton pour éviter le saut de hauteur après hydratation
+    return <div style={{ height: 220, marginBottom: 22 }} aria-hidden />;
+  }
+
+  const rowStyle: React.CSSProperties = {
+    display: "flex", flexWrap: "wrap", gap: 8,
+    alignItems: "center", justifyContent: "center",
+    marginBottom: 14,
+  };
+  const labelStyle: React.CSSProperties = {
+    fontFamily: fonts.sans, fontSize: 11, fontWeight: 600,
+    letterSpacing: "0.14em", textTransform: "uppercase",
+    color: palette.inkSoft, marginRight: 6,
+  };
+  const chipBase: React.CSSProperties = {
+    fontFamily: fonts.sans, fontSize: 13, fontWeight: 500,
+    padding: "8px 14px", borderRadius: 999,
+    cursor: "pointer", border: "1px solid",
+    transition: `all 0.16s ${ease}`,
+    background: "transparent",
+  };
+  const chipActive: React.CSSProperties = {
+    background: palette.bordeaux, color: palette.cream,
+    borderColor: palette.bordeaux,
+  };
+  const chipIdle: React.CSSProperties = {
+    background: palette.cream, color: palette.ink,
+    borderColor: palette.line,
+  };
+
+  return (
+    <div
+      style={{
+        background: palette.cream,
+        border: `1px solid ${palette.line}`,
+        borderRadius: 18,
+        padding: "22px 22px 16px",
+        marginBottom: 22,
+        maxWidth: 720,
+        margin: "0 auto 22px",
+      }}
+      aria-label="Affinez votre tenue"
+    >
+      <p style={{
+        textAlign: "center",
+        fontFamily: fonts.sans, fontSize: 11, fontWeight: 600,
+        letterSpacing: "0.18em", textTransform: "uppercase",
+        color: palette.bordeaux, margin: "0 0 16px",
+      }}>
+        Composées pour vous — affinez en 1 clic
+      </p>
+
+      {/* Pour qui ? */}
+      <div style={rowStyle}>
+        <span style={labelStyle}>Pour qui&nbsp;?</span>
+        {(["Femme", "Homme"] as const).map((g) => {
+          const active = effective.genre === g;
+          return (
+            <button
+              key={g}
+              type="button"
+              onClick={() => save({ genre: g })}
+              aria-pressed={active}
+              style={{ ...chipBase, ...(active ? chipActive : chipIdle) }}
+            >
+              {g}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Budget */}
+      <div style={rowStyle}>
+        <span style={labelStyle}>Budget&nbsp;?</span>
+        {(["< 150€", "150–400€", "Premium"] as const).map((b) => {
+          const active = effective.budget === b;
+          return (
+            <button
+              key={b}
+              type="button"
+              onClick={() => save({ budget: b })}
+              aria-pressed={active}
+              style={{ ...chipBase, ...(active ? chipActive : chipIdle) }}
+            >
+              {b}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Style */}
+      <div style={{ ...rowStyle, marginBottom: 0 }}>
+        <span style={labelStyle}>Style&nbsp;?</span>
+        {(["Minimaliste", "Classique", "Streetwear", "Décontracté"] as const).map((s) => {
+          const active = effective.style === s;
+          return (
+            <button
+              key={s}
+              type="button"
+              onClick={() => save({ style: s })}
+              aria-pressed={active}
+              style={{ ...chipBase, ...(active ? chipActive : chipIdle) }}
+            >
+              {s}
             </button>
           );
         })}

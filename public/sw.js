@@ -528,7 +528,14 @@
    - /ma-tenue et /stylist propagent automatiquement maxPrice depuis
      wada.profile (< 150€ → 150, 150–400€ → 400, Premium → pas envoyé).
    Force re-fetch HTML. */
-const CACHE_VERSION = "wada-v50-2026-05-30";
+/* Bump v51 30/05 : sur /palette/[number], chips interactifs pour les
+   3 dimensions du profil (Pour qui / Budget / Style) au-dessus des
+   3 cards d'occasion. Plus de badge passif « Composées pour vous · …»
+   qui obligeait à ouvrir un menu — maintenant 1 clic sur la page
+   change le profil. Sync inter-onglets via storage event : les 3 cards
+   et leurs query params (genre/style/maxPrice) se mettent à jour
+   automatiquement. Force re-fetch HTML. */
+const CACHE_VERSION = "wada-v51-2026-05-30";
 const STATIC_CACHE  = `${CACHE_VERSION}-static`;
 const PAGE_CACHE    = `${CACHE_VERSION}-pages`;
 
