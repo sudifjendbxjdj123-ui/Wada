@@ -392,7 +392,37 @@ export function normalizeAwinProduct(raw: RawAwinProduct): ProduitAwin | null {
      (mais 1.17 ± 3 % toléré pour un usage produit pas comptable). */
   const isGBP = (raw.currency || "").toUpperCase() === "GBP";
   const price = isGBP ? Math.round(rawPrice * 1.17 * 100) / 100 : rawPrice;
-  const hex = colorNameToHex(raw.colour);
+  /* Brief TBF 2026-05-30 — extraction couleur depuis product_name :
+     TBF a `colour="-"` ou vide pour tous les produits. Sans hex valide,
+     paletteRef tombe sur 094 (gris défaut) pour TOUT TBF → invisible
+     dans le matching palette (ex. Tweed & Encre n°162). Fix : si colour
+     manquant/vide/"-", on cherche un mot de couleur dans product_name +
+     description (« Black sneakers », « navy chino », « burgundy knit »).
+     Pour MUJI, raw.colour est toujours rempli → fallback ne s'active pas. */
+  let resolvedColour: string | undefined = raw.colour && raw.colour.trim() && raw.colour.trim() !== "-"
+    ? raw.colour
+    : undefined;
+  if (!resolvedColour) {
+    const haystack = `${raw.product_name || ""} ${raw.description || ""}`.toLowerCase();
+    /* Mots de couleur courants (EN+FR), ordre du plus spécifique au moins.
+       \b pour éviter qu'un « blackberry » devienne « black ». */
+    const COLOR_KEYWORDS = [
+      "burgundy", "bordeaux", "navy", "marine", "charcoal", "anthracite",
+      "camel", "taupe", "mustard", "moutarde", "olive", "kaki", "khaki",
+      "ivory", "ivoire", "ecru", "écru", "cream", "crème", "sand", "sable",
+      "beige", "tan", "brown", "marron", "rust", "terracotta", "brique",
+      "black", "noir", "white", "blanc", "grey", "gray", "gris",
+      "blue", "bleu", "red", "rouge", "green", "vert", "pink", "rose",
+      "yellow", "jaune", "purple", "violet",
+    ];
+    for (const k of COLOR_KEYWORDS) {
+      if (new RegExp(`\\b${k}\\b`, "i").test(haystack)) {
+        resolvedColour = k;
+        break;
+      }
+    }
+  }
+  const hex = colorNameToHex(resolvedColour);
   /* Brief audit live 2026-05-28 — bug genre :
      Avant on regardait `custom_1`, `brand_name`, `product_name` — mais le
      flux Muji a ces 3 champs souvent vides ou neutres, donc la quasi-totalité
@@ -480,7 +510,10 @@ export function normalizeAwinProduct(raw: RawAwinProduct): ProduitAwin | null {
     description: cleanDescription,
     categorie: category,
     genre: gender,
-    couleurNom: raw.colour,
+    /* Brief 2026-05-30 : on stocke la couleur résolue (depuis colour ou
+       depuis product_name pour TBF) au lieu de raw.colour. Empêche
+       l'affichage UI de « - » comme nom de couleur sur les cards. */
+    couleurNom: resolvedColour || raw.colour,
     hex,
     prix: price,
     /* Brief TBF 2026-05-29 : si le flux était en GBP, on a converti le
