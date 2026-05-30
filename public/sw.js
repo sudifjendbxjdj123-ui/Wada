@@ -557,7 +557,14 @@
    3rd party). Aucun fix code possible côté nous — c'est Awin → TBF qui
    fallback à la home quand la session manque. Le label correct
    évite au moins la confusion produit. Force re-fetch HTML. */
-const CACHE_VERSION = "wada-v53-2026-05-30";
+/* Bump v54 30/05 : champ texte libre ajouté au bloc « Composées pour
+   vous » de /palette/[number]. Le client peut maintenant écrire ce
+   qu'il veut (« je veux un style sobre », « j'ai un mariage juin »,
+   « il fait froid mais envie de couleur ») → redirige vers /stylist
+   avec ?q= pré-rempli. /stylist lit le param au mount et envoie
+   directement le message au LLM (skip écran d'accueil chips). Force
+   re-fetch HTML pour pousser la nouvelle UI. */
+const CACHE_VERSION = "wada-v54-2026-05-30";
 const STATIC_CACHE  = `${CACHE_VERSION}-static`;
 const PAGE_CACHE    = `${CACHE_VERSION}-pages`;
 

@@ -16,6 +16,7 @@
  * et /ma-tenue). Cette page est maintenant la fiche éditoriale pure.
  */
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState, useEffect, useMemo, use } from "react";
 import { dictionary, cultureLabels, type DictionaryEntry } from "@/lib/data";
 import { wadaRefCode as refCode } from "@/lib/utils";
@@ -403,7 +404,7 @@ export default function PalettePage({ params }: { params: Promise<{ number: stri
             ajuste en 1 clic, et les 3 cards d'occasion + leurs query
             params se mettent à jour automatiquement (via useProfile +
             sync inter-onglets storage event). */}
-        <ProfileQuickChips />
+        <ProfileQuickChips paletteNumber={entry.number} />
 
         <div className="wada-palette-variants" style={{
           display: "grid",
@@ -618,8 +619,20 @@ function PersoRow({ label, options, value, onChange }: {
  * storage event → les 3 cards en dessous lisent useProfile et leurs
  * query params (genre / style / maxPrice) se mettent à jour.
  */
-function ProfileQuickChips() {
+function ProfileQuickChips({ paletteNumber }: { paletteNumber: string }) {
   const { effective, save, hydrated } = useProfile();
+  const router = useRouter();
+  /* Brief 2026-05-30 : « propose un endroit texte où le client peut
+     écrire ce qu'il veut ». Champ libre qui redirige vers /stylist avec
+     ?q= pré-rempli. Le styliste IA lit le param au mount et démarre
+     directement la conversation (pas d'écran d'accueil intermédiaire). */
+  const [freeText, setFreeText] = useState("");
+
+  const submitFreeText = () => {
+    const text = freeText.trim();
+    if (!text) return;
+    router.push(`/stylist?palette=${encodeURIComponent(paletteNumber)}&q=${encodeURIComponent(text)}`);
+  };
 
   if (!hydrated) {
     // Skeleton pour éviter le saut de hauteur après hydratation
@@ -756,7 +769,7 @@ function ProfileQuickChips() {
           styliste). « Tendance » = mode actuelle / streetwear de saison.
           « Sobre » = quiet luxury. « Audacieux » = pièces signature
           marquées. « Confortable » = matières souples, coupes amples. */}
-      <div style={{ ...rowStyle, marginBottom: 0 }}>
+      <div style={rowStyle}>
         <span style={labelStyle}>Tendance&nbsp;?</span>
         {(["Sobre", "Audacieux", "Confortable", "Tendance"] as const).map((t) => {
           const active = (effective.tendance || "Sobre") === t;
@@ -772,6 +785,86 @@ function ProfileQuickChips() {
             </button>
           );
         })}
+      </div>
+
+      {/* ─── Champ texte libre ─── Brief 2026-05-30
+          Pour les demandes plus précises qui ne rentrent pas dans les
+          chips (ex. « je veux un style sobre pour un mariage en juin »,
+          « j'ai un pull noir, compose autour », « il fait froid mais
+          envie de couleur »). Au submit → /stylist?palette={n}&q={text}
+          → le styliste IA voit la query au mount et compose direct. */}
+      <div style={{
+        marginTop: 18,
+        paddingTop: 16,
+        borderTop: `1px dashed ${palette.line}`,
+      }}>
+        <p style={{
+          ...labelStyle,
+          textAlign: "center",
+          marginBottom: 10,
+          marginRight: 0,
+        }}>
+          Ou décrivez ce que vous voulez
+        </p>
+        <form
+          onSubmit={(e) => { e.preventDefault(); submitFreeText(); }}
+          style={{
+            display: "flex", gap: 8,
+            maxWidth: 520, margin: "0 auto",
+            flexWrap: "wrap",
+          }}
+        >
+          <input
+            type="text"
+            value={freeText}
+            onChange={(e) => setFreeText(e.target.value)}
+            placeholder="Ex. je veux un style sobre pour un mariage…"
+            aria-label="Demande libre au styliste"
+            style={{
+              flex: "1 1 240px",
+              minWidth: 220,
+              padding: "12px 16px",
+              borderRadius: 999,
+              border: `1px solid ${palette.line}`,
+              background: palette.beige,
+              color: palette.ink,
+              fontFamily: fonts.sans,
+              fontSize: 14,
+              outline: "none",
+            }}
+            onFocus={(ev) => { ev.currentTarget.style.borderColor = palette.bordeaux; }}
+            onBlur={(ev) => { ev.currentTarget.style.borderColor = palette.line; }}
+          />
+          <button
+            type="submit"
+            disabled={!freeText.trim()}
+            style={{
+              padding: "12px 20px",
+              borderRadius: 999,
+              border: "none",
+              background: freeText.trim() ? palette.bordeaux : "rgba(107,58,50,0.35)",
+              color: palette.cream,
+              fontFamily: fonts.sans,
+              fontSize: 13.5,
+              fontWeight: 600,
+              letterSpacing: "0.02em",
+              cursor: freeText.trim() ? "pointer" : "not-allowed",
+              transition: `background 0.18s ${ease}`,
+              whiteSpace: "nowrap",
+            }}
+          >
+            Composer&nbsp;→
+          </button>
+        </form>
+        <p style={{
+          textAlign: "center",
+          fontSize: 11.5, color: palette.inkSoft,
+          margin: "10px 0 0",
+          fontStyle: "italic",
+          fontFamily: fonts.sans,
+        }}>
+          Le styliste IA compose une tenue sur-mesure autour de cette palette.
+        </p>
       </div>
     </div>
   );

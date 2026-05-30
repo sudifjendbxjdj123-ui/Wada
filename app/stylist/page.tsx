@@ -523,8 +523,29 @@ export default function StylistPage() {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [bubbles, chips]);
 
-  /* Démarre la conversation au mount */
-  useEffect(() => { start(); /* eslint-disable-next-line */ }, []);
+  /* Brief 2026-05-30 : si l'URL contient ?q=..., on saute l'écran
+     d'accueil et on envoie directement le message au LLM. Permet à
+     /palette/[number] d'ouvrir /stylist avec une demande pré-remplie.
+     On lit window.location.search côté client (pas useSearchParams qui
+     impose un Suspense parent — incompatible avec le prerender Next 16
+     pour cette page). */
+  const initialQueryRef = useRef<string | null>(null);
+  useEffect(() => {
+    let q: string | null = null;
+    try {
+      const params = new URLSearchParams(window.location.search);
+      q = params.get("q");
+    } catch {}
+    if (q && q.trim() && !initialQueryRef.current) {
+      initialQueryRef.current = q.trim();
+      addMe(initialQueryRef.current);
+      pushHistory("user", initialQueryRef.current);
+      callLLM(initialQueryRef.current);
+    } else {
+      start();
+    }
+    /* eslint-disable-next-line */
+  }, []);
 
   /* Brief 2026-05-26 « ameliore la logique IA » — hydrate l'avoid list
      depuis localStorage au mount. Les couleurs/pièces refusées par l'user
