@@ -88,19 +88,23 @@ export async function GET(req: Request) {
     );
   }
 
-  // Fetch côté serveur. Le User-Agent + Referer aident à contourner les
-  // filtres de hotlink agressifs côté marchand.
+  /* Fetch côté serveur. Brief 2026-05-30 : User-Agent "WADA-image-proxy/1.0"
+     se faisait rate-limit (HTTP 429) par Farfetch et d'autres CDN protégés.
+     On passe à un UA navigateur standard + Referer = host de l'image (Farfetch
+     accepte les requêtes qui semblent venir de leur propre site, refuse les
+     bots identifiables). cache: "force-cache" + maxage permet à fetch() de
+     réutiliser les images en mémoire serveur entre requêtes, ce qui réduit
+     les hits côté CDN upstream. */
   let upstream: Response;
   try {
     upstream = await fetch(remote.toString(), {
       headers: {
-        "User-Agent": "WADA-image-proxy/1.0",
-        Referer: "https://www.wada.style/",
-        Accept: "image/*,*/*;q=0.8",
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15",
+        Referer: `${remote.protocol}//${remote.hostname}/`,
+        Accept: "image/avif,image/webp,image/png,image/jpeg,image/*,*/*;q=0.8",
+        "Accept-Language": "fr-FR,fr;q=0.9,en;q=0.8",
       },
-      cache: "no-store",
-      // Coupe au cas où le serveur upstream traîne — 8s suffisent pour une
-      // image 200×200 (~20-50KB). Au-delà on émet un 504 propre.
+      cache: "force-cache",
       signal: AbortSignal.timeout(8000),
     });
   } catch (err) {
