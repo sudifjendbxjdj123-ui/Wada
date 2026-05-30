@@ -51,6 +51,14 @@ const EXCLUDE_SHOES_SUBTYPES = /\b(pantoufle|mule|chausson|slipper|sandales?\s+d
  *  (on n'a pas de slot dédié robe pour l'instant). */
 const EXCLUDE_HAUT_SUBTYPES = /\b(robe[\s-]*chemise|robe[\s-]*top|robe\s+en|robe\s+à|combinaison|jumpsuit|salopette)/i;
 
+/** Brief 2026-05-30 — le slot « veste » ne doit pas renvoyer une simple
+ *  chemise/overshirt/shirt-jacket. Cas client : tenue avec haut chemise
+ *  MUJI + veste shirt-jacket OBJECTS IV LIFE → double chemise visuelle
+ *  illogique. Une vraie veste est un blazer / manteau / parka / leather
+ *  jacket / cardigan. Les overshirts vont en slot=haut (alternative au
+ *  pull/sweat), pas en slot=veste outerwear. */
+const EXCLUDE_VESTE_SUBTYPES = /\b(shirt[\s-]?jacket|overshirt|chemise[\s-]?veste|chemise\s+\w+\s+manche)/i;
+
 /** Sacs volumineux/sport — pour l'accent on dé-priorise sans exclure. */
 const DEPRIORITIZE_ACCENT = /\b(sac\s+(boston|de\s+sport|de\s+voyage|polochon)|sac\s+banane|sac\s+à\s+dos)/i;
 
@@ -174,6 +182,8 @@ export async function GET(req: Request) {
     // exclusions par slot
     if (slot === "chaussures" && EXCLUDE_SHOES_SUBTYPES.test(hay)) return false;
     if (slot === "haut" && EXCLUDE_HAUT_SUBTYPES.test(hay)) return false;
+    /* Brief 2026-05-30 : veste ≠ chemise (pas de double layering). */
+    if (slot === "veste" && EXCLUDE_VESTE_SUBTYPES.test(hay)) return false;
     /* Brief 2026-05-26 « IA pas optimale » : le slot accent ne doit JAMAIS
        renvoyer d'objet utilitaire (parapluie, gants ski, masque, porte-clé…).
        Le screenshot client montrait « Parapluie compact pliable MUJI » et
@@ -201,29 +211,58 @@ export async function GET(req: Request) {
     });
   }
 
-  /* ─── Fix 2026-05-30 « toujours pas de photo TBF » ──────────────────
-     L'ancien sort priorisait `paletteRef === palette` STRICT. Or TBF a
-     paletteRef inféré par couleur (Black sneakers → palette 289 noir),
-     donc AUCUN TBF n'a paletteRef=162 (Tweed & Encre Pierre/Sable/
-     Vermillon). Conséquence : MUJI dominait le top sur toute palette
-     spécifique, TBF invisible.
+  /* ─── Fix 2026-05-30 v2 « couleurs pas dans la palette » ────────────
+     Constat client : sur une palette anthracite/beige doré/vert profond,
+     la tenue affichait gris clair + écru + anthracite — 2 produits sur
+     la même couleur, vert profond absent. Cause : sort min(ΔE) toutes
+     couleurs confondues → tous les slots convergent vers la couleur la
+     plus matchable du catalogue.
 
-     Nouveau sort : on calcule la min(ΔE) entre le hex du PRODUIT et
-     CHAQUE couleur de la palette demandée. Tri par cette distance.
-     Un TBF taupe matche aussi bien Tweed & Encre qu'un MUJI taupe,
-     même si paletteRef ≠ 162. */
-  const targetColorsForSort = palette
+     Nouveau : on assigne UNE couleur cible PAR SLOT. Pour une palette
+     (couleur[0], couleur[1], couleur[2]) :
+       - haut       → couleur[0]   (dominante de palette)
+       - bas        → couleur[1]   (secondaire)
+       - veste      → couleur[2]   (signature, généralement la plus
+                                    saturée/sombre)
+       - chaussures → couleur la plus FONCÉE (min luminance L)
+       - accent     → couleur signature ou la plus rare
+
+     Résultat : la tenue distribue les 3 couleurs de la palette sur les
+     5 slots au lieu de toutes graviter sur 1 couleur. */
+  const paletteColors = palette
     ? (dictionary.find((d) => d.number === palette)?.colors.map((c) => c.hex) || [])
     : [];
 
-  function minPaletteDistance(productHex: string): number {
-    if (targetColorsForSort.length === 0) return Infinity;
-    let min = Infinity;
-    for (const c of targetColorsForSort) {
-      const d = deltaEHex(productHex, c);
-      if (d < min) min = d;
+  function darkestColor(): string | null {
+    if (paletteColors.length === 0) return null;
+    let darkest = paletteColors[0];
+    let minL = hexToLab(paletteColors[0])[0];
+    for (const c of paletteColors.slice(1)) {
+      const L = hexToLab(c)[0];
+      if (L < minL) { minL = L; darkest = c; }
     }
-    return min;
+    return darkest;
+  }
+
+  /** Couleur cible pour ce slot — null si pas de palette. */
+  const slotTargetColor: string | null = (() => {
+    if (paletteColors.length === 0) return null;
+    const c0 = paletteColors[0];
+    const c1 = paletteColors[1] || c0;
+    const c2 = paletteColors[2] || c1;
+    switch (slot) {
+      case "haut":       return c0;
+      case "bas":        return c1;
+      case "veste":      return c2;
+      case "chaussures": return darkestColor() || c2;
+      case "accent":     return c2;
+      default:           return c0;
+    }
+  })();
+
+  function distanceToSlotTarget(productHex: string): number {
+    if (!slotTargetColor) return Infinity;
+    return deltaEHex(productHex, slotTargetColor);
   }
 
   // ─── ÉTAPE 2 : scoring + tri ──────────────────────────────────────
@@ -243,9 +282,13 @@ export async function GET(req: Request) {
       const bDist = deltaEHex(b.hex, colorHex);
       return aDist - bDist;
     }
-    if (palette) {
-      const aDist = minPaletteDistance(a.hex);
-      const bDist = minPaletteDistance(b.hex);
+    if (palette && slotTargetColor) {
+      /* Sort par distance vers la couleur ASSIGNÉE à ce slot (pas
+         toutes les couleurs de la palette). Force la diversité
+         chromatique : haut prend la dominante, bas la secondaire,
+         veste la signature, etc. */
+      const aDist = distanceToSlotTarget(a.hex);
+      const bDist = distanceToSlotTarget(b.hex);
       return aDist - bDist;
     }
     const aDist = a.paletteDistance ?? Infinity;
