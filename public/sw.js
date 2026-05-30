@@ -571,7 +571,19 @@
    une fleur, un tissu… » /composer : « Scannez un vêtement » + bulle
    « Photographiez une pièce que vous aimez… ». Drop zone allégée
    (titre redondant retiré). Force re-fetch HTML. */
-const CACHE_VERSION = "wada-v55-2026-05-30";
+/* Bump v56 31/05 : 4 points critiques audit mobile iPhone.
+   §1 Reprends — déjà en bas-droit depuis v51, ce bump force le client
+       cache stale à recharger.
+   §2+§3 PANIER — chaque item fetch maintenant /api/products pour
+       afficher image carrée 80×80 + vraie marque + vrai prix (au lieu
+       du swatch couleur + hint "~80€" générique). Bouton « Acheter
+       sur {marchand} » dynamique. Skeleton shimmer pendant le fetch.
+   §4 Tab bar / footer — fond tabbar passé de rgba 0.96 → opaque solide
+       (#F4EFE7 clair, #14120E sombre). Body padding-bottom 64px+safe-
+       area. Footer margin-bottom safe-area. Plus de transparence
+       qui faisait remonter le footer noir.
+   Force re-fetch HTML pour pousser tout aux iPhone. */
+const CACHE_VERSION = "wada-v56-2026-05-31";
 const STATIC_CACHE  = `${CACHE_VERSION}-static`;
 const PAGE_CACHE    = `${CACHE_VERSION}-pages`;
 

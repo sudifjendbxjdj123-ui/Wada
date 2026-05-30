@@ -1969,7 +1969,11 @@ a[data-wada-btn="ghost"]:hover {
     z-index: 60;
     justify-content: space-around;
     align-items: stretch;
-    background: rgba(244, 239, 230, 0.96);
+    /* Brief audit mobile 2026-05-30 §4 : fond SOLIDE (pas 0.96) pour
+       que le footer noir ne transparaisse jamais derrière la tab bar.
+       Le backdrop-blur reste pour le polish iOS mais le fallback
+       background est full opaque. */
+    background: #F4EFE7;
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
     border-top: 1px solid rgba(7, 7, 2, 0.10);
@@ -1977,8 +1981,18 @@ a[data-wada-btn="ghost"]:hover {
     box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.04);
   }
   [data-theme="dark"] .wada-tabbar {
-    background: rgba(20, 18, 14, 0.96);
+    background: #14120E;
     border-top-color: rgba(255, 255, 255, 0.10);
+  }
+  /* Brief audit mobile §4 : padding-bottom sur body pour que le contenu
+     ne se cache pas sous la tab bar. 64px hauteur tab bar + safe-area. */
+  body {
+    padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+  }
+  /* Le footer doit aussi se décaler de la tab bar — sinon il s'affiche
+     directement derrière. Marge bottom égale à la hauteur tab bar. */
+  footer {
+    margin-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
   }
   .wada-tabbar-link {
     flex: 1;

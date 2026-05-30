@@ -6,6 +6,21 @@ import BackButton from "@/components/BackButton";
 import ExternalLink from "@/components/ExternalLink";
 import { openExternal } from "@/lib/native";
 
+/* Brief audit mobile 2026-05-30 §2+§3 : chaque item du panier a besoin
+   d'une vraie image + d'un vrai prix + d'une vraie marque, pas d'un
+   swatch couleur générique + d'un hint "~80€". On fetch /api/products
+   par slot+color+query pour récupérer le produit MUJI/TBF correspondant. */
+type ResolvedProduct = {
+  id: string;
+  nom: string;
+  marque: string;
+  marchand?: string;
+  image: string;
+  prix: number;
+  devise: string;
+  url: string;
+};
+
 /* ──────────────────────────────────────────────────────────────────────
    /panier — Refonte 2026-05-22 (maquette brief).
    Vue simple « ce que vous avez retenu » avec 1 bouton d'achat par item.
@@ -185,102 +200,12 @@ export default function PanierPage() {
           <>
             <div>
               {offers.map(({ item, best }) => (
-                <article
+                <CartItemCard
                   key={item.id}
-                  style={{
-                    display: "flex",
-                    gap: 16,
-                    alignItems: "center",
-                    background: palette.cream,
-                    border: `1px solid ${palette.line}`,
-                    borderRadius: 16,
-                    padding: 14,
-                    marginBottom: 12,
-                    boxShadow: SOFT,
-                    flexWrap: "wrap",
-                  }}
-                >
-                  {/* Color swatch */}
-                  <div
-                    aria-hidden
-                    style={{
-                      width: 64,
-                      height: 64,
-                      borderRadius: 12,
-                      flexShrink: 0,
-                      background: item.colorHex,
-                      border: `1px solid ${palette.line}`,
-                    }}
-                  />
-                  {/* Info */}
-                  <div style={{ flex: 1, minWidth: 200 }}>
-                    <p
-                      style={{
-                        fontSize: 10,
-                        letterSpacing: "0.12em",
-                        textTransform: "uppercase",
-                        color: palette.olive,
-                        margin: 0,
-                        fontWeight: 600,
-                      }}
-                    >
-                      {PIECE_LABELS[item.piece] || item.piece}
-                    </p>
-                    <p
-                      style={{
-                        fontFamily: fonts.display,
-                        fontWeight: 700,
-                        fontSize: 17,
-                        margin: "2px 0",
-                        color: palette.ink,
-                        lineHeight: 1.2,
-                      }}
-                    >
-                      {item.item}
-                    </p>
-                    <p style={{ fontSize: 12, color: palette.inkSoft, margin: 0 }}>
-                      No. {item.fromEntry}
-                      {best ? ` · ${best.label}` : ""}
-                      {best?.priceLevel ? ` · ${PRICE_HINT[best.priceLevel] || ""}` : ""}
-                    </p>
-                  </div>
-                  {/* Buy button */}
-                  {best && (
-                    <ExternalLink
-                      href={best.url}
-                      style={{
-                        fontFamily: fonts.sans,
-                        fontSize: 13,
-                        padding: "11px 18px",
-                        borderRadius: 999,
-                        background: palette.ink,
-                        color: palette.cream,
-                        textDecoration: "none",
-                        whiteSpace: "nowrap",
-                        display: "inline-block",
-                      }}
-                    >
-                      Acheter chez {best.label.replace(/^Amazon\s*[·•:-]\s*/i, "")} →
-                    </ExternalLink>
-                  )}
-                  {/* Remove */}
-                  <button
-                    onClick={() => removeItem(item.id)}
-                    aria-label="Retirer du panier"
-                    title="Retirer"
-                    style={{
-                      background: "none",
-                      border: "none",
-                      color: palette.inkSoft,
-                      cursor: "pointer",
-                      fontSize: 18,
-                      padding: 8,
-                      lineHeight: 1,
-                    }}
-                  >
-                    ×
-                  </button>
-                </article>
+                  item={item}
+                  fallback={best}
+                  onRemove={() => removeItem(item.id)}
+                />
               ))}
             </div>
 
@@ -375,5 +300,167 @@ export default function PanierPage() {
       </div>
 
           </main>
+  );
+}
+
+/* ───────────────────────────────────────────────────────────────────
+   CartItemCard — résout le vrai produit depuis /api/products à partir
+   de la query+slot stockés dans le panier, affiche image + marque +
+   prix RÉELS au lieu du swatch couleur + hint générique "~80€".
+   Brief audit mobile 2026-05-30 §2 + §3.
+   ─────────────────────────────────────────────────────────────────── */
+function CartItemCard({ item, fallback, onRemove }: {
+  item: CartItem;
+  fallback?: ShopLink;
+  onRemove: () => void;
+}) {
+  const [resolved, setResolved] = useState<ResolvedProduct | null>(null);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    const params = new URLSearchParams({ slot: item.piece.toLowerCase(), limit: "1" });
+    if (item.colorHex) params.set("color", item.colorHex);
+    if (item.query) params.set("q", item.query);
+    fetch(`/api/products?${params}`)
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        if (cancelled) return;
+        setLoaded(true);
+        const p = data?.products?.[0];
+        if (!p) return;
+        const sourceUrl = p.imageLocal
+          ? p.imageLocal
+          : p.largeImage
+            ? `/api/img?u=${encodeURIComponent(p.largeImage)}`
+            : p.image
+              ? `/api/img?u=${encodeURIComponent(p.image)}`
+              : "";
+        setResolved({
+          id: p.id,
+          nom: p.nom,
+          marque: p.marque || p.marchand || "MUJI",
+          marchand: p.marchand,
+          image: sourceUrl,
+          prix: p.prix,
+          devise: p.devise || "EUR",
+          url: p.urlProduit,
+        });
+      })
+      .catch(() => setLoaded(true));
+    return () => { cancelled = true; };
+  }, [item.piece, item.colorHex, item.query]);
+
+  const buyUrl = resolved?.url || fallback?.url;
+  const buyLabel = resolved
+    ? `Acheter sur ${resolved.marchand || resolved.marque} →`
+    : fallback
+      ? `Acheter chez ${fallback.label.replace(/^Amazon\s*[·•:-]\s*/i, "")} →`
+      : null;
+
+  return (
+    <article
+      style={{
+        display: "flex", gap: 14, alignItems: "center",
+        background: palette.cream,
+        border: `1px solid ${palette.line}`,
+        borderRadius: 16,
+        padding: 14,
+        marginBottom: 12,
+        boxShadow: SOFT,
+        flexWrap: "wrap",
+      }}
+    >
+      {/* Image carrée 80×80 (ou swatch couleur en fallback) */}
+      <div
+        aria-hidden
+        style={{
+          width: 80, height: 80, borderRadius: 12,
+          flexShrink: 0, overflow: "hidden",
+          background: resolved?.image
+            ? "#FBF9F5"
+            : item.colorHex,
+          border: `1px solid ${palette.line}`,
+          position: "relative",
+        }}
+      >
+        {resolved?.image ? (
+          <img
+            src={resolved.image}
+            alt={resolved.nom}
+            loading="lazy"
+            style={{ width: "100%", height: "100%", objectFit: "contain", padding: 4 }}
+          />
+        ) : !loaded ? (
+          /* Skeleton pendant le fetch */
+          <span style={{
+            position: "absolute", inset: 0,
+            background: "linear-gradient(110deg, rgba(0,0,0,0) 30%, rgba(255,255,255,.5) 50%, rgba(0,0,0,0) 70%)",
+            animation: "wada-skel-shimmer 1.4s linear infinite",
+          }} />
+        ) : null}
+      </div>
+
+      {/* Info — vraie marque, vrai prix */}
+      <div style={{ flex: 1, minWidth: 180 }}>
+        <p style={{
+          fontSize: 10, letterSpacing: "0.12em",
+          textTransform: "uppercase", color: palette.olive,
+          margin: 0, fontWeight: 600,
+        }}>
+          {PIECE_LABELS[item.piece] || item.piece}
+        </p>
+        <p style={{
+          fontFamily: fonts.display, fontWeight: 600,
+          fontSize: 16, margin: "3px 0", color: palette.ink,
+          lineHeight: 1.25,
+        }}>
+          {resolved?.nom || item.item}
+        </p>
+        <p style={{ fontSize: 12, color: palette.inkSoft, margin: 0 }}>
+          {resolved ? (
+            <>
+              <strong style={{ color: palette.ink, fontWeight: 600 }}>{resolved.marque}</strong>
+              {" · "}
+              <span style={{ color: palette.bordeaux, fontWeight: 600 }}>
+                {resolved.prix.toFixed(2)} {resolved.devise === "EUR" ? "€" : resolved.devise}
+              </span>
+            </>
+          ) : !loaded ? "Recherche du produit…" : `No. ${item.fromEntry}`}
+        </p>
+      </div>
+
+      {/* Buy button + Remove — zones tactiles 44×44 min (audit §12) */}
+      {buyUrl && buyLabel && (
+        <ExternalLink
+          href={buyUrl}
+          style={{
+            fontFamily: fonts.sans, fontSize: 13, fontWeight: 600,
+            padding: "12px 18px",
+            minHeight: 44,
+            borderRadius: 999,
+            background: palette.bordeaux, color: palette.cream,
+            textDecoration: "none", whiteSpace: "nowrap",
+            display: "inline-flex", alignItems: "center",
+          }}
+        >
+          {buyLabel}
+        </ExternalLink>
+      )}
+      <button
+        onClick={onRemove}
+        aria-label="Retirer du panier"
+        title="Retirer"
+        style={{
+          background: "none", border: "none",
+          color: palette.inkSoft, cursor: "pointer",
+          fontSize: 20, lineHeight: 1,
+          width: 44, height: 44,
+          display: "inline-flex", alignItems: "center", justifyContent: "center",
+        }}
+      >
+        ×
+      </button>
+    </article>
   );
 }
