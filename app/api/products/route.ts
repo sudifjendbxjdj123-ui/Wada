@@ -137,7 +137,18 @@ export async function GET(req: Request) {
   }
 
   // ─── ÉTAPE 1 : filtres durs (stock, slot, genre, marchand, type) ──
-  let filtered = catalog.filter((p) => p.enStock);
+  /* Brief 2026-05-30 — drop des produits SANS image utilisable.
+     TBF renvoie parfois `image="https://images2.productserve.com/noimage.gif"`
+     comme placeholder pour les produits dont le marchand n'a pas fourni
+     de visuel. Ces produits affichent une zone blanche côté UI →
+     mauvaise expérience. On les filtre en amont du tri/sélection. */
+  let filtered = catalog.filter((p) => {
+    if (!p.enStock) return false;
+    const imageUrl = p.imageLocal || p.largeImage || p.image || "";
+    if (!imageUrl || imageUrl === "-") return false;
+    if (/noimage\.(gif|png|jpe?g|webp)/i.test(imageUrl)) return false;
+    return true;
+  });
 
   // Brief §1 : strict slot match
   if (slot) filtered = filtered.filter((p) => p.categorie === slot);
