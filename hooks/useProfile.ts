@@ -1,12 +1,17 @@
 "use client";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 /**
- * useProfile — profil utilisateur WADA (genre + budget + style).
+ * useProfile — profil utilisateur WADA.
  *
  * Brief 2026-05-29 « Onboarding + profil + switcher » :
  * Connaître le client dès le 1er accès pour que TOUTES les propositions
  * de tenues soient personnalisées (genre, gamme de prix, registre).
+ *
+ * Brief 2026-05-31 « Vision styliste personnel — Pt A » :
+ * Profil enrichi optionnel — l'utilisateur peut compléter sur /compte
+ * pour des recommandations plus fines. Aucun champ enrichi n'est requis ;
+ * tout reste rétrocompatible avec les profils créés avant cet ajout.
  *
  * Stockage V1 : localStorage uniquement (clé `wada.profile`).
  * V2 (utilisateurs connectés) : sync DB côté serveur, fusion priorité serveur.
@@ -25,14 +30,34 @@ export type Style = "Minimaliste" | "Classique" | "Streetwear" | "Décontracté"
 export type Saison = "Toute saison" | "Hiver" | "Mi-saison" | "Été";
 export type Tendance = "Sobre" | "Audacieux" | "Confortable" | "Tendance";
 
+/* Brief 2026-05-31 — Vision Pt A : champs enrichis. Tous optionnels. */
+export type AgeRange = "18-25" | "25-35" | "35-50" | "50+";
+export type Morphologie = "Rectangle" | "Triangle" | "Sablier" | "Rond" | "Athlétique";
+export type Profession = "Créatif" | "Corporate" | "Freelance" | "Étudiant" | "Autre";
+/* Niveau de formalité — slider 0 (très casual) → 4 (très habillé) */
+export type FormaliteLevel = 0 | 1 | 2 | 3 | 4;
+
 export interface Profile {
+  /* Champs obligatoires (onboarding 3 questions) */
   genre: Genre;
   budget: Budget;
   style: Style;
+
   /* Optionnels — défaut « Toute saison / Sobre ». Le client peut
      les ajuster en 1 clic sur la page palette. */
   saison?: Saison;
   tendance?: Tendance;
+
+  /* Optionnels enrichis (page /compte) — plus c'est rempli, mieux
+     WADA propose. Affiché avec barre de progression au client. */
+  age?: AgeRange;
+  morphologie?: Morphologie;
+  ville?: string;
+  profession?: Profession;
+  couleursAimees?: string[];      // hex codes
+  couleursInterdites?: string[];  // hex codes
+  marquesFavorites?: string[];    // noms libres
+  formalite?: FormaliteLevel;
 }
 
 export const DEFAULT_PROFILE: Profile = {
@@ -52,20 +77,56 @@ const BUDGETS: Budget[] = ["< 150€", "150–400€", "Premium"];
 const STYLES: Style[] = ["Minimaliste", "Classique", "Streetwear", "Décontracté"];
 const SAISONS: Saison[] = ["Toute saison", "Hiver", "Mi-saison", "Été"];
 const TENDANCES: Tendance[] = ["Sobre", "Audacieux", "Confortable", "Tendance"];
+const AGES: AgeRange[] = ["18-25", "25-35", "35-50", "50+"];
+const MORPHOS: Morphologie[] = ["Rectangle", "Triangle", "Sablier", "Rond", "Athlétique"];
+const PROFESSIONS: Profession[] = ["Créatif", "Corporate", "Freelance", "Étudiant", "Autre"];
 
 function isValidProfile(raw: unknown): raw is Profile {
   if (!raw || typeof raw !== "object") return false;
   const p = raw as Record<string, unknown>;
-  /* Validation stricte des 3 champs OBLIGATOIRES. Les 2 nouveaux
-     (saison, tendance) sont optionnels : si présents on les valide,
-     sinon undefined OK. Rétrocompat avec les profils créés avant
-     l'ajout des champs. */
+  /* Validation stricte des 3 champs OBLIGATOIRES. Tous les nouveaux
+     sont optionnels : si présents on les valide, sinon undefined OK.
+     Rétrocompat avec les profils créés avant l'ajout des champs. */
   if (!GENRES.includes(p.genre as Genre)) return false;
   if (!BUDGETS.includes(p.budget as Budget)) return false;
   if (!STYLES.includes(p.style as Style)) return false;
   if (p.saison !== undefined && !SAISONS.includes(p.saison as Saison)) return false;
   if (p.tendance !== undefined && !TENDANCES.includes(p.tendance as Tendance)) return false;
+  if (p.age !== undefined && !AGES.includes(p.age as AgeRange)) return false;
+  if (p.morphologie !== undefined && !MORPHOS.includes(p.morphologie as Morphologie)) return false;
+  if (p.profession !== undefined && !PROFESSIONS.includes(p.profession as Profession)) return false;
+  if (p.ville !== undefined && typeof p.ville !== "string") return false;
+  if (p.couleursAimees !== undefined && !Array.isArray(p.couleursAimees)) return false;
+  if (p.couleursInterdites !== undefined && !Array.isArray(p.couleursInterdites)) return false;
+  if (p.marquesFavorites !== undefined && !Array.isArray(p.marquesFavorites)) return false;
+  if (p.formalite !== undefined) {
+    const f = p.formalite;
+    if (typeof f !== "number" || f < 0 || f > 4) return false;
+  }
   return true;
+}
+
+/* Brief 2026-05-31 — Vision Pt A : barre de progression.
+   8 champs enrichis comptés (saison + tendance + 6 nouveaux).
+   Renvoie un % entier 0..100. */
+export function profileCompleteness(p: Profile | null): number {
+  if (!p) return 0;
+  /* Les 3 obligatoires sont toujours présents si profile existe → 30% base. */
+  let filled = 3;
+  const enriched: (keyof Profile)[] = [
+    "saison", "tendance",
+    "age", "morphologie", "ville", "profession",
+    "couleursAimees", "couleursInterdites", "marquesFavorites", "formalite",
+  ];
+  const TOTAL = 3 + enriched.length; // 13 champs
+  for (const k of enriched) {
+    const v = p[k];
+    if (v === undefined || v === null) continue;
+    if (Array.isArray(v) && v.length === 0) continue;
+    if (typeof v === "string" && v.trim().length === 0) continue;
+    filled += 1;
+  }
+  return Math.round((filled / TOTAL) * 100);
 }
 
 export function useProfile() {
@@ -142,5 +203,8 @@ export function useProfile() {
      séparément via `profile === null && hydrated`. */
   const effective: Profile = profile ?? DEFAULT_PROFILE;
 
-  return { profile, effective, hydrated, save, skip, reset };
+  /* Brief 2026-05-31 — Vision Pt A : barre de progression sur /compte. */
+  const completeness = useMemo(() => profileCompleteness(profile), [profile]);
+
+  return { profile, effective, hydrated, save, skip, reset, completeness };
 }

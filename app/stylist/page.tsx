@@ -997,6 +997,14 @@ export default function StylistPage() {
     budget?: number;
     morpho?: string;
     size?: string;
+    /* Vision Pt A (2026-05-31) — champs enrichis depuis /compte. */
+    age?: string;
+    profession?: string;
+    ville?: string;
+    formalite?: number;
+    couleursAimees?: string[];
+    couleursInterdites?: string[];
+    marquesFavorites?: string[];
   } {
     try {
       /* Brief « Onboarding + profil + switcher » Phase 3 (2026-05-29) :
@@ -1030,12 +1038,32 @@ export default function StylistPage() {
         : profile?.budget === "Premium" ? 2000
         : undefined;
 
+      /* Vision Pt A (2026-05-31) — Mapping morphologie label → clé legacy
+         pour conserver la compatibilité avec buildProfileBlock. */
+      const MORPHO_MAP: Record<string, string> = {
+        Rectangle: "droite",
+        Triangle: "poire",
+        Sablier: "sablier",
+        Rond: "ronde",
+        Athlétique: "athletique",
+      };
+      const profileMorpho = profile?.morphologie ? MORPHO_MAP[profile.morphologie as string] : undefined;
+
       return {
         gender: profileGender || genderLegacy || (state.genre?.toLowerCase() as "femme" | "homme" | "unisexe" | null),
         style: profileStyle || state.style || prefs.style,
         budget: profileBudgetNumeric ?? prefs.budget,
-        morpho: prefs.morpho,
+        morpho: profileMorpho || prefs.morpho,
         size: prefs.size,
+        /* Vision Pt A (2026-05-31) — champs enrichis. Tous optionnels :
+           si absent, le LLM ignore. Si présent, il les respecte. */
+        age: profile?.age,
+        profession: profile?.profession,
+        ville: profile?.ville,
+        formalite: typeof profile?.formalite === "number" ? profile.formalite : undefined,
+        couleursAimees: Array.isArray(profile?.couleursAimees) ? profile.couleursAimees : undefined,
+        couleursInterdites: Array.isArray(profile?.couleursInterdites) ? profile.couleursInterdites : undefined,
+        marquesFavorites: Array.isArray(profile?.marquesFavorites) ? profile.marquesFavorites : undefined,
       };
     } catch {
       return {};

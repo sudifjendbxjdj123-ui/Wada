@@ -250,3 +250,24 @@ export function styleToRegistre(style: string | undefined | null): BrandRegistre
   const key = style.toLowerCase().trim();
   return STYLE_TO_REGISTRE[key] || null;
 }
+
+/**
+ * Brief 2026-05-31 — Vision Pt A : liste des marques connues pour
+ * l'autocomplete « Marques favorites » sur /compte. Renvoie les
+ * noms d'affichage Title Case (et non les clés normalisées).
+ */
+export function listKnownBrands(): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const key of Object.keys(BRAND_REGISTRE)) {
+    const display = key
+      .split(" ")
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(" ");
+    if (!seen.has(display)) {
+      seen.add(display);
+      out.push(display);
+    }
+  }
+  return out.sort();
+}

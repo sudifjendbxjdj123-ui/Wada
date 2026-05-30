@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState, type FormEvent } from "react";
 import BackButton from "@/components/BackButton";
+import ProfileEnriched from "@/components/ProfileEnriched";
 
 /* ──────────────────────────────────────────────────────────────────────
    /compte — Refonte 2026-05-22 (maquette brief).
@@ -110,7 +111,7 @@ function ComptePageInner() {
     return (
       <main style={mainStyle}>
                 <BackButton />
-        <div style={{ maxWidth: 440, margin: "0 auto", padding: "54px 24px 80px" }}>
+        <div style={{ maxWidth: 560, margin: "0 auto", padding: "54px 24px 80px" }}>
           <div style={{ textAlign: "center", marginBottom: 26 }}>
             <p style={kickerStyle}>Votre compte</p>
             <h1 style={titleStyle}>Bonjour {greeting}.</h1>
@@ -150,6 +151,11 @@ function ComptePageInner() {
               Déconnexion
             </button>
           </div>
+
+          {/* Vision Pt A (2026-05-31) : profil stylistique enrichi optionnel.
+              Affiché uniquement si l'utilisateur est connecté pour ne pas
+              brouiller le funnel onboarding. Chaque champ commit instantané. */}
+          <ProfileEnriched />
         </div>
               </main>
     );

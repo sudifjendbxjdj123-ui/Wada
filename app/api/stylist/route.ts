@@ -22,6 +22,14 @@ type UserPrefs = {
   morpho?: string;      // "droite", "sablier", "poire", "athletique", "ronde"
   size?: string;        // "XS"..."XXL"
   intensity?: number;   // 0 = neutre, 1 = affirmé
+  /* Vision Pt A (2026-05-31) — champs enrichis optionnels depuis /compte. */
+  age?: string;                       // "18-25", "25-35", "35-50", "50+"
+  profession?: string;                // "Créatif", "Corporate", "Freelance"…
+  ville?: string;                     // ex. "Genève" (pour météo H2)
+  formalite?: number;                 // 0..4 (slider /compte)
+  couleursAimees?: string[];          // hex codes
+  couleursInterdites?: string[];      // hex codes
+  marquesFavorites?: string[];        // noms libres
 };
 
 /**
@@ -727,6 +735,30 @@ function buildProfileBlock(p: UserPrefs): string {
         ? "neutre / discret → palette muted, pas de pièce statement, élégance sans contraste fort"
         : "équilibré";
     parts.push(`Intensité voulue : ${label}`);
+  }
+  /* Vision Pt A (2026-05-31) — champs enrichis. Si absent, le LLM
+     reste libre ; si présent, c'est une contrainte. */
+  if (p.age) parts.push(`Tranche d'âge : ${p.age}`);
+  if (p.profession) parts.push(`Profession : ${p.profession} — adapte le registre au quotidien pro`);
+  if (p.ville) parts.push(`Ville : ${p.ville}`);
+  if (typeof p.formalite === "number") {
+    const FORMALITE_LABELS = [
+      "très casual (jogging propre, sneakers, no logo bruyant)",
+      "casual (jean propre, t-shirt qualité, baskets, mocassins)",
+      "smart-casual (chemise sans cravate, chinos, derbies souples)",
+      "habillé (blazer/veste structuré, pantalon en laine, cuir noble)",
+      "très habillé (costume complet, cravate, mocassins/derbies cirés)",
+    ];
+    parts.push(`Niveau de formalité habituel : ${FORMALITE_LABELS[p.formalite] || "non précisé"}`);
+  }
+  if (p.couleursAimees && p.couleursAimees.length > 0) {
+    parts.push(`Couleurs aimées (à privilégier si possible) : ${p.couleursAimees.join(", ")}`);
+  }
+  if (p.couleursInterdites && p.couleursInterdites.length > 0) {
+    parts.push(`Couleurs à ÉVITER ABSOLUMENT : ${p.couleursInterdites.join(", ")}`);
+  }
+  if (p.marquesFavorites && p.marquesFavorites.length > 0) {
+    parts.push(`Marques favorites (à privilégier) : ${p.marquesFavorites.slice(0, 8).join(", ")}`);
   }
   if (parts.length === 0) return "";
   return `PROFIL UTILISATEUR (à respecter strictement) :\n${parts.map((part) => `- ${part}`).join("\n")}`;
