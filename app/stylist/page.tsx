@@ -76,6 +76,15 @@ function useMujiForSlot(
       color: colorHex,
       limit: "1",
     });
+    /* Brief 2026-05-30 §7 : plafond budget depuis profil. */
+    try {
+      const profileRaw = typeof window !== "undefined" ? localStorage.getItem("wada.profile") : null;
+      if (profileRaw) {
+        const profile = JSON.parse(profileRaw);
+        if (profile?.budget === "< 150€") params.set("maxPrice", "150");
+        else if (profile?.budget === "150–400€") params.set("maxPrice", "400");
+      }
+    } catch {}
     if (style) params.set("style", style);
     /* Brief audit live 2026-05-28 : on normalise en lowercase parce que
        les chips du /stylist renvoient « Femme »/« Homme »/« Unisexe »

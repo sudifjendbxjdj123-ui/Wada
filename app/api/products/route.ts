@@ -33,6 +33,7 @@ import type { ProduitAwin } from "@/lib/schema";
 import { deltaEHex, hexToLab } from "@/lib/colorDistance";
 import { dictionary } from "@/lib/data";
 import { styleToRegistre, brandToRegistreOrFallback } from "@/lib/brandRegistre";
+import { detectSeason, isSeasonCompatible } from "@/lib/seasonDetect";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -142,6 +143,16 @@ export async function GET(req: Request) {
   const seed = url.searchParams.get("seed");
   const excludeIdsRaw = url.searchParams.get("excludeIds");
   const excludeIds = excludeIdsRaw ? new Set(excludeIdsRaw.split(",").filter(Boolean)) : null;
+  /* Brief 2026-05-30 § 3 + 7 : saison + budget plafond.
+     ?season=<comma-list> — saisons palette (« hiver,automne ») : filtre les
+       produits dont la matière/coupe ne colle pas (pas de cachemire en été,
+       pas de lin en hiver). Utilise lib/seasonDetect.
+     ?maxPrice=<euros> — plafond prix par pièce selon le profil :
+       < 150€ → 150, 150–400€ → 400, Premium → pas envoyé. */
+  const seasonParam = url.searchParams.get("season");
+  const paletteSeasons = seasonParam ? seasonParam.split(",").map((s) => s.trim()).filter(Boolean) : null;
+  const maxPriceRaw = parseFloat(url.searchParams.get("maxPrice") || "");
+  const maxPrice = Number.isFinite(maxPriceRaw) && maxPriceRaw > 0 ? maxPriceRaw : null;
   const limitRaw = parseInt(url.searchParams.get("limit") || "", 10);
   const limit = Math.min(
     Math.max(Number.isFinite(limitRaw) ? limitRaw : DEFAULT_LIMIT, 1),
@@ -226,6 +237,24 @@ export async function GET(req: Request) {
       const productRegistre = p.brandRegistre || brandToRegistreOrFallback(p.marque || p.marchand);
       return productRegistre === targetRegistre;
     });
+  }
+
+  /* Brief 2026-05-30 §3 : filtrer par saison palette.
+     Cachemire/laine épaisse interdits pour palette « été »,
+     lin/coton léger interdits pour palette « hiver ». Détection
+     par regex sur nom+description (lib/seasonDetect). */
+  if (paletteSeasons && paletteSeasons.length > 0) {
+    filtered = filtered.filter((p) => {
+      const productSeason = detectSeason(p.nom, p.description || "");
+      return isSeasonCompatible(productSeason, paletteSeasons);
+    });
+  }
+
+  /* Brief 2026-05-30 §7 : plafond prix par pièce selon profil budget.
+     Un user « < 150€ » ne doit voir AUCUNE pièce > 150€. Garantit que le
+     total tenue (5 × 150 = 750€ max) reste dans la fourchette annoncée. */
+  if (maxPrice !== null) {
+    filtered = filtered.filter((p) => p.prix <= maxPrice);
   }
 
   // Recherche full-text (AND sur tokens)

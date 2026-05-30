@@ -1240,6 +1240,19 @@ function useMujiProduct(
        vers la palette demandée). MUJI reste dominant sur les palettes
        neutres, TBF apparaît sur les palettes sombres/luxury. */
     const params = new URLSearchParams({ slot, limit: "1" });
+    /* Brief 2026-05-30 §3 + §7 : on propage la saison de la palette et
+       le plafond prix par pièce vers l'API pour matching cohérent. */
+    if (typeof window !== "undefined") {
+      try {
+        const profileRaw = localStorage.getItem("wada.profile");
+        if (profileRaw) {
+          const profile = JSON.parse(profileRaw);
+          if (profile?.budget === "< 150€") params.set("maxPrice", "150");
+          else if (profile?.budget === "150–400€") params.set("maxPrice", "400");
+          // Premium : pas de plafond
+        }
+      } catch {}
+    }
     if (colorHex) params.set("color", colorHex);
     if (paletteRef) params.set("palette", paletteRef);
     if (genre) params.set("genre", genre);

@@ -516,7 +516,19 @@
      « Classique » ne voit QUE du classique (Brunello/Tom Ford/Zegna…),
      pas du streetwear ou du minimaliste.
    Force re-fetch HTML. */
-const CACHE_VERSION = "wada-v49-2026-05-30";
+/* Bump v50 30/05 : finition VAGUE 2 — saison + budget + score
+   cohérence (brief tenue cohérente §3 + §7 + score).
+   - lib/seasonDetect : détecte saison produit depuis nom/desc (cashmere/
+     wool → hiver ; linen/silk/cotton léger → été ; reste → polyvalent).
+   - lib/coherenceScore : score 0-100 d'une tenue selon 8 critères
+     pondérés (slots remplis 20 + registre unique 15 + 1 couleur forte
+     15 + saison 10 + budget 10 + genre 10 + matières 10 + images 10).
+   - /api/products : nouveaux params ?season=hiver,automne et
+     ?maxPrice=150 pour filtrer en amont du sort.
+   - /ma-tenue et /stylist propagent automatiquement maxPrice depuis
+     wada.profile (< 150€ → 150, 150–400€ → 400, Premium → pas envoyé).
+   Force re-fetch HTML. */
+const CACHE_VERSION = "wada-v50-2026-05-30";
 const STATIC_CACHE  = `${CACHE_VERSION}-static`;
 const PAGE_CACHE    = `${CACHE_VERSION}-pages`;
 
