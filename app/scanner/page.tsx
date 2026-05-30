@@ -1,590 +1,609 @@
 "use client";
 /**
- * /scanner — Refonte 2026-05-27 mockup éditorial jour/nuit.
+ * /scanner — Refonte 2026-05-31 plein écran caméra (maquette client).
  *
- * Brief : template HTML reçu (kicker + h1 Fredoka centré, sub italique,
- * tabs pill, panel 2-col, raccourcis circulaires).
+ * Avant : carte éditoriale dans une page avec drop zone + boutons +
+ * grille essentielles. Maintenant : caméra plein écran style app
+ * native (Snapchat / Instagram / Cosmetic Safety Scanner).
  *
  * Architecture :
- *   1. Hero centré : kicker / h1 / sub / tabs <ScanModeToggle/>
- *   2. Panel 2-col : drop zone dashed + détection card (gauche) | info
- *      « La teinte vraie » + 3 ✓ (droite)
- *   3. Ess card : kicker + heading + grid 12 swatches ronds
- *   4. Résultats si scan effectué
+ *   - <video> getUserMedia({facingMode:"environment"}) plein écran
+ *   - Overlay top : bouton ✕ (close) + ⚡ (flash) + 9:41 mock
+ *   - Mire centrale : carré 120×120 avec coins arrondis + pulse blanc
+ *   - Hint texte au centre haut : « Visez la couleur »
+ *   - Bottom bar : toggle Couleur/Vêtement + capture button 66×66 +
+ *     galerie + flash latéral
+ *   - Capture en 1 tap → bottom sheet résultat (couleur + palette + CTA)
  *
- * Couleurs via CSS variables (--txt, --txt-soft, --ln, --surf) qui suivent
- * data-theme="jour|nuit" sur <html> (cf. globals.css + ThemeToggle).
+ * Fallback : si getUserMedia rejette (permission refusée, browser
+ * incompatible, no camera) on retombe sur un input file + galerie.
  *
- * Mécanique inchangée :
- *   - extractFromImageSrc : décode pixels canvas → moyenne pondérée
- *   - Drag/drop, file picker, color picker fallback, native camera Capacitor
+ * Capacitor (Android/iOS) : takeNativePhoto() pris en charge en
+ * première classe quand isNative() === true.
  */
+import { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { useState, useRef, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { dictionary, findPalettesByColor, type DictionaryEntry } from "@/lib/data";
-import BackButton from "@/components/BackButton";
-import Reveal from "@/components/Reveal";
-import PaletteCard from "@/components/PaletteCard";
-import ScanModeToggle from "@/components/ScanModeToggle";
+import { wadaRefCode as refCode } from "@/lib/utils";
 import { isNative, takeNativePhoto, hapticMedium } from "@/lib/native";
 
+const palette = {
+  bordeaux: "#6B3A32",
+  bordeauxDark: "#5a3029",
+  cream: "#FAF8F4",
+  ink: "#1E1E1E",
+  inkSoft: "#6a6259",
+};
 const fonts = {
   display: "'Fredoka', sans-serif",
-  serif: "'Inter', sans-serif",
-  sans: "'Inter', Arial, sans-serif",
+  sans: "'Inter', 'Helvetica Neue', Arial, sans-serif",
 };
-
-/* Palette (côté pages). Les vars CSS (--txt, --txt-soft, --ln, --surf) du
-   theme jour/nuit prennent le dessus quand disponibles. */
-const fallback = {
-  olive: "#A8B29A",
-  bordeaux: "#6B3A32",
-};
-
-/* 12 essentielles — couleurs nommées comme dans le dictionnaire Sanzo Wada.
-   Brief 2026-05-26 design : on associe un nom à chaque hex pour l'afficher
-   en micro-caption sous la pastille (éditorial swatch book). */
-const ESSENTIALS: { hex: string; name: string }[] = [
-  { hex: "#1E1E1E", name: "Sumi" },
-  { hex: "#1f3a5f", name: "Marine" },
-  { hex: "#6B2D2A", name: "Brique" },
-  { hex: "#556b2f", name: "Olive" },
-  { hex: "#7A8F73", name: "Sauge" },
-  { hex: "#c46b4a", name: "Terre" },
-  { hex: "#b5613f", name: "Cuir" },
-  { hex: "#D4A24E", name: "Lanterne" },
-  { hex: "#c7a06a", name: "Doré" },
-  { hex: "#a89e8e", name: "Taupe" },
-  { hex: "#D8C9B2", name: "Crème" },
-  { hex: "#FBF9F5", name: "Os" },
-];
 
 export default function ScannerPage() {
-  /* État vide propre — pas de #5C2018 par défaut (brief 3.1). */
-  const [color, setColor] = useState<string | null>(null);
-  const [results, setResults] = useState<DictionaryEntry[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [dragActive, setDragActive] = useState(false);
-  const [nativeMode, setNativeMode] = useState(false);
-  const fileRef = useRef<HTMLInputElement | null>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
 
+  const [cameraReady, setCameraReady] = useState(false);
+  const [cameraError, setCameraError] = useState<string | null>(null);
+  const [flashOn, setFlashOn] = useState(false);
+  /* Résultat affiché en bottom sheet — null si pas encore capturé. */
+  const [detected, setDetected] = useState<{
+    hex: string;
+    matches: DictionaryEntry[];
+  } | null>(null);
+
+  const router = useRouter();
+
+  /* ──────────────────────────────────────────────────────────
+     Démarre la caméra au mount. getUserMedia avec facingMode
+     environment (caméra arrière). En cas d'échec, on garde le
+     fallback file upload accessible via le bouton galerie.
+     ────────────────────────────────────────────────────────── */
   useEffect(() => {
-    setNativeMode(isNative());
+    let cancelled = false;
+    async function startCamera() {
+      try {
+        if (!navigator.mediaDevices?.getUserMedia) {
+          throw new Error("getUserMedia non supporté");
+        }
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } },
+          audio: false,
+        });
+        if (cancelled) {
+          stream.getTracks().forEach((t) => t.stop());
+          return;
+        }
+        streamRef.current = stream;
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          await videoRef.current.play().catch(() => {});
+        }
+        setCameraReady(true);
+      } catch (err) {
+        setCameraError(err instanceof Error ? err.message : "Caméra inaccessible");
+      }
+    }
+    startCamera();
+    return () => {
+      cancelled = true;
+      streamRef.current?.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
+    };
   }, []);
 
-  /** Extrait la couleur dominante d'une source image (URL d'objet OU dataURL). */
-  const extractFromImageSrc = (src: string) => {
-    setLoading(true);
-    setPreviewUrl(src);
+  /* ──────────────────────────────────────────────────────────
+     Capture : dessine la frame courante de la vidéo sur un
+     canvas off-screen, échantillonne les pixels au CENTRE de
+     la mire (carré 120×120 du viewport projeté sur la vidéo),
+     calcule la moyenne RGB (en filtrant blancs/noirs extrêmes),
+     convertit en hex, trouve la palette Sanzo Wada la plus
+     proche.
+     ────────────────────────────────────────────────────────── */
+  const capture = useCallback(() => {
+    const video = videoRef.current;
+    if (!video || !cameraReady) return;
+    const W = video.videoWidth;
+    const H = video.videoHeight;
+    if (W === 0 || H === 0) return;
+
+    const canvas = document.createElement("canvas");
+    canvas.width = W;
+    canvas.height = H;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.drawImage(video, 0, 0, W, H);
+
+    /* Échantillon au centre — taille proportionnelle à la mire 120px
+       du viewport projeté sur la résolution vidéo. */
+    const sampleSize = Math.min(W, H) * 0.3;
+    const sx = Math.floor(W / 2 - sampleSize / 2);
+    const sy = Math.floor(H / 2 - sampleSize / 2);
+    const data = ctx.getImageData(sx, sy, sampleSize, sampleSize).data;
+
+    let r = 0, g = 0, b = 0, n = 0;
+    for (let i = 0; i < data.length; i += 4) {
+      const R = data[i], G = data[i + 1], B = data[i + 2];
+      const lum = (R + G + B) / 3;
+      if (lum > 245 || lum < 10) continue; // filtre blancs/noirs purs
+      r += R; g += G; b += B; n++;
+    }
+    if (n === 0) return;
+    const hex = "#" + [r / n, g / n, b / n]
+      .map((v) => Math.round(v).toString(16).padStart(2, "0"))
+      .join("");
+
+    const matches = findPalettesByColor(hex, 3);
+    setDetected({ hex, matches });
+    void hapticMedium();
+  }, [cameraReady]);
+
+  /* Fallback : pick file depuis galerie si caméra refusée. */
+  const onFilePicked = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const url = URL.createObjectURL(file);
     const img = new Image();
-    img.crossOrigin = "anonymous";
     img.onload = () => {
       const canvas = document.createElement("canvas");
-      const W = 80, H = 80;
-      canvas.width = W; canvas.height = H;
+      canvas.width = 80; canvas.height = 80;
       const ctx = canvas.getContext("2d");
-      if (!ctx) { setLoading(false); return; }
-      ctx.drawImage(img, 0, 0, W, H);
-      const data = ctx.getImageData(0, 0, W, H).data;
+      if (!ctx) return;
+      ctx.drawImage(img, 0, 0, 80, 80);
+      const data = ctx.getImageData(0, 0, 80, 80).data;
       let r = 0, g = 0, b = 0, n = 0;
       for (let i = 0; i < data.length; i += 4) {
         const R = data[i], G = data[i + 1], B = data[i + 2];
-        const luminance = (R + G + B) / 3;
-        if (luminance > 240 || luminance < 15) continue;
+        const lum = (R + G + B) / 3;
+        if (lum > 245 || lum < 10) continue;
         r += R; g += G; b += B; n++;
       }
-      if (n === 0) { setLoading(false); return; }
+      if (n === 0) return;
       const hex = "#" + [r / n, g / n, b / n].map((v) => Math.round(v).toString(16).padStart(2, "0")).join("");
-      setColor(hex);
-      setResults(findPalettesByColor(hex, 6));
-      setLoading(false);
+      setDetected({ hex, matches: findPalettesByColor(hex, 3) });
       void hapticMedium();
-      setTimeout(() => document.getElementById("results")?.scrollIntoView({ behavior: "smooth", block: "start" }), 100);
     };
-    img.src = src;
-  };
+    img.src = url;
+  }, []);
 
-  const extractFromFile = (file: File) => extractFromImageSrc(URL.createObjectURL(file));
-
-  const onNativeCamera = async () => {
+  /* Capacitor native camera. */
+  const onNativeCamera = useCallback(async () => {
+    if (!isNative()) return;
     const dataUrl = await takeNativePhoto();
-    if (dataUrl) extractFromImageSrc(dataUrl);
-    else if (!isNative()) fileRef.current?.click();
-  };
+    if (!dataUrl) return;
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = 80; canvas.height = 80;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+      ctx.drawImage(img, 0, 0, 80, 80);
+      const data = ctx.getImageData(0, 0, 80, 80).data;
+      let r = 0, g = 0, b = 0, n = 0;
+      for (let i = 0; i < data.length; i += 4) {
+        const R = data[i], G = data[i + 1], B = data[i + 2];
+        const lum = (R + G + B) / 3;
+        if (lum > 245 || lum < 10) continue;
+        r += R; g += G; b += B; n++;
+      }
+      if (n === 0) return;
+      const hex = "#" + [r / n, g / n, b / n].map((v) => Math.round(v).toString(16).padStart(2, "0")).join("");
+      setDetected({ hex, matches: findPalettesByColor(hex, 3) });
+    };
+    img.src = dataUrl;
+  }, []);
 
-  const onFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) extractFromFile(file);
-  };
-  const onDrop = (e: React.DragEvent) => {
-    e.preventDefault(); e.stopPropagation();
-    setDragActive(false);
-    const file = e.dataTransfer.files?.[0];
-    if (file && file.type.startsWith("image/")) extractFromFile(file);
-  };
-  const onColorChange = (hex: string) => {
-    setColor(hex);
-    setResults(findPalettesByColor(hex, 6));
-    setTimeout(() => document.getElementById("results")?.scrollIntoView({ behavior: "smooth", block: "start" }), 100);
-  };
+  /* Flash toggle — tente d'activer la torche via track.applyConstraints.
+     Pas supporté partout (iOS Safari limité). */
+  const toggleFlash = useCallback(async () => {
+    const stream = streamRef.current;
+    if (!stream) return;
+    const track = stream.getVideoTracks()[0];
+    if (!track) return;
+    const capabilities = track.getCapabilities?.() as MediaTrackCapabilities & { torch?: boolean };
+    if (!capabilities?.torch) return;
+    try {
+      const next = !flashOn;
+      await track.applyConstraints({ advanced: [{ torch: next }] } as unknown as MediaTrackConstraints);
+      setFlashOn(next);
+    } catch {}
+  }, [flashOn]);
+
+  const closeResult = () => setDetected(null);
 
   return (
-    <main
-      style={{
-        minHeight: "100vh",
-        fontFamily: fonts.sans,
-        background: "var(--wada-paper, #F4EFE7)",
-        color: "var(--wada-ink, #1E1E1E)",
-        lineHeight: 1.55,
-        transition: "background .4s ease, color .4s ease",
-      }}
-    >
-            <BackButton fallback="/atelier" />
+    <main style={{
+      position: "fixed",
+      inset: 0,
+      background: "#000",
+      overflow: "hidden",
+      fontFamily: fonts.sans,
+    }}>
+      {/* VIDÉO CAMÉRA PLEIN ÉCRAN */}
+      <video
+        ref={videoRef}
+        autoPlay
+        playsInline
+        muted
+        style={{
+          position: "absolute", inset: 0,
+          width: "100%", height: "100%",
+          objectFit: "cover",
+          zIndex: 0,
+        }}
+      />
 
-      <div style={{
-        maxWidth: 1000, margin: "0 auto",
-        /* Brief « bugs visuels mobile » BUG #2 (24/05) :
-           padding "0 24px" ne prenait pas en compte env(safe-area-
-           inset-*). Sur iPhone à encoche + viewportFit:cover, les
-           ~14px de safe-area droite n'étaient pas réservés → le bord
-           droit des boutons « Prendre une photo » / « Choisir un
-           fichier » et de la carte « Couleur détectée » passait sous
-           la courbure du device. max(24px, safe-area-inset-*) garantit
-           que le contenu reste dans la zone safe. */
-        padding: "0 max(24px, env(safe-area-inset-right)) 0 max(24px, env(safe-area-inset-left))",
-      }}>
-        {/* ─── HERO ÉPURÉ ───
-            Brief client 2026-05-26 : « trop d'information, plus ludique
-            plus instinctif ». On retire le kicker chapitre, le paragraphe
-            marketing et la colonne 01/02/03. H1 court + toggle =
-            entrée directe dans l'action. */}
-        {/* ─── HERO ÉDITORIAL ───
-            Brief 2026-05-30 (mockup référence « Cosmetic Safety Scanner ») :
-            titre impactant + bulle conversationnelle qui explique en 1
-            phrase. Plus de paragraphe italique sec — la bulle simule un
-            styliste qui parle au client. Sparkles décoratifs autour pour
-            la signature visuelle. */}
-        <div style={{ padding: "56px 0 4px", textAlign: "center", position: "relative" }}>
-          {/* Sparkles décoratifs (4 étoiles dispersées) */}
-          <span aria-hidden style={{ position: "absolute", top: 40, left: "12%", fontSize: 14, color: fallback.olive, opacity: 0.5 }}>✦</span>
-          <span aria-hidden style={{ position: "absolute", top: 80, right: "10%", fontSize: 18, color: fallback.bordeaux, opacity: 0.45 }}>✦</span>
-          <span aria-hidden style={{ position: "absolute", top: 180, left: "8%", fontSize: 12, color: fallback.bordeaux, opacity: 0.4 }}>✦</span>
-          <span aria-hidden style={{ position: "absolute", top: 200, right: "15%", fontSize: 16, color: fallback.olive, opacity: 0.5 }}>✦</span>
-
-          <Reveal>
-            <div style={{ marginBottom: 26 }}>
-              <ScanModeToggle active="couleur" />
-            </div>
-            <h1 style={{
-              fontFamily: fonts.display, fontWeight: 700,
-              fontSize: "clamp(42px, 7.5vw, 76px)", margin: "0 0 24px",
-              color: "var(--wada-ink, #1E1E1E)",
-              letterSpacing: "-0.015em",
-              lineHeight: 1.02,
-            }}>
-              Scannez une couleur
-            </h1>
-
-            {/* Bulle conversationnelle — style chat bubble crème avec
-                petite queue. Le contenu explique en langage naturel
-                les 3 moyens d'utiliser le scanner. */}
-            <div style={{
-              display: "inline-block",
-              position: "relative",
-              maxWidth: 460,
-              background: "var(--wada-card-bg-strong, #FBF9F5)",
-              border: "1px solid var(--wada-border, rgba(30,30,30,.10))",
-              borderRadius: 22,
-              padding: "18px 24px",
-              boxShadow: "0 8px 22px -8px rgba(30,30,30,0.1)",
-              textAlign: "left",
-              fontFamily: fonts.sans,
-              fontSize: 15,
-              lineHeight: 1.55,
-              color: "var(--wada-ink, #1E1E1E)",
-            }}>
-              Photographiez un <strong style={{ color: fallback.bordeaux }}>mur</strong>, une <strong style={{ color: fallback.bordeaux }}>fleur</strong>, un <strong style={{ color: fallback.bordeaux }}>tissu</strong> — WADA trouve la palette Sanzo Wada qui s'en rapproche le plus.
-              {/* Queue de la bulle */}
-              <span aria-hidden style={{
-                position: "absolute",
-                bottom: -8, left: "50%",
-                transform: "translateX(-50%) rotate(45deg)",
-                width: 14, height: 14,
-                background: "var(--wada-card-bg-strong, #FBF9F5)",
-                borderRight: "1px solid var(--wada-border, rgba(30,30,30,.10))",
-                borderBottom: "1px solid var(--wada-border, rgba(30,30,30,.10))",
-              }} />
-            </div>
-          </Reveal>
-        </div>
-
-        {/* ─── PANEL ÉPURÉ ───
-            Brief client : « ludique + instinctif ». Une seule colonne
-            centrée : drop zone → boutons → bandeau couleur détectée →
-            grille 12 essentielles. Suppression de la colonne marketing
-            01/02/03 (« Précision », « Sans inscription », « 348 palettes »)
-            qui surchargeait sans aider à l'action. */}
-        <section
-          className="wada-scanner-panel"
-          style={{
-            background: "var(--wada-card-bg-strong, #FBF9F5)",
-            border: "1px solid var(--wada-border, rgba(30,30,30,.10))",
-            borderRadius: 24,
-            padding: 34,
-            boxShadow: "0 8px 30px rgba(30,30,30,.06)",
-            margin: "26px auto 0",
-            maxWidth: 580,
-          }}
-        >
-          {/* COLONNE GAUCHE — drop zone + détection */}
-          <div>
-            {nativeMode && (
-              <button
-                type="button"
-                onClick={onNativeCamera}
-                style={{
-                  width: "100%",
-                  marginBottom: 12,
-                  background: fallback.bordeaux,
-                  color: "#FAF8F4",
-                  border: "none",
-                  borderRadius: 999,
-                  padding: "13px",
-                  fontSize: 14,
-                  fontFamily: fonts.sans,
-                  fontWeight: 500,
-                  cursor: "pointer",
-                  display: "inline-flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 8,
-                }}
-              >
-                <span aria-hidden>📷</span> Ouvrir la caméra
-              </button>
-            )}
-
-            {/* Drop zone — brief audit A5 : <label htmlFor> natif au lieu
-                de role="button" custom. Sémantique correcte : cliquer (ou
-                taper) sur le label ouvre directement l'input file natif,
-                pas besoin de gérer le clavier manuellement. Drag/drop
-                conservé via les events sur le label. */}
-            <label
-              htmlFor="wada-scanner-file"
-              onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
-              onDragLeave={() => setDragActive(false)}
-              onDrop={onDrop}
+      {/* Voile sombre si caméra pas prête / erreur */}
+      {!cameraReady && (
+        <div style={{
+          position: "absolute", inset: 0, zIndex: 1,
+          background: "linear-gradient(160deg, #3d3024 0%, #1f1814 100%)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          flexDirection: "column", gap: 14, padding: 32,
+        }}>
+          <div style={{
+            width: 56, height: 56, borderRadius: "50%",
+            border: "3px solid rgba(255,255,255,0.2)",
+            borderTopColor: "#fff",
+            animation: cameraError ? "none" : "wada-spin 0.9s linear infinite",
+          }} />
+          <p style={{
+            color: "#fff", fontFamily: fonts.display,
+            fontSize: 18, fontWeight: 500, textAlign: "center",
+          }}>
+            {cameraError ? "Caméra inaccessible" : "Activation de la caméra…"}
+          </p>
+          {cameraError && (
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
               style={{
-                display: "block",
-                border: `1.5px dashed ${dragActive ? "var(--wada-ink, #1E1E1E)" : "var(--wada-border, rgba(30,30,30,.10))"}`,
-                borderRadius: 18,
-                background: "var(--wada-paper, #F4EFE7)",
-                padding: "34px 20px",
-                textAlign: "center",
+                marginTop: 8,
+                background: palette.bordeaux, color: palette.cream,
+                border: "none", borderRadius: 999,
+                padding: "13px 24px",
+                fontFamily: fonts.sans, fontSize: 14, fontWeight: 600,
                 cursor: "pointer",
-                transition: "border-color .2s ease, background .2s ease",
               }}
             >
-              {previewUrl ? (
-                <>
-                  <img
-                    src={previewUrl}
-                    alt="Aperçu"
-                    style={{ maxHeight: 180, maxWidth: "100%", objectFit: "contain", borderRadius: 8, marginBottom: 10 }}
-                  />
-                  <p style={{ fontSize: 13, color: "var(--wada-text-secondary, #6f685f)", margin: 0, fontStyle: "italic" }}>
-                    Cliquez pour changer
-                  </p>
-                </>
-              ) : (
-                <>
-                  {/* Brief design 2026-05-26 : aperture SVG fine remplace
-                      l'emoji ◇ — signature éditoriale, traits hairline
-                      cohérents avec le DA WADA (livre Sanzo Wada). */}
-                  <svg
-                    aria-hidden
-                    width="38" height="38" viewBox="0 0 38 38"
-                    style={{ display: "block", margin: "0 auto", color: fallback.olive }}
-                  >
-                    <circle cx="19" cy="19" r="17" fill="none" stroke="currentColor" strokeWidth="1" opacity="0.55" />
-                    <circle cx="19" cy="19" r="10" fill="none" stroke="currentColor" strokeWidth="1" />
-                    <circle cx="19" cy="19" r="2.5" fill="currentColor" />
-                  </svg>
-                  {/* Brief 2026-05-30 : titres devenus redondants avec la
-                      bulle d'explication du hero. On ne garde que
-                      l'aperture SVG comme repère visuel + les 2 boutons
-                      d'action immédiats. Moins de mots = action claire. */}
-                  <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 16 }}>
-                    {/* preventDefault sur les boutons à l'intérieur du
-                        <label> : empêche le label de re-déclencher l'input
-                        file natif (sinon double dialogue ou conflit avec
-                        l'API caméra Capacitor). stopPropagation reste pour
-                        bloquer le bubbling jusqu'au label. */}
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        if (nativeMode) onNativeCamera();
-                        else fileRef.current?.click();
-                      }}
-                      style={{
-                        background: fallback.bordeaux,
-                        color: "#FAF8F4",
-                        border: "none",
-                        borderRadius: 999,
-                        padding: "13px",
-                        fontSize: 16, // M2 audit : ≥16 évite zoom iOS sur input
-                        cursor: "pointer",
-                        fontFamily: fonts.sans,
-                        fontWeight: 500,
-                      }}
-                    >
-                      <span aria-hidden>📷</span> Prendre une photo
-                    </button>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        fileRef.current?.click();
-                      }}
-                      style={{
-                        background: "transparent",
-                        color: "var(--wada-ink, #1E1E1E)",
-                        border: "1px solid var(--wada-border, rgba(30,30,30,.10))",
-                        borderRadius: 999,
-                        padding: "12px",
-                        fontSize: 16,
-                        cursor: "pointer",
-                        fontFamily: fonts.sans,
-                        fontWeight: 500,
-                      }}
-                    >
-                      Choisir un fichier
-                    </button>
-                  </div>
-                </>
-              )}
-              <input
-                ref={fileRef}
-                id="wada-scanner-file"
-                type="file"
-                accept="image/*"
-                capture="environment"
-                onChange={onFile}
-                style={{
-                  /* sr-only : caché visuellement mais accessible au clavier
-                     (vs display:none qui rend l'input inatteignable). */
-                  position: "absolute",
-                  width: 1, height: 1,
-                  padding: 0, margin: -1,
-                  overflow: "hidden",
-                  clip: "rect(0,0,0,0)",
-                  whiteSpace: "nowrap",
-                  border: 0,
-                }}
-              />
-            </label>
+              Choisir une photo de la galerie
+            </button>
+          )}
+        </div>
+      )}
 
-            {/* Détection card — brief design 2026-05-26 : le placeholder
-                « Aucune couleur scannée » est remplacé par une instruction
-                italique discrète + le swatch d'attente en grille fine
-                (signature éditoriale livre Sanzo Wada). */}
+      {/* TOP BAR : ✕ close + ⚡ flash */}
+      <div style={{
+        position: "absolute", top: "max(14px, env(safe-area-inset-top, 14px))",
+        left: 0, right: 0, zIndex: 20,
+        padding: "0 18px",
+        display: "flex", justifyContent: "space-between",
+      }}>
+        <Link
+          href="/"
+          aria-label="Fermer"
+          style={{
+            width: 38, height: 38, borderRadius: "50%",
+            background: "rgba(0,0,0,0.4)",
+            backdropFilter: "blur(8px)",
+            WebkitBackdropFilter: "blur(8px)",
+            display: "inline-flex", alignItems: "center", justifyContent: "center",
+            color: "#fff", textDecoration: "none",
+            fontSize: 22, lineHeight: 1,
+            border: "1px solid rgba(255,255,255,0.12)",
+          }}
+        >
+          ×
+        </Link>
+        <button
+          type="button"
+          onClick={toggleFlash}
+          aria-label={flashOn ? "Éteindre le flash" : "Allumer le flash"}
+          style={{
+            width: 38, height: 38, borderRadius: "50%",
+            background: flashOn ? "rgba(255,220,100,0.85)" : "rgba(0,0,0,0.4)",
+            backdropFilter: "blur(8px)",
+            WebkitBackdropFilter: "blur(8px)",
+            display: "inline-flex", alignItems: "center", justifyContent: "center",
+            color: "#fff", border: "1px solid rgba(255,255,255,0.12)",
+            cursor: "pointer", fontSize: 16, lineHeight: 1,
+          }}
+        >
+          ⚡
+        </button>
+      </div>
+
+      {/* MIRE CENTRALE — 4 coins arrondis + pulse blanc au centre */}
+      {cameraReady && !detected && (
+        <div style={{
+          position: "absolute", top: "50%", left: "50%",
+          transform: "translate(-50%, -50%)",
+          width: 200, height: 200,
+          zIndex: 15, pointerEvents: "none",
+        }}>
+          <svg viewBox="0 0 100 100" style={{ width: "100%", height: "100%", overflow: "visible" }}>
+            <path d="M5,25 L5,5 L25,5" stroke="#fff" strokeWidth="2.5" fill="none" strokeLinecap="round" style={{ filter: "drop-shadow(0 1px 3px rgba(0,0,0,.5))" }} />
+            <path d="M75,5 L95,5 L95,25" stroke="#fff" strokeWidth="2.5" fill="none" strokeLinecap="round" style={{ filter: "drop-shadow(0 1px 3px rgba(0,0,0,.5))" }} />
+            <path d="M95,75 L95,95 L75,95" stroke="#fff" strokeWidth="2.5" fill="none" strokeLinecap="round" style={{ filter: "drop-shadow(0 1px 3px rgba(0,0,0,.5))" }} />
+            <path d="M25,95 L5,95 L5,75" stroke="#fff" strokeWidth="2.5" fill="none" strokeLinecap="round" style={{ filter: "drop-shadow(0 1px 3px rgba(0,0,0,.5))" }} />
+          </svg>
+          <span style={{
+            position: "absolute", top: "50%", left: "50%",
+            width: 22, height: 22, borderRadius: "50%",
+            background: "#fff",
+            transform: "translate(-50%, -50%)",
+            animation: "wada-scan-pulse 1.6s infinite ease-out",
+            opacity: 0.5,
+          }} />
+        </div>
+      )}
+
+      {/* HINT TEXTE */}
+      {cameraReady && !detected && (
+        <div style={{
+          position: "absolute",
+          top: "calc(50% + 130px)",
+          left: 0, right: 0,
+          textAlign: "center",
+          color: "#fff", fontSize: 14,
+          textShadow: "0 1px 6px rgba(0,0,0,0.7)",
+          fontFamily: fonts.display, fontWeight: 500,
+          letterSpacing: "0.02em",
+          zIndex: 18,
+        }}>
+          Visez la couleur
+        </div>
+      )}
+
+      {/* BOTTOM BAR : toggle + capture + galerie + flash */}
+      {cameraReady && !detected && (
+        <div style={{
+          position: "absolute",
+          bottom: "max(28px, env(safe-area-inset-bottom, 14px))",
+          left: 0, right: 0,
+          padding: "0 18px",
+          zIndex: 25,
+        }}>
+          {/* Toggle Couleur / Vêtement */}
+          <div style={{
+            display: "flex",
+            background: "rgba(255,255,255,0.92)",
+            backdropFilter: "blur(10px)",
+            WebkitBackdropFilter: "blur(10px)",
+            borderRadius: 999,
+            padding: 4,
+            width: "max-content",
+            margin: "0 auto 18px",
+            gap: 3,
+          }}>
+            <button
+              type="button"
+              style={{
+                background: "#fff", color: palette.bordeaux,
+                boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+                border: "none", padding: "8px 16px",
+                borderRadius: 999,
+                fontFamily: fonts.display, fontSize: 13, fontWeight: 500,
+                cursor: "pointer",
+              }}
+            >
+              ⦿ Une couleur
+            </button>
+            <button
+              type="button"
+              onClick={() => router.push("/composer")}
+              style={{
+                background: "transparent", color: palette.inkSoft,
+                border: "none", padding: "8px 16px",
+                borderRadius: 999,
+                fontFamily: fonts.display, fontSize: 13, fontWeight: 500,
+                cursor: "pointer",
+              }}
+            >
+              ◇ Un vêtement
+            </button>
+          </div>
+
+          {/* Capture row */}
+          <div style={{
+            display: "flex", alignItems: "center", justifyContent: "space-between",
+            padding: "0 14px",
+          }}>
+            {/* Galerie */}
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              aria-label="Ouvrir la galerie"
+              style={{
+                width: 44, height: 44, borderRadius: 10,
+                background: "rgba(255,255,255,0.18)",
+                backdropFilter: "blur(10px)",
+                WebkitBackdropFilter: "blur(10px)",
+                color: "#fff",
+                border: "none", cursor: "pointer",
+                display: "inline-flex", alignItems: "center", justifyContent: "center",
+                fontSize: 18,
+              }}
+            >
+              🖼
+            </button>
+
+            {/* CAPTURE BUTTON 66×66 */}
+            <button
+              type="button"
+              onClick={isNative() ? onNativeCamera : capture}
+              aria-label="Capturer"
+              style={{
+                width: 72, height: 72, borderRadius: "50%",
+                background: "#fff",
+                border: "4px solid rgba(255,255,255,0.5)",
+                boxShadow: "0 8px 22px -6px rgba(0,0,0,0.4)",
+                cursor: "pointer",
+                transition: "transform 0.12s ease",
+              }}
+              onMouseDown={(ev) => { ev.currentTarget.style.transform = "scale(0.94)"; }}
+              onMouseUp={(ev) => { ev.currentTarget.style.transform = "scale(1)"; }}
+              onTouchStart={(ev) => { ev.currentTarget.style.transform = "scale(0.94)"; }}
+              onTouchEnd={(ev) => { ev.currentTarget.style.transform = "scale(1)"; }}
+            />
+
+            {/* Côté droit — vide pour symétrie, ou autre future option */}
+            <span style={{ width: 44, height: 44 }} aria-hidden />
+          </div>
+        </div>
+      )}
+
+      {/* Input file caché (fallback galerie) */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        onChange={onFilePicked}
+        style={{ display: "none" }}
+      />
+
+      {/* RÉSULTAT — bottom sheet qui slide depuis le bas */}
+      {detected && (
+        <>
+          {/* Voile sombre */}
+          <div
+            onClick={closeResult}
+            style={{
+              position: "absolute", inset: 0,
+              background: "rgba(0,0,0,0.4)",
+              backdropFilter: "blur(3px)",
+              zIndex: 30,
+            }}
+          />
+          <div style={{
+            position: "absolute",
+            left: 10, right: 10,
+            bottom: "max(10px, env(safe-area-inset-bottom, 10px))",
+            background: "#fff",
+            borderRadius: 22,
+            padding: "18px 20px 22px",
+            zIndex: 35,
+            boxShadow: "0 -10px 30px -10px rgba(0,0,0,0.3)",
+            animation: "wada-sheet-slide 0.3s cubic-bezier(.22,1,.36,1)",
+          }}>
             <div style={{
-              display: "flex", alignItems: "center", gap: 14,
-              background: "var(--wada-paper, #F4EFE7)",
-              border: "1px solid var(--wada-border, rgba(30,30,30,.10))",
-              borderRadius: 14,
-              padding: "14px 16px",
-              marginTop: 16,
-            }}>
-              <div
+              width: 36, height: 4,
+              background: "#ddd", borderRadius: 2,
+              margin: "0 auto 14px",
+            }} />
+
+            {/* Header : pastille couleur + label */}
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
+              <span
                 aria-hidden
                 style={{
-                  width: 40, height: 40, borderRadius: 10,
-                  background: color || "#cfc8bd",
-                  border: "1px solid var(--wada-border, rgba(30,30,30,.10))",
+                  width: 48, height: 48, borderRadius: 12,
+                  background: detected.hex,
+                  border: `1px solid rgba(0,0,0,0.1)`,
                   flexShrink: 0,
                 }}
               />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <p style={{
-                  fontSize: 10, letterSpacing: "0.18em",
-                  textTransform: "uppercase", color: fallback.olive,
-                  margin: 0, fontWeight: 600,
+                  fontFamily: fonts.sans, fontSize: 10,
+                  letterSpacing: "0.12em", textTransform: "uppercase",
+                  color: palette.inkSoft, fontWeight: 600,
+                  margin: 0,
                 }}>
                   Couleur détectée
                 </p>
                 <p style={{
-                  fontFamily: fonts.serif,
-                  fontSize: 15, color: "var(--wada-text-secondary, #6f685f)",
-                  margin: "2px 0 0", lineHeight: 1.3,
-                  /* Brief « bugs visuels mobile » BUG #2 (24/05) :
-                     whiteSpace:nowrap + ellipsis tronquait « Aucune
-                     couleur scannée pour le moment » en « …pour le momen… »
-                     sur iPhone (32 chars ne tiennent jamais à 375px).
-                     Pour les hex (« #1F3A5F »), nowrap reste pertinent ;
-                     on garde nowrap UNIQUEMENT quand on affiche un hex.
-                     Sinon, le texte peut wrap sur 2 lignes. */
-                  overflow: "hidden",
-                  ...(color && !loading
-                    ? { whiteSpace: "nowrap" as const, textOverflow: "ellipsis" as const }
-                    : { wordBreak: "break-word" as const }),
+                  fontFamily: fonts.display, fontWeight: 500,
+                  fontSize: 17, color: palette.ink,
+                  margin: "2px 0 0",
                 }}>
-                  {loading
-                    ? "Analyse en cours…"
-                    : color
-                      ? color.toUpperCase()
-                      : <span style={{ fontStyle: "italic", opacity: 0.75 }}>En attente d'une photo ou d'une teinte</span>}
+                  {detected.hex.toUpperCase()} <span style={{ fontSize: 12, color: palette.inkSoft, fontWeight: 400 }}>· {refCode(detected.hex)}</span>
                 </p>
               </div>
-              <input
-                type="color"
-                value={color || "#888888"}
-                onChange={(e) => onColorChange(e.target.value)}
+              <button
+                type="button"
+                onClick={closeResult}
+                aria-label="Re-scanner"
                 style={{
-                  // Brief audit mobile §4 : 44×44 minimum tactile (WCAG 2.5.5).
-                  // L'ancien 36×32 forçait l'utilisateur à zoomer pour viser.
-                  width: 44, height: 44, minWidth: 44, minHeight: 44,
-                  border: "1px solid var(--wada-border, rgba(30,30,30,.10))",
-                  background: "transparent",
-                  cursor: "pointer", padding: 0, borderRadius: 8,
+                  width: 36, height: 36, borderRadius: "50%",
+                  background: "rgba(30,30,30,0.06)",
+                  border: "none", cursor: "pointer",
+                  fontSize: 18, color: palette.inkSoft,
+                  lineHeight: 1,
                 }}
-                aria-label="Choix précis de la couleur"
-              />
+              >
+                ↻
+              </button>
             </div>
-          </div>
 
-          {/* SÉPARATEUR « ou » + 12 essentielles inline.
-              Brief client : « ludique + instinctif ». Les 12 teintes
-              essentielles ne sont plus dans une section séparée — elles
-              sont ICI, juste sous le bandeau couleur détectée, dans le
-              même flow vertical. L'utilisateur a 2 chemins visibles
-              simultanément : photo OU tap sur une essentielle. */}
-          <div style={{
-            display: "flex", alignItems: "center", gap: 12,
-            margin: "22px 0 16px",
-          }}>
-            <div aria-hidden style={{ flex: 1, height: 1, background: "var(--wada-border, rgba(30,30,30,.10))" }} />
-            <span style={{
-              fontSize: 10, letterSpacing: "0.35em", textTransform: "uppercase",
-              color: "var(--wada-text-secondary, #6f685f)", fontWeight: 600,
-            }}>
-              ou une essentielle
-            </span>
-            <div aria-hidden style={{ flex: 1, height: 1, background: "var(--wada-border, rgba(30,30,30,.10))" }} />
-          </div>
+            {/* Palettes matches */}
+            {detected.matches.length > 0 && (
+              <>
+                <p style={{
+                  fontSize: 12, color: palette.inkSoft,
+                  margin: "0 0 8px",
+                  lineHeight: 1.45,
+                }}>
+                  Cette teinte appartient à la palette{" "}
+                  <strong style={{ color: palette.ink, fontFamily: fonts.display, fontWeight: 600 }}>
+                    {detected.matches[0].name}
+                  </strong>
+                  {" "}— No. {detected.matches[0].number}.
+                </p>
+                {/* Bandes 3 couleurs de la 1ère palette match */}
+                <div style={{ display: "flex", gap: 4, marginBottom: 14 }}>
+                  {detected.matches[0].colors.slice(0, 3).map((c, i) => (
+                    <span
+                      key={i}
+                      style={{
+                        flex: 1, height: 34, borderRadius: 6,
+                        background: c.hex,
+                      }}
+                    />
+                  ))}
+                </div>
 
-          <div className="wada-essentials-grid" style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(6, 1fr)",
-            gap: 14,
-          }}>
-            {ESSENTIALS.map(({ hex, name }) => {
-              const active = color?.toLowerCase() === hex.toLowerCase();
-              return (
-                <button
-                  key={hex}
-                  onClick={() => onColorChange(hex)}
-                  aria-label={`Choisir ${name} ${hex}`}
-                  title={`${name} · ${hex}`}
-                  className="wada-essential-swatch"
+                <Link
+                  href={`/palette/${detected.matches[0].number}`}
                   style={{
-                    display: "flex", flexDirection: "column",
-                    alignItems: "center", gap: 6,
-                    background: "transparent", border: "none",
-                    cursor: "pointer", padding: 0,
-                    transition: "transform .25s ease",
+                    display: "block",
+                    background: palette.bordeaux, color: palette.cream,
+                    border: "none", borderRadius: 12,
+                    padding: "14px",
+                    textAlign: "center",
+                    textDecoration: "none",
+                    fontFamily: fonts.display, fontSize: 14.5, fontWeight: 500,
                   }}
                 >
-                  <span aria-hidden style={{
-                    width: 46, height: 46, borderRadius: "50%",
-                    background: hex,
-                    border: `2px solid ${active ? fallback.bordeaux : "var(--wada-card-bg-strong, #FBF9F5)"}`,
-                    boxShadow: active
-                      ? `0 0 0 1px ${fallback.bordeaux}, 0 4px 12px rgba(107,58,50,.18)`
-                      : "0 0 0 1px var(--wada-border, rgba(30,30,30,.10))",
-                    transition: "box-shadow .2s ease, border-color .2s ease",
-                  }} />
-                  <span style={{
-                    fontFamily: fonts.sans, fontSize: 9,
-                    letterSpacing: "0.14em", textTransform: "uppercase",
-                    color: active ? fallback.bordeaux : "var(--wada-text-secondary, #6f685f)",
-                    fontWeight: 600,
-                    transition: "color .2s ease",
-                  }}>
-                    {name}
-                  </span>
-                </button>
-              );
-            })}
+                  Voir la palette & ma tenue&nbsp;→
+                </Link>
+              </>
+            )}
+            {detected.matches.length === 0 && (
+              <p style={{ fontSize: 13, color: palette.inkSoft }}>
+                Aucune palette ne matche cette couleur. Re-essayez avec une teinte plus définie.
+              </p>
+            )}
           </div>
-        </section>
+        </>
+      )}
 
-        {/* Essentielles déplacées DANS le panel principal (brief client
-            « moins d'info, plus instinctif ») — section standalone retirée. */}
-
-        {/* ─── RÉSULTATS — apparaît après un scan ─── */}
-        {results.length > 0 && (
-          <section id="results" style={{ margin: "40px 0 0" }}>
-            <div style={{ textAlign: "center", marginBottom: 28 }}>
-              <p style={{
-                fontSize: 11, letterSpacing: "0.32em", textTransform: "uppercase",
-                color: fallback.bordeaux, fontWeight: 500, margin: 0,
-              }}>
-                Vos résultats
-              </p>
-              <h2 style={{
-                fontFamily: fonts.display, fontWeight: 700,
-                fontSize: "clamp(26px, 3.5vw, 32px)", margin: "6px 0 4px",
-                color: "var(--wada-ink, #1E1E1E)",
-              }}>
-                Palettes accordées {color && <span style={{ color: fallback.bordeaux }}>{color.toUpperCase()}</span>}
-              </h2>
-              <p style={{
-                fontFamily: fonts.serif,
-                color: "var(--wada-text-secondary, #6f685f)", margin: 0,
-              }}>
-                Cliquez sur une palette pour voir la tenue complète.
-              </p>
-            </div>
-            <div
-              className="wada-palettes-grid"
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(3, 1fr)",
-                gap: 24,
-              }}
-            >
-              {results.map((p) => (
-                <PaletteCard key={p.number} entry={p} />
-              ))}
-            </div>
-          </section>
-        )}
-      </div>
-
-      
       <style jsx>{`
-        .wada-essential-swatch:hover {
-          transform: scale(1.1);
+        @keyframes wada-spin {
+          to { transform: rotate(360deg); }
         }
-        @media (max-width: 760px) {
-          :global(.wada-scanner-panel) {
-            grid-template-columns: 1fr !important;
-            gap: 22px !important;
-            padding: 22px !important;
-          }
-          :global(.wada-palettes-grid) {
-            grid-template-columns: 1fr 1fr !important;
-          }
+        @keyframes wada-scan-pulse {
+          0% { transform: translate(-50%, -50%) scale(0.6); opacity: 0.9; }
+          100% { transform: translate(-50%, -50%) scale(2.4); opacity: 0; }
         }
-        @media (max-width: 460px) {
-          :global(.wada-palettes-grid) {
-            grid-template-columns: 1fr !important;
-          }
+        @keyframes wada-sheet-slide {
+          from { transform: translateY(100%); }
+          to { transform: translateY(0); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          * { animation: none !important; }
         }
       `}</style>
     </main>
