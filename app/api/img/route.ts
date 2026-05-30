@@ -41,6 +41,17 @@ const ALLOWED_HOSTS = [
   "muji.com",
   // BigCommerce CDN parfois exposé en source (cdn11.bigcommerce.com)
   "bigcommerce.com",
+  /* Brief 2026-05-30 — TBF (The Business Fashion) héberge ses images
+     sur Shopify, AWS et Cloudinary selon les marques. Sans ces hosts
+     en whitelist, le proxy bloque → cartes produit TBF avec zone
+     blanche au lieu de la photo. Ces CDN sont publics, pas de risque
+     SSRF accru (ils ne servent pas de services internes). */
+  "shopify.com",         // cdn.shopify.com (TBF majoritaire)
+  "cloudfront.net",      // AWS CDN (utilisé par plusieurs marques luxury)
+  "amazonaws.com",       // S3 direct
+  "cloudinary.com",      // CDN très courant en e-commerce
+  "akamaized.net",       // Akamai (gros marchands)
+  "scene7.com",          // Adobe Scene7 (utilisé par certaines marques)
 ];
 
 function isAllowedHost(u: URL): boolean {
