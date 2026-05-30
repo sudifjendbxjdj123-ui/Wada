@@ -1430,9 +1430,18 @@ function PieceCard({
             loading="lazy"
             style={{
               width: "100%", height: "100%",
-              objectFit: "cover",
-              objectPosition: "center 20%",
+              /* Brief 2026-05-30 : passé de `cover` à `contain` pour
+                 préserver l'intégralité de la photo. Les shoots TBF
+                 sont des portraits full-body (modèle), avec `cover` le
+                 crop tombait sur le visage du modèle au lieu du
+                 vêtement (ex. hoodie Bathing Ape camo où on voyait
+                 surtout le visage). `contain` garde toute la photo
+                 visible — les bandes éventuelles se fondent dans le
+                 background crème #FBF9F5 de la card. */
+              objectFit: "contain",
+              objectPosition: "center",
               display: "block",
+              padding: "8px",
               transition: "transform 0.35s cubic-bezier(.22,1,.36,1)",
             }}
           />
