@@ -142,9 +142,10 @@ function useComposerMuji(
   useEffect(() => {
     if (!slot || !colorHex) return;
     let cancelled = false;
+    /* Fix 2026-05-30 : retrait hardcode merchant=muji-france. Mix
+       MUJI + TBF selon proximité couleur (ΔE2000). */
     const params = new URLSearchParams({
       slot,
-      merchant: "muji-france",
       color: colorHex,
       limit: "1",
     });

@@ -56,6 +56,8 @@ function useMujiForSlot(
   const [product, setProduct] = useState<{
     nom: string;
     marque: string;
+    /* Brief 2026-05-30 : marchand pour label dynamique « via Awin · {marchand} ». */
+    marchand?: string;
     image: string;
     prix: number;
     devise: string;
@@ -65,9 +67,12 @@ function useMujiForSlot(
   useEffect(() => {
     if (!slot || !colorHex) return;
     let cancelled = false;
+    /* Fix 2026-05-30 « toujours pas de photo TBF » : on retire le hardcode
+       merchant=muji-france pour permettre au styliste de proposer aussi
+       du TBF (luxury). L'API trie par ΔE couleur → bon match couleur
+       gagne, MUJI ou TBF. */
     const params = new URLSearchParams({
       slot,
-      merchant: "muji-france",
       color: colorHex,
       limit: "1",
     });
@@ -104,6 +109,8 @@ function useMujiForSlot(
         setProduct({
           nom: p.nom,
           marque: p.marque || p.marchand || "MUJI",
+          /* Brief 2026-05-30 : marchand pour label dynamique. */
+          marchand: p.marchand,
           image: displayImage,
           prix: p.prix,
           devise: p.devise,
@@ -1970,7 +1977,8 @@ function PieceCard({
                 fontSize: 11, color: palette.inkSoft,
                 fontStyle: "italic", fontFamily: fonts.sans,
               }}>
-                via Awin · MUJI partenaire
+                {/* Brief 2026-05-30 : label dynamique (MUJI / TBF / autre). */}
+                via Awin · {mujiProduct.marchand || "MUJI"} partenaire
               </span>
               <p style={{
                 fontFamily: fonts.sans, fontSize: 14, fontWeight: 700,

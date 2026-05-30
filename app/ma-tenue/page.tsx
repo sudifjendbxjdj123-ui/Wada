@@ -1204,6 +1204,10 @@ function useMujiProduct(
     id: string;
     nom: string;
     marque: string;
+    /* Brief 2026-05-30 : marchand exposé pour afficher le bon label
+       « via Awin · {marchand} partenaire » (MUJI ou The Business
+       Fashion ou autre flux futur). */
+    marchand?: string;
     image: string;
     prix: number;
     devise: string;
@@ -1229,7 +1233,13 @@ function useMujiProduct(
   useEffect(() => {
     if (!slot) return;
     let cancelled = false;
-    const params = new URLSearchParams({ slot, merchant: "muji-france", limit: "1" });
+    /* Fix 2026-05-30 « toujours pas de photo TBF » : avant on hardcodait
+       merchant=muji-france, ce qui exclut TBF (et tout autre flux futur)
+       du résultat. Maintenant on laisse l'API choisir le meilleur produit
+       toutes marques confondues, trié par proximité couleur (min ΔE2000
+       vers la palette demandée). MUJI reste dominant sur les palettes
+       neutres, TBF apparaît sur les palettes sombres/luxury. */
+    const params = new URLSearchParams({ slot, limit: "1" });
     if (colorHex) params.set("color", colorHex);
     if (paletteRef) params.set("palette", paletteRef);
     if (genre) params.set("genre", genre);
@@ -1258,6 +1268,9 @@ function useMujiProduct(
           id: p.id,
           nom: p.nom,
           marque: p.marque || p.marchand || "MUJI",
+          /* Brief 2026-05-30 : marchand exposé pour le label
+             « via Awin · {marchand} partenaire » dynamique. */
+          marchand: p.marchand,
           image: sourceUrl,
           prix: p.prix,
           devise: p.devise,
@@ -1532,7 +1545,10 @@ function PieceCard({
                   fontSize: 11, color: textSecondary,
                   fontStyle: "italic", fontFamily: "'Inter', sans-serif",
                 }}>
-                  via Awin · MUJI partenaire
+                  {/* Brief 2026-05-30 : label dynamique selon le vrai
+                      marchand (MUJI France ou The Business Fashion ou
+                      autre flux futur). Fallback « MUJI » si pas dispo. */}
+                  via Awin · {mujiProduct.marchand || "MUJI"} partenaire
                 </span>
               ) : (isAmazonLinked(primary) || via) ? (
                 <>
