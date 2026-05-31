@@ -90,6 +90,35 @@ interface Detected {
   matches: DictionaryEntry[];
 }
 
+/* Phase 1 (2026-05-31) — Résultat Vision /api/scan-garment.
+   Type tolérant : null pour les champs optionnels que la Vision peut omettre
+   selon les images (modèle/marque/couleur secondaire). */
+interface VisionGarment {
+  type: string;
+  slot: Slot;
+  marque: string | null;
+  modele: string | null;
+  couleur_principale: { nom: string; hex: string };
+  couleur_secondaire: { nom: string; hex: string } | null;
+  registre: "classique" | "streetwear" | "minimaliste" | "decontracte";
+  genre: "femme" | "homme" | "mixte";
+  caracteristiques: string[];
+  saison: "ete" | "mi-saison" | "hiver" | "toute_saison";
+}
+interface VisionError {
+  error: string;
+  raison?: string;
+}
+type VisionResponse = VisionGarment | VisionError;
+
+/* État de l'analyse Vision : pending pendant l'appel API,
+   error si la Vision a échoué ou n'a pas reconnu, garment si OK. */
+type VisionState =
+  | { phase: "idle" }
+  | { phase: "pending"; thumb: string }
+  | { phase: "error"; thumb: string; message: string }
+  | { phase: "garment"; thumb: string; data: VisionGarment };
+
 export default function ComposerPage() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -101,6 +130,8 @@ export default function ComposerPage() {
   const [detected, setDetected] = useState<Detected | null>(null);
   const [pickedSlot, setPickedSlot] = useState<Slot>("haut");
   const [pickedStyle, setPickedStyle] = useState<string | null>(null);
+  /* Phase 1 (2026-05-31) — résultat Vision /api/scan-garment. */
+  const [vision, setVision] = useState<VisionState>({ phase: "idle" });
 
   const router = useRouter();
 
@@ -173,7 +204,100 @@ export default function ComposerPage() {
     const matches = findPalettesByColor(hex, 3);
     setDetected({ hex, matches });
     void hapticMedium();
+
+    /* Phase 1 (2026-05-31) — Vision : on encode l'image en data URL et on
+       l'envoie à /api/scan-garment. Compression JPEG 0.78 pour rester sous
+       les ~5 Mo de garde-fou serveur même sur photos haute résolution.
+       Downscale à 768px max (suffisant pour GPT-4o-mini detail:low). */
+    void analyzeWithVision(canvas);
   }, [cameraReady]);
+
+  /* Appelle /api/scan-garment avec un canvas (capture caméra ou image
+     chargée depuis la galerie). Compresse → data URL → POST → setVision. */
+  const analyzeWithVision = useCallback(async (sourceCanvas: HTMLCanvasElement) => {
+    const targetMax = 768;
+    const sw = sourceCanvas.width;
+    const sh = sourceCanvas.height;
+    const scale = Math.min(1, targetMax / Math.max(sw, sh));
+    const tw = Math.round(sw * scale);
+    const th = Math.round(sh * scale);
+    const thumb = document.createElement("canvas");
+    thumb.width = tw;
+    thumb.height = th;
+    const tctx = thumb.getContext("2d");
+    if (!tctx) {
+      setVision({ phase: "error", thumb: "", message: "Canvas indisponible" });
+      return;
+    }
+    tctx.drawImage(sourceCanvas, 0, 0, tw, th);
+    const dataUrl = thumb.toDataURL("image/jpeg", 0.78);
+    setVision({ phase: "pending", thumb: dataUrl });
+
+    try {
+      const res = await fetch("/api/scan-garment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ image: dataUrl }),
+      });
+      const json = (await res.json()) as VisionResponse;
+      if ("error" in json) {
+        setVision({
+          phase: "error",
+          thumb: dataUrl,
+          message: json.raison || "Pièce non reconnue",
+        });
+        return;
+      }
+      setVision({ phase: "garment", thumb: dataUrl, data: json });
+      /* Si la Vision a identifié un slot, on synchronise le picker manuel
+         pour que le user n'ait qu'à confirmer. */
+      if (json.slot) setPickedSlot(json.slot);
+    } catch (err) {
+      setVision({
+        phase: "error",
+        thumb: "",
+        message: err instanceof Error ? err.message : "Réseau indisponible",
+      });
+    }
+  }, []);
+
+  /* Helper : à partir d'un HTMLImageElement chargé, on extrait la couleur
+     dominante (canvas 80×80 — suffisant pour la moyenne) ET on génère un
+     canvas plein format (max 1024) pour la Vision API. */
+  const processLoadedImage = useCallback((img: HTMLImageElement) => {
+    /* (1) Couleur dominante — petit canvas pour rapidité. */
+    const small = document.createElement("canvas");
+    small.width = 80; small.height = 80;
+    const sctx = small.getContext("2d");
+    if (sctx) {
+      sctx.drawImage(img, 0, 0, 80, 80);
+      const data = sctx.getImageData(0, 0, 80, 80).data;
+      let r = 0, g = 0, b = 0, n = 0;
+      for (let i = 0; i < data.length; i += 4) {
+        const R = data[i], G = data[i + 1], B = data[i + 2];
+        const lum = (R + G + B) / 3;
+        if (lum > 245 || lum < 10) continue;
+        r += R; g += G; b += B; n++;
+      }
+      if (n > 0) {
+        const hex = "#" + [r / n, g / n, b / n].map((v) => Math.round(v).toString(16).padStart(2, "0")).join("");
+        setDetected({ hex, matches: findPalettesByColor(hex, 3) });
+      }
+    }
+
+    /* (2) Canvas plein format pour la Vision API (cappé à 1024px). */
+    const maxSide = 1024;
+    const scale = Math.min(1, maxSide / Math.max(img.naturalWidth, img.naturalHeight));
+    const tw = Math.max(1, Math.round(img.naturalWidth * scale));
+    const th = Math.max(1, Math.round(img.naturalHeight * scale));
+    const full = document.createElement("canvas");
+    full.width = tw; full.height = th;
+    const fctx = full.getContext("2d");
+    if (fctx) {
+      fctx.drawImage(img, 0, 0, tw, th);
+      void analyzeWithVision(full);
+    }
+  }, [analyzeWithVision]);
 
   /* Fallback fichier (galerie + caméra refusée). */
   const onFilePicked = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -182,26 +306,11 @@ export default function ComposerPage() {
     const url = URL.createObjectURL(file);
     const img = new Image();
     img.onload = () => {
-      const canvas = document.createElement("canvas");
-      canvas.width = 80; canvas.height = 80;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return;
-      ctx.drawImage(img, 0, 0, 80, 80);
-      const data = ctx.getImageData(0, 0, 80, 80).data;
-      let r = 0, g = 0, b = 0, n = 0;
-      for (let i = 0; i < data.length; i += 4) {
-        const R = data[i], G = data[i + 1], B = data[i + 2];
-        const lum = (R + G + B) / 3;
-        if (lum > 245 || lum < 10) continue;
-        r += R; g += G; b += B; n++;
-      }
-      if (n === 0) return;
-      const hex = "#" + [r / n, g / n, b / n].map((v) => Math.round(v).toString(16).padStart(2, "0")).join("");
-      setDetected({ hex, matches: findPalettesByColor(hex, 3) });
+      processLoadedImage(img);
       void hapticMedium();
     };
     img.src = url;
-  }, []);
+  }, [processLoadedImage]);
 
   /* Capacitor natif. */
   const onNativeCamera = useCallback(async () => {
@@ -210,25 +319,10 @@ export default function ComposerPage() {
     if (!dataUrl) return;
     const img = new Image();
     img.onload = () => {
-      const canvas = document.createElement("canvas");
-      canvas.width = 80; canvas.height = 80;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return;
-      ctx.drawImage(img, 0, 0, 80, 80);
-      const data = ctx.getImageData(0, 0, 80, 80).data;
-      let r = 0, g = 0, b = 0, n = 0;
-      for (let i = 0; i < data.length; i += 4) {
-        const R = data[i], G = data[i + 1], B = data[i + 2];
-        const lum = (R + G + B) / 3;
-        if (lum > 245 || lum < 10) continue;
-        r += R; g += G; b += B; n++;
-      }
-      if (n === 0) return;
-      const hex = "#" + [r / n, g / n, b / n].map((v) => Math.round(v).toString(16).padStart(2, "0")).join("");
-      setDetected({ hex, matches: findPalettesByColor(hex, 3) });
+      processLoadedImage(img);
     };
     img.src = dataUrl;
-  }, []);
+  }, [processLoadedImage]);
 
   /* Flash via torche. */
   const toggleFlash = useCallback(async () => {
@@ -248,6 +342,7 @@ export default function ComposerPage() {
   const closeResult = () => {
     setDetected(null);
     setPickedStyle(null);
+    setVision({ phase: "idle" });
   };
 
   /* Validation : route vers /ma-tenue avec les params slot+style+palette.
@@ -575,6 +670,108 @@ export default function ComposerPage() {
               background: "#ddd", borderRadius: 2,
               margin: "0 auto 14px",
             }} />
+
+            {/* Phase 1 (2026-05-31) — Bloc Vision : identification IA de la
+                pièce scannée (type, marque, modèle, registre). Au-dessus
+                du bloc couleur classique pour donner le résultat principal
+                en haut, comme une vraie app de scan (Google Lens, Vivino). */}
+            {vision.phase !== "idle" && (
+              <div style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 12,
+                marginBottom: 14,
+                padding: "12px",
+                background: vision.phase === "garment"
+                  ? "rgba(168,178,154,0.10)"
+                  : vision.phase === "error"
+                    ? "rgba(193,62,62,0.08)"
+                    : "rgba(30,30,30,0.04)",
+                border: `1px solid ${
+                  vision.phase === "garment"
+                    ? "rgba(168,178,154,0.4)"
+                    : vision.phase === "error"
+                      ? "rgba(193,62,62,0.25)"
+                      : "rgba(30,30,30,0.08)"
+                }`,
+                borderRadius: 14,
+              }}>
+                {/* Thumbnail de la pièce scannée */}
+                {vision.thumb ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={vision.thumb}
+                    alt="Pièce scannée"
+                    style={{
+                      width: 56, height: 56, borderRadius: 10,
+                      objectFit: "cover",
+                      flexShrink: 0,
+                      border: "1px solid rgba(0,0,0,0.08)",
+                    }}
+                  />
+                ) : (
+                  <div style={{
+                    width: 56, height: 56, borderRadius: 10,
+                    background: "rgba(30,30,30,0.06)",
+                    flexShrink: 0,
+                  }} />
+                )}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{
+                    fontFamily: fonts.sans, fontSize: 10,
+                    letterSpacing: "0.12em", textTransform: "uppercase",
+                    color: palette.bordeaux, fontWeight: 600,
+                    margin: 0,
+                  }}>
+                    {vision.phase === "pending" && "Analyse en cours…"}
+                    {vision.phase === "error" && "Non reconnu"}
+                    {vision.phase === "garment" && "J'ai vu"}
+                  </p>
+                  {vision.phase === "garment" && (
+                    <>
+                      <p style={{
+                        fontFamily: fonts.display, fontWeight: 600,
+                        fontSize: 16, color: palette.ink,
+                        margin: "2px 0 0",
+                        lineHeight: 1.2,
+                      }}>
+                        {[vision.data.marque, vision.data.modele]
+                          .filter(Boolean)
+                          .join(" ") || vision.data.type}
+                      </p>
+                      <p style={{
+                        fontFamily: fonts.sans, fontSize: 12,
+                        color: palette.inkSoft, margin: "2px 0 0",
+                        lineHeight: 1.3,
+                      }}>
+                        {[
+                          vision.data.type,
+                          vision.data.registre,
+                          vision.data.couleur_principale?.nom,
+                        ].filter(Boolean).join(" · ")}
+                      </p>
+                    </>
+                  )}
+                  {vision.phase === "pending" && (
+                    <p style={{
+                      fontFamily: fonts.sans, fontSize: 13,
+                      color: palette.inkSoft, margin: "2px 0 0",
+                    }}>
+                      Identification de la pièce…
+                    </p>
+                  )}
+                  {vision.phase === "error" && (
+                    <p style={{
+                      fontFamily: fonts.sans, fontSize: 12,
+                      color: palette.inkSoft, margin: "2px 0 0",
+                      lineHeight: 1.3,
+                    }}>
+                      {vision.message}. Tu peux quand même choisir le slot manuellement ci-dessous.
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Header : couleur + palette détectée */}
             <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
