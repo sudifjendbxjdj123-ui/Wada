@@ -95,7 +95,12 @@ const TABS: Array<{
 }> = [
   { href: "/", label: "Accueil", icon: "home" },
   { href: "/palettes", label: "Palettes", icon: "grid" },
-  { href: "/scanner", label: "Scanner", icon: "scan", hero: true },
+  /* User feedback 2026-05-31 « mets en première option vêtement et pas
+     couleur » : le bouton central « Scanner » de la tabbar route maintenant
+     directement vers /composer (mode vêtement plein écran). C'est le cas
+     d'usage principal du scanner. /scanner (mode couleur) reste accessible
+     via le toggle dans la bottom bar du composer. */
+  { href: "/composer", label: "Scanner", icon: "scan", hero: true },
   { href: "/stylist", label: "Styliste", icon: "stylist" },
   { href: "/favoris", label: "Favoris", icon: "heart" },
 ];
@@ -107,10 +112,15 @@ export default function MobileTabBar() {
     <nav className="wada-tabbar" aria-label="Navigation mobile">
       {TABS.map((t) => {
         /* « / » ne doit pas être actif sur /palettes parce qu'il
-           « startsWith /palettes ». Le test exact évite la collision. */
+           « startsWith /palettes ». Le test exact évite la collision.
+
+           Brief 2026-05-31 : le hero « Scanner » route vers /composer
+           mais doit aussi être actif sur /scanner (les deux modes sont
+           la même feature, juste l'autre face du toggle). */
+        const isHeroScannerRoute = t.hero && (path === "/scanner" || path.startsWith("/scanner/"));
         const active = t.href === "/"
           ? path === "/"
-          : path === t.href || path.startsWith(t.href + "/");
+          : path === t.href || path.startsWith(t.href + "/") || isHeroScannerRoute;
 
         if (t.hero) {
           /* Bouton central SURÉLEVÉ — cercle bordeaux 56×56 qui dépasse
