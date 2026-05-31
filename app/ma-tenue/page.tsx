@@ -166,6 +166,43 @@ function MaTenueContent() {
   const handlePriceResolved = useCallback((pieceId: string, price: number) => {
     setRealPrices((prev) => prev[pieceId] === price ? prev : { ...prev, [pieceId]: price });
   }, []);
+
+  /* Scanner Phase 2+3 (2026-05-31) — ancre stockée par /composer en
+     sessionStorage après une Vision API réussie. Le slot ancré est exclu
+     du composer (le client a déjà cette pièce) et affiché en 1ère carte
+     avec badge « Ta pièce ». */
+  type AnchorData = {
+    thumb: string;
+    slot: "haut" | "bas" | "veste" | "chaussures" | "accent";
+    type: string;
+    marque: string | null;
+    modele: string | null;
+    couleur: { nom: string; hex: string };
+    registre: string;
+    piecePicked: string | null;
+    detectedHex: string | null;
+  };
+  const [anchor, setAnchor] = useState<AnchorData | null>(null);
+  useEffect(() => {
+    /* Le flag ?anchor=1 dans l'URL signale qu'il faut lire le sessionStorage.
+       Sans flag, on ignore le storage même si présent (évite qu'une ancre
+       d'une session précédente s'incruste sur une visite via /palette/N). */
+    if (searchParams.get("anchor") !== "1") {
+      setAnchor(null);
+      return;
+    }
+    try {
+      const raw = sessionStorage.getItem("wada.anchor");
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as AnchorData;
+      if (parsed?.slot && parsed?.type) setAnchor(parsed);
+    } catch {}
+  }, [searchParams]);
+
+  const clearAnchor = useCallback(() => {
+    try { sessionStorage.removeItem("wada.anchor"); } catch {}
+    setAnchor(null);
+  }, []);
   // Images générées par l'API Replicate via le prompt WADA × Claude
   // Brief 2026-05-28 : la génération d'image IA en haut de page (aiImages,
   // imageLoading, imageError) est retirée — les vraies photos MUJI suffisent
@@ -287,11 +324,18 @@ function MaTenueContent() {
 
   // Composition utilisée pour le rendu = slots du registre engine,
   // mappés au format attendu par PieceLine (piece + item + color).
-  const composition = registreOutfit?.slots.map((s) => ({
+  // Scanner Phase 2 (2026-05-31) : si l'utilisateur a scanné une pièce
+  // ancrée, on EXCLUT son slot — il a déjà cette pièce, WADA n'a pas à
+  // lui en proposer une autre. La carte « Ta pièce » est rendue
+  // séparément en 1ère position (juste après le hero).
+  const compositionAll = registreOutfit?.slots.map((s) => ({
     piece: s.slot,        // haut / bas / veste / chaussures / accent
-    item: s.type,         // libellé final FR (« Hoodie oversized »)
-    _slot: s,             // pour passer la couleur + mots-clés à PieceLine
+    item: s.type,
+    _slot: s,
   })) ?? [];
+  const composition = anchor
+    ? compositionAll.filter((p) => p.piece !== anchor.slot)
+    : compositionAll;
 
   /* Genre du client (priorité au choix explicite, fallback sur la palette). */
   const userGender = prefs.gender || (entry ? paletteGender(entry.composition) : null);
@@ -480,6 +524,152 @@ function MaTenueContent() {
           }}>
             La tenue complète en détail
           </p>
+
+          {/* Scanner Phase 3 (2026-05-31) — Carte « Ta pièce » :
+              affiche la pièce scannée par le client en 1ère position, avec
+              un badge vert « ANCRE · TA PIÈCE » et la mention « tu l'as
+              déjà ». Le composer a exclu son slot des 4 autres cartes.
+              Pas de prix, pas de CTA Acheter — c'est la pièce du client. */}
+          {anchor && (
+            <div style={{
+              marginBottom: 22,
+              background: "#FAF8F4",
+              border: `1px solid rgba(168,178,154,0.45)`,
+              borderRadius: 18,
+              overflow: "hidden",
+              boxShadow: "0 4px 14px -8px rgba(30,30,30,0.12)",
+              position: "relative",
+            }}>
+              {/* Badge ANCRE */}
+              <div style={{
+                position: "absolute",
+                top: 14,
+                left: 14,
+                zIndex: 5,
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "5px 10px 5px 8px",
+                background: "#A8B29A",
+                color: "#fff",
+                borderRadius: 999,
+                fontFamily: "'Fredoka', sans-serif",
+                fontSize: 11,
+                fontWeight: 600,
+                letterSpacing: "0.08em",
+                textTransform: "uppercase",
+                boxShadow: "0 2px 8px -2px rgba(30,30,30,0.2)",
+              }}>
+                <span style={{
+                  width: 8, height: 8, borderRadius: "50%",
+                  background: "#fff",
+                }} />
+                Ta pièce
+              </div>
+
+              {/* Bouton Re-scanner discret en haut à droite */}
+              <button
+                type="button"
+                onClick={clearAnchor}
+                aria-label="Re-scanner une autre pièce"
+                style={{
+                  position: "absolute",
+                  top: 14,
+                  right: 14,
+                  zIndex: 5,
+                  width: 30, height: 30,
+                  borderRadius: "50%",
+                  background: "rgba(255,255,255,0.92)",
+                  border: "1px solid rgba(30,30,30,0.1)",
+                  cursor: "pointer",
+                  fontSize: 14,
+                  color: "#6a6259",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  lineHeight: 1,
+                }}
+              >
+                ↻
+              </button>
+
+              {/* Image + métadonnées en 2 colonnes desktop, 1 sur mobile */}
+              <div style={{ display: "grid", gridTemplateColumns: "minmax(180px, 1fr) 1.2fr", gap: 0 }}>
+                {/* Photo scannée */}
+                <div style={{
+                  background: "#1E1E1E",
+                  aspectRatio: "1 / 1",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  overflow: "hidden",
+                }}>
+                  {anchor.thumb ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={anchor.thumb}
+                      alt={`${anchor.marque || ""} ${anchor.type}`}
+                      style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                    />
+                  ) : (
+                    <span style={{
+                      width: 80, height: 80,
+                      borderRadius: 20,
+                      background: anchor.couleur?.hex || "#888",
+                      border: "2px solid rgba(255,255,255,0.2)",
+                    }} />
+                  )}
+                </div>
+
+                {/* Métadonnées */}
+                <div style={{ padding: "26px 24px", display: "flex", flexDirection: "column", justifyContent: "center" }}>
+                  <p style={{
+                    fontFamily: "'Inter', sans-serif",
+                    fontSize: 10,
+                    letterSpacing: "0.18em",
+                    textTransform: "uppercase",
+                    color: "#6a6259",
+                    fontWeight: 600,
+                    margin: 0,
+                  }}>
+                    {anchor.slot} · {anchor.couleur?.nom || "—"}
+                  </p>
+                  <p style={{
+                    fontFamily: "'Fredoka', sans-serif",
+                    fontWeight: 600,
+                    fontSize: 22,
+                    color: "#1E1E1E",
+                    margin: "6px 0 2px",
+                    lineHeight: 1.15,
+                  }}>
+                    {anchor.marque
+                      ? `${anchor.marque}${anchor.modele ? " " + anchor.modele : ""}`
+                      : anchor.type.charAt(0).toUpperCase() + anchor.type.slice(1)}
+                  </p>
+                  <p style={{
+                    fontFamily: "'Inter', sans-serif",
+                    fontSize: 13,
+                    color: "#6a6259",
+                    margin: "4px 0 0",
+                    lineHeight: 1.5,
+                  }}>
+                    {anchor.type}
+                    {anchor.piecePicked && anchor.piecePicked !== anchor.type ? ` · ${anchor.piecePicked}` : ""}
+                  </p>
+                  <p style={{
+                    fontFamily: "'Inter', sans-serif",
+                    fontStyle: "italic",
+                    fontSize: 12.5,
+                    color: "#6B3A32",
+                    margin: "14px 0 0",
+                    lineHeight: 1.5,
+                  }}>
+                    Tu l'as déjà — WADA compose la tenue autour.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
           {/* Brief 2026-05-28 (harmonisation) — grille « 1 vedette + 4 en 2×2 » :
               la première pièce occupe une carte pleine largeur (signature),
               les 4 suivantes se rangent dans une grille 2 colonnes.
@@ -663,14 +853,16 @@ function MaTenueContent() {
                     textTransform: "uppercase", color: textSecondary,
                     margin: 0, fontFamily: "'Inter', sans-serif", fontWeight: 600,
                   }}>
-                    La tenue complète
+                    {anchor ? "Les 4 pièces à acheter" : "La tenue complète"}
                   </p>
                   <p style={{
                     fontSize: 13, color: textSecondary,
                     margin: "4px 0 0", fontStyle: "italic",
                     fontFamily: "'Inter', sans-serif",
                   }}>
-                    Estimation — prix réels chez chaque marchand au clic
+                    {anchor
+                      ? "Hors ta pièce ancrée — prix réels chez chaque marchand au clic"
+                      : "Estimation — prix réels chez chaque marchand au clic"}
                   </p>
                 </div>
                 <p style={{
@@ -1126,31 +1318,17 @@ function AmazonAaChip({ size = 16 }: { size?: number }) {
   );
 }
 
-/** Estimation de prix par tier — placeholder jusqu'à l'arrivée d'une vraie
- *  API prix (PA-API Amazon Partenaires après 3 ventes). Donne un ordre de
- *  grandeur immédiat au client sans laisser le « ~ » seul. */
-function priceEstimate(m: ShopLink): string {
-  switch (m.priceLevel) {
-    case "budget":  return "~25 €";
-    case "mid":     return "~55 €";
-    case "premium": return "~120 €";
-    case "luxe":    return "~280 €";
-    default:        return "—";
-  }
-}
-
-/* Brief UX client (26/05) — version numérique pour calcul de total.
-   Garde les mêmes valeurs que priceEstimate() pour cohérence visuelle
-   (le total affiché correspond exactement à la somme des prix montrés
-   sur chaque card). */
-function priceEstimateNum(m: ShopLink): number {
-  switch (m.priceLevel) {
-    case "budget":  return 25;
-    case "mid":     return 55;
-    case "premium": return 120;
-    case "luxe":    return 280;
-    default:        return 0;
-  }
+/** Libellé prix d'un marchand de recherche (fallback).
+ *
+ *  Bug critique 2026-05-31 : avant, on affichait un prix factice par tier
+ *  (« ~55 € » pour TOUT marchand « mid »), ce qui donnait Hoodie ~55€ /
+ *  Cargo ~55€ / Sneakers ~55€ — visiblement faux. Un lien de RECHERCHE n'a
+ *  pas de prix produit. Règle 4 du brief : on affiche « Prix sur le site »
+ *  plutôt qu'un montant inventé. Le vrai prix (MUJI / TBF) vient de la fiche
+ *  produit /api/products et est affiché directement (mujiProduct.prix), pas
+ *  via cette fonction. */
+function priceEstimate(_m: ShopLink): string {
+  return "Prix sur le site";
 }
 
 /** Mention discrète « via Amazon / via Awin » pour signaler la couche
@@ -1374,7 +1552,12 @@ function PieceCard({
   const primary = sortedMerchants[0];
   const others = sortedMerchants.slice(1);
 
-  if (!primary) {
+  /* Règle 3 (brief 2026-05-31) — slot sans candidat affilié :
+     aucune fiche produit affiliée réelle (mujiProduct) ET aucun marchand de
+     recherche affilié (primary) → on NE remplit PAS le slot avec un faux lien
+     (COS / Amazon / ~55 €). On affiche un état honnête : « pas encore chez nos
+     partenaires », ce qui est vrai et pousse le client à revenir. */
+  if (!mujiProduct && !primary) {
     return (
       <article style={{
         background: "var(--wada-cream, #FAF8F4)",
@@ -1392,17 +1575,22 @@ function PieceCard({
           <p style={{ fontFamily: "'Fredoka', sans-serif", fontSize: 17, margin: "4px 0 0", lineHeight: 1.25, color: ink }}>
             {itemName}
           </p>
-          <p style={{ marginTop: 10, fontSize: 11, color: textSecondary, fontStyle: "italic" }}>
-            Aucun marchand pour cette pièce.
+          <p style={{ marginTop: 10, fontSize: 12, color: textSecondary, fontStyle: "italic", lineHeight: 1.45 }}>
+            Aucune de nos marques partenaires n'a encore cette pièce — on enrichit
+            le catalogue chaque semaine.
           </p>
         </div>
       </article>
     );
   }
 
-  const brand = brandLabel(primary);
-  const price = priceEstimate(primary);
-  const via = viaLabel(primary);
+  // primary peut être absent si mujiProduct est présent (fiche produit réelle).
+  // On garde tout accès à `primary` sous garde pour ne jamais déréférencer null.
+  const brand = primary ? brandLabel(primary) : "";
+  // Marchand de recherche = pas de prix produit → « Prix sur le site » (jamais
+  // un montant inventé). Le vrai prix MUJI/TBF est affiché via mujiProduct.prix.
+  const price = primary ? priceEstimate(primary) : "Prix sur le site";
+  const via = primary ? viaLabel(primary) : null;
 
   return (
     <article

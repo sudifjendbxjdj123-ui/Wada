@@ -346,12 +346,25 @@ export default function ComposerPage() {
   };
 
   /* Validation : route vers /ma-tenue avec les params slot+style+palette.
-     On lit le genre depuis le profil utilisateur s'il existe. */
+     On lit le genre depuis le profil utilisateur s'il existe.
+
+     Phase 2+3 (2026-05-31) : si la Vision a identifié une pièce, on
+     stocke l'ancre dans sessionStorage avant la redirection. /ma-tenue
+     lit ce blob au mount → exclut le slot ancré du composer (le client
+     a déjà cette pièce) + affiche la carte « Ta pièce » en 1ère
+     position avec un badge ancre. */
   const handleCompose = () => {
     if (!detected?.matches[0]) return;
     const paletteNumber = detected.matches[0].number;
+
+    /* Si Vision OK, le registre vient de la Vision (plus fiable que
+       STYLE_BY_SLOT qui dépend du clic manuel sur un chip style). */
+    const registerFromVision = vision.phase === "garment"
+      ? mapVisionRegistre(vision.data.registre)
+      : null;
     const register =
-      STYLE_BY_SLOT[pickedSlot]?.find((s) => s.label === pickedStyle)?.register
+      registerFromVision
+      ?? STYLE_BY_SLOT[pickedSlot]?.find((s) => s.label === pickedStyle)?.register
       ?? "Classique";
 
     let genre: string | null = null;
@@ -363,6 +376,33 @@ export default function ComposerPage() {
         else if (p?.genre === "Homme") genre = "homme";
       }
     } catch {}
+    /* Le genre Vision est secondaire si profil dit autre chose, mais
+       précieux pour les clients qui n'ont pas configuré /compte. */
+    if (!genre && vision.phase === "garment") {
+      const vg = vision.data.genre;
+      if (vg === "femme" || vg === "homme") genre = vg;
+    }
+
+    /* Stockage ancre en sessionStorage (taille thumb ~50-150ko en JPEG
+       0.78, dans le quota 5MB du sessionStorage). Une seule ancre
+       active à la fois — pas de cumul. */
+    try {
+      if (vision.phase === "garment") {
+        sessionStorage.setItem("wada.anchor", JSON.stringify({
+          thumb: vision.thumb,
+          slot: vision.data.slot,
+          type: vision.data.type,
+          marque: vision.data.marque,
+          modele: vision.data.modele,
+          couleur: vision.data.couleur_principale,
+          registre: vision.data.registre,
+          piecePicked: pickedStyle,
+          detectedHex: detected.hex,
+        }));
+      } else {
+        sessionStorage.removeItem("wada.anchor");
+      }
+    } catch {}
 
     const params = new URLSearchParams({
       palette: paletteNumber,
@@ -372,8 +412,26 @@ export default function ComposerPage() {
       color: detected.hex,
     });
     if (genre) params.set("genre", genre);
+    /* Flag pour signaler à /ma-tenue qu'il y a une ancre (peut lire
+       sessionStorage en complément). Évite un round-trip si l'user
+       arrive directement sur /ma-tenue sans passer par /composer. */
+    if (vision.phase === "garment") params.set("anchor", "1");
     router.push(`/ma-tenue?${params}`);
   };
+
+  /* Phase 2 (2026-05-31) — mappe le registre Vision (lowercase sans
+     accent) vers le label registre utilisé par WADA côté UI/filtres.
+     Vision dit "classique", WADA filtre sur "Classique" via
+     styleToRegistre — c'est case-insensitive donc accepte les deux. */
+  function mapVisionRegistre(r: VisionGarment["registre"]): string {
+    const map: Record<VisionGarment["registre"], string> = {
+      classique: "Classique",
+      streetwear: "Streetwear",
+      minimaliste: "Minimaliste",
+      decontracte: "Décontracté",
+    };
+    return map[r] || "Classique";
+  }
 
   return (
     <main style={{
