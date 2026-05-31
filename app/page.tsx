@@ -1,9 +1,9 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-/* Brief « appli efficace » §3 (2026-05-29) : bande Resume flottante au-
-   dessus du hero si l'user a déjà visité une palette ou sauvé une tenue.
-   Le composant ne rend rien si pas d'état à reprendre. */
-import ResumeBanner from "@/components/ResumeBanner";
+/* Brief 2026-05-31 (user demande verbatim « supprime cette option ») :
+   bande « REPRENDRE — {palette} » retirée. Le composant ResumeBanner
+   et son hook useLastPalette restent dans le repo pour ré-activation
+   éventuelle, mais ne sont plus montés sur la home. */
 /**
  * Home WADA — refonte 2026-05-26 (brief client).
  *
@@ -147,10 +147,9 @@ export default function Home() {
       <a href="#main-content" className="wada-skip-link">Aller au contenu</a>
       <div id="main-content" />
 
-      {/* Bande Resume flottante — au-dessus de la vidéo (z-index 40 <
-          Nav 50). Ne rend rien si l'user n'a ni palette visitée ni
-          tenue sauvée, ou s'il a dismissé la bande pour la session. */}
-      <ResumeBanner />
+      {/* Bande Resume retirée 2026-05-31 (user feedback) — l'option
+          « REPRENDRE — Mirage du désert » polluait le hero. Le composant
+          ResumeBanner reste dans le repo mais n'est plus monté. */}
 
       {/* ════════════════════════════════════════════════════════════════
           HERO PLEIN ÉCRAN — image + vidéo en progressive enhancement
