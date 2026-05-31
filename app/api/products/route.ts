@@ -58,8 +58,14 @@ const EXCLUDE_HAUT_SUBTYPES = /\b(robe[\s-]*chemise|robe[\s-]*top|robe\s+en|robe
  *  MUJI + veste shirt-jacket OBJECTS IV LIFE → double chemise visuelle
  *  illogique. Une vraie veste est un blazer / manteau / parka / leather
  *  jacket / cardigan. Les overshirts vont en slot=haut (alternative au
- *  pull/sweat), pas en slot=veste outerwear. */
-const EXCLUDE_VESTE_SUBTYPES = /\b(shirt[\s-]?jacket|overshirt|chemise[\s-]?veste|chemise\s+\w+\s+manche)/i;
+ *  pull/sweat), pas en slot=veste outerwear.
+ *
+ *  Brief 2026-05-31 (user screenshot Forêt en hiver) : ajout filtres
+ *  pour exclure les « vest » sleeveless (cotton vest, tank vest) et
+ *  les sous-vêtements (camisole, débardeur, undershirt, sans manches).
+ *  En anglais « vest » = gilet/débardeur (≠ « veste » FR = jacket).
+ *  Une veste WADA doit avoir des manches longues, point. */
+const EXCLUDE_VESTE_SUBTYPES = /\b(shirt[\s-]?jacket|overshirt|chemise[\s-]?veste|chemise\s+\w+\s+manche|sleeveless|sans\s+manches?|cotton\s+vest|tank[\s-]?(top|vest)|cami(sole)?|d[ée]bardeur|undershirt|under[\s-]?vest|sous[\s-]?v[êe]tement|gilet\s+sans\s+manches?|waistcoat)/i;
 
 /** Sacs volumineux/sport — pour l'accent on dé-priorise sans exclure. */
 const DEPRIORITIZE_ACCENT = /\b(sac\s+(boston|de\s+sport|de\s+voyage|polochon)|sac\s+banane|sac\s+à\s+dos)/i;
@@ -257,6 +263,23 @@ export async function GET(req: Request) {
     });
   }
 
+  /* Fix 2026-05-31 (user screenshot « Strong Will T-shirt » sur tenue
+     Minimal) : quand style = Minimaliste, on EXCLUT en plus tout produit
+     avec un graphique voyant / logo XL / texte imprimé / motif visible.
+     Le test : EXCLUDE_ACCENT_PATTERN s'applique à TOUS les slots (pas
+     juste accent). En plus, on exclut explicitement les noms contenant
+     "graphic" / "print" / "logo" / "embroider" / "appliqué" / texte slogan. */
+  const isMinimaliste = (style || "").toLowerCase().includes("minimal");
+  if (isMinimaliste) {
+    const MINIMAL_FORBIDDEN = /\b(graphic|graphique|print(ed)?|imprim[ée]e?|logo\s+(t-shirt|tee|sweat)|big\s+logo|all[\s-]?over|patch(work)?|embroider|broderie|appliqu[ée]|slogan|tag(line)?|patterned|motif)/i;
+    filtered = filtered.filter((p) => {
+      const hay = `${p.nom} ${p.description || ""}`.toLowerCase();
+      if (EXCLUDE_ACCENT_PATTERN.test(hay)) return false;
+      if (MINIMAL_FORBIDDEN.test(hay)) return false;
+      return true;
+    });
+  }
+
   /* Brief 2026-05-30 §3 : filtrer par saison palette.
      Cachemire/laine épaisse interdits pour palette « été »,
      lin/coton léger interdits pour palette « hiver ». Détection
@@ -270,9 +293,16 @@ export async function GET(req: Request) {
 
   /* Brief 2026-05-30 §7 : plafond prix par pièce selon profil budget.
      Un user « < 150€ » ne doit voir AUCUNE pièce > 150€. Garantit que le
-     total tenue (5 × 150 = 750€ max) reste dans la fourchette annoncée. */
-  if (maxPrice !== null) {
-    filtered = filtered.filter((p) => p.prix <= maxPrice);
+     total tenue (5 × 150 = 750€ max) reste dans la fourchette annoncée.
+     Fix 2026-05-31 (user screenshot 996€ mocassins + 624€ sac sur tenue
+     Minimal en mode Premium) : même en Premium (pas de maxPrice), on
+     applique un soft cap à 700€/pièce pour le registre Minimaliste —
+     l'esthétique « quiet luxury sobre » est rarement au-dessus de cette
+     tranche, et 996€/pièce produit un total > 2400€ pour 5 pièces qui
+     casse la promesse de tenue accessible. */
+  const effectiveMaxPrice = maxPrice ?? (isMinimaliste ? 700 : null);
+  if (effectiveMaxPrice !== null) {
+    filtered = filtered.filter((p) => p.prix <= effectiveMaxPrice);
   }
 
   // Recherche full-text (AND sur tokens)

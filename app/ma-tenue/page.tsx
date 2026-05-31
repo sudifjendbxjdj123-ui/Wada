@@ -14,7 +14,7 @@
  * Si le client n'aime pas la tenue proposée → bouton "Voir une autre
  * tenue" qui cycle vers la palette suivante du score.
  */
-import { useState, useEffect, useMemo, Suspense } from "react";
+import { useState, useEffect, useMemo, useCallback, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
@@ -158,6 +158,14 @@ function MaTenueContent() {
   const [prefs, setPrefs] = useState<WadaPrefs>(DEFAULT_PREFS);
   const [matchIndex, setMatchIndex] = useState(0);
   const [hydrated, setHydrated] = useState(false);
+  /* Fix 2026-05-31 (user screenshot « ~275€ » alors que somme = 2414€) :
+     les vrais prix produits sont fetchés par chaque PieceCard via
+     useMujiProduct. Le total doit additionner ces prix réels, pas les
+     tiers estimate du marchand. On collecte via callback ; clé = piece.piece. */
+  const [realPrices, setRealPrices] = useState<Record<string, number>>({});
+  const handlePriceResolved = useCallback((pieceId: string, price: number) => {
+    setRealPrices((prev) => prev[pieceId] === price ? prev : { ...prev, [pieceId]: price });
+  }, []);
   // Images générées par l'API Replicate via le prompt WADA × Claude
   // Brief 2026-05-28 : la génération d'image IA en haut de page (aiImages,
   // imageLoading, imageError) est retirée — les vraies photos MUJI suffisent
@@ -612,6 +620,7 @@ function MaTenueContent() {
                   style={prefs.style || null}
                   seed={variantSeed}
                   featured={featured}
+                  onPriceResolved={handlePriceResolved}
                 />
               </div>
             );
@@ -619,21 +628,21 @@ function MaTenueContent() {
           </div>
 
           {/* Brief UX client (26/05) — Total estimé de la tenue.
-              Le client voyait les 5 prix individuels mais devait additionner
-              de tête. Maintenant : récapitulatif visible juste sous la grille,
-              format estimation honnête (« ~ ») parce que basé sur priceLevel
-              du marchand. Les vrais prix MUJI sont aux cards individuelles.
-              Calcul : sum(priceEstimateNum) sur les 5 marchands primaires de
-              chaque pièce. Toujours en EUR (devise WADA, cf. task #68). */}
+              Fix 2026-05-31 (user screenshot « ~275€ » avec somme = 2414€) :
+              le calcul utilisait priceEstimateNum() basé sur le priceLevel
+              tier du marchand (~25/55/120/280 par défaut), pas les vrais
+              prix produits affichés sur les cards. Maintenant : agrégé via
+              callback onPriceResolved des PieceCard → state realPrices.
+              Total = somme arrondie des vrais prix MUJI/TBF affichés. */}
           {(() => {
-            const total = composition.reduce((acc, piece) => {
-              const slot = piece._slot;
-              const color = slot?.color || entry.colors[0];
-              const query = slot?.searchKeywords || smartQuery(piece.item, color.name);
-              const merchants = shopOptionsAffiliated(query, piece.piece);
-              const primary = merchants[0];
-              return acc + (primary ? priceEstimateNum(primary) : 0);
-            }, 0);
+            const resolved = composition
+              .map((p) => realPrices[p.piece] || 0)
+              .filter((v) => v > 0);
+            /* Si TOUS les prix réels sont arrivés → total exact.
+               Sinon (chargement en cours) → on n'affiche rien plutôt qu'un
+               total faux qui se met à jour visiblement. */
+            if (resolved.length < composition.length) return null;
+            const total = Math.round(resolved.reduce((a, b) => a + b, 0));
             if (total === 0) return null;
             return (
               <div style={{
@@ -1313,7 +1322,7 @@ function useMujiProduct(
 
 function PieceCard({
   piece, itemName, color, merchants, paletteRef, genre, style,
-  seed, excludeIds, onPicked, featured,
+  seed, excludeIds, onPicked, featured, onPriceResolved,
 }: {
   piece: string;
   itemName: string;
@@ -1329,6 +1338,10 @@ function PieceCard({
    *  ratio image 16/10 plus paysage que portrait pour bien remplir.
    *  Les autres restent en 4/5 portrait. */
   featured?: boolean;
+  /** Fix 2026-05-31 (user screenshot bug total) : remonte le vrai
+   *  prix du produit dès qu'il est résolu, pour que le total agrégé
+   *  soit calculé sur les VRAIS prix et pas sur les tiers estimate. */
+  onPriceResolved?: (pieceId: string, price: number) => void;
 }) {
   // Tentative MUJI réel — brief variété : on passe la VRAIE couleur de la
   // palette assignée à ce slot (color.hex) + un seed unique par slot.
@@ -1342,6 +1355,12 @@ function PieceCard({
     excludeIds || [],
     onPicked,
   );
+  /* Quand le produit est résolu (prix réel arrivé), on remonte au parent. */
+  useEffect(() => {
+    if (mujiProduct?.prix && onPriceResolved) {
+      onPriceResolved(piece, mujiProduct.prix);
+    }
+  }, [mujiProduct?.prix, piece, onPriceResolved]);
   // Brief 2026-05-27 « afficher la VRAIE marque » :
   // On re-trie pour pousser les marchands directs (COS, Muji, Veja, Uniqlo,
   // Amazon · HUGO → HUGO…) en premier. L'Amazon GÉNÉRIQUE (label « Amazon »
