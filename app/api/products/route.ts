@@ -294,13 +294,26 @@ export async function GET(req: Request) {
   /* Brief 2026-05-30 §7 : plafond prix par pièce selon profil budget.
      Un user « < 150€ » ne doit voir AUCUNE pièce > 150€. Garantit que le
      total tenue (5 × 150 = 750€ max) reste dans la fourchette annoncée.
+
      Fix 2026-05-31 (user screenshot 996€ mocassins + 624€ sac sur tenue
      Minimal en mode Premium) : même en Premium (pas de maxPrice), on
-     applique un soft cap à 700€/pièce pour le registre Minimaliste —
-     l'esthétique « quiet luxury sobre » est rarement au-dessus de cette
-     tranche, et 996€/pièce produit un total > 2400€ pour 5 pièces qui
-     casse la promesse de tenue accessible. */
-  const effectiveMaxPrice = maxPrice ?? (isMinimaliste ? 700 : null);
+     applique un soft cap par registre :
+       - Minimaliste : 700€/pièce (quiet luxury sobre)
+       - Streetwear  : 400€/pièce (tenue casual autour de sneakers)
+       - Décontracté : 250€/pièce (MUJI / basiques)
+       - Classique   : pas de cap (tailoring premium peut atteindre 1500€)
+
+     Cas concret : user scanne ses Veja Campo (streetwear), registre Vision
+     applique Streetwear → ne ressort pas une veste Lemaire 673€ ou un
+     jean Jacquemus 503€ qui font total 1600€ alors que les Veja valent
+     150€. Coherent total ≤ ~1500€ pour 4 pièces (~400 × 4). */
+  const REGISTRE_CAP: Record<string, number> = {
+    minimaliste: 700,
+    streetwear: 400,
+    decontracte: 250,
+  };
+  const registreCap = targetRegistre ? REGISTRE_CAP[targetRegistre] : null;
+  const effectiveMaxPrice = maxPrice ?? registreCap ?? null;
   if (effectiveMaxPrice !== null) {
     filtered = filtered.filter((p) => p.prix <= effectiveMaxPrice);
   }

@@ -653,8 +653,15 @@ function MaTenueContent() {
                     margin: "4px 0 0",
                     lineHeight: 1.5,
                   }}>
-                    {anchor.type}
-                    {anchor.piecePicked && anchor.piecePicked !== anchor.type ? ` · ${anchor.piecePicked}` : ""}
+                    {/* Fix 2026-05-31 : éviter doublon « sneakers · Sneakers »
+                        (type Vision lowercase ≈ piece picker capitalized).
+                        On compare en lowercase trimmed. */}
+                    {(() => {
+                      const t = anchor.type.trim();
+                      const p = (anchor.piecePicked || "").trim();
+                      const dup = !p || p.toLowerCase() === t.toLowerCase();
+                      return dup ? t : `${t} · ${p}`;
+                    })()}
                   </p>
                   <p style={{
                     fontFamily: "'Inter', sans-serif",
