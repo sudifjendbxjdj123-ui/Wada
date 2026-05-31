@@ -100,6 +100,13 @@ const EXCLUDE_ALWAYS = /\b(pyjama|peignoir|short\s+de\s+bain|maillot\s+de\s+bain
  *      habillé toute sandale jure → on les exclut maintenant. */
 const EXCLUDE_FORMAL = /\b(surv.tement|jogging|sweat\s*à?\s*capuche|à\s+capuchon|à\s+capuche|capuchon|hoodie|pyjama|sac\s+(boston|de\s+sport|de\s+voyage)|pantoufle|mule|chausson|claquette|tongs?|crocs|sandales?|deperlant|d.perlant|ripstop|track[\s-]?pants?|track[\s-]?suit|joggers?|cargo[\s-]?pants?)/i;
 
+/** Brief 2026-05-31 v8 (user bug Studio danois) : exclusion absolue
+ *  des sous-types OUTDOOR / APRÈS-SKI / TECHNIQUES pour tous registres
+ *  mode (sauf si on créé un registre dédié plus tard).
+ *  Cible : NSE (North Face Standard Equipment), down jackets, snow boots,
+ *  Moon Boot, GORE-TEX, parka, quilted heritage, technique imperméable. */
+const EXCLUDE_OUTDOOR = /\b(nse|gore[\s-]?tex|down\s+jacket|doudoune|parka|after[\s-]?ski|après[\s-]?ski|snow\s+boot|moon\s*boot|quilted\s+(jacket|coat)|hiking\s+(boot|shoe)|technique\s+imperméable|imperm[ée]able|waterproof|wind[\s-]?breaker|coupe[\s-]?vent\s+technique|ripstop|hard[\s-]?shell|soft[\s-]?shell|insulated|thermal|primaloft|fleece|polartec|fonctionnel)/i;
+
 const FORMAL_STYLES = new Set([
   "classique",
   "old money",
@@ -332,6 +339,11 @@ export async function GET(req: Request) {
        « Skull », « Bondage ») sont vraiment incompatibles avec ces
        registres, et ils sont peu communs dans MUJI/TBF basiques. */
     if ((isMinimaliste || isClassique) && VISUAL_FORBIDDEN.test(hay)) return false;
+    /* Fix 2026-05-31 v8 (user bug Studio danois : Moon Boot + North Face
+       NSE + Barbour quilted dans une tenue Minimal) : exclusion absolue
+       des sous-types outdoor / après-ski / techniques sur TOUS les
+       registres mode. Une tenue WADA n'est jamais une tenue de rando. */
+    if (EXCLUDE_OUTDOOR.test(hay)) return false;
     return true;
   });
 

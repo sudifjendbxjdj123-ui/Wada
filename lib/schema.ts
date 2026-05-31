@@ -141,10 +141,13 @@ export interface ProduitAwin {
   /** Brief 2026-05-30 « logique de composition tenue cohérente » §1 :
    *  registre stylistique de la MARQUE (différent du registre du SLOT).
    *  Calculé à l'ingestion via lib/brandRegistre.ts depuis brand_name.
-   *  4 valeurs : classique | streetwear | minimaliste | decontracte.
+   *  5 valeurs : classique | streetwear | minimaliste | decontracte | outdoor.
    *  Le composer filtre par registre pour ne pas mélanger Brunello
-   *  Cucinelli (classique) avec Amiri (streetwear) dans la même tenue. */
-  brandRegistre?: "classique" | "streetwear" | "minimaliste" | "decontracte";
+   *  Cucinelli (classique) avec Amiri (streetwear) dans la même tenue.
+   *  Brief 2026-05-31 v8 (user bug Studio danois) : ajout `outdoor`
+   *  pour exclure North Face / Barbour / Moon Boot / Patagonia des
+   *  tenues mode. Outdoor n'est jamais dans l'adjacence. */
+  brandRegistre?: "classique" | "streetwear" | "minimaliste" | "decontracte" | "outdoor";
 }
 
 /* ──────────────────────────────────────────────────────────────────────

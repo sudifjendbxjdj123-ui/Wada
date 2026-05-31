@@ -20,7 +20,15 @@ export type BrandRegistre =
   | "classique"     // Brunello, Tom Ford, Zegna, Loro Piana, Polo Ralph Lauren…
   | "streetwear"    // Amiri, Rick Owens, Off-White, Palm Angels, AMI, A Bathing Ape…
   | "minimaliste"   // Jacquemus, Lemaire, Comme des Garçons, Acne Studios…
-  | "decontracte";  // MUJI, Armor Lux, American Vintage, Birkenstock…
+  | "decontracte"   // MUJI, Armor Lux, American Vintage, Birkenstock…
+  | "outdoor";      // The North Face, Patagonia, Arc'teryx, Moon Boot, Barbour…
+                    // Brief 2026-05-31 (user bug Studio danois) : ces marques
+                    // sont fonctionnelles (outdoor/heritage/après-ski/country)
+                    // et ne s'habillent PAS avec du tailoring/minimaliste/
+                    // streetwear urbain. Ce registre est EXCLU de tous les
+                    // autres par défaut (jamais d'adjacence vers/depuis
+                    // outdoor). Une tenue spécifique « rando » pourrait
+                    // les solliciter (futur registre dédié).
 
 /* Table BRAND → REGISTRE. Les clés sont normalisées (lowercase, accents
    retirés, espaces preserves) pour permettre un lookup robuste depuis
@@ -57,15 +65,13 @@ const BRAND_REGISTRE: Record<string, BrandRegistre> = {
   "kiton": "classique",
   "santoni": "classique",
   "lanvin": "classique",
-  "belstaff": "classique",
-  "barbour": "classique",
+  /* "belstaff" et "barbour" déplacés en OUTDOOR (heritage country / wax). */
   "church's": "classique",
   "churchs": "classique",
-  "canada goose": "classique",
-  "moose knuckles": "classique",
+  /* "canada goose" / "moose knuckles" déplacés en OUTDOOR (doudounes). */
   "etro": "classique",
   "berluti": "classique",
-  "moncler": "classique",
+  /* "moncler" déplacé en OUTDOOR plus bas (down jackets / outerwear technique). */
   "celine": "classique",
   "céline": "classique",
   "hermes": "classique",
@@ -75,8 +81,8 @@ const BRAND_REGISTRE: Record<string, BrandRegistre> = {
   "dior": "classique",
   "fendi": "classique",
   "veja": "classique",
-  "objects iv life": "classique",
-  "kaptain sunshine": "classique",
+  /* "objects iv life" déplacé en STREETWEAR plus bas (esthétique urbaine). */
+  /* "kaptain sunshine" déplacé en OUTDOOR plus bas (workwear heritage). */
   "margaret howell": "classique",
   "drake's": "classique",
   "loro piana interiors": "classique",
@@ -87,7 +93,7 @@ const BRAND_REGISTRE: Record<string, BrandRegistre> = {
   "off-white": "streetwear",
   "off white": "streetwear",
   "palm angels": "streetwear",
-  "stone island": "streetwear",
+  /* "stone island" déplacé en OUTDOOR (technique imperméable, military). */
   "icecream": "streetwear",
   "billionaire boys club": "streetwear",
   "neighborhood": "streetwear",
@@ -185,6 +191,50 @@ const BRAND_REGISTRE: Record<string, BrandRegistre> = {
   "salomon": "decontracte",
   "uggs": "decontracte",
   "ugg": "decontracte",
+
+  // ─── OUTDOOR / HERITAGE / APRÈS-SKI ───
+  // Brief 2026-05-31 (user bug Studio danois) : ces marques sont
+  // fonctionnelles (outdoor/heritage/après-ski/country). Elles
+  // arrivent souvent depuis le flux TBF mais ne s'habillent pas avec
+  // les autres registres mode. Exclues par défaut de toutes les
+  // tenues classique/minimaliste/streetwear/décontracté.
+  "the north face": "outdoor",
+  "north face": "outdoor",
+  "patagonia": "outdoor",
+  "arc'teryx": "outdoor",
+  "arcteryx": "outdoor",
+  "snow peak": "outdoor",
+  "moncler": "outdoor",
+  "canada goose": "outdoor",
+  "moose knuckles": "outdoor",
+  "klattermusen": "outdoor",
+  "klättermusen": "outdoor",
+  "fjallraven": "outdoor",
+  "fjällräven": "outdoor",
+  "and wander": "outdoor",
+  "and-wander": "outdoor",
+  "barbour": "outdoor",
+  "belstaff": "outdoor",
+  "filson": "outdoor",
+  "moon boot": "outdoor",
+  "moonboot": "outdoor",
+  "sorel": "outdoor",
+  "merrell": "outdoor",
+  "columbia": "outdoor",
+  "hiking patrol": "outdoor",
+  "rocky mountain featherbed": "outdoor",
+  "goldwin": "outdoor",
+  "snow peak apparel": "outdoor",
+  "maharishi": "outdoor", // camo/military aesthetic
+  "c.p. company": "outdoor", // tech outerwear
+  "stone island": "outdoor", // tech outerwear, military-inspired
+  "engineered garments": "outdoor", // workwear/outdoor
+  "kaptain sunshine": "outdoor", // workwear heritage
+  "maison mihara yasuhiro": "streetwear", // garde streetwear (urbain)
+  "post archive faction": "streetwear", // garde streetwear (urbain)
+  "heliot emil": "streetwear",
+  "44 label group": "streetwear",
+  "objects iv life": "streetwear",
 };
 
 /* Mapping style profil utilisateur → registre catalogue.
@@ -233,12 +283,24 @@ export function brandToRegistre(brand: string | undefined | null): BrandRegistre
 /**
  * Retourne le registre d'une marque avec fallback `classique`.
  * Utiliser cette version quand on doit ABSOLUMENT classer (filter par
- * registre côté API). Les marques inconnues tombent en classique (le
- * moins risqué — un produit luxe inconnu est plus souvent classique
- * qu'autre chose).
+ * registre côté API).
+ *
+ * Brief 2026-05-31 v8 (user bug Studio danois) : avant, le fallback
+ * était `classique` (« le moins risqué »). Conséquence : Moon Boot,
+ * The North Face, Barbour qui n'étaient pas dans la table tombaient
+ * en classique → passaient l'adjacence sur bas/veste/chaussures pour
+ * Minimal → arrivaient dans une tenue Studio Danois. Bug majeur.
+ *
+ * Maintenant : fallback `outdoor`. Outdoor est EXCLU de tous les
+ * autres registres → une marque inconnue est rejetée par défaut.
+ * Plus sûr : on préfère manquer un Brunello inconnu (rare) que
+ * laisser passer une marque outdoor non taggée.
+ *
+ * Ajouter explicitement les marques classique dans BRAND_REGISTRE
+ * pour qu'elles passent les filtres.
  */
 export function brandToRegistreOrFallback(brand: string | undefined | null): BrandRegistre {
-  return brandToRegistre(brand) || "classique";
+  return brandToRegistre(brand) || "outdoor";
 }
 
 /**
