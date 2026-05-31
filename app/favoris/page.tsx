@@ -37,12 +37,17 @@ export default function FavorisPage() {
             <h1 className="wada-hero-title wada-text-3d-ink" style={{ fontSize: 56, fontWeight: 400, letterSpacing: "-0.01em", margin: 0, lineHeight: 1, fontFamily: "'Fredoka', sans-serif" }}>
               Mes favoris
             </h1>
-            {hydrated && outfitsHydrated && (
+            {/* Brief 2026-06-01 (audit doublon empty state) : on
+                n'affiche le sous-titre que quand il y a des favoris.
+                Quand totalCount === 0, la section vide en dessous
+                porte déjà le message complet (« Vos favoris vous
+                attendent » + CTA Scanner). Évite « Rien pour
+                l'instant » répété sous le titre. */}
+            {hydrated && outfitsHydrated && totalCount > 0 && (
               <p style={{ fontSize: 16, color: subtle, fontStyle: "italic", marginTop: 24, fontFamily: "'Inter', sans-serif" }}>
                 {favPalettes.length > 0 && `${favPalettes.length} palette${favPalettes.length > 1 ? "s" : ""}`}
                 {favPalettes.length > 0 && outfits.length > 0 && " · "}
                 {outfits.length > 0 && `${outfits.length} tenue${outfits.length > 1 ? "s" : ""} gardée${outfits.length > 1 ? "s" : ""}`}
-                {totalCount === 0 && "Rien pour l'instant"}
               </p>
             )}
           </header>

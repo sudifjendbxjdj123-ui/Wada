@@ -1944,14 +1944,33 @@ function PieceCard({
           />
         </div>
       ) : (
+        /* Brief 2026-06-01 (audit point 9 — squelettes loading) :
+           pendant que useMujiProduct fetch le produit (1-2s sur réseau
+           normal), on affichait un aplat couleur palette. Maintenant :
+           skeleton shimmer + pastille couleur palette en watermark
+           subtil au centre. Donne un signal visuel clair « chargement
+           en cours » au lieu d'une carte qui semble figée. */
         <div
           aria-hidden
+          className="wada-skeleton"
           style={{
             aspectRatio: featured ? "16 / 10" : "4 / 5",
-            background: color.hex,
             borderRadius: "16px 16px 0 0",
+            position: "relative",
+            overflow: "hidden",
           }}
-        />
+        >
+          <span style={{
+            position: "absolute",
+            top: "50%", left: "50%",
+            width: 48, height: 48,
+            borderRadius: "50%",
+            background: color.hex,
+            transform: "translate(-50%, -50%)",
+            opacity: 0.35,
+            border: "1px solid rgba(255,255,255,0.4)",
+          }} />
+        </div>
       )}
 
       {/* Body */}
