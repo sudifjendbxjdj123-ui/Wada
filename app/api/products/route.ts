@@ -609,20 +609,29 @@ export async function GET(req: Request) {
     }
   }
 
-  /* Fix 2026-05-31 v4 (user feedback « il n'y a que des habits Muji
-     pas de variation avec TBF ») : diversification merchant par slot.
-     Sans ce ré-équilibrage, le top-1 finit souvent sur MUJI (catalogue
-     pauvre en couleur mais avec ΔE faible sur les neutres). On répartit
-     les marques préférées par slot pour qu'une tenue 5 pièces ait au
-     moins 2-3 merchants différents visibles :
-       - haut         → MUJI bias    (basiques quotidiens)
-       - bas          → non-MUJI bias (TBF / Lemaire / Jacquemus jeans, chinos)
-       - veste        → non-MUJI bias (outerwear premium TBF)
-       - chaussures   → non-MUJI bias (sneakers/derbies TBF marques)
-       - accent       → MUJI bias    (foulards, ceintures basiques)
-     Si la 1ère pièce du top satisfait déjà le bias → inchangée.
-     Sinon : on cherche la 1ère pièce du pool top-POOL_SIZE qui matche,
-     dans la limite d'un écart ΔE acceptable (< 1.5× la meilleure). */
+  /* Fix 2026-05-31 v6 (user feedback v3 « non je suis désolé mais il
+     n'y a toujours pas TBF sur le téléphone seulement MUJI peu importe
+     ce que je mets ») : bias merchant AGGRESSIF. Avant : on cherchait
+     un substitut non-MUJI dans top-12 avec tolérance ΔE. Maintenant :
+     dès qu'un produit non-MUJI existe dans TOUT le pool valide, on le
+     promeut en tête, peu importe le ΔE. La proximité couleur reste un
+     critère SECONDAIRE — entre 2 candidats non-MUJI, on prend le plus
+     proche en couleur. Mais entre MUJI parfait et TBF moyen, TBF gagne.
+
+     Pourquoi ce radical ? L'user voit MUJI sur 5/5 slots malgré nos
+     ajustements précédents (caps relevés, adjacence, soft cap +50%).
+     Soit le ΔE MUJI est systématiquement meilleur (probable car MUJI
+     a un catalogue plus dense sur les neutres), soit TBF n'existe pas
+     pour cette combo couleur/genre/saison. On force le mix pour les 3
+     slots non-MUJI-bias quand c'est physiquement possible.
+
+     Diagnostic merchant log : on stocke les counts pour debug. */
+  const merchantCounts: Record<string, number> = {};
+  for (const p of finalList) {
+    const m = (p.marque || p.marchand || "inconnu").toLowerCase();
+    merchantCounts[m] = (merchantCounts[m] || 0) + 1;
+  }
+
   if (slot && finalList.length > 1 && limit === 1) {
     const PREFER_MUJI: Record<string, boolean> = {
       haut: true,
@@ -634,21 +643,24 @@ export async function GET(req: Request) {
     const isMuji = (p: ProduitAwin) => /muji/i.test(p.marque || p.marchand || "");
     const wantsMuji = PREFER_MUJI[slot];
     const head = finalList[0];
-    /* Si le 1er candidat ne respecte pas le bias merchant, on cherche
-       un substitut dans la fenêtre top-POOL_SIZE. Évite de descendre
-       trop loin (qualité ΔE prioritaire). */
     if (head && isMuji(head) !== wantsMuji) {
-      const headDe = isValidHex && colorHex ? deltaEHex(head.hex, colorHex) : 0;
-      const tolerance = headDe * 1.5 + 8; // marge ΔE tolérée
+      /* Recherche AGGRESSIVE : 1ère occurrence dans TOUT le pool
+         (plus de cap top-12, plus de tolérance ΔE). Si y'a un
+         non-MUJI dispo, on le sort. */
       const swapIndex = finalList.findIndex((p, i) => {
-        if (i === 0 || i > POOL_SIZE) return false;
-        if (isMuji(p) !== wantsMuji) return false;
-        const dE = isValidHex && colorHex ? deltaEHex(p.hex, colorHex) : 0;
-        return dE <= tolerance;
+        if (i === 0) return false;
+        return isMuji(p) === wantsMuji;
       });
       if (swapIndex > 0) {
         const swap = finalList[swapIndex];
         finalList = [swap, ...finalList.filter((_, i) => i !== swapIndex)];
+        console.log(
+          `[/api/products] bias merchant slot=${slot} : swap ${head.marque} → ${swap.marque} (pool size ${finalList.length})`,
+        );
+      } else {
+        console.log(
+          `[/api/products] bias merchant slot=${slot} : aucun candidat non-MUJI dispo dans pool (${finalList.length}), merchants=${JSON.stringify(merchantCounts)}`,
+        );
       }
     }
   }
@@ -667,6 +679,7 @@ export async function GET(req: Request) {
            garde couleur a rejeté beaucoup de produits (pool clipped). */
         color_guard_kept: colorValid.length,
         color_guard_dropped: filtered.length - colorValid.length,
+        merchant_counts: merchantCounts,
       },
     },
     {
