@@ -11,7 +11,10 @@ import LangButton from "@/components/LangButton";
      contenant : Compte / Favoris / Changer style / Thème / Langue.
    - Logo passe à gauche à côté des liens (au lieu de centré absolument).
    - Bouton « Abonnement » passe en ghost (outline bordeaux). */
-import ProfileMenu from "@/components/ProfileMenu";
+/* ProfileMenu retiré du header 2026-05-31 (user feedback).
+   Import conservé en commentaire au cas où on veut le ré-activer
+   plus tard via toggle Premium ou sur une page dédiée.
+import ProfileMenu from "@/components/ProfileMenu"; */
 
 /**
  * Nav — header WADA global (brief 2026-05-28 v4 — audit UX).
@@ -259,10 +262,15 @@ export default function Nav() {
             Abonnement
           </Link>
 
-          {/* Brief refonte 2026-05-30 : nouveau ProfileMenu remplace
-              ProfileBadge + ThemeToggle + LangButton du header. L'avatar
-              est cliquable et déploie un dropdown avec ces options. */}
-          <ProfileMenu />
+          {/* Brief 2026-05-31 (user feedback verbatim) : « efface cette
+              option car si le client veut tester plusieurs styles
+              différents il doit tout le temps changer ce n'est pas
+              pratique ». La pastille profil H/F poussait le client à
+              s'engager sur UN style. Maintenant : la personnalisation
+              backend (genre/style/budget) reste fonctionnelle, mais
+              elle n'est plus visible en permanence. Le client la
+              configure une fois dans /compte et l'oublie. */}
+          {/* <ProfileMenu /> */}
         </div>
 
         <style jsx>{`
