@@ -202,6 +202,11 @@ export async function GET(req: Request) {
     return true;
   });
 
+  /* Fix 2026-05-31 v3 : on capture le pool de base (enStock + image OK
+     + pas shopifypreview) avant tout filtre métier. Sert au fallback
+     registre plus bas (cf. commentaire « FALLBACK REGISTRE »). */
+  const initialPool = filtered.slice();
+
   // Brief §1 : strict slot match
   if (slot) filtered = filtered.filter((p) => p.categorie === slot);
   if (merchant) filtered = filtered.filter((p) => p.marchandSlug === merchant);
@@ -216,16 +221,20 @@ export async function GET(req: Request) {
   // et leakaient dans les deux genres).
   if (genre === "homme" || genre === "femme") {
     filtered = filtered.filter((p) => p.genre === genre || p.genre === "unisexe");
-    /* Fix 2026-05-31 (user screenshot « Puncture M A-Stabbing Women shirt »
-       sur tenue Homme à 2604€) : le tag genre est parfois absent ou
-       "unisexe" sur des produits dont le NOM contient clairement "Women" /
-       "Femme". On filtre alors par mot-clé pour être strict. */
-    const OPPOSITE_GENDER = genre === "homme"
-      ? /\b(women|womens|woman|woman's|womenswear|femme|f[ée]minine?s?|pour\s+(elle|femme))\b/i
-      : /\b(men|mens|man|men's|menswear|homme|masculine?s?|pour\s+(lui|homme))\b/i;
+    /* Fix 2026-05-31 v3 (user feedback « pas de muji tbf ») : la regex
+       v2 filtrait trop large — « pour homme » bannissait « Pour homme.
+       Pour femme. Mixte. » dans une description marketing générique, et
+       « men » matchait « menswear » de TBF (qui est menswear-focused) sur
+       une recherche femme légitime. Maintenant on n'exclut que si le
+       NOM (pas description) contient une marque genre explicite. */
+    const OPPOSITE_GENDER_NAME = genre === "homme"
+      ? /\b(women's?|womens|woman's?|womenswear|pour\s+femme|f[ée]minin)\b/i
+      : /\b(men's?|mens|man's?|menswear|pour\s+homme|masculin)\b/i;
     filtered = filtered.filter((p) => {
-      const hay = `${p.nom} ${p.description || ""}`;
-      return !OPPOSITE_GENDER.test(hay);
+      /* Test sur le nom UNIQUEMENT. La description bilingue marketing
+         contient souvent « pour homme et femme » ou « menswear collection »
+         et déclenchait des exclusions intempestives. */
+      return !OPPOSITE_GENDER_NAME.test(p.nom);
     });
   }
 
@@ -292,13 +301,15 @@ export async function GET(req: Request) {
 
   filtered = filtered.filter((p) => {
     const hay = `${p.nom} ${p.description || ""}`.toLowerCase();
-    /* EXCLUDE_ACCENT_PATTERN (carreaux, rayures, motifs) appliqué à TOUS
-       les slots quand Minimaliste ou Classique — registres qui visent la
-       sobriété. Pour Streetwear/Décontracté, on garde l'accent comme
-       seul slot bloqué (cf. plus haut). */
-    if ((isMinimaliste || isClassique) && EXCLUDE_ACCENT_PATTERN.test(hay)) return false;
-    /* VISUAL_FORBIDDEN : graphique provocant / slogan / dessin central —
-       jamais OK pour Classique ou Minimaliste, peu importe le slot. */
+    /* Fix 2026-05-31 v3 (user feedback « pas de muji tbf ») : la v2
+       appliquait EXCLUDE_ACCENT_PATTERN (rayures/printed/striped/floral)
+       à TOUS les slots en Minimal+Classique → vidait beaucoup de MUJI/TBF
+       (un t-shirt MUJI « rayé » est parfaitement Minimaliste). Rollback :
+       EXCLUDE_ACCENT_PATTERN reste appliqué SEULEMENT au slot=accent
+       (cf. boucle plus haut). VISUAL_FORBIDDEN reste sur tous slots
+       Minimal+Classique car les noms artistiques provocants (« Stabbing »,
+       « Skull », « Bondage ») sont vraiment incompatibles avec ces
+       registres, et ils sont peu communs dans MUJI/TBF basiques. */
     if ((isMinimaliste || isClassique) && VISUAL_FORBIDDEN.test(hay)) return false;
     return true;
   });
@@ -339,7 +350,8 @@ export async function GET(req: Request) {
     minimaliste: 700,
     streetwear: 400,
     decontracte: 250,
-    classique: 1500,
+    classique: 2000, // v3 (2026-05-31) : relevé 1500 → 2000 pour laisser
+                     // passer du Brunello/Loro Piana milieu de gamme
   };
   const registreCap = targetRegistre ? REGISTRE_CAP[targetRegistre] : null;
   const effectiveMaxPrice = maxPrice ?? registreCap ?? null;
@@ -408,6 +420,45 @@ export async function GET(req: Request) {
   function distanceToSlotTarget(productHex: string): number {
     if (!slotTargetColor) return Infinity;
     return deltaEHex(productHex, slotTargetColor);
+  }
+
+  /* Fix 2026-05-31 v3 (user feedback « pas de muji tbf ») — FALLBACK
+     REGISTRE : si après tous les filtres on a 0 produit ET qu'on avait
+     un targetRegistre, on retire le filtre registre et on rejoue. Mieux
+     vaut un produit cohérent en couleur+slot+genre+saison (même hors
+     registre strict) qu'une carte vide « Aucune marque partenaire ».
+     Le tri ΔE qui suit gardera quand même les plus proches en couleur. */
+  if (filtered.length === 0 && targetRegistre && initialPool) {
+    const fallback = initialPool.filter((p) => {
+      if (slot && p.categorie !== slot) return false;
+      if (merchant && p.marchandSlug !== merchant) return false;
+      if (excludeIds && excludeIds.has(p.id)) return false;
+      if (genre === "homme" || genre === "femme") {
+        if (p.genre !== genre && p.genre !== "unisexe") return false;
+        const OPP = genre === "homme"
+          ? /\b(women's?|womens|woman's?|womenswear|pour\s+femme|f[ée]minin)\b/i
+          : /\b(men's?|mens|man's?|menswear|pour\s+homme|masculin)\b/i;
+        if (OPP.test(p.nom)) return false;
+      }
+      const hay = `${p.nom} ${p.description || ""}`.toLowerCase();
+      if (EXCLUDE_ALWAYS.test(hay)) return false;
+      if (slot === "chaussures" && EXCLUDE_SHOES_SUBTYPES.test(hay)) return false;
+      if (slot === "haut" && EXCLUDE_HAUT_SUBTYPES.test(hay)) return false;
+      if (slot === "veste" && EXCLUDE_VESTE_SUBTYPES.test(hay)) return false;
+      if (slot === "accent" && EXCLUDE_ACCENT.test(hay)) return false;
+      if (slot === "accent" && EXCLUDE_ACCENT_PATTERN.test(hay)) return false;
+      /* On garde VISUAL_FORBIDDEN même en fallback (Stabbing/Skull
+         restent inacceptables, ce n'est pas une question de registre). */
+      if ((isMinimaliste || isClassique) && VISUAL_FORBIDDEN.test(hay)) return false;
+      if (effectiveMaxPrice !== null && p.prix > effectiveMaxPrice) return false;
+      return true;
+    });
+    if (fallback.length > 0) {
+      console.log(
+        `[/api/products] fallback registre activé pour slot=${slot} (target=${targetRegistre}) — ${fallback.length} produits trouvés`,
+      );
+      filtered = fallback;
+    }
   }
 
   // ─── ÉTAPE 2 : scoring + tri ──────────────────────────────────────
