@@ -583,7 +583,7 @@
        area. Footer margin-bottom safe-area. Plus de transparence
        qui faisait remonter le footer noir.
    Force re-fetch HTML pour pousser tout aux iPhone. */
-const CACHE_VERSION = "wada-v75-2026-05-31-relax-filters-fallback";
+const CACHE_VERSION = "wada-v76-2026-05-31-api-bypass-cache";
 const STATIC_CACHE  = `${CACHE_VERSION}-static`;
 const PAGE_CACHE    = `${CACHE_VERSION}-pages`;
 
@@ -623,6 +623,41 @@ self.addEventListener("fetch", (event) => {
   // Ne pas intercepter les requêtes vers d'autres origines (Unsplash, Amazon, Awin)
   // sauf si on veut les cacher — pour l'instant on laisse passer
   if (url.origin !== self.location.origin) return;
+
+  /* Fix 2026-05-31 v3 (user feedback « pas d'image et pas les muji,
+     tbf » uniquement sur mobile) : le SW cachait /api/products et
+     /api/img en stale-while-revalidate → l'iPhone servait en boucle
+     les anciennes réponses cassées (slots vides, images 404) même
+     après les fixes serveur. Maintenant on BYPASS le cache pour
+     toutes les routes /api/* — network-only, jamais de stale.
+     Le serveur reste rapide (KV cache côté Vercel), pas besoin
+     de doubler côté SW. */
+  if (url.pathname.startsWith("/api/")) {
+    /* Pour /api/img on tente un cache court (5 min) — les images
+       de produit ne changent pas mais on évite de servir des 404
+       pour la vie. On le fait UNIQUEMENT si la réponse est OK ;
+       si erreur, on supprime du cache. */
+    if (url.pathname.startsWith("/api/img")) {
+      event.respondWith(
+        fetch(req).then((res) => {
+          if (res && res.status === 200) {
+            const clone = res.clone();
+            caches.open(STATIC_CACHE).then((c) => c.put(req, clone));
+          } else {
+            caches.open(STATIC_CACHE).then((c) => c.delete(req));
+          }
+          return res;
+        }).catch(() => caches.match(req).then((cached) => cached || Response.error()))
+      );
+      return;
+    }
+    /* Toutes les autres routes /api/* : network-only, jamais en cache.
+       /api/products, /api/stylist, /api/scan-garment sont dynamiques :
+       leur sortie dépend du profil + état conversation + image. Les
+       cacher casse l'expérience. */
+    event.respondWith(fetch(req));
+    return;
+  }
 
   // Stratégie pages HTML : network-first (toujours essayer le réseau, fallback cache)
   if (req.headers.get("accept")?.includes("text/html")) {
