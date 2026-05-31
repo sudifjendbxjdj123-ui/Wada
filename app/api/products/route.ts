@@ -346,12 +346,21 @@ export async function GET(req: Request) {
      vêtement est aberrant — quiconque shoppe à ce niveau passe par une
      boutique, pas par une app. Si l'user veut vraiment du Brioni à 3000€,
      il configure son profil Premium et les caps disparaissent. */
+  /* Fix 2026-05-31 v4 (user feedback « il n'y a que des habits Muji pas
+     de variation avec TBF ») : les caps v3 étaient calibrés sur MUJI
+     (25-150€) et excluaient mécaniquement TBF qui démarre à ~150€ et
+     monte. Conséquence : un user en registre Décontracté ne voyait
+     QUE MUJI car le cap 250€/pièce bloquait tout le reste.
+     Caps relevés pour laisser passer TBF milieu-de-gamme :
+       Décontracté : 250 → 600  (TBF basics passe)
+       Streetwear  : 400 → 800  (TBF sneakers / outerwear passe)
+       Minimaliste : 700 → 1000 (Lemaire / Jacquemus passe)
+       Classique   : 2000 inchangé (Brunello milieu de gamme) */
   const REGISTRE_CAP: Record<string, number> = {
-    minimaliste: 700,
-    streetwear: 400,
-    decontracte: 250,
-    classique: 2000, // v3 (2026-05-31) : relevé 1500 → 2000 pour laisser
-                     // passer du Brunello/Loro Piana milieu de gamme
+    minimaliste: 1000,
+    streetwear: 800,
+    decontracte: 600,
+    classique: 2000,
   };
   const registreCap = targetRegistre ? REGISTRE_CAP[targetRegistre] : null;
   const effectiveMaxPrice = maxPrice ?? registreCap ?? null;
@@ -560,6 +569,50 @@ export async function GET(req: Request) {
       const rest = finalList.slice(poolSize);
       const rotated = [...pool.slice(offset), ...pool.slice(0, offset)];
       finalList = [...rotated, ...rest];
+    }
+  }
+
+  /* Fix 2026-05-31 v4 (user feedback « il n'y a que des habits Muji
+     pas de variation avec TBF ») : diversification merchant par slot.
+     Sans ce ré-équilibrage, le top-1 finit souvent sur MUJI (catalogue
+     pauvre en couleur mais avec ΔE faible sur les neutres). On répartit
+     les marques préférées par slot pour qu'une tenue 5 pièces ait au
+     moins 2-3 merchants différents visibles :
+       - haut         → MUJI bias    (basiques quotidiens)
+       - bas          → non-MUJI bias (TBF / Lemaire / Jacquemus jeans, chinos)
+       - veste        → non-MUJI bias (outerwear premium TBF)
+       - chaussures   → non-MUJI bias (sneakers/derbies TBF marques)
+       - accent       → MUJI bias    (foulards, ceintures basiques)
+     Si la 1ère pièce du top satisfait déjà le bias → inchangée.
+     Sinon : on cherche la 1ère pièce du pool top-POOL_SIZE qui matche,
+     dans la limite d'un écart ΔE acceptable (< 1.5× la meilleure). */
+  if (slot && finalList.length > 1 && limit === 1) {
+    const PREFER_MUJI: Record<string, boolean> = {
+      haut: true,
+      bas: false,
+      veste: false,
+      chaussures: false,
+      accent: true,
+    };
+    const isMuji = (p: ProduitAwin) => /muji/i.test(p.marque || p.marchand || "");
+    const wantsMuji = PREFER_MUJI[slot];
+    const head = finalList[0];
+    /* Si le 1er candidat ne respecte pas le bias merchant, on cherche
+       un substitut dans la fenêtre top-POOL_SIZE. Évite de descendre
+       trop loin (qualité ΔE prioritaire). */
+    if (head && isMuji(head) !== wantsMuji) {
+      const headDe = isValidHex && colorHex ? deltaEHex(head.hex, colorHex) : 0;
+      const tolerance = headDe * 1.5 + 8; // marge ΔE tolérée
+      const swapIndex = finalList.findIndex((p, i) => {
+        if (i === 0 || i > POOL_SIZE) return false;
+        if (isMuji(p) !== wantsMuji) return false;
+        const dE = isValidHex && colorHex ? deltaEHex(p.hex, colorHex) : 0;
+        return dE <= tolerance;
+      });
+      if (swapIndex > 0) {
+        const swap = finalList[swapIndex];
+        finalList = [swap, ...finalList.filter((_, i) => i !== swapIndex)];
+      }
     }
   }
 
