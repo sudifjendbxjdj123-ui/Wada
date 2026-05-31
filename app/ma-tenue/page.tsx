@@ -167,6 +167,37 @@ function MaTenueContent() {
     setRealPrices((prev) => prev[pieceId] === price ? prev : { ...prev, [pieceId]: price });
   }, []);
 
+  /* Brief 2026-05-31 v8 (Logique IA composer renforcée — Couche 6) :
+     état de validation LLM. Filet de sécurité ultime contre les tenues
+     absurdes même quand mes filtres serveur ratent un cas (ex. Moon Boot
+     + Barbour + NSE sur tenue Minimal). On collecte chaque produit résolu
+     via callback, on appelle /api/validate-outfit quand les 5 sont là,
+     et on bloque l'affichage si verdict = INCOHERENT. */
+  type ResolvedPiece = {
+    slot: string;
+    type: string;
+    marque: string;
+    couleur: string;
+    matiere?: string;
+    prix_eur: number;
+  };
+  const [resolvedPieces, setResolvedPieces] = useState<Record<string, ResolvedPiece>>({});
+  const [validation, setValidation] = useState<{
+    state: "idle" | "loading" | "coherent" | "incoherent";
+    raison?: string;
+    piece?: string | null;
+  }>({ state: "idle" });
+
+  const handlePieceResolved = useCallback((pieceId: string, data: ResolvedPiece) => {
+    setResolvedPieces((prev) => {
+      const existing = prev[pieceId];
+      if (existing && existing.marque === data.marque && existing.prix_eur === data.prix_eur) {
+        return prev; // pas de changement → pas de re-render
+      }
+      return { ...prev, [pieceId]: data };
+    });
+  }, []);
+
   /* Scanner Phase 2+3 (2026-05-31) — ancre stockée par /composer en
      sessionStorage après une Vision API réussie. Le slot ancré est exclu
      du composer (le client a déjà cette pièce) et affiché en 1ère carte
@@ -339,6 +370,74 @@ function MaTenueContent() {
 
   /* Genre du client (priorité au choix explicite, fallback sur la palette). */
   const userGender = prefs.gender || (entry ? paletteGender(entry.composition) : null);
+
+  /* Brief 2026-05-31 v8 — Couche 6 : validation LLM de la tenue assemblée.
+     Déclenchée quand TOUTES les pièces de composition sont résolues. Envoie
+     palette + profil + tenue à /api/validate-outfit. Si verdict INCOHERENT,
+     on bloque l'affichage et on montre le message de dégradation gracieuse.
+
+     Fail-open : si l'API renvoie une erreur, on laisse afficher (pas de
+     régression UX si OpenAI est down). */
+  useEffect(() => {
+    if (!entry) return;
+    const expectedCount = composition.length;
+    if (expectedCount === 0) return;
+    const resolvedCount = Object.keys(resolvedPieces).filter(
+      (k) => composition.some((c) => c.piece === k),
+    ).length;
+    if (resolvedCount < expectedCount) return;
+    /* Toutes les pièces sont résolues. On déclenche la validation
+       (une seule fois par combinaison palette+pieces). */
+    if (validation.state === "loading") return;
+    setValidation({ state: "loading" });
+    const payload = {
+      palette: {
+        nom: entry.name,
+        ref: entry.number,
+        couleurs: entry.colors.slice(0, 5).map((c) => c.hex),
+        registre: prefs.style || "non précisé",
+      },
+      profil: {
+        genre: userGender || "non précisé",
+        budget: prefs.budget ? String(prefs.budget) : "non précisé",
+        style: prefs.style || "non précisé",
+      },
+      occasion: overrideOccasion || prefs.occasion_focus || "quotidien",
+      tenue: composition
+        .map((c) => resolvedPieces[c.piece])
+        .filter((p): p is ResolvedPiece => !!p),
+    };
+    let cancelled = false;
+    fetch("/api/validate-outfit", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        if (cancelled) return;
+        if (data?.verdict === "INCOHERENT") {
+          setValidation({
+            state: "incoherent",
+            raison: data.raison || "Tenue non cohérente avec la palette.",
+            piece: data.piece_la_plus_problematique || null,
+          });
+        } else {
+          setValidation({ state: "coherent" });
+        }
+      })
+      .catch(() => {
+        if (cancelled) return;
+        /* Fail-open : on affiche la tenue malgré l'erreur réseau. */
+        setValidation({ state: "coherent" });
+      });
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    entry?.number,
+    Object.keys(resolvedPieces).sort().join("|"),
+    composition.length,
+  ]);
 
   /* ─── WADA × CLAUDE — Fashion DNA + prompt éditorial ───
      Memoise pour ne recalculer que si l'entry ou les prefs changent. */
@@ -525,6 +624,102 @@ function MaTenueContent() {
             La tenue complète en détail
           </p>
 
+          {/* Brief 2026-05-31 v8 — Couche 7 : dégradation gracieuse.
+              Si le LLM validateur a rejeté la tenue (INCOHERENT), on
+              n'affiche PAS la grille de pièces et on est honnête avec
+              le client : « catalogue insuffisant, revenez bientôt ».
+              Texte verbatim du brief « Logique IA composer renforcée ». */}
+          {validation.state === "incoherent" && (
+            <div style={{
+              maxWidth: 580, margin: "0 auto 28px",
+              padding: "26px 28px",
+              background: "rgba(107, 58, 50, 0.05)",
+              border: `1px solid rgba(107, 58, 50, 0.18)`,
+              borderRadius: 18,
+              textAlign: "center",
+            }}>
+              <p style={{
+                fontSize: 11, letterSpacing: "0.18em",
+                textTransform: "uppercase", color: "#6B3A32",
+                fontWeight: 600, margin: 0,
+              }}>
+                Le styliste WADA
+              </p>
+              <p style={{
+                fontFamily: "'Fredoka', sans-serif", fontWeight: 500,
+                fontSize: 17, color: "#1E1E1E",
+                margin: "8px 0 12px", lineHeight: 1.45,
+              }}>
+                Pour cette palette précise et votre profil, je n'ai pas trouvé de tenue à la hauteur dans notre catalogue actuel.
+              </p>
+              <p style={{
+                fontSize: 13, color: textSecondary,
+                margin: "0 0 18px", lineHeight: 1.55,
+                fontStyle: "italic",
+              }}>
+                On enrichit nos marques partenaires chaque semaine — revenez bientôt, ou essayez une autre palette.
+              </p>
+              <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
+                <Link
+                  href="/palettes"
+                  style={{
+                    background: "#6B3A32", color: "#FAF8F4",
+                    padding: "11px 20px", borderRadius: 999,
+                    fontFamily: "'Fredoka', sans-serif",
+                    fontSize: 13, fontWeight: 500,
+                    textDecoration: "none",
+                  }}
+                >
+                  Voir une autre palette
+                </Link>
+                <Link
+                  href="/compte"
+                  style={{
+                    background: "transparent", color: "#6B3A32",
+                    padding: "11px 20px", borderRadius: 999,
+                    border: "1px solid rgba(107,58,50,0.4)",
+                    fontFamily: "'Fredoka', sans-serif",
+                    fontSize: 13, fontWeight: 500,
+                    textDecoration: "none",
+                  }}
+                >
+                  Ajuster mon profil
+                </Link>
+              </div>
+              {/* Petit log discret pour debug — visible seulement si verbose. */}
+              {validation.raison && (
+                <p style={{
+                  fontSize: 11, color: "rgba(30,30,30,0.4)",
+                  margin: "16px 0 0", fontStyle: "italic",
+                }}>
+                  Note interne : {validation.raison}
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Badge « ✓ Validée par le styliste WADA » quand cohérent. */}
+          {validation.state === "coherent" && (
+            <div style={{
+              display: "inline-flex", alignItems: "center", gap: 6,
+              padding: "5px 12px",
+              background: "rgba(168, 178, 154, 0.18)",
+              border: "1px solid rgba(168, 178, 154, 0.4)",
+              borderRadius: 999,
+              fontFamily: "'Inter', sans-serif",
+              fontSize: 11, color: "#5a6849",
+              fontWeight: 600, letterSpacing: "0.04em",
+              margin: "0 auto 22px",
+              position: "relative", left: "50%", transform: "translateX(-50%)",
+            }}>
+              <span style={{
+                width: 8, height: 8, borderRadius: "50%",
+                background: "#A8B29A",
+              }} />
+              Tenue validée par le styliste WADA
+            </div>
+          )}
+
           {/* Scanner Phase 3 (2026-05-31) — Carte « Ta pièce » :
               affiche la pièce scannée par le client en 1ère position, avec
               un badge vert « ANCRE · TA PIÈCE » et la mention « tu l'as
@@ -683,10 +878,13 @@ function MaTenueContent() {
               Plus de trou orphelin pour la 5ème pièce.
               CSS Grid : on définit explicitement 2 colonnes et la 1ère
               card s'étend sur `grid-column: 1 / -1`. */}
+          {/* Brief 2026-05-31 v8 (Couche 7) : la grille de pièces est
+              CACHÉE quand le LLM validateur a rejeté la tenue. Message
+              de dégradation gracieuse au-dessus tient le rôle. */}
           <div
             className="wada-tenue-grid"
             style={{
-              display: "grid",
+              display: validation.state === "incoherent" ? "none" : "grid",
               gridTemplateColumns: "repeat(2, 1fr)",
               gap: 22,
             }}
@@ -818,6 +1016,7 @@ function MaTenueContent() {
                   seed={variantSeed}
                   featured={featured}
                   onPriceResolved={handlePriceResolved}
+                  onPieceMetaResolved={handlePieceResolved}
                 />
               </div>
             );
@@ -1513,7 +1712,7 @@ function useMujiProduct(
 
 function PieceCard({
   piece, itemName, color, merchants, paletteRef, genre, style,
-  seed, excludeIds, onPicked, featured, onPriceResolved,
+  seed, excludeIds, onPicked, featured, onPriceResolved, onPieceMetaResolved,
 }: {
   piece: string;
   itemName: string;
@@ -1533,6 +1732,16 @@ function PieceCard({
    *  prix du produit dès qu'il est résolu, pour que le total agrégé
    *  soit calculé sur les VRAIS prix et pas sur les tiers estimate. */
   onPriceResolved?: (pieceId: string, price: number) => void;
+  /** Brief 2026-05-31 v8 (validation LLM) : remonte les métadonnées
+   *  produit (marque/type/couleur/prix) pour permettre au parent de
+   *  valider la cohérence globale de la tenue auprès de /api/validate-outfit. */
+  onPieceMetaResolved?: (pieceId: string, meta: {
+    slot: string;
+    type: string;
+    marque: string;
+    couleur: string;
+    prix_eur: number;
+  }) => void;
 }) {
   // Tentative MUJI réel — brief variété : on passe la VRAIE couleur de la
   // palette assignée à ce slot (color.hex) + un seed unique par slot.
@@ -1552,6 +1761,21 @@ function PieceCard({
       onPriceResolved(piece, mujiProduct.prix);
     }
   }, [mujiProduct?.prix, piece, onPriceResolved]);
+
+  /* Brief 2026-05-31 v8 (Couche 6 validation LLM) : remonte les
+     métadonnées complètes du produit (marque, type, couleur) pour que
+     le parent puisse valider la tenue globale. */
+  useEffect(() => {
+    if (mujiProduct?.prix && onPieceMetaResolved) {
+      onPieceMetaResolved(piece, {
+        slot: pieceToSlot(piece) || piece,
+        type: itemName,
+        marque: mujiProduct.marque,
+        couleur: mujiProduct.couleurNom || color.name,
+        prix_eur: mujiProduct.prix,
+      });
+    }
+  }, [mujiProduct?.prix, mujiProduct?.marque, mujiProduct?.couleurNom, piece, itemName, color.name, onPieceMetaResolved]);
   // Brief 2026-05-27 « afficher la VRAIE marque » :
   // On re-trie pour pousser les marchands directs (COS, Muji, Veja, Uniqlo,
   // Amazon · HUGO → HUGO…) en premier. L'Amazon GÉNÉRIQUE (label « Amazon »
