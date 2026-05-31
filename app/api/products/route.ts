@@ -684,7 +684,13 @@ export async function GET(req: Request) {
     },
     {
       headers: {
-        "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600",
+        /* Fix 2026-05-31 v7 (debug user « toujours que MUJI sur mobile »):
+           Pendant qu'on diagnostique pourquoi mobile voit MUJI alors que
+           l'API renvoie TBF en top-1, on raccourcit drastiquement le CDN
+           cache pour éliminer cette hypothèse. 300s → 10s permet de voir
+           les fixes immédiatement, et le KV cache côté Vercel garde la
+           rapidité côté serveur (pas de recalcul à chaque hit). */
+        "Cache-Control": "public, s-maxage=10, stale-while-revalidate=60",
       },
     },
   );
