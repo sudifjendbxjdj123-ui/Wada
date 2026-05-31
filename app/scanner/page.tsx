@@ -378,19 +378,11 @@ export default function ScannerPage() {
             margin: "0 auto 18px",
             gap: 3,
           }}>
-            <button
-              type="button"
-              style={{
-                background: "#fff", color: palette.bordeaux,
-                boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
-                border: "none", padding: "8px 16px",
-                borderRadius: 999,
-                fontFamily: fonts.display, fontSize: 13, fontWeight: 500,
-                cursor: "pointer",
-              }}
-            >
-              ⦿ Une couleur
-            </button>
+            {/* User feedback 2026-05-31 : « inverse les deux mets d'abord
+                vêtements ». L'ordre logique du client est :
+                  d'abord scanner UN VÊTEMENT (objet concret qu'il possède
+                  ou qu'il vient de voir), ENSUITE éventuellement une
+                  couleur seule. Vêtement en premier, couleur en second. */}
             <button
               type="button"
               onClick={() => router.push("/composer")}
@@ -403,6 +395,19 @@ export default function ScannerPage() {
               }}
             >
               ◇ Un vêtement
+            </button>
+            <button
+              type="button"
+              style={{
+                background: "#fff", color: palette.bordeaux,
+                boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+                border: "none", padding: "8px 16px",
+                borderRadius: 999,
+                fontFamily: fonts.display, fontSize: 13, fontWeight: 500,
+                cursor: "pointer",
+              }}
+            >
+              ⦿ Une couleur
             </button>
           </div>
 

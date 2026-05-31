@@ -616,19 +616,8 @@ export default function ComposerPage() {
             margin: "0 auto 18px",
             gap: 3,
           }}>
-            <button
-              type="button"
-              onClick={() => router.push("/scanner")}
-              style={{
-                background: "transparent", color: palette.inkSoft,
-                border: "none", padding: "8px 16px",
-                borderRadius: 999,
-                fontFamily: fonts.display, fontSize: 13, fontWeight: 500,
-                cursor: "pointer",
-              }}
-            >
-              ⦿ Une couleur
-            </button>
+            {/* User feedback 2026-05-31 : ordre inversé — Vêtement en
+                premier (par défaut actif ici), couleur en second. */}
             <button
               type="button"
               style={{
@@ -641,6 +630,19 @@ export default function ComposerPage() {
               }}
             >
               ◇ Un vêtement
+            </button>
+            <button
+              type="button"
+              onClick={() => router.push("/scanner")}
+              style={{
+                background: "transparent", color: palette.inkSoft,
+                border: "none", padding: "8px 16px",
+                borderRadius: 999,
+                fontFamily: fonts.display, fontSize: 13, fontWeight: 500,
+                cursor: "pointer",
+              }}
+            >
+              ⦿ Une couleur
             </button>
           </div>
 
