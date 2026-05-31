@@ -384,9 +384,25 @@ export async function GET(req: Request) {
     classique: 2000,
   };
   const registreCap = targetRegistre ? REGISTRE_CAP[targetRegistre] : null;
-  const effectiveMaxPrice = maxPrice ?? registreCap ?? null;
+  /* Fix 2026-05-31 v5 (user feedback « sur ordinateur je reçois des
+     marques de TBF, sur téléphone que MUJI ») : sur les slots à bias
+     non-MUJI (bas / veste / chaussures), on autorise un dépassement de
+     50% du maxPrice profil. Pourquoi : un user en budget "150-400€"
+     (maxPrice=400) voit son cap appliqué uniformément → TBF qui démarre
+     à ~150-200€ mais culmine à 500-700€ sur ces slots est totalement
+     exclu. En autorisant +50% (cap effectif 600€), les TBF basics
+     passent sur bas/veste/chaussures (où le coût « justifié » est le
+     plus accepté par les users), tandis que haut + accent restent à
+     maxPrice strict (basique MUJI). Cap final = min(soft, registreCap)
+     pour ne pas exploser le budget total. */
+  const isNonMujiSlot = slot && NON_MUJI_BIAS_SLOTS.has(slot);
+  let effectiveMaxPrice = maxPrice ?? registreCap ?? null;
+  if (effectiveMaxPrice !== null && maxPrice !== null && isNonMujiSlot) {
+    const softCap = Math.round(maxPrice * 1.5);
+    effectiveMaxPrice = registreCap !== null ? Math.min(softCap, registreCap) : softCap;
+  }
   if (effectiveMaxPrice !== null) {
-    filtered = filtered.filter((p) => p.prix <= effectiveMaxPrice);
+    filtered = filtered.filter((p) => p.prix <= effectiveMaxPrice!);
   }
 
   // Recherche full-text (AND sur tokens)
