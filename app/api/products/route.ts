@@ -274,12 +274,33 @@ export async function GET(req: Request) {
      Cucinelli (classique) avec Amiri (streetwear) dans une même tenue.
      Mapping du style profil utilisateur → registre catalogue via
      styleToRegistre(). Une marque non-classée fallback en `classique`
-     (lib/brandRegistre.brandToRegistreOrFallback). */
+     (lib/brandRegistre.brandToRegistreOrFallback).
+
+     Fix 2026-05-31 v5 (user feedback « toujours que MUJI où sont les
+     produits TBF rajoute les aussi ») : sur les slots à bias non-MUJI
+     (bas / veste / chaussures), on ÉLARGIT le filtre registre aux
+     registres ADJACENTS pour laisser passer TBF. Cas concret : user
+     en Décontracté → strict registre = decontracte → seul MUJI
+     (Birkenstock/Armor Lux) → pool 100% MUJI → bias non-MUJI échoue.
+     Avec adjacence : on accepte aussi minimaliste (Lemaire/Jacquemus/
+     CDG) et classique (Brunello/Tom Ford) sur ces slots → TBF revient.
+     Le slot reste filtré strict registre pour haut/accent (sobriété). */
   const targetRegistre = styleToRegistre(style);
+  const NON_MUJI_BIAS_SLOTS = new Set(["bas", "veste", "chaussures"]);
+  const REGISTRE_ADJACENCY: Record<string, string[]> = {
+    decontracte:  ["decontracte", "minimaliste", "classique"],
+    minimaliste:  ["minimaliste", "decontracte", "classique"],
+    classique:    ["classique", "minimaliste"],
+    streetwear:   ["streetwear", "decontracte"],
+  };
   if (targetRegistre) {
+    const allowExpand = slot && NON_MUJI_BIAS_SLOTS.has(slot);
+    const allowedRegistres = allowExpand
+      ? new Set(REGISTRE_ADJACENCY[targetRegistre] || [targetRegistre])
+      : new Set([targetRegistre]);
     filtered = filtered.filter((p) => {
       const productRegistre = p.brandRegistre || brandToRegistreOrFallback(p.marque || p.marchand);
-      return productRegistre === targetRegistre;
+      return allowedRegistres.has(productRegistre);
     });
   }
 
