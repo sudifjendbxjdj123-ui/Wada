@@ -257,12 +257,17 @@ A) Il manque une info essentielle → tu poses UNE question :
   "collecte": { "piece": null, "couleur": null, "style": null, "occasion": null }
 }
 
-B) Tu peux composer → tu réponds + tenue + pourquoi + variation optionnelle :
+B) Tu peux composer → tu réponds + tenue + pourquoi + explication + variation optionnelle :
 {
   "mode": "tenue",
   "nom_tenue": "1-3 mots évocateurs (ex. L'Aventurier, Le Banquier, Le Dimanche)",
   "reponse": "1-3 phrases de styliste qui réagissent à la demande",
   "pourquoi": "1 phrase couleur/matière qui explique POURQUOI ça marche",
+  "explication": {
+    "palette": "1 phrase — pourquoi CETTE palette Sanzo Wada pour cette demande (le nom de la palette + ce qu'elle évoque visuellement)",
+    "pieces": "1 phrase — pourquoi CES pièces / matières / coupes (ex. blazer fluide pour ne pas durcir, lin pour la respiration estivale, mocassins pour la posture sans la rigidité d'une derby)",
+    "profil": "1 phrase — pourquoi ÇA TE CORRESPOND : relie explicitement au profil utilisateur (genre + style + budget + couleurs aimées/évitées) ET à l'ENVIE DU JOUR si présente (perception/humeur/objectif)"
+  },
   "accord": { "ref": "No. XXX", "nom": "Nom de l'accord (DU DICTIONNAIRE)", "couleurs": ["#hex","..."] },
   "tenue": [
     { "slot": "haut|bas|veste|chaussures|accent", "type": "ex. chemise oxford écru",
@@ -276,6 +281,14 @@ B) Tu peux composer → tu réponds + tenue + pourquoi + variation optionnelle :
   }
 }
 Pas de texte hors du JSON.
+
+Note sur explication (Vision Pt C — 2026-05-31) :
+- Les 3 sous-champs (palette / pieces / profil) sont OBLIGATOIRES quand tu composes une tenue.
+- Chaque sous-champ = UNE phrase claire, concrète, ancrée. Pas de banalité.
+- Le sous-champ "profil" DOIT mentionner au moins UN élément concret du profil
+  utilisateur ou de l'envie du jour (ex. « ton budget Premium autorise du cachemire »
+  / « tu veux paraître élégant + ton objectif soirée → on monte d'un cran sur les
+  finitions »). Si aucun profil/mood disponible, écris « réglage par défaut WADA ».
 
 Note IMPORTANTE sur collecte.accord :
 - Au mode "tenue", tu DOIS écrire le champ "accord" dans collecte avec ref (sans "No. ") et nom.
@@ -302,6 +315,11 @@ Utilisateur : « j'ai une soirée à thème pirate, tu me conseilles quoi ? »
   "mode": "tenue",
   "reponse": "Pirate, on va s'amuser sans tomber dans le costume. Chemise ample écru à grandes manches, pantalon sombre rentré dans des bottes, large ceinture cuir, bandana bordeaux, quelques anneaux dorés.",
   "pourquoi": "L'écru chaud + le bordeaux profond + le brun cuir : romanesque assumé, sans virer carnaval.",
+  "explication": {
+    "palette": "L'accord Corsaire (Sanzo Wada n°168) marie les écrus chauds des voiles à un bordeaux profond, c'est l'imaginaire pirate sans pastiche.",
+    "pieces": "Chemise ample manches bouffantes pour la silhouette, pantalon sombre droit pour ancrer, bottines hautes en cuir pour la posture, bandana noué comme accent narratif.",
+    "profil": "Pour une soirée à thème, on garde l'esthétique mais pas le déguisement — ce vestiaire passe une vraie nuit dehors sans paraître costume."
+  },
   "accord": { "ref": "No. 168", "nom": "Corsaire", "couleurs": ["#EFE7D6", "#6B3A32", "#3A2418", "#1F3A5F"] },
   "tenue": [
     { "slot": "haut", "type": "Chemise ample écru manches bouffantes", "couleurNom": "Écru", "hex": "#EFE7D6", "genre": "unisexe", "ancre": false },
@@ -320,6 +338,11 @@ Utilisateur : « entretien d'embauche lundi, je suis une femme, milieu créatif 
   "mode": "tenue",
   "reponse": "Créatif demande de la posture sans rigidité. Tailoring souple : blazer fluide, chemise, pantalon, mocassins. Sobre, lisible, avec une pointe de personnalité.",
   "pourquoi": "Une seule teinte forte (marine) sur fond neutre chaud (sable + écru) : sérieux mais pas corporate.",
+  "explication": {
+    "palette": "Béton & Lin (n°094) — un marine ancré sur fond chaud, c'est la palette des entretiens qui n'écrasent pas la personnalité.",
+    "pieces": "Blazer FLUIDE (pas structuré épaule carrée) pour ne pas durcir, mocassins plutôt que derbies pour la souplesse, ceinture cuir brun qui répond aux mocassins.",
+    "profil": "Femme + milieu créatif : on évite le costume noir d'avocate, on signale la posture par la coupe et le marine, pas par la rigidité."
+  },
   "accord": { "ref": "No. 094", "nom": "Béton & Lin", "couleurs": ["#1F3A5F", "#C9B79C", "#F0E9DB", "#6B3A32"] },
   "tenue": [
     { "slot": "veste", "type": "Blazer fluide marine", "couleurNom": "Marine", "hex": "#1F3A5F", "genre": "femme", "ancre": false },
@@ -338,6 +361,11 @@ Utilisateur : « j'ai un pull noir et je veux le porter ce week-end »
   "mode": "tenue",
   "reponse": "Le pull noir est l'ancre. On le réchauffe : pantalon sable, ceinture et bottines cuir brun, foulard discret. Confortable et net.",
   "pourquoi": "Le noir aime la chaleur — sable + cuir brun l'adoucissent, le bordeaux le réchauffe sans le durcir.",
+  "explication": {
+    "palette": "Béton & Lin (n°094) — palette qui pose le noir dans un univers chaud (sable, camel, bordeaux), il n'écrase plus, il ancre.",
+    "pieces": "Surchemise en laine camel pour la transition douce du pull au pantalon, bottines cuir brun pour l'unité chaussures-ceinture, foulard fin (pas écharpe) pour l'accent sans alourdir.",
+    "profil": "Tu pars d'une pièce que tu as déjà — la tenue est construite autour, on n'a rien à acheter d'inutile."
+  },
   "accord": { "ref": "No. 094", "nom": "Béton & Lin", "couleurs": ["#1E1E1E", "#C9B79C", "#A8784A", "#6B3A32"] },
   "tenue": [
     { "slot": "haut", "type": "Votre pull noir", "couleurNom": "Noir", "hex": "#1E1E1E", "genre": "unisexe", "ancre": true },
@@ -1375,6 +1403,15 @@ ${moodOfDay.perception ? `- Veut être perçu·e comme : ${moodOfDay.perception}
       // V3 nouveautés : pourquoi (1 phrase) + variation (audacieuse, optionnelle)
       pourquoi?: string;
       variation?: string;
+      /* Vision Pt C (2026-05-31) — explication structurée à 3 dimensions :
+         pourquoi cette palette, pourquoi ces pièces, pourquoi ça correspond
+         au profil/mood de l'utilisateur. Affiché comme bloc structuré sous
+         la tenue dans OutfitBubble. Champs optionnels (legacy compat). */
+      explication?: {
+        palette?: string;
+        pieces?: string;
+        profil?: string;
+      };
       /* V4 (2026-05-26 « ameliore encore ») : nom évocateur de LA tenue
          (1-3 mots, ex. « L'Aventurier », « Le Banquier », « Le Dimanche »).
          Plus mémorable qu'« accord No. 094 », affiché en kicker au-dessus
@@ -1595,6 +1632,11 @@ ${moodOfDay.perception ? `- Veut être perçu·e comme : ${moodOfDay.perception}
       collecte: { ...collecte, ...(v2.collecte || {}) },
       reponse: v2.reponse,
       pourquoi: v2.pourquoi || undefined,
+      /* Vision Pt C (2026-05-31) — explication structurée 3 dimensions
+         (palette / pieces / profil). Affichée sous la tenue dans la UI. */
+      explication: v2.explication && (v2.explication.palette || v2.explication.pieces || v2.explication.profil)
+        ? v2.explication
+        : undefined,
       variation: v2.variation || undefined,
       nom_tenue: v2.nom_tenue || undefined,
       entities: merged,

@@ -367,6 +367,18 @@ const POURQUOI_DEFAULT =
  * (« Bleu ») ne matche plus. On fait un reverse lookup via
  * NUANCES_PAR_COULEUR pour retrouver la famille parent et son explication.
  */
+/* Vision Pt C (2026-05-31) : utilitaire pour échapper les valeurs LLM
+   avant injection en innerHTML (toutes les bulles bot passent par addBot
+   qui utilise dangerouslySetInnerHTML pour autoriser le markup). */
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 function pourquoiFor(couleur: string | null): string {
   if (!couleur) return POURQUOI_DEFAULT;
   if (POURQUOI[couleur]) return POURQUOI[couleur];
@@ -1166,6 +1178,8 @@ export default function StylistPage() {
       palette?: { entry?: { number?: string; name?: string; colors?: Array<{ hex: string; name: string }> } };
     };
     pourquoi?: string;
+    /* Vision Pt C (2026-05-31) — explication structurée 3 dimensions. */
+    explication?: { palette?: string; pieces?: string; profil?: string };
     variation?: string;
     nom_tenue?: string;
     entities?: { styling_advice?: string };
@@ -1298,10 +1312,24 @@ export default function StylistPage() {
 
       setTimeout(() => {
         addBot(`<b>Pourquoi ça marche</b> — ${pourquoiText}${swatchesHtml}`);
+        /* Vision Pt C (2026-05-31) — explication structurée 3 dimensions.
+           Si le LLM a fourni explication.palette/pieces/profil, on affiche
+           un bloc plus riche que le pourquoi (qui reste 1 phrase punchy). */
+        if (data.explication && (data.explication.palette || data.explication.pieces || data.explication.profil)) {
+          const exp = data.explication;
+          const block = `
+<div style="margin-top:8px;padding:12px 14px;background:rgba(168,178,154,0.08);border-left:3px solid #6B3A32;border-radius:8px;font-size:13.5px;line-height:1.55">
+  <div style="font-family:'Fredoka',sans-serif;font-weight:600;font-size:13px;letter-spacing:0.04em;color:#6B3A32;margin-bottom:6px">EN DÉTAIL</div>
+  ${exp.palette ? `<div style="margin-bottom:4px"><strong>La palette</strong> · ${escapeHtml(exp.palette)}</div>` : ""}
+  ${exp.pieces ? `<div style="margin-bottom:4px"><strong>Les pièces</strong> · ${escapeHtml(exp.pieces)}</div>` : ""}
+  ${exp.profil ? `<div><strong>Pour toi</strong> · ${escapeHtml(exp.profil)}</div>` : ""}
+</div>`.trim();
+          setTimeout(() => addBot(block), 350);
+        }
         if (variationText) {
           setTimeout(() => {
             addBot(`<b>Ou plus audacieux</b> — <i>${variationText}</i>`);
-          }, 450);
+          }, data.explication ? 800 : 450);
         }
         setTimeout(() => {
           addBot("Je peux l'ajuster — dites-moi.");
