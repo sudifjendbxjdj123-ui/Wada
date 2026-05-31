@@ -1134,6 +1134,30 @@ export async function POST(req: Request) {
       ? `ENVIE DU JOUR (à intégrer dans la tenue, c'est l'humeur ponctuelle de l'utilisateur — pas son style permanent) :
 ${moodOfDay.perception ? `- Veut être perçu·e comme : ${moodOfDay.perception}\n` : ""}${moodOfDay.humeur ? `- Humeur : ${moodOfDay.humeur}\n` : ""}${moodOfDay.objectif ? `- Objectif aujourd'hui : ${moodOfDay.objectif}` : ""}`.trim()
       : "";
+
+    /* Vision Pt D (2026-05-31) — mémoire stylistique agrégée.
+       Le client envoie les dislikes répétés (≥3 fois) et les likes
+       répétés (≥2 fois) sur couleurs / marques / coupes. Le LLM les
+       traite comme des CONTRAINTES IMPLICITES — ne pas redemander à
+       l'user pourquoi, juste éviter / privilégier silencieusement. */
+    const styleSignals: {
+      dislikedColors?: string[];
+      dislikedBrands?: string[];
+      dislikedCuts?: string[];
+      likedBrands?: string[];
+      likedColors?: string[];
+    } = body.styleSignals || {};
+    const hasSignals = !!(
+      styleSignals.dislikedColors?.length ||
+      styleSignals.dislikedBrands?.length ||
+      styleSignals.dislikedCuts?.length ||
+      styleSignals.likedBrands?.length ||
+      styleSignals.likedColors?.length
+    );
+    const signalsBlock = hasSignals
+      ? `MÉMOIRE STYLISTIQUE (signaux likes/dislikes accumulés — règles implicites à respecter SANS en parler à l'utilisateur) :
+${styleSignals.dislikedColors?.length ? `- Couleurs à ÉVITER (l'user a déjà rejeté plusieurs fois) : ${styleSignals.dislikedColors.join(", ")}\n` : ""}${styleSignals.dislikedBrands?.length ? `- Marques à ÉVITER : ${styleSignals.dislikedBrands.join(", ")}\n` : ""}${styleSignals.dislikedCuts?.length ? `- Coupes à ÉVITER : ${styleSignals.dislikedCuts.join(", ")}\n` : ""}${styleSignals.likedBrands?.length ? `- Marques que l'user AIME (à privilégier silencieusement) : ${styleSignals.likedBrands.join(", ")}\n` : ""}${styleSignals.likedColors?.length ? `- Couleurs que l'user AIME : ${styleSignals.likedColors.join(", ")}` : ""}`.trim()
+      : "";
     /* ─── Construction du message utilisateur ──────────────────────
        Inclut le profil (genre/style/budget) ET l'état de collecte
        conversationnel (ce qui a déjà été dit) pour que le LLM ne
@@ -1216,7 +1240,7 @@ ${moodOfDay.perception ? `- Veut être perçu·e comme : ${moodOfDay.perception}
         }).join("\n")}\n`
       : "";
 
-    const fullUserMessage = [profileBlock, moodBlock, collecteBlock, palettesBlock, `Demande : "${query}"`]
+    const fullUserMessage = [profileBlock, moodBlock, signalsBlock, collecteBlock, palettesBlock, `Demande : "${query}"`]
       .filter(Boolean).join("\n\n");
 
     /* ─── LLM call avec SYSTEM_PROMPT_V2 (brief 2026-05-22) ───────────

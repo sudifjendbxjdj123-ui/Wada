@@ -30,6 +30,8 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import BackButton from "@/components/BackButton";
+/* Vision Pt D (2026-05-31) — boutons like/dislike sous chaque tenue. */
+import OutfitFeedback from "@/components/OutfitFeedback";
 import { useSavedOutfits, type SavedOutfit } from "@/hooks/useSavedOutfits";
 import { showToast } from "@/lib/toast";
 import { amazonSearch } from "@/lib/amazonAffiliate";
@@ -433,7 +435,18 @@ type Bubble =
   | { who: "bot"; html: string; transient?: boolean }
   | { who: "me"; text: string }
   | { who: "outfit"; pieces: OutfitPiece[] }
-  | { who: "accord"; ref: string; name: string; colors: Array<{ hex: string; name: string }>; nomTenue?: string };
+  | { who: "accord"; ref: string; name: string; colors: Array<{ hex: string; name: string }>; nomTenue?: string }
+  /* Vision Pt D (2026-05-31) — boutons feedback (like/dislike) sous la tenue. */
+  | {
+      who: "feedback";
+      paletteRef?: string;
+      paletteName?: string;
+      tenueName?: string;
+      pieces: Array<{ type: string; brand?: string; price?: number; hex?: string }>;
+      dominantHex?: string;
+      dominantBrand?: string;
+      dominantCut?: string;
+    };
 
 interface State {
   mode: Mode;
@@ -1331,6 +1344,27 @@ export default function StylistPage() {
             addBot(`<b>Ou plus audacieux</b> — <i>${variationText}</i>`);
           }, data.explication ? 800 : 450);
         }
+        /* Vision Pt D (2026-05-31) — feedback like/dislike sous la tenue.
+           Émis ~1s après le pourquoi/explication pour laisser respirer.
+           Métadonnées : palette ref/nom + pièces avec brand/prix/hex pour
+           pouvoir tagger les signaux côté useStyleSignals. */
+        setTimeout(() => {
+          const feedbackPieces = pieces.map((p) => ({
+            type: p.type,
+            brand: undefined,    // OutfitBubble ajoute la marque côté UI mais on n'a pas le mapping ici
+            price: undefined,
+            hex: p.hex,
+          }));
+          const dominantHex = pieces[0]?.hex;
+          setBubbles((prev) => [...prev, {
+            who: "feedback",
+            paletteRef: composed.palette?.entry?.number,
+            paletteName: composed.palette?.entry?.name,
+            tenueName: data.nom_tenue,
+            pieces: feedbackPieces,
+            dominantHex,
+          }]);
+        }, data.explication ? 1100 : 700);
         setTimeout(() => {
           addBot("Je peux l'ajuster — dites-moi.");
           /* Brief 2026-05-26 « continue d'ameliorer » : ajout d'un chip
@@ -1446,11 +1480,30 @@ export default function StylistPage() {
       }
     } catch {}
 
+    /* Vision Pt D (2026-05-31) : injection de la mémoire stylistique.
+       On agrège les signaux likes/dislikes localement et on n'envoie au
+       LLM que les « règles implicites » (couleurs/marques/coupes
+       atteignant le seuil de 3 dislikes, marques/couleurs > 2 likes). */
+    let styleSignals = {};
+    try {
+      const { readSignalsAggregate } = await import("@/hooks/useStyleSignals");
+      const agg = readSignalsAggregate();
+      if (agg.totalLikes + agg.totalDislikes > 0) {
+        styleSignals = {
+          dislikedColors: agg.dislikedColors,
+          dislikedBrands: agg.dislikedBrands,
+          dislikedCuts: agg.dislikedCuts,
+          likedBrands: agg.likedBrands,
+          likedColors: agg.likedColors,
+        };
+      }
+    } catch {}
+
     try {
       const res = await fetch("/api/stylist", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query, userPrefs, collecte, history: chatHistoryRef.current, moodOfDay }),
+        body: JSON.stringify({ query, userPrefs, collecte, history: chatHistoryRef.current, moodOfDay, styleSignals }),
         signal: abortController.signal,
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -1585,6 +1638,22 @@ export default function StylistPage() {
             }
             if (b.who === "accord") {
               return <AccordBubble key={i} accordRef={b.ref} accordName={b.name} colors={b.colors} nomTenue={b.nomTenue} />;
+            }
+            /* Vision Pt D (2026-05-31) : boutons like/dislike. */
+            if (b.who === "feedback") {
+              return (
+                <div key={i} style={{ alignSelf: "stretch" }}>
+                  <OutfitFeedback
+                    paletteRef={b.paletteRef}
+                    paletteName={b.paletteName}
+                    tenueName={b.tenueName}
+                    pieces={b.pieces}
+                    dominantHex={b.dominantHex}
+                    dominantBrand={b.dominantBrand}
+                    dominantCut={b.dominantCut}
+                  />
+                </div>
+              );
             }
             if (b.who === "me") {
               return (
