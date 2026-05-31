@@ -1,70 +1,57 @@
 "use client";
 /**
- * /composer — Mode "Un vêtement" du scanner WADA (refonte 2026-05-20 v2).
+ * /composer — Mode "Un vêtement" plein écran caméra (refonte 2026-05-31).
  *
- * Brief mockup éditorial : hero photo gradient + voile dense, mode toggle
- * intégré au hero, carte couleur détectée qui chevauche, verdict bordeaux,
- * bande palette complète, 5 cards outfit, actions finales.
+ * User demande : « met le scanner aussi pour vetement ».
  *
- * Architecture WADA :
- *   - /scanner = mode "Une couleur" (1 toggle)
- *   - /composer = mode "Un vêtement" (1 toggle) ← cette page
+ * Architecture identique à /scanner (caméra plein écran type app
+ * native), mais le bottom sheet de résultat demande EN PLUS :
+ *   - le SLOT du vêtement scanné (Haut / Bas / Veste / Chaussures)
+ *   - le STYLE de la pièce (T-shirt, Chemise, Jean… variable selon slot)
  *
- * Confidentialité : la photo NE QUITTE JAMAIS l'appareil. Tout en local.
+ * Ces 2 infos sont indispensables pour que /ma-tenue compose une tenue
+ * cohérente autour de la pièce scannée :
+ *   - slot = quelle place dans la tenue (cette pièce, les 4 autres autour)
+ *   - style → registre WADA (Classique / Streetwear / Old money / Décontracté)
+ *     → exclut les pièces incohérentes (running shoes + tailoring, etc.)
+ *
+ * Le bouton final route vers /ma-tenue?palette=N&style=...&genre=...&slot=...
+ * Le composer ne fait PLUS de composition inline — /ma-tenue est la
+ * page dédiée pour cette logique, on évite la duplication.
+ *
+ * Confidentialité : la photo NE QUITTE JAMAIS l'appareil (canvas local).
  */
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
-import BackButton from "@/components/BackButton";
-import { composeOutfitFromColor, type ComposedOutfit, type Slot } from "@/lib/outfitComposer";
-/* Brief design 2026-05-26 : alignement /composer sur /scanner — même
-   toggle, même hero centré, mêmes hairlines, même structure éditoriale. */
-import ScanModeToggle from "@/components/ScanModeToggle";
+import { useRouter } from "next/navigation";
+import { findPalettesByColor, type DictionaryEntry } from "@/lib/data";
+import { isNative, takeNativePhoto, hapticMedium } from "@/lib/native";
+import type { Slot } from "@/lib/outfitComposer";
 
 const palette = {
-  beige: "#F4EFE7",
-  cream: "#FAF8F4",
-  olive: "#A8B29A",
   bordeaux: "#6B3A32",
+  bordeauxDark: "#5a3029",
+  cream: "#FAF8F4",
   ink: "#1E1E1E",
   inkSoft: "#6a6259",
-  line: "rgba(30,30,30,.10)",
+  olive: "#A8B29A",
+  line: "rgba(30,30,30,.12)",
 };
-
 const fonts = {
   display: "'Fredoka', sans-serif",
   sans: "'Inter', 'Helvetica Neue', Arial, sans-serif",
-  body: "'Inter', sans-serif",
 };
 
-const shadow = "0 12px 48px rgba(30,30,30,.10)";
-const ease = "cubic-bezier(.22,1,.36,1)";
-
-const SLOT_LABELS: Record<Slot, string> = {
-  haut: "Haut",
-  bas: "Bas",
-  veste: "Veste",
-  chaussures: "Chaussures",
-  accent: "Accent",
-};
-
-const PIECE_OPTIONS: Array<{ slug: Slot; label: string }> = [
-  { slug: "haut", label: "Haut" },
-  { slug: "bas", label: "Bas" },
-  { slug: "chaussures", label: "Chaussures" },
-  { slug: "veste", label: "Veste" },
+const SLOT_OPTIONS: Array<{ slug: Slot; label: string; icon: string }> = [
+  { slug: "haut", label: "Haut", icon: "👕" },
+  { slug: "bas", label: "Bas", icon: "👖" },
+  { slug: "veste", label: "Veste", icon: "🧥" },
+  { slug: "chaussures", label: "Chaussures", icon: "👟" },
 ];
 
-/**
- * Brief « Scanner Un vêtement » §2 (26/05) : ask piece type.
- * WADA ne détecte que la couleur ; sans info sur le type précis de pièce
- * (running shoes vs derbies, hoodie vs pull fin), le moteur propose une
- * tenue incohérente avec la vraie pièce. On demande le « style » de la
- * pièce, qui se mappe sur le REGISTRE de la tenue à composer.
- *
- * Mapping : chaque option → un registre WADA (passé à /api/products en
- * `style=` pour filtrer les pièces incohérentes — exclude survêtement
- * dans une tenue classique, exclude derbies dans une tenue sport…).
- */
+/* Brief « Scanner Un vêtement » §2 : style → registre WADA pour /ma-tenue.
+   Garde la même table que la version précédente du composer pour ne pas
+   régresser sur la cohérence registre × pièces. */
 const STYLE_BY_SLOT: Record<Slot, Array<{ label: string; register: string }>> = {
   haut: [
     { label: "T-shirt", register: "Décontracté" },
@@ -98,722 +85,655 @@ const STYLE_BY_SLOT: Record<Slot, Array<{ label: string; register: string }>> = 
   ],
 };
 
-type Gender = "femme" | "homme" | "unisexe";
-
-/**
- * Brief « Scanner Un vêtement » §1 (26/05) — sub-component qui fetch
- * un vrai produit MUJI pour un slot non-ancre (haut/bas/chaussures/veste/
- * accent proposé par WADA, PAS la pièce que l'utilisateur a scannée).
- *
- * Pattern identique à /ma-tenue et /stylist : on tape /api/products avec
- * slot + color hex + genre + style, on prend le 1er résultat trié par
- * proximité ΔE. Si trouvé → photo MUJI + nom + prix + Acheter. Sinon →
- * fallback swatch couleur + « Voir des pièces → » (recherche générique).
- *
- * Priorité photo : imageLocal (Blob hi-res, mais désactivé tant que le
- * Blob store est private) → largeImage via /api/img proxy (1280px CDN
- * MUJI direct) → image (200px Awin, dernier recours).
- */
-interface ComposerMujiProduct {
-  nom: string;
-  marque: string;
-  image: string;
-  prix: number;
-  devise: string;
-  url: string;
-  /* Brief 2026-05-26 « erreur entre couleurs palette et couleurs habits » :
-     on stocke aussi le nom de couleur RÉEL du produit MUJI (ex. « Brun
-     foncé », « Écru », « Noir ») au lieu de juste l'intention palette
-     (Camel, Moutarde, Olive). Affiché sous le nom de la pièce pour
-     éviter le mismatch label/photo (chino brun foncé étiqueté « Camel »
-     alors que la palette intent était camel mais le produit retourné
-     est brun foncé). */
-  couleurNom?: string;
-  couleurHex?: string;
-}
-function useComposerMuji(
-  slot: Slot | null,
-  colorHex: string | null,
-  style: string | null,
-  genre: string | null,
-) {
-  const [product, setProduct] = useState<ComposerMujiProduct | null>(null);
-
-  useEffect(() => {
-    if (!slot || !colorHex) return;
-    let cancelled = false;
-    /* Fix 2026-05-30 : retrait hardcode merchant=muji-france. Mix
-       MUJI + TBF selon proximité couleur (ΔE2000). */
-    const params = new URLSearchParams({
-      slot,
-      color: colorHex,
-      limit: "1",
-    });
-    if (style) params.set("style", style);
-    if (genre) params.set("genre", genre.toLowerCase());
-
-    fetch(`/api/products?${params}`)
-      .then((r) => r.ok ? r.json() : null)
-      .then((data) => {
-        if (cancelled || !data?.products?.length) return;
-        const p = data.products[0];
-        /* Priorité photo : imageLocal → largeImage (via /api/img) → image
-           (idem /ma-tenue, /stylist). Le proxy /api/img bypass le hotlink
-           protection des CDN marchands. */
-        const displayImage = p.imageLocal
-          ? p.imageLocal
-          : p.largeImage
-            ? `/api/img?u=${encodeURIComponent(p.largeImage)}`
-            : p.image
-              ? `/api/img?u=${encodeURIComponent(p.image)}`
-              : "";
-        setProduct({
-          nom: p.nom,
-          marque: p.marque || p.marchand || "MUJI",
-          image: displayImage,
-          prix: p.prix,
-          devise: p.devise,
-          url: p.urlProduit,
-          couleurNom: p.couleurNom,
-          couleurHex: p.hex,
-        });
-      })
-      .catch(() => { /* silencieux — fallback swatch + Voir des pièces */ });
-    return () => { cancelled = true; };
-  }, [slot, colorHex, style, genre]);
-
-  return product;
+interface Detected {
+  hex: string;
+  matches: DictionaryEntry[];
 }
 
 export default function ComposerPage() {
-  const [gender, setGender] = useState<Gender>("unisexe");
-  const [anchorSlot, setAnchorSlot] = useState<Slot>("haut");
-  /* Brief « Scanner Un vêtement » §2 (26/05) — label de la pièce scannée
-     (« Hoodie », « Derbies »…). Sert à 2 choses :
-       1. Affiner le registre WADA via STYLE_BY_SLOT (`pieceLabel` → register).
-       2. Améliorer le label de l'ancre dans la tenue composée.
-     Reset à null quand l'utilisateur change le slot ancre. */
-  const [pieceLabel, setPieceLabel] = useState<string | null>(null);
-  /* Registre dérivé : on cherche dans STYLE_BY_SLOT[anchorSlot] l'option
-     dont le label matche `pieceLabel`. Si rien → "Classique" par défaut
-     (registre neutre, ni trop sport ni trop habillé). Passé à /api/products
-     pour exclure les pièces incohérentes (ex. running shoes + tailoring). */
-  const pieceRegister =
-    STYLE_BY_SLOT[anchorSlot]?.find((s) => s.label === pieceLabel)?.register
-    ?? "Classique";
-  const [imgPreview, setImgPreview] = useState<string | null>(null);
-  const [detectedHex, setDetectedHex] = useState<string | null>(null);
-  const [outfit, setOutfit] = useState<ComposedOutfit | null>(null);
-  const [loading, setLoading] = useState(false);
-  const fileRef = useRef<HTMLInputElement | null>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
 
-  /* Charge le genre depuis localStorage (cf. home page) */
+  const [cameraReady, setCameraReady] = useState(false);
+  const [cameraError, setCameraError] = useState<string | null>(null);
+  const [flashOn, setFlashOn] = useState(false);
+  const [detected, setDetected] = useState<Detected | null>(null);
+  const [pickedSlot, setPickedSlot] = useState<Slot>("haut");
+  const [pickedStyle, setPickedStyle] = useState<string | null>(null);
+
+  const router = useRouter();
+
+  /* Démarrage caméra arrière. */
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem("wada-gender");
-      if (saved === "femme" || saved === "homme" || saved === "unisexe") {
-        setGender(saved);
+    let cancelled = false;
+    async function startCamera() {
+      try {
+        if (!navigator.mediaDevices?.getUserMedia) {
+          throw new Error("getUserMedia non supporté");
+        }
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } },
+          audio: false,
+        });
+        if (cancelled) {
+          stream.getTracks().forEach((t) => t.stop());
+          return;
+        }
+        streamRef.current = stream;
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          await videoRef.current.play().catch(() => {});
+        }
+        setCameraReady(true);
+      } catch (err) {
+        setCameraError(err instanceof Error ? err.message : "Caméra inaccessible");
       }
-    } catch {}
+    }
+    startCamera();
+    return () => {
+      cancelled = true;
+      streamRef.current?.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
+    };
   }, []);
 
-  /* Détection couleur locale via canvas (zone centrale 50%) */
-  const detectColorFromImage = (src: string) => {
-    setLoading(true);
-    setImgPreview(src);
+  /* Capture : moyenne RGB du centre 30%, hex, palettes proches. */
+  const capture = useCallback(() => {
+    const video = videoRef.current;
+    if (!video || !cameraReady) return;
+    const W = video.videoWidth;
+    const H = video.videoHeight;
+    if (W === 0 || H === 0) return;
+
+    const canvas = document.createElement("canvas");
+    canvas.width = W;
+    canvas.height = H;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.drawImage(video, 0, 0, W, H);
+
+    const sampleSize = Math.min(W, H) * 0.3;
+    const sx = Math.floor(W / 2 - sampleSize / 2);
+    const sy = Math.floor(H / 2 - sampleSize / 2);
+    const data = ctx.getImageData(sx, sy, sampleSize, sampleSize).data;
+
+    let r = 0, g = 0, b = 0, n = 0;
+    for (let i = 0; i < data.length; i += 4) {
+      const R = data[i], G = data[i + 1], B = data[i + 2];
+      const lum = (R + G + B) / 3;
+      if (lum > 245 || lum < 10) continue;
+      r += R; g += G; b += B; n++;
+    }
+    if (n === 0) return;
+    const hex = "#" + [r / n, g / n, b / n]
+      .map((v) => Math.round(v).toString(16).padStart(2, "0"))
+      .join("");
+
+    const matches = findPalettesByColor(hex, 3);
+    setDetected({ hex, matches });
+    void hapticMedium();
+  }, [cameraReady]);
+
+  /* Fallback fichier (galerie + caméra refusée). */
+  const onFilePicked = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const url = URL.createObjectURL(file);
     const img = new Image();
-    img.crossOrigin = "anonymous";
     img.onload = () => {
       const canvas = document.createElement("canvas");
-      const W = 80, H = 80;
-      canvas.width = W; canvas.height = H;
+      canvas.width = 80; canvas.height = 80;
       const ctx = canvas.getContext("2d");
-      if (!ctx) { setLoading(false); return; }
-      ctx.drawImage(img, 0, 0, W, H);
-      const cs = Math.floor(W * 0.25), ce = Math.floor(W * 0.75);
-      const data = ctx.getImageData(cs, cs, ce - cs, ce - cs).data;
+      if (!ctx) return;
+      ctx.drawImage(img, 0, 0, 80, 80);
+      const data = ctx.getImageData(0, 0, 80, 80).data;
       let r = 0, g = 0, b = 0, n = 0;
       for (let i = 0; i < data.length; i += 4) {
         const R = data[i], G = data[i + 1], B = data[i + 2];
         const lum = (R + G + B) / 3;
-        if (lum > 245 || lum < 12) continue;
+        if (lum > 245 || lum < 10) continue;
         r += R; g += G; b += B; n++;
       }
-      if (n === 0) { setLoading(false); return; }
-      r = Math.round(r / n); g = Math.round(g / n); b = Math.round(b / n);
-      const hex = `#${[r, g, b].map((v) => v.toString(16).padStart(2, "0")).join("")}`;
-      const composed = composeOutfitFromColor(hex, anchorSlot, gender);
-      setDetectedHex(hex);
-      setOutfit(composed);
-      setLoading(false);
-      if (typeof navigator !== "undefined" && "vibrate" in navigator) {
-        navigator.vibrate?.(12);
-      }
+      if (n === 0) return;
+      const hex = "#" + [r / n, g / n, b / n].map((v) => Math.round(v).toString(16).padStart(2, "0")).join("");
+      setDetected({ hex, matches: findPalettesByColor(hex, 3) });
+      void hapticMedium();
     };
-    img.onerror = () => setLoading(false);
-    img.src = src;
+    img.src = url;
+  }, []);
+
+  /* Capacitor natif. */
+  const onNativeCamera = useCallback(async () => {
+    if (!isNative()) return;
+    const dataUrl = await takeNativePhoto();
+    if (!dataUrl) return;
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = 80; canvas.height = 80;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+      ctx.drawImage(img, 0, 0, 80, 80);
+      const data = ctx.getImageData(0, 0, 80, 80).data;
+      let r = 0, g = 0, b = 0, n = 0;
+      for (let i = 0; i < data.length; i += 4) {
+        const R = data[i], G = data[i + 1], B = data[i + 2];
+        const lum = (R + G + B) / 3;
+        if (lum > 245 || lum < 10) continue;
+        r += R; g += G; b += B; n++;
+      }
+      if (n === 0) return;
+      const hex = "#" + [r / n, g / n, b / n].map((v) => Math.round(v).toString(16).padStart(2, "0")).join("");
+      setDetected({ hex, matches: findPalettesByColor(hex, 3) });
+    };
+    img.src = dataUrl;
+  }, []);
+
+  /* Flash via torche. */
+  const toggleFlash = useCallback(async () => {
+    const stream = streamRef.current;
+    if (!stream) return;
+    const track = stream.getVideoTracks()[0];
+    if (!track) return;
+    const capabilities = track.getCapabilities?.() as MediaTrackCapabilities & { torch?: boolean };
+    if (!capabilities?.torch) return;
+    try {
+      const next = !flashOn;
+      await track.applyConstraints({ advanced: [{ torch: next }] } as unknown as MediaTrackConstraints);
+      setFlashOn(next);
+    } catch {}
+  }, [flashOn]);
+
+  const closeResult = () => {
+    setDetected(null);
+    setPickedStyle(null);
   };
 
-  const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const url = URL.createObjectURL(file);
-    detectColorFromImage(url);
-  };
+  /* Validation : route vers /ma-tenue avec les params slot+style+palette.
+     On lit le genre depuis le profil utilisateur s'il existe. */
+  const handleCompose = () => {
+    if (!detected?.matches[0]) return;
+    const paletteNumber = detected.matches[0].number;
+    const register =
+      STYLE_BY_SLOT[pickedSlot]?.find((s) => s.label === pickedStyle)?.register
+      ?? "Classique";
 
-  const reset = () => {
-    setImgPreview(null);
-    setDetectedHex(null);
-    setOutfit(null);
+    let genre: string | null = null;
+    try {
+      const raw = localStorage.getItem("wada.profile");
+      if (raw) {
+        const p = JSON.parse(raw);
+        if (p?.genre === "Femme") genre = "femme";
+        else if (p?.genre === "Homme") genre = "homme";
+      }
+    } catch {}
+
+    const params = new URLSearchParams({
+      palette: paletteNumber,
+      style: register,
+      slot: pickedSlot,
+      piece: pickedStyle || "",
+      color: detected.hex,
+    });
+    if (genre) params.set("genre", genre);
+    router.push(`/ma-tenue?${params}`);
   };
 
   return (
     <main style={{
+      position: "fixed",
+      inset: 0,
+      background: "#000",
+      overflow: "hidden",
       fontFamily: fonts.sans,
-      background: palette.beige,
-      color: palette.ink,
-      lineHeight: 1.6,
-      minHeight: "100vh",
-      WebkitFontSmoothing: "antialiased",
     }}>
-      <BackButton fallback="/atelier" />
+      {/* VIDÉO CAMÉRA PLEIN ÉCRAN */}
+      <video
+        ref={videoRef}
+        autoPlay
+        playsInline
+        muted
+        style={{
+          position: "absolute", inset: 0,
+          width: "100%", height: "100%",
+          objectFit: "cover",
+          zIndex: 0,
+        }}
+      />
 
-      {/* ═══════════════════ HERO ÉDITORIAL ═══════════════════
-          Brief 2026-05-30 (mockup référence) : titre impactant +
-          bulle d'explication conversationnelle + sparkles décoratifs.
-          Cohérent avec /scanner (même DA pour les 2 modes). */}
-      <section style={{ padding: "56px 26px 4px", textAlign: "center", position: "relative" }}>
-        <div style={{ maxWidth: 1000, margin: "0 auto", position: "relative" }}>
-          {/* Sparkles décoratifs */}
-          <span aria-hidden style={{ position: "absolute", top: 40, left: "12%", fontSize: 14, color: palette.olive, opacity: 0.5 }}>✦</span>
-          <span aria-hidden style={{ position: "absolute", top: 80, right: "10%", fontSize: 18, color: palette.bordeaux, opacity: 0.45 }}>✦</span>
-          <span aria-hidden style={{ position: "absolute", top: 200, left: "8%", fontSize: 12, color: palette.bordeaux, opacity: 0.4 }}>✦</span>
-          <span aria-hidden style={{ position: "absolute", top: 220, right: "15%", fontSize: 16, color: palette.olive, opacity: 0.5 }}>✦</span>
-
-          <div style={{ marginBottom: 26 }}>
-            <ScanModeToggle active="vetement" />
-          </div>
-          <h1 style={{
-            fontFamily: fonts.display, fontWeight: 700,
-            fontSize: "clamp(42px, 7.5vw, 76px)", margin: "0 0 24px",
-            color: palette.ink,
-            letterSpacing: "-0.015em",
-            lineHeight: 1.02,
-          }}>
-            Scannez un vêtement
-          </h1>
-
-          {/* Bulle conversationnelle — pareille au scanner couleur. */}
-          <div style={{
-            display: "inline-block",
-            position: "relative",
-            maxWidth: 460,
-            background: palette.cream,
-            border: `1px solid ${palette.line}`,
-            borderRadius: 22,
-            padding: "18px 24px",
-            boxShadow: "0 8px 22px -8px rgba(30,30,30,0.1)",
-            textAlign: "left",
-            fontFamily: fonts.sans,
-            fontSize: 15,
-            lineHeight: 1.55,
-            color: palette.ink,
-          }}>
-            Photographiez une <strong style={{ color: palette.bordeaux }}>pièce</strong> que vous aimez — WADA détecte la <strong style={{ color: palette.bordeaux }}>couleur</strong> et compose une tenue complète autour.
-            <span aria-hidden style={{
-              position: "absolute",
-              bottom: -8, left: "50%",
-              transform: "translateX(-50%) rotate(45deg)",
-              width: 14, height: 14,
-              background: palette.cream,
-              borderRight: `1px solid ${palette.line}`,
-              borderBottom: `1px solid ${palette.line}`,
-            }} />
-          </div>
-        </div>
-      </section>
-
-      {/* ═══ CARTE D'ACTION ÉPURÉE ═══
-          Brief client « moins d'info, plus instinctif » : on retire les
-          étapes 01/02/03/04 numérotées qui transformaient la page en
-          questionnaire administratif. Maintenant : 3 lignes de chips
-          compactes (le formulaire EST son propre label) + drop zone
-          photo en bas. L'utilisateur balaye en 5 secondes, comprend
-          tout, clique. */}
-      {!outfit && (
-        <section style={{
-          maxWidth: 580, margin: "26px auto 0",
-          padding: "0 max(24px, env(safe-area-inset-right)) 0 max(24px, env(safe-area-inset-left))",
+      {/* Voile sombre si caméra pas prête */}
+      {!cameraReady && (
+        <div style={{
+          position: "absolute", inset: 0, zIndex: 1,
+          background: "linear-gradient(160deg, #3d3024 0%, #1f1814 100%)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          flexDirection: "column", gap: 14, padding: 32,
         }}>
           <div style={{
-            background: "var(--wada-card-bg-strong, #FBF9F5)",
-            border: `1px solid var(--wada-border, ${palette.line})`,
-            borderRadius: 24,
-            padding: 30,
-            boxShadow: "0 8px 30px rgba(30,30,30,.06)",
+            width: 56, height: 56, borderRadius: "50%",
+            border: "3px solid rgba(255,255,255,0.2)",
+            borderTopColor: "#fff",
+            animation: cameraError ? "none" : "wada-spin 0.9s linear infinite",
+          }} />
+          <p style={{
+            color: "#fff", fontFamily: fonts.display,
+            fontSize: 18, fontWeight: 500, textAlign: "center",
           }}>
-            {/* Mini-label + chips genre */}
-            <MiniLabel>Pour qui</MiniLabel>
-            <ChipRow>
-              {(["femme", "homme", "unisexe"] as Gender[]).map((g) => (
-                <Chip key={g} active={gender === g} onClick={() => setGender(g)}>
-                  {g.charAt(0).toUpperCase() + g.slice(1)}
-                </Chip>
-              ))}
-            </ChipRow>
-
-            <MiniLabel>La pièce</MiniLabel>
-            <ChipRow>
-              {PIECE_OPTIONS.map((p) => (
-                <Chip key={p.slug} active={anchorSlot === p.slug} onClick={() => {
-                  setAnchorSlot(p.slug);
-                  setPieceLabel(null);
-                }}>
-                  {p.label}
-                </Chip>
-              ))}
-            </ChipRow>
-
-            <MiniLabel>Son style</MiniLabel>
-            <ChipRow>
-              {(STYLE_BY_SLOT[anchorSlot] || []).map((s) => (
-                <Chip
-                  key={s.label}
-                  active={pieceLabel === s.label}
-                  onClick={() => setPieceLabel(s.label)}
-                >
-                  {s.label}
-                </Chip>
-              ))}
-            </ChipRow>
-
-            {/* Drop zone — aperture SVG + bouton bordeaux. Pas de titre,
-                pas de mention "JPG / PNG max 8 Mo" : le bouton se suffit. */}
-            <div style={{
-              marginTop: 22, padding: "30px 20px",
-              border: `1.5px dashed var(--wada-border, ${palette.line})`,
-              borderRadius: 18,
-              textAlign: "center",
-              background: palette.beige,
-              transition: "border-color .2s ease",
-            }}>
-              {imgPreview ? (
-                <img src={imgPreview} alt="" style={{ maxHeight: 200, borderRadius: 12, marginBottom: 14, maxWidth: "100%", objectFit: "contain" }} />
-              ) : (
-                <svg
-                  aria-hidden
-                  width="38" height="38" viewBox="0 0 38 38"
-                  style={{ display: "block", margin: "0 auto 14px", color: palette.olive }}
-                >
-                  <circle cx="19" cy="19" r="17" fill="none" stroke="currentColor" strokeWidth="1" opacity="0.55" />
-                  <circle cx="19" cy="19" r="10" fill="none" stroke="currentColor" strokeWidth="1" />
-                  <circle cx="19" cy="19" r="2.5" fill="currentColor" />
-                </svg>
-              )}
-              {loading ? (
-                <p style={{ color: palette.inkSoft, fontStyle: "italic", margin: 0 }}>
-                  Analyse en cours…
-                </p>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => fileRef.current?.click()}
-                  style={{
-                    fontFamily: fonts.sans, fontSize: 16,
-                    padding: "13px 28px", borderRadius: 999,
-                    background: palette.bordeaux, color: palette.cream,
-                    border: "none", cursor: "pointer", fontWeight: 500,
-                  }}
-                >
-                  <span aria-hidden style={{ marginRight: 6 }}>📷</span>
-                  Photographier la pièce
-                </button>
-              )}
-              <input
-                ref={fileRef}
-                type="file"
-                accept="image/*"
-                capture="environment"
-                onChange={onFileChange}
-                style={{
-                  position: "absolute", width: 1, height: 1,
-                  padding: 0, margin: -1, overflow: "hidden",
-                  clip: "rect(0,0,0,0)", whiteSpace: "nowrap", border: 0,
-                }}
-              />
-            </div>
-          </div>
-        </section>
+            {cameraError ? "Caméra inaccessible" : "Activation de la caméra…"}
+          </p>
+          {cameraError && (
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              style={{
+                marginTop: 8,
+                background: palette.bordeaux, color: palette.cream,
+                border: "none", borderRadius: 999,
+                padding: "13px 24px",
+                fontFamily: fonts.sans, fontSize: 14, fontWeight: 600,
+                cursor: "pointer",
+              }}
+            >
+              Choisir une photo de la galerie
+            </button>
+          )}
+        </div>
       )}
 
-      {/* ═══ ÉTAT RÉSULTAT — couleur détectée + verdict + accord + outfit ═══ */}
-      {outfit && (
-        <>
-          {/* Carte couleur détectée qui chevauche le hero */}
+      {/* TOP BAR : × + label MODE VÊTEMENT + ⚡ */}
+      <div style={{
+        position: "absolute", top: "max(14px, env(safe-area-inset-top, 14px))",
+        left: 0, right: 0, zIndex: 20,
+        padding: "0 18px",
+        display: "flex", justifyContent: "space-between", alignItems: "center",
+      }}>
+        <Link
+          href="/"
+          aria-label="Fermer"
+          style={{
+            width: 38, height: 38, borderRadius: "50%",
+            background: "rgba(0,0,0,0.4)",
+            backdropFilter: "blur(8px)",
+            WebkitBackdropFilter: "blur(8px)",
+            display: "inline-flex", alignItems: "center", justifyContent: "center",
+            color: "#fff", textDecoration: "none",
+            fontSize: 22, lineHeight: 1,
+            border: "1px solid rgba(255,255,255,0.12)",
+          }}
+        >
+          ×
+        </Link>
+
+        <span style={{
+          background: "rgba(0,0,0,0.4)",
+          backdropFilter: "blur(8px)",
+          WebkitBackdropFilter: "blur(8px)",
+          color: "#fff",
+          fontFamily: fonts.display,
+          fontSize: 12,
+          letterSpacing: "0.18em",
+          fontWeight: 500,
+          padding: "6px 14px",
+          borderRadius: 999,
+          border: "1px solid rgba(255,255,255,0.12)",
+        }}>
+          MODE VÊTEMENT
+        </span>
+
+        <button
+          type="button"
+          onClick={toggleFlash}
+          aria-label={flashOn ? "Éteindre le flash" : "Allumer le flash"}
+          style={{
+            width: 38, height: 38, borderRadius: "50%",
+            background: flashOn ? "rgba(255,220,100,0.85)" : "rgba(0,0,0,0.4)",
+            backdropFilter: "blur(8px)",
+            WebkitBackdropFilter: "blur(8px)",
+            display: "inline-flex", alignItems: "center", justifyContent: "center",
+            color: "#fff", border: "1px solid rgba(255,255,255,0.12)",
+            cursor: "pointer", fontSize: 16, lineHeight: 1,
+          }}
+        >
+          ⚡
+        </button>
+      </div>
+
+      {/* MIRE — cadre rectangulaire vertical (pour cadrer un vêtement plutôt
+          qu'un point couleur). 4 coins arrondis + ligne de pulse centrale. */}
+      {cameraReady && !detected && (
+        <div style={{
+          position: "absolute", top: "50%", left: "50%",
+          transform: "translate(-50%, -50%)",
+          width: 210, height: 280,
+          zIndex: 15, pointerEvents: "none",
+        }}>
+          <svg viewBox="0 0 100 130" preserveAspectRatio="none" style={{ width: "100%", height: "100%", overflow: "visible" }}>
+            <path d="M5,22 L5,5 L25,5" stroke="#fff" strokeWidth="2.5" fill="none" strokeLinecap="round" style={{ filter: "drop-shadow(0 1px 3px rgba(0,0,0,.5))" }} />
+            <path d="M75,5 L95,5 L95,22" stroke="#fff" strokeWidth="2.5" fill="none" strokeLinecap="round" style={{ filter: "drop-shadow(0 1px 3px rgba(0,0,0,.5))" }} />
+            <path d="M95,108 L95,125 L75,125" stroke="#fff" strokeWidth="2.5" fill="none" strokeLinecap="round" style={{ filter: "drop-shadow(0 1px 3px rgba(0,0,0,.5))" }} />
+            <path d="M25,125 L5,125 L5,108" stroke="#fff" strokeWidth="2.5" fill="none" strokeLinecap="round" style={{ filter: "drop-shadow(0 1px 3px rgba(0,0,0,.5))" }} />
+          </svg>
+          <span style={{
+            position: "absolute", top: "50%", left: "50%",
+            width: 22, height: 22, borderRadius: "50%",
+            background: "#fff",
+            transform: "translate(-50%, -50%)",
+            animation: "wada-scan-pulse 1.6s infinite ease-out",
+            opacity: 0.5,
+          }} />
+        </div>
+      )}
+
+      {/* HINT */}
+      {cameraReady && !detected && (
+        <div style={{
+          position: "absolute",
+          top: "calc(50% + 170px)",
+          left: 0, right: 0,
+          textAlign: "center",
+          color: "#fff", fontSize: 14,
+          textShadow: "0 1px 6px rgba(0,0,0,0.7)",
+          fontFamily: fonts.display, fontWeight: 500,
+          letterSpacing: "0.02em",
+          zIndex: 18,
+        }}>
+          Cadrez le vêtement
+        </div>
+      )}
+
+      {/* BOTTOM BAR : toggle + capture + galerie */}
+      {cameraReady && !detected && (
+        <div style={{
+          position: "absolute",
+          bottom: "max(28px, env(safe-area-inset-bottom, 14px))",
+          left: 0, right: 0,
+          padding: "0 18px",
+          zIndex: 25,
+        }}>
+          {/* Toggle Couleur / Vêtement (Vêtement actif ici) */}
           <div style={{
-            position: "relative", zIndex: 4,
-            maxWidth: 1040, margin: "-90px auto 0",
-            padding: "0 26px",
+            display: "flex",
+            background: "rgba(255,255,255,0.92)",
+            backdropFilter: "blur(10px)",
+            WebkitBackdropFilter: "blur(10px)",
+            borderRadius: 999,
+            padding: 4,
+            width: "max-content",
+            margin: "0 auto 18px",
+            gap: 3,
+          }}>
+            <button
+              type="button"
+              onClick={() => router.push("/scanner")}
+              style={{
+                background: "transparent", color: palette.inkSoft,
+                border: "none", padding: "8px 16px",
+                borderRadius: 999,
+                fontFamily: fonts.display, fontSize: 13, fontWeight: 500,
+                cursor: "pointer",
+              }}
+            >
+              ⦿ Une couleur
+            </button>
+            <button
+              type="button"
+              style={{
+                background: "#fff", color: palette.bordeaux,
+                boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+                border: "none", padding: "8px 16px",
+                borderRadius: 999,
+                fontFamily: fonts.display, fontSize: 13, fontWeight: 500,
+                cursor: "pointer",
+              }}
+            >
+              ◇ Un vêtement
+            </button>
+          </div>
+
+          {/* Capture row */}
+          <div style={{
+            display: "flex", alignItems: "center", justifyContent: "space-between",
+            padding: "0 14px",
+          }}>
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              aria-label="Ouvrir la galerie"
+              style={{
+                width: 44, height: 44, borderRadius: 10,
+                background: "rgba(255,255,255,0.18)",
+                backdropFilter: "blur(10px)",
+                WebkitBackdropFilter: "blur(10px)",
+                color: "#fff",
+                border: "none", cursor: "pointer",
+                display: "inline-flex", alignItems: "center", justifyContent: "center",
+                fontSize: 18,
+              }}
+            >
+              🖼
+            </button>
+
+            <button
+              type="button"
+              onClick={isNative() ? onNativeCamera : capture}
+              aria-label="Capturer"
+              style={{
+                width: 72, height: 72, borderRadius: "50%",
+                background: "#fff",
+                border: "4px solid rgba(255,255,255,0.5)",
+                boxShadow: "0 8px 22px -6px rgba(0,0,0,0.4)",
+                cursor: "pointer",
+                transition: "transform 0.12s ease",
+              }}
+              onMouseDown={(ev) => { ev.currentTarget.style.transform = "scale(0.94)"; }}
+              onMouseUp={(ev) => { ev.currentTarget.style.transform = "scale(1)"; }}
+              onTouchStart={(ev) => { ev.currentTarget.style.transform = "scale(0.94)"; }}
+              onTouchEnd={(ev) => { ev.currentTarget.style.transform = "scale(1)"; }}
+            />
+
+            <span style={{ width: 44, height: 44 }} aria-hidden />
+          </div>
+        </div>
+      )}
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        onChange={onFilePicked}
+        style={{ display: "none" }}
+      />
+
+      {/* RÉSULTAT — bottom sheet avec slot + style picker */}
+      {detected && (
+        <>
+          <div
+            onClick={closeResult}
+            style={{
+              position: "absolute", inset: 0,
+              background: "rgba(0,0,0,0.45)",
+              backdropFilter: "blur(3px)",
+              zIndex: 30,
+            }}
+          />
+          <div style={{
+            position: "absolute",
+            left: 10, right: 10,
+            bottom: "max(10px, env(safe-area-inset-bottom, 10px))",
+            background: "#fff",
+            borderRadius: 22,
+            padding: "16px 20px 22px",
+            zIndex: 35,
+            boxShadow: "0 -10px 30px -10px rgba(0,0,0,0.3)",
+            animation: "wada-sheet-slide 0.3s cubic-bezier(.22,1,.36,1)",
+            maxHeight: "78vh",
+            overflowY: "auto",
           }}>
             <div style={{
-              background: palette.cream,
-              border: `1px solid ${palette.line}`,
-              borderRadius: 20,
-              boxShadow: shadow,
-              padding: "22px 26px",
-              display: "flex", alignItems: "center",
-              justifyContent: "space-between", gap: 18, flexWrap: "wrap",
-            }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
-                <div aria-hidden style={{
-                  width: 60, height: 60, borderRadius: 14,
-                  border: `1px solid ${palette.line}`,
-                  background: detectedHex || "#000",
+              width: 36, height: 4,
+              background: "#ddd", borderRadius: 2,
+              margin: "0 auto 14px",
+            }} />
+
+            {/* Header : couleur + palette détectée */}
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
+              <span
+                aria-hidden
+                style={{
+                  width: 44, height: 44, borderRadius: 10,
+                  background: detected.hex,
+                  border: `1px solid rgba(0,0,0,0.1)`,
                   flexShrink: 0,
-                }} />
-                <div>
-                  <p style={{
-                    fontSize: 11, letterSpacing: "0.2em",
-                    textTransform: "uppercase", color: palette.olive,
-                  }}>
-                    Couleur de votre pièce
-                  </p>
-                  <p style={{
-                    fontFamily: fonts.display, fontWeight: 600,
-                    fontSize: 26, margin: "4px 0",
-                  }}>
-                    {outfit.palette.matchedColor.name}
-                  </p>
-                  <p style={{ fontSize: 12, color: palette.inkSoft }}>
-                    {detectedHex} · pour {gender}
-                  </p>
-                </div>
+                }}
+              />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{
+                  fontFamily: fonts.sans, fontSize: 10,
+                  letterSpacing: "0.12em", textTransform: "uppercase",
+                  color: palette.inkSoft, fontWeight: 600,
+                  margin: 0,
+                }}>
+                  Couleur détectée
+                </p>
+                <p style={{
+                  fontFamily: fonts.display, fontWeight: 500,
+                  fontSize: 16, color: palette.ink,
+                  margin: "2px 0 0",
+                }}>
+                  {detected.hex.toUpperCase()}
+                  {detected.matches[0] && (
+                    <span style={{ fontSize: 12, color: palette.inkSoft, fontWeight: 400 }}>
+                      {" "}· {detected.matches[0].name}
+                    </span>
+                  )}
+                </p>
               </div>
               <button
                 type="button"
-                onClick={reset}
+                onClick={closeResult}
+                aria-label="Re-scanner"
                 style={{
-                  fontFamily: fonts.sans, fontSize: 13,
-                  letterSpacing: "0.04em",
-                  background: "transparent",
-                  border: `1px solid ${palette.line}`,
-                  borderRadius: 999, padding: "12px 20px",
-                  cursor: "pointer", color: palette.ink,
+                  width: 36, height: 36, borderRadius: "50%",
+                  background: "rgba(30,30,30,0.06)",
+                  border: "none", cursor: "pointer",
+                  fontSize: 18, color: palette.inkSoft,
+                  lineHeight: 1,
                 }}
               >
-                Nouvelle photo
+                ↻
               </button>
             </div>
-          </div>
 
-          {/* Sections résultats */}
-          <div style={{ maxWidth: 1040, margin: "0 auto", padding: "40px 26px 70px" }}>
-            {/* Verdict bordeaux */}
-            <p style={sectionLabelStyle}>
-              Verdict — {`No. ${outfit.palette.entry.number} · ${outfit.palette.entry.name}`}
-            </p>
-            <div style={{
-              background: palette.bordeaux, color: palette.cream,
-              borderRadius: 18, padding: "24px 28px",
-            }}>
-              <p style={{
-                fontSize: 11, letterSpacing: "0.2em",
-                textTransform: "uppercase",
-                color: "rgba(250,248,244,.75)",
-              }}>
-                L'accord
-              </p>
-              <p style={{
-                fontFamily: fonts.display, fontWeight: 500,
-                fontSize: 21, marginTop: 8, lineHeight: 1.35,
-              }}>
-                {outfit.verdict}
-              </p>
-            </div>
-
-            {/* Bande accord complet */}
-            <p style={sectionLabelStyle}>L'accord WADA complet</p>
-            <div style={{
-              display: "flex", height: 64,
-              borderRadius: 14, overflow: "hidden",
-              boxShadow: shadow,
-            }}>
-              {outfit.palette.entry.colors.map((c, i) => (
-                <div key={i} title={`${c.name} ${c.hex}`} style={{ flex: 1, background: c.hex }} />
+            {/* Slot picker */}
+            <p style={pickerLabel}>Quel type de pièce ?</p>
+            <div style={chipRow}>
+              {SLOT_OPTIONS.map(({ slug, label, icon }) => (
+                <button
+                  key={slug}
+                  type="button"
+                  onClick={() => { setPickedSlot(slug); setPickedStyle(null); }}
+                  style={chipStyle(pickedSlot === slug)}
+                >
+                  <span style={{ fontSize: 14 }}>{icon}</span> {label}
+                </button>
               ))}
             </div>
 
-            {/* La tenue composée — 5 cards */}
-            <p style={sectionLabelStyle}>La tenue composée</p>
-            <div className="wada-composer-outfit" style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(5, 1fr)",
-              gap: 14,
-            }}>
-              {outfit.slots.map((s, i) => (
-                /* Brief « Scanner Un vêtement » §1 (26/05) — Sub-component
-                   qui fetch un vrai produit MUJI pour les slots non-ancre.
-                   Anchor (Votre pièce) garde l'affichage swatch + libellé. */
-                <ComposerSlotCard
-                  key={`${s.slot}-${i}`}
-                  slot={s}
-                  gender={gender}
-                  register={pieceRegister}
-                />
+            {/* Style picker (selon slot) */}
+            <p style={{ ...pickerLabel, marginTop: 14 }}>Plus précisément ?</p>
+            <div style={chipRow}>
+              {(STYLE_BY_SLOT[pickedSlot] || []).map(({ label }) => (
+                <button
+                  key={label}
+                  type="button"
+                  onClick={() => setPickedStyle(label)}
+                  style={chipStyle(pickedStyle === label)}
+                >
+                  {label}
+                </button>
               ))}
             </div>
 
-            {/* Actions finales */}
-            <div style={{
-              display: "flex", gap: 14, justifyContent: "center",
-              marginTop: 36, flexWrap: "wrap",
-            }}>
-              <button
-                type="button"
-                onClick={reset}
-                style={{
-                  fontFamily: fonts.sans, fontSize: 14,
-                  padding: "14px 26px", borderRadius: 999,
-                  background: palette.bordeaux, color: palette.cream,
-                  border: "none", cursor: "pointer", fontWeight: 500,
-                }}
-              >
-                Composer une autre tenue
-              </button>
-              <Link href={`/palette/${outfit.palette.entry.number}`} style={{
-                fontFamily: fonts.sans, fontSize: 14,
-                padding: "14px 26px", borderRadius: 999,
-                background: "transparent", color: palette.ink,
-                border: `1px solid ${palette.line}`,
-                textDecoration: "none", fontWeight: 500,
-              }}>
-                Voir la palette {outfit.palette.entry.number} →
-              </Link>
-            </div>
+            {/* CTA Composer ma tenue */}
+            <button
+              type="button"
+              onClick={handleCompose}
+              disabled={!detected.matches[0]}
+              style={{
+                display: "block",
+                width: "100%",
+                marginTop: 18,
+                background: detected.matches[0] ? palette.bordeaux : "#ccc",
+                color: palette.cream,
+                border: "none", borderRadius: 14,
+                padding: "15px",
+                textAlign: "center",
+                fontFamily: fonts.display, fontSize: 15, fontWeight: 500,
+                cursor: detected.matches[0] ? "pointer" : "not-allowed",
+              }}
+            >
+              Composer ma tenue&nbsp;→
+            </button>
+
+            {!detected.matches[0] && (
+              <p style={{ fontSize: 12, color: palette.inkSoft, textAlign: "center", marginTop: 8 }}>
+                Aucune palette Sanzo Wada ne matche cette teinte. Recadre puis recapture.
+              </p>
+            )}
           </div>
         </>
       )}
 
-      
       <style jsx>{`
-        @media (max-width: 820px) {
-          :global(.wada-composer-outfit) {
-            grid-template-columns: repeat(2, 1fr) !important;
-          }
+        @keyframes wada-spin {
+          to { transform: rotate(360deg); }
+        }
+        @keyframes wada-scan-pulse {
+          0% { transform: translate(-50%, -50%) scale(0.6); opacity: 0.9; }
+          100% { transform: translate(-50%, -50%) scale(2.4); opacity: 0; }
+        }
+        @keyframes wada-sheet-slide {
+          from { transform: translateY(100%); }
+          to { transform: translateY(0); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          * { animation: none !important; }
         }
       `}</style>
     </main>
   );
 }
 
-/* ───────────── Helpers UI ───────────── */
-
-const kickerStyle: React.CSSProperties = {
-  fontFamily: fonts.display, fontWeight: 600,
-  fontSize: 17, marginTop: 22, marginBottom: 10,
-  color: palette.ink,
-};
-
-/* Brief client 2026-05-26 « ludique + instinctif » : on remplace les
-   étapes 01/02/03/04 par des MiniLabel discrets (text-transform uppercase
-   10px). Le formulaire est son propre label, plus besoin de numérotation. */
-function MiniLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <p style={{
-      fontFamily: fonts.sans, fontSize: 10,
-      letterSpacing: "0.32em", textTransform: "uppercase",
-      color: palette.inkSoft, fontWeight: 600,
-      margin: "18px 0 8px",
-    }}>
-      {children}
-    </p>
-  );
-}
-
-const sectionLabelStyle: React.CSSProperties = {
-  fontSize: 11, letterSpacing: "0.28em",
+const pickerLabel: React.CSSProperties = {
+  fontSize: 11,
+  letterSpacing: "0.12em",
   textTransform: "uppercase",
-  color: palette.olive,
-  margin: "34px 0 14px",
+  color: palette.inkSoft,
+  fontWeight: 600,
+  margin: "0 0 8px",
 };
 
-/* modeBtnStyle retiré 2026-05-26 — l'ancien toggle inline (pill blanc
-   sur fond dark) est remplacé par <ScanModeToggle active="vetement" />
-   pour cohérence absolue avec /scanner. */
+const chipRow: React.CSSProperties = {
+  display: "flex",
+  flexWrap: "wrap",
+  gap: 7,
+};
 
-function ChipRow({ children }: { children: React.ReactNode }) {
-  return <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>{children}</div>;
-}
-
-function Chip({ children, active, onClick }: {
-  children: React.ReactNode;
-  active: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      style={{
-        padding: "8px 16px",
-        background: active ? palette.bordeaux : palette.beige,
-        color: active ? palette.cream : palette.ink,
-        border: `1px solid ${active ? palette.bordeaux : palette.line}`,
-        borderRadius: 999,
-        fontFamily: fonts.sans, fontSize: 13, fontWeight: 500,
-        cursor: "pointer",
-        transition: `all 0.2s ${ease}`,
-      }}
-    >
-      {children}
-    </button>
-  );
-}
-
-/* ───────────── ComposerSlotCard ─────────────
-   Brief « Scanner Un vêtement » §1 (26/05) :
-   - slot === "owned" (la pièce de l'utilisateur) → swatch couleur + libellé.
-   - slot suggéré par WADA → fetch MUJI via useComposerMuji + photo réelle
-     + nom + prix + bouton Acheter. Si MUJI introuvable → fallback swatch +
-     « Voir des pièces → » (search générique).
-   Aligné sur le pattern /ma-tenue + /stylist : aspect-ratio 4/5,
-   objectFit cover, source priorité imageLocal → largeImage → image.
-*/
-function ComposerSlotCard({ slot, gender, register }: {
-  slot: import("@/lib/outfitComposer").OutfitSlot;
-  gender: Gender;
-  register: string | null;
-}) {
-  const isOwned = slot.role === "owned";
-  /* On NE fetch QUE pour les slots non-owned (la pièce ancre est celle de
-     l'utilisateur, on n'a pas de produit MUJI à lui montrer pour ça). */
-  const muji = useComposerMuji(
-    isOwned ? null : slot.slot,
-    isOwned ? null : slot.hex,
-    isOwned ? null : register,
-    isOwned ? null : gender,
-  );
-
-  return (
-    <article style={{
-      background: palette.cream,
-      border: isOwned ? `1.5px solid ${palette.bordeaux}` : `1px solid ${palette.line}`,
-      borderRadius: 16, overflow: "hidden",
-      boxShadow: shadow,
-      transition: `transform 0.3s ${ease}`,
-      display: "flex", flexDirection: "column",
-    }}>
-      {/* Visuel haut : photo MUJI si trouvée, sinon swatch couleur */}
-      {!isOwned && muji ? (
-        <div style={{
-          aspectRatio: "4 / 5",
-          background: "#FBF9F5",
-          overflow: "hidden",
-          borderBottom: `1px solid ${palette.line}`,
-        }}>
-          <img
-            src={muji.image}
-            alt={muji.nom}
-            loading="lazy"
-            style={{
-              width: "100%", height: "100%",
-              objectFit: "cover", objectPosition: "center 20%",
-              display: "block",
-            }}
-          />
-        </div>
-      ) : (
-        <div style={{ height: 120, background: slot.hex }} />
-      )}
-
-      <div style={{ padding: "13px 14px 15px", flex: 1, display: "flex", flexDirection: "column" }}>
-        <p style={{
-          fontSize: 10, letterSpacing: "0.12em",
-          textTransform: "uppercase",
-          color: isOwned ? palette.bordeaux : palette.inkSoft,
-          fontWeight: 600,
-        }}>
-          {SLOT_LABELS[slot.slot as Slot] || slot.slot}
-          {isOwned && " · à vous"}
-        </p>
-        <p style={{
-          fontFamily: fonts.display, fontWeight: 600,
-          fontSize: 15, margin: "5px 0 3px", lineHeight: 1.2,
-          display: "-webkit-box",
-          WebkitLineClamp: 2,
-          WebkitBoxOrient: "vertical",
-          overflow: "hidden",
-        }}>
-          {isOwned ? "Votre pièce" : (muji?.nom || slot.label)}
-        </p>
-        {/* Brief 2026-05-26 : couleur RÉELLE du produit MUJI (muji.couleurNom)
-            si on a un produit fetché, sinon intention palette (slot.colorName).
-            Évite le mismatch « Camel » écrit alors que la photo montre du
-            brun foncé. La pastille couleur prend le hex du produit aussi
-            pour cohérence visuelle stricte label/photo/pastille. */}
-        <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 2 }}>
-          <span
-            aria-hidden
-            style={{
-              display: "inline-block",
-              width: 9, height: 9, borderRadius: "50%",
-              background: (!isOwned && muji?.couleurHex) || slot.hex,
-              boxShadow: "0 0 0 1px rgba(30,30,30,0.12)",
-              flexShrink: 0,
-            }}
-          />
-          <p style={{ fontSize: 12, fontStyle: "italic", color: palette.inkSoft, margin: 0 }}>
-            {(!isOwned && muji?.couleurNom) || slot.colorName}
-          </p>
-        </div>
-
-        {!isOwned && muji && (
-          <>
-            <p style={{
-              fontFamily: fonts.sans, fontSize: 13, fontWeight: 700,
-              color: palette.bordeaux, margin: "8px 0 0",
-            }}>
-              {muji.prix.toFixed(2)} {muji.devise === "EUR" ? "€" : muji.devise}
-            </p>
-            <a
-              href={muji.url}
-              target="_blank"
-              rel="noopener nofollow sponsored"
-              style={{
-                marginTop: 10,
-                display: "block", textAlign: "center",
-                fontFamily: fonts.sans, fontSize: 12, fontWeight: 600,
-                background: palette.ink, color: palette.cream,
-                padding: "9px 12px", borderRadius: 999,
-                textDecoration: "none",
-              }}
-            >
-              Acheter sur {muji.marque} →
-            </a>
-            <p style={{
-              margin: "5px 0 0", textAlign: "center",
-              fontSize: 10, fontStyle: "italic",
-              color: palette.inkSoft, letterSpacing: "0.02em",
-            }}>
-              Lien partenaire — prix identique chez le marchand
-            </p>
-          </>
-        )}
-        {!isOwned && !muji && (
-          /* Fallback historique : aucun MUJI trouvé pour ce slot+couleur+
-             registre — on retombe sur la recherche générique. Marqué
-             « Voir des pièces → » comme avant (donne au moins une voie
-             à l'utilisateur). À terme, on pourrait y mettre un Amazon
-             search pré-rempli, mais pour l'instant on laisse simple. */
-          <p style={{
-            fontSize: 11, letterSpacing: "0.06em",
-            color: palette.olive, marginTop: 10,
-            textTransform: "uppercase",
-          }}>
-            Voir des pièces →
-          </p>
-        )}
-      </div>
-    </article>
-  );
+function chipStyle(active: boolean): React.CSSProperties {
+  return {
+    padding: "8px 13px",
+    background: active ? palette.ink : "#FAF8F4",
+    color: active ? palette.cream : palette.ink,
+    border: `1px solid ${active ? palette.ink : palette.line}`,
+    borderRadius: 999,
+    cursor: "pointer",
+    fontFamily: fonts.sans,
+    fontSize: 13,
+    fontWeight: active ? 500 : 400,
+    transition: "all .15s ease",
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 5,
+  };
 }
