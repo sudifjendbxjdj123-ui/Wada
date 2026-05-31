@@ -1,12 +1,16 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
-import Nav from "@/components/Nav";
+/* Brief 2026-05-31 (user feedback screenshot scanner) :
+   Nav + Footer + MobileTabBar globaux gênent l'expérience full-screen
+   caméra sur /scanner et /composer. Wrappers conditionnels qui rendent
+   null sur ces routes — vrai mode app native style Snapchat/Google Lens. */
+import ConditionalNav from "@/components/ConditionalNav";
 /* Brief client 2026-05-26 : footer retiré de la home (et UNIQUEMENT
    de la home). ConditionalFooter lit usePathname() et rend null sur
    "/" pour libérer toute la hauteur pour la vidéo mannequin plein
    écran. Les autres pages gardent le Footer normal. */
 import ConditionalFooter from "@/components/ConditionalFooter";
-import MobileTabBar from "@/components/MobileTabBar";
+import ConditionalTabBar from "@/components/ConditionalTabBar";
 import PageHueAccent from "@/components/PageHueAccent";
 import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
 import InstallPrompt from "@/components/InstallPrompt";
@@ -309,14 +313,16 @@ export default function RootLayout({
             dans chaque page. Économise 32 imports + ~38 occurrences JSX
             et garantit qu'une refonte future ne soit pas oubliée sur une
             page. Nav reste sticky (body est l'ancêtre scrollant). */}
-        <Nav />
+        <ConditionalNav />
         {children}
         <ConditionalFooter />
         {/* Audit mobile (24/05) §1 : barre d'onglets bottom-nav fixée,
             visible uniquement ≤880px via .wada-tabbar { display:none }.
             Accès permanent aux 4 outils principaux au pouce, le drawer
-            hamburger du Nav reste pour le reste. */}
-        <MobileTabBar />
+            hamburger du Nav reste pour le reste.
+            Brief 2026-05-31 : retiré de /scanner et /composer (full-screen
+            caméra), c'est notre propre UI qui occupe le bas. */}
+        <ConditionalTabBar />
         {/* Brief finition (24/05) — Toast global. Écoute l'événement
             `wada-toast` sur window ; n'importe quel composant peut appeler
             `showToast("Ajouté à vos favoris ✓")` depuis `@/lib/toast`. */}

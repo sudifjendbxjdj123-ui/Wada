@@ -23,5 +23,9 @@ export default function ConditionalFooter() {
   // (query strings). On filtre strictement "/" pour éviter de masquer
   // /about, /atelier, etc.
   if (pathname === "/") return null;
+  /* Brief 2026-05-31 (user feedback screenshot) : sur /scanner et
+     /composer, on veut une expérience caméra plein écran type Snapchat /
+     Google Lens. Pas de footer qui interrompt visuellement la caméra. */
+  if (pathname === "/scanner" || pathname === "/composer") return null;
   return <Footer />;
 }
