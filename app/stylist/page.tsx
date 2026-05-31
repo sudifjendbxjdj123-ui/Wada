@@ -1399,11 +1399,30 @@ export default function StylistPage() {
       transient: true,
     }]);
 
+    /* Vision Pt B (2026-05-31) : injection de la mood du jour
+       (perception/humeur/objectif) dans le payload pour que le LLM
+       adapte la tenue au moment, pas seulement à la personne. */
+    let moodOfDay = {};
+    try {
+      const raw = localStorage.getItem("wada.mood");
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        const today = new Date().toISOString().slice(0, 10);
+        if (parsed?.date === today) {
+          moodOfDay = {
+            perception: parsed.perception,
+            humeur: parsed.humeur,
+            objectif: parsed.objectif,
+          };
+        }
+      }
+    } catch {}
+
     try {
       const res = await fetch("/api/stylist", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query, userPrefs, collecte, history: chatHistoryRef.current }),
+        body: JSON.stringify({ query, userPrefs, collecte, history: chatHistoryRef.current, moodOfDay }),
         signal: abortController.signal,
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);

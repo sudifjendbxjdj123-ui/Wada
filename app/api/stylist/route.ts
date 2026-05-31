@@ -1096,6 +1096,16 @@ export async function POST(req: Request) {
 
     // Compose le message utilisateur avec son profil pour personnaliser
     const profileBlock = buildProfileBlock(userPrefs);
+
+    /* Vision Pt B (2026-05-31) — couche émotionnelle du jour.
+       Le client envoie { perception, humeur, objectif } depuis MoodChips
+       qui stockent la sélection avec une expiration à minuit. Le LLM
+       reçoit ce contexte comme « envie ponctuelle » distincte du profil. */
+    const moodOfDay: { perception?: string; humeur?: string; objectif?: string } = body.moodOfDay || {};
+    const moodBlock = (moodOfDay.perception || moodOfDay.humeur || moodOfDay.objectif)
+      ? `ENVIE DU JOUR (à intégrer dans la tenue, c'est l'humeur ponctuelle de l'utilisateur — pas son style permanent) :
+${moodOfDay.perception ? `- Veut être perçu·e comme : ${moodOfDay.perception}\n` : ""}${moodOfDay.humeur ? `- Humeur : ${moodOfDay.humeur}\n` : ""}${moodOfDay.objectif ? `- Objectif aujourd'hui : ${moodOfDay.objectif}` : ""}`.trim()
+      : "";
     /* ─── Construction du message utilisateur ──────────────────────
        Inclut le profil (genre/style/budget) ET l'état de collecte
        conversationnel (ce qui a déjà été dit) pour que le LLM ne
@@ -1178,7 +1188,7 @@ export async function POST(req: Request) {
         }).join("\n")}\n`
       : "";
 
-    const fullUserMessage = [profileBlock, collecteBlock, palettesBlock, `Demande : "${query}"`]
+    const fullUserMessage = [profileBlock, moodBlock, collecteBlock, palettesBlock, `Demande : "${query}"`]
       .filter(Boolean).join("\n\n");
 
     /* ─── LLM call avec SYSTEM_PROMPT_V2 (brief 2026-05-22) ───────────

@@ -28,6 +28,10 @@ import { useLastPalette } from "@/hooks/useLastPalette";
 /* Brief « appli efficace » §6 (2026-05-29) : repère « Ensuite : … »
    pour montrer la prochaine étape du tunnel WADA. */
 import NextStepHint from "@/components/NextStepHint";
+/* Vision Pt B (2026-05-31) : couche émotionnelle (perception/humeur/objectif)
+   injectée juste avant le bloc « Composées pour vous » pour que les 3 cartes
+   tenue prennent en compte l'envie du jour. */
+import MoodChips from "@/components/MoodChips";
 /* Brief « Onboarding + profil + switcher » Phase 3 (2026-05-29) :
    chips de pièces dans les 3 cards filtrés par genre + badge perso
    « Composées pour vous » + propagation du profil vers /ma-tenue. */
@@ -405,6 +409,13 @@ export default function PalettePage({ params }: { params: Promise<{ number: stri
             params se mettent à jour automatiquement (via useProfile +
             sync inter-onglets storage event). */}
         <ProfileQuickChips paletteNumber={entry.number} />
+
+        {/* Vision Pt B (2026-05-31) — couche émotionnelle.
+            3 questions optionnelles (perception/humeur/objectif) lues
+            par /stylist + transmises en query params vers /ma-tenue. */}
+        <div style={{ maxWidth: 760, margin: "0 auto 28px" }}>
+          <MoodChips variant="expanded" />
+        </div>
 
         <div className="wada-palette-variants" style={{
           display: "grid",
