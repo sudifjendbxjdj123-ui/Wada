@@ -31,7 +31,9 @@ import NextStepHint from "@/components/NextStepHint";
 /* Vision Pt B (2026-05-31) : couche émotionnelle (perception/humeur/objectif)
    injectée juste avant le bloc « Composées pour vous » pour que les 3 cartes
    tenue prennent en compte l'envie du jour. */
-import MoodChips from "@/components/MoodChips";
+/* MoodChips retiré de cette page 2026-05-31 (user feedback page noyée).
+   Reste dispo sur /stylist via le même composant.
+import MoodChips from "@/components/MoodChips"; */
 /* Brief « Onboarding + profil + switcher » Phase 3 (2026-05-29) :
    chips de pièces dans les 3 cards filtrés par genre + badge perso
    « Composées pour vous » + propagation du profil vers /ma-tenue. */
@@ -401,21 +403,16 @@ export default function PalettePage({ params }: { params: Promise<{ number: stri
         }}>
           Choisissez l'occasion — WADA compose la tenue adaptée.
         </p>
-        {/* Brief 2026-05-30 : sur la page palette, les questions
-            (genre / budget / style) doivent être DEMANDÉES au client
-            directement, pas cachées dans un accordéon « Affiner à votre
-            style » replié. Le client voit immédiatement les 3 axes,
-            ajuste en 1 clic, et les 3 cards d'occasion + leurs query
-            params se mettent à jour automatiquement (via useProfile +
-            sync inter-onglets storage event). */}
-        <ProfileQuickChips paletteNumber={entry.number} />
-
-        {/* Vision Pt B (2026-05-31) — couche émotionnelle.
-            3 questions optionnelles (perception/humeur/objectif) lues
-            par /stylist + transmises en query params vers /ma-tenue. */}
-        <div style={{ maxWidth: 760, margin: "0 auto 28px" }}>
-          <MoodChips variant="expanded" />
-        </div>
+        {/* User feedback 2026-05-31 « rends cette page cohérente elle
+            n'a aucun sens pour le client » : retrait du bloc de 5 lignes
+            de chips ProfileQuickChips + bloc MoodChips. Sur la page
+            palette, le client veut juste voir les couleurs et choisir
+            un look. Le profil (genre/budget/style/saison) est déjà
+            persisté dans wada.profile et utilisé en arrière-plan. Les
+            mood chips restent sur /stylist où ils ont du sens (avant
+            génération d'une tenue sur-mesure). Si le client veut
+            personnaliser, il clique sur « dialoguez avec le styliste »
+            plus bas. */}
 
         <div className="wada-palette-variants" style={{
           display: "grid",

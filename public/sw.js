@@ -583,7 +583,7 @@
        area. Footer margin-bottom safe-area. Plus de transparence
        qui faisait remonter le footer noir.
    Force re-fetch HTML pour pousser tout aux iPhone. */
-const CACHE_VERSION = "wada-v77-2026-05-31-merchant-mix";
+const CACHE_VERSION = "wada-v78-2026-05-31-palette-simple";
 const STATIC_CACHE  = `${CACHE_VERSION}-static`;
 const PAGE_CACHE    = `${CACHE_VERSION}-pages`;
 
