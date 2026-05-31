@@ -1668,6 +1668,37 @@ function useMujiProduct(
     if (seed) params.set("seed", seed);
     if (excludeKey) params.set("excludeIds", excludeKey);
 
+    /* Brief 2026-06-01 « dimensions IA » §1 — traduit wada.mood.perception
+       en param `envie` API. Mapping :
+         Élégant     → elegant
+         Créatif     → creatif
+         Accessible  → confortable
+         Autoritaire → affirme
+         Séduisant   → affirme
+         Mystérieux  → discret
+       Pas envoyé si l'user n'a pas configuré de mood du jour. */
+    if (typeof window !== "undefined") {
+      try {
+        const moodRaw = localStorage.getItem("wada.mood");
+        if (moodRaw) {
+          const mood = JSON.parse(moodRaw);
+          const today = new Date().toISOString().slice(0, 10);
+          if (mood?.date === today && mood?.perception) {
+            const ENVIE_MAP: Record<string, string> = {
+              "Élégant": "elegant",
+              "Créatif": "creatif",
+              "Accessible": "confortable",
+              "Autoritaire": "affirme",
+              "Séduisant": "affirme",
+              "Mystérieux": "discret",
+            };
+            const envie = ENVIE_MAP[mood.perception];
+            if (envie) params.set("envie", envie);
+          }
+        }
+      } catch {}
+    }
+
     fetch(`/api/products?${params}`)
       .then((r) => r.ok ? r.json() : null)
       .then((data) => {

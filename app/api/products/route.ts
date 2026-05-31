@@ -166,6 +166,15 @@ export async function GET(req: Request) {
   const paletteSeasons = seasonParam ? seasonParam.split(",").map((s) => s.trim()).filter(Boolean) : null;
   const maxPriceRaw = parseFloat(url.searchParams.get("maxPrice") || "");
   const maxPrice = Number.isFinite(maxPriceRaw) && maxPriceRaw > 0 ? maxPriceRaw : null;
+
+  /* Brief 2026-06-01 « Logique IA dimensions UI » §1 — chip ENVIE.
+     6 valeurs : confortable | elegant | discret | affirme | creatif | intemporel
+     Chacune applique des règles précises sur matières / coupes / marques.
+     Si non spécifié → pas de filtre envie (comportement legacy). */
+  const envie = (url.searchParams.get("envie") || "").toLowerCase().trim() || null;
+  /* §1 — chip INSPIRATION. 4 valeurs : tendance | intemporel | avant-garde | classique-revisite
+     Filtre additionnel sur les marques/tags. */
+  const inspiration = (url.searchParams.get("inspiration") || "").toLowerCase().trim() || null;
   const limitRaw = parseInt(url.searchParams.get("limit") || "", 10);
   const limit = Math.min(
     Math.max(Number.isFinite(limitRaw) ? limitRaw : DEFAULT_LIMIT, 1),
@@ -176,6 +185,13 @@ export async function GET(req: Request) {
   if (catalog.length === 0) {
     return Response.json({ products: [], total: 0, source: "empty" });
   }
+
+  /* Brief 2026-06-01 §3 — Conflits + transparence : si le composer doit
+     assouplir une dimension pour trouver un produit (ex. fallback registre,
+     élargissement adjacence), on track ici lesquelles. La UI affiche un
+     message honnête au client (« j'ai dû élargir aux marques classiques
+     pour rester dans le budget »). */
+  const relaxedDimensions: string[] = [];
 
   // ─── ÉTAPE 1 : filtres durs (stock, slot, genre, marchand, type) ──
   /* Brief 2026-05-30 — drop des produits SANS image utilisable.
@@ -344,6 +360,41 @@ export async function GET(req: Request) {
        des sous-types outdoor / après-ski / techniques sur TOUS les
        registres mode. Une tenue WADA n'est jamais une tenue de rando. */
     if (EXCLUDE_OUTDOOR.test(hay)) return false;
+
+    /* Brief 2026-06-01 « Logique IA dimensions » §1 — règles ENVIE :
+       chaque chip envie applique ses exclusions précises sur le pool.
+       Les boosts (score +20 etc.) ne sont pas appliqués ici (ils
+       affectent le sort, pas le filtre). Voir tri ΔE plus bas. */
+    if (envie === "elegant") {
+      /* Exclure sweat, jogging, sneakers de sport, motifs voyants. */
+      if (/\b(sweat[\s-]?shirt|jogging|joggers?|sneaker(s)?\s+(de\s+)?sport|running|trainer|track[\s-]?suit)\b/i.test(hay)) return false;
+      if (/\b(neon|fluo|graphic|imprim[ée]e?\s+voyant|tartan|carreaux\s+voyants)\b/i.test(hay)) return false;
+    }
+    if (envie === "confortable") {
+      /* Exclure chaussures à talons, chemises ajustées strictes, vestes
+         structurées rigides (blazer ajusté formel). */
+      if (/\b(escarpins?|talons?|stilettos?|high[\s-]?heel)\b/i.test(hay)) return false;
+      if (/\b(blazer\s+(structuré|rigide|cintré)|veste\s+(structurée|rigide|formelle))\b/i.test(hay)) return false;
+      if (/\b(chemise\s+(ajustée|slim\s+fit|fitted))\b/i.test(hay)) return false;
+    }
+    if (envie === "discret") {
+      /* Aucun logo apparent. On exclut explicitement les pièces avec
+         "logo" / "monogram" / "branding" dans le nom. */
+      if (/\b(logo\s+\w+|monogram|branded|with\s+logo)\b/i.test(hay)) return false;
+      /* Pas de marques streetwear statement (gardé en fallback même
+         si le bias merchant ne s'applique pas). */
+      const m = (p.marque || p.marchand || "").toLowerCase();
+      if (/(off[\s-]?white|palm\s+angels|bape|amiri|rick\s+owens|heron\s+preston|kidsuper)/i.test(m)) return false;
+    }
+    if (envie === "intemporel") {
+      /* Exclure les marques streetwear récentes (< 15 ans) et les
+         tendances datées « pour 2026 », « cette saison ». */
+      const m = (p.marque || p.marchand || "").toLowerCase();
+      if (/(off[\s-]?white|palm\s+angels|bape|amiri|jacquemus|heron\s+preston|kidsuper|44\s+label|heliot\s+emil|y\/?project|we11done)/i.test(m)) return false;
+      if (/\b(tendance\s+(2025|2026)|saison\s+(\d{4}|en\s+cours)|capsule|drop|limited[\s-]?edition)\b/i.test(hay)) return false;
+    }
+    /* affirme : pas d'exclusion (on autorise tout, on boostera la
+       pièce statement au sort). Idem créatif. */
     return true;
   });
 
@@ -516,6 +567,7 @@ export async function GET(req: Request) {
         `[/api/products] fallback registre activé pour slot=${slot} (target=${targetRegistre}) — ${fallback.length} produits trouvés`,
       );
       filtered = fallback;
+      relaxedDimensions.push("registre");
     }
   }
 
@@ -692,6 +744,13 @@ export async function GET(req: Request) {
         color_guard_kept: colorValid.length,
         color_guard_dropped: filtered.length - colorValid.length,
         merchant_counts: merchantCounts,
+        /* Brief 2026-06-01 §3 : dimensions assouplies par le composer
+           pour trouver un produit. La UI peut surfacer un message
+           transparent style « j'ai dû élargir aux marques classiques
+           pour respecter le budget ». */
+        relaxed_dimensions: relaxedDimensions,
+        envie: envie || null,
+        inspiration: inspiration || null,
       },
     },
     {
