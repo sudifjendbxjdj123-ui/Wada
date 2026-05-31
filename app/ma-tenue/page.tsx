@@ -96,6 +96,32 @@ function occasionToContext(occ: string): Partial<UserIntent> {
   }
 }
 
+/* Brief 2026-06-01 (mockup tabs variations) — styles partagés pour les
+   3 tabs Safe / Audacieuse / Accessible affichés en haut de la grille. */
+const tabActiveStyle: React.CSSProperties = {
+  background: "#6B3A32",
+  color: "#fff",
+  border: "none",
+  padding: "8px 16px",
+  borderRadius: 999,
+  fontFamily: "'Fredoka', sans-serif",
+  fontSize: 13,
+  fontWeight: 500,
+  cursor: "default",
+};
+const tabIdleStyle: React.CSSProperties = {
+  background: "transparent",
+  color: "#8c8377",
+  border: "none",
+  padding: "8px 16px",
+  borderRadius: 999,
+  fontFamily: "'Fredoka', sans-serif",
+  fontSize: 13,
+  fontWeight: 500,
+  cursor: "pointer",
+  transition: "color .14s ease",
+};
+
 /**
  * Wrapper de page — Suspense obligatoire autour de useSearchParams pour
  * que Next.js puisse prerender la page statique avec un fallback.
@@ -616,6 +642,93 @@ function MaTenueContent() {
           ═══════════════════════════════════════════════════════════════ */}
       <section style={{ padding: "16px 5% 64px" }}>
         <div style={{ maxWidth: 1000, margin: "0 auto" }}>
+          {/* Brief 2026-06-01 (mockup /ma-tenue user) — Tabs variations.
+              V1 (Safe) seul fonctionnel pour l'instant ; V2 Audacieuse
+              et V3 Accessible sont placeholders visuels (le code V2/V3
+              avec exclusions cross-tab arrive en sprint 5). Click sur
+              V2 ou V3 affiche un toast « bientôt disponible ». */}
+          {!anchor && composition.length > 0 && validation.state !== "incoherent" && (
+            <div style={{
+              display: "flex", gap: 8, justifyContent: "center",
+              marginBottom: 22, padding: 5,
+              background: "#fbf7f0",
+              border: "1px solid #e5dccc",
+              borderRadius: 999,
+              width: "max-content",
+              margin: "0 auto 22px",
+            }}>
+              <button
+                type="button"
+                style={tabActiveStyle}
+                disabled
+              >
+                Safe
+                <small style={{ display: "block", fontSize: 9.5, letterSpacing: "0.08em", textTransform: "uppercase", opacity: 0.85, marginTop: 1 }}>
+                  Composée
+                </small>
+              </button>
+              {[
+                { label: "Audacieuse", note: "Bientôt" },
+                { label: "Accessible", note: "Bientôt" },
+              ].map((t) => (
+                <button
+                  key={t.label}
+                  type="button"
+                  onClick={() => {
+                    try {
+                      window.dispatchEvent(new CustomEvent("wada-toast", {
+                        detail: `Variation « ${t.label} » bientôt disponible — pour l'instant la tenue Safe est la composition par défaut.`,
+                      }));
+                    } catch {}
+                  }}
+                  style={tabIdleStyle}
+                >
+                  {t.label}
+                  <small style={{ display: "block", fontSize: 9.5, letterSpacing: "0.08em", textTransform: "uppercase", opacity: 0.7, marginTop: 1 }}>
+                    {t.note}
+                  </small>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Brief 2026-06-01 (mockup) — Tenue Total head card.
+              Mini résumé : nom de la tenue + nombre de pièces + score
+              cohérence du LLM validateur (si dispo). Total prix rendu
+              séparément plus bas (somme realPrices). */}
+          {validation.state === "coherent" && composition.length > 0 && (
+            <div style={{
+              background: "#fbf7f0",
+              border: "1px solid #e5dccc",
+              borderRadius: 18,
+              padding: "16px 22px",
+              marginBottom: 22,
+              display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14,
+              flexWrap: "wrap",
+            }}>
+              <div style={{ flex: 1, minWidth: 200 }}>
+                <p style={{
+                  fontFamily: "'Fredoka', sans-serif",
+                  fontSize: 16, fontWeight: 500,
+                  margin: 0, color: "#1E1E1E",
+                  lineHeight: 1.25,
+                }}>
+                  Tenue {anchor ? "autour de ta pièce" : "Safe"} — la composition centrée
+                </p>
+                <p style={{
+                  fontSize: 11.5, color: "#8c8377",
+                  margin: "3px 0 0",
+                }}>
+                  {composition.length} pièce{composition.length > 1 ? "s" : ""}
+                  {" "}· cohérence{" "}
+                  <span style={{ fontFamily: "'Fredoka', sans-serif", fontWeight: 600, color: "#6f7a3f" }}>
+                    validée par le styliste
+                  </span>
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* En-tête éditorial discret au-dessus de la grille */}
           <p style={{
             ...sectionLabel, color: mojo, fontWeight: 700,
@@ -1082,6 +1195,95 @@ function MaTenueContent() {
               </div>
             );
           })()}
+
+          {/* Brief 2026-06-01 (mockup) — Note du styliste avec avatar 和.
+              Carte chaude beige avec citation éditoriale sur le pourquoi
+              de la tenue. Affichée uniquement si tenue validée (COHERENT)
+              pour ne pas contradicter la dégradation gracieuse. */}
+          {validation.state === "coherent" && entry && composition.length > 0 && (
+            <div style={{
+              background: "linear-gradient(180deg, #fbf4e7, #f7eed8)",
+              border: "1px solid #e5d8b8",
+              borderRadius: 18,
+              padding: "18px 20px",
+              display: "flex", gap: 14, alignItems: "flex-start",
+              marginTop: 30, marginBottom: 8,
+            }}>
+              <div style={{
+                width: 38, height: 38, borderRadius: "50%",
+                background: "#6B3A32", color: "#fff",
+                display: "grid", placeItems: "center",
+                fontFamily: "'Noto Serif JP', serif",
+                fontSize: 18, fontWeight: 500,
+                flex: "0 0 auto",
+              }}>
+                和
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{
+                  fontSize: 10.5, letterSpacing: "0.14em",
+                  textTransform: "uppercase", color: "#5b4d2c",
+                  fontWeight: 600, margin: "0 0 4px",
+                }}>
+                  Note du styliste
+                </p>
+                <p style={{
+                  fontSize: 13.5, color: "#1E1E1E",
+                  lineHeight: 1.5, margin: 0,
+                }}>
+                  Cette tenue tient sur un seul registre — {(prefs.style || "minimaliste").toLowerCase()}. La couleur forte est portée par une seule pièce ; le reste reste sourd. Tu peux la porter trois fois par semaine sans t&apos;en lasser.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Brief 2026-06-01 (mockup) — Stylist CTA « Quelque chose ne te
+              plaît pas ? » → invite à dialoguer avec le styliste IA. */}
+          {validation.state === "coherent" && entry && (
+            <Link
+              href={`/stylist?palette=${entry.number}`}
+              style={{
+                background: "#1E1E1E",
+                color: "#fff",
+                border: "none",
+                borderRadius: 18,
+                padding: 20,
+                marginTop: 18, marginBottom: 8,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 14,
+                textDecoration: "none",
+                flexWrap: "wrap",
+              }}
+            >
+              <div style={{ flex: 1, minWidth: 200 }}>
+                <h4 style={{
+                  fontFamily: "'Fredoka', sans-serif",
+                  fontSize: 15, fontWeight: 500,
+                  margin: "0 0 4px", color: "#fff",
+                }}>
+                  Quelque chose ne te plaît pas&nbsp;?
+                </h4>
+                <p style={{
+                  fontSize: 12.5, color: "rgba(255,255,255,.7)",
+                  lineHeight: 1.4, margin: 0,
+                }}>
+                  Dis-moi en mots ce que tu veux changer — je recompose autour.
+                </p>
+              </div>
+              <span style={{
+                background: "#6B3A32", color: "#fff",
+                borderRadius: 999,
+                padding: "10px 16px",
+                fontFamily: "'Fredoka', sans-serif",
+                fontSize: 12, fontWeight: 500,
+                flex: "0 0 auto",
+              }}>
+                Discuter →
+              </span>
+            </Link>
+          )}
 
           {/* Bottom CTAs — brief mockup 2026-05-25 */}
           <div style={{
