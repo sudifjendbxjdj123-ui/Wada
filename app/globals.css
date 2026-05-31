@@ -2036,8 +2036,14 @@ a[data-wada-btn="ghost"]:hover {
      vers ce point pour scanner. */
   .wada-tabbar-hero {
     position: relative;
-    /* Le label hero est placé sous la bulle ; on réserve l'espace. */
-    padding-top: 28px !important;
+    /* Brief 2026-05-31 (user feedback « ajouter label Scanner ») :
+       le label tombait DANS la zone occupée par la bulle (bulle top=-18
+       + height=56 → bottom=38). Avec padding-top 28px, le label
+       commençait à ~28 et finissait sous la bulle → invisible.
+       Fix : padding-top porté à 44px pour pousser le label SOUS la
+       bulle. La bulle reste à top:-18 (surélevée comme dans la maquette
+       brief), le label reste lisible juste en dessous. */
+    padding-top: 44px !important;
   }
   .wada-tabbar-hero-bubble {
     position: absolute;
@@ -2073,10 +2079,15 @@ a[data-wada-btn="ghost"]:hover {
                 0 0 0 4px rgba(244, 239, 230, 0.96);
   }
   .wada-tabbar-hero-label {
-    /* Label « Scanner » sous la bulle — toujours visible mais discret. */
-    margin-top: 2px;
+    /* Label « Scanner » sous la bulle — brief codeur 2026-05-31 :
+       bordeaux #6B3A32 (rappel de la bulle), poids 600 (+1 cran vs
+       les autres labels en 500), taille identique aux autres labels.
+       Léger margin-top pour aérer entre bulle et mot. */
+    margin-top: 4px;
     color: #6B3A32;
     font-weight: 600;
+    font-size: 10px;
+    letter-spacing: 0.05em;
   }
   [data-theme="dark"] .wada-tabbar-hero-label {
     color: #C9A567;
