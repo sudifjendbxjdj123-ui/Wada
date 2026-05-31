@@ -130,8 +130,26 @@ export default function ComposerPage() {
   const [detected, setDetected] = useState<Detected | null>(null);
   const [pickedSlot, setPickedSlot] = useState<Slot>("haut");
   const [pickedStyle, setPickedStyle] = useState<string | null>(null);
+  /* User feedback 2026-05-31 « rajoute option homme femme unisexe » :
+     picker manuel dans la bottom sheet, surtout utile quand la Vision
+     ne reconnaît pas la pièce (impossible alors d'inférer le genre).
+     Le default vient du profil utilisateur ; si l'user n'a pas configuré
+     /compte, fallback à "unisexe" (neutre, sans pousser de biais). */
+  const [pickedGender, setPickedGender] = useState<"femme" | "homme" | "unisexe">("unisexe");
   /* Phase 1 (2026-05-31) — résultat Vision /api/scan-garment. */
   const [vision, setVision] = useState<VisionState>({ phase: "idle" });
+
+  /* Lecture du genre par défaut depuis wada.profile au mount. */
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("wada.profile");
+      if (raw) {
+        const p = JSON.parse(raw);
+        if (p?.genre === "Femme") setPickedGender("femme");
+        else if (p?.genre === "Homme") setPickedGender("homme");
+      }
+    } catch {}
+  }, []);
 
   const router = useRouter();
 
@@ -250,8 +268,12 @@ export default function ComposerPage() {
       }
       setVision({ phase: "garment", thumb: dataUrl, data: json });
       /* Si la Vision a identifié un slot, on synchronise le picker manuel
-         pour que le user n'ait qu'à confirmer. */
+         pour que le user n'ait qu'à confirmer. Idem pour le genre si
+         Vision est sûre (femme/homme — pas mixte qui reste neutre). */
       if (json.slot) setPickedSlot(json.slot);
+      if (json.genre === "femme" || json.genre === "homme") {
+        setPickedGender(json.genre);
+      }
     } catch (err) {
       setVision({
         phase: "error",
@@ -367,21 +389,13 @@ export default function ComposerPage() {
       ?? STYLE_BY_SLOT[pickedSlot]?.find((s) => s.label === pickedStyle)?.register
       ?? "Classique";
 
-    let genre: string | null = null;
-    try {
-      const raw = localStorage.getItem("wada.profile");
-      if (raw) {
-        const p = JSON.parse(raw);
-        if (p?.genre === "Femme") genre = "femme";
-        else if (p?.genre === "Homme") genre = "homme";
-      }
-    } catch {}
-    /* Le genre Vision est secondaire si profil dit autre chose, mais
-       précieux pour les clients qui n'ont pas configuré /compte. */
-    if (!genre && vision.phase === "garment") {
-      const vg = vision.data.genre;
-      if (vg === "femme" || vg === "homme") genre = vg;
-    }
+    /* User feedback 2026-05-31 : le pickedGender (chip explicite dans la
+       bottom sheet) prime sur Vision et profil. Si le client a choisi
+       « Unisexe », on ne passe pas de filtre genre (laisse l'API ouvert).
+       Sinon on passe femme/homme. La synchro auto initiale assure que
+       pickedGender reflète déjà profil+Vision au moment du clic — donc
+       ce path utilise toujours la valeur la plus récente choisie. */
+    const genre: string | null = pickedGender === "unisexe" ? null : pickedGender;
 
     /* Stockage ancre en sessionStorage (taille thumb ~50-150ko en JPEG
        0.78, dans le quota 5MB du sessionStorage). Une seule ancre
@@ -908,6 +922,29 @@ export default function ComposerPage() {
                   style={chipStyle(pickedStyle === label)}
                 >
                   {label}
+                </button>
+              ))}
+            </div>
+
+            {/* User feedback 2026-05-31 : « rajoute option homme femme
+                unisexe ». Picker manuel après les chips style. Auto-sync
+                sur Vision (femme/homme) ou profil (Femme/Homme), fallback
+                unisexe. Indispensable quand Vision retourne non_reconnu
+                (cas screenshot user — photo personne canapé). */}
+            <p style={{ ...pickerLabel, marginTop: 14 }}>Pour qui ?</p>
+            <div style={chipRow}>
+              {([
+                { key: "femme",   label: "Femme",   icon: "♀" },
+                { key: "homme",   label: "Homme",   icon: "♂" },
+                { key: "unisexe", label: "Unisexe", icon: "✦" },
+              ] as Array<{ key: "femme" | "homme" | "unisexe"; label: string; icon: string }>).map(({ key, label, icon }) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setPickedGender(key)}
+                  style={chipStyle(pickedGender === key)}
+                >
+                  <span style={{ fontSize: 14 }}>{icon}</span> {label}
                 </button>
               ))}
             </div>
