@@ -414,46 +414,14 @@ export default function PalettePage({ params }: { params: Promise<{ number: stri
             personnaliser, il clique sur « dialoguez avec le styliste »
             plus bas. */}
 
-        <div className="wada-palette-variants" style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(3, 1fr)",
-          gap: 18,
-        }}>
-          {/* 3 occasions distinctes — visuellement et sémantiquement.
-              Brief Phase 3 : chips de pièces différenciés Femme/Homme
-              (cf. PIECES_BY_OCCASION dans helpers en bas du fichier),
-              et le genre est propagé en query param vers /ma-tenue. */}
-          <VariantCard
-            href={`/ma-tenue?palette=${entry.number}&style=Classique&occasion=bureau&genre=${profGenreParam}`}
-            occasion="Au bureau"
-            occasionIcon="briefcase"
-            title="Tailoring classique"
-            desc="Blazer impeccable, chemise et derbies — autorité tranquille."
-            pieces={PIECES_BY_OCCASION.bureau[prof.genre]}
-            previewColors={entry.colors.slice(0, 4).map((c) => c.hex)}
-            variant="classique"
-          />
-          <VariantCard
-            href={`/ma-tenue?palette=${entry.number}&style=Minimal&occasion=quotidien&genre=${profGenreParam}`}
-            occasion="Au quotidien"
-            occasionIcon="sun"
-            title="Casual chic"
-            desc="Tee, chino et sneakers — confortable sans négliger l'allure."
-            pieces={PIECES_BY_OCCASION.quotidien[prof.genre]}
-            previewColors={entry.colors.slice(0, 4).map((c) => c.hex)}
-            variant="decontracte"
-          />
-          <VariantCard
-            href={`/ma-tenue?palette=${entry.number}&style=Old%20money&occasion=sorties&genre=${profGenreParam}`}
-            occasion="En soirée"
-            occasionIcon="moon"
-            title="Tenue habillée"
-            desc="Pièces nobles, accent sombre — pour un dîner ou une sortie."
-            pieces={PIECES_BY_OCCASION.soiree[prof.genre]}
-            previewColors={entry.colors.slice(0, 4).map((c) => c.hex)}
-            variant="habille"
-          />
-        </div>
+        {/* User feedback 2026-05-31 v2 : « j'ai bien compris que tu adores
+            ces trois cartes mais où est le budget, le sexe, l'envie de
+            style du client ? Il y a juste 3 looks pour je ne sais pas
+            qui. » Les 3 cartes anonymes sont remplacées par UN bloc
+            personnalisé qui montre le profil + 1 picker d'occasion +
+            1 CTA. Le client voit IMMÉDIATEMENT pour qui est composée
+            la tenue et la modifie en 1 clic si besoin. */}
+        <PersonalizedCompose paletteNumber={entry.number} />
 
         {/* ═══ STYLISTE IA — alternative aux 3 looks fixes ═══
             Brief client 2026-05-26 « ameliore plus intuitif » : pour
@@ -614,18 +582,178 @@ function PersoRow({ label, options, value, onChange }: {
 }
 
 /**
- * ProfileQuickChips — bloc 3 lignes de chips interactifs sur la page
- * palette. Permet au client de répondre EN UN CLIC aux 3 questions du
- * profil (genre / budget / style) sans aller dans le menu profil.
+ * PersonalizedCompose — bloc unifié 2026-05-31 v3 (feedback user :
+ * « il y a juste 3 looks pour je ne sais pas qui »).
  *
- * Brief 2026-05-30 : « il faudrait faire les demande au clients (prix,
- * sexe, tendance, envie, occasion etc etc) ». L'occasion reste portée
- * par les 3 cards sous le bloc. Les 3 autres dimensions (genre / budget
- * / style) deviennent des chips ici.
+ * Remplace les 3 cartes anonymes (Bureau / Quotidien / Soirée) par UN
+ * bloc qui montre :
+ *   1. Le profil du client en haut (Femme · 150-400€ · Minimaliste)
+ *      → modifiable en 1 clic, chaque chip ouvre un picker
+ *   2. Un picker d'occasion (Bureau / Quotidien / Soirée)
+ *   3. UN bouton « Voir ma tenue → » qui route vers /ma-tenue avec
+ *      TOUS les params : palette + style + occasion + genre + maxPrice
  *
- * Au clic : useProfile.save({field: value}) → sync inter-onglets via
- * storage event → les 3 cards en dessous lisent useProfile et leurs
- * query params (genre / style / maxPrice) se mettent à jour.
+ * Le client voit IMMÉDIATEMENT pour qui est composée la tenue. S'il
+ * veut tester un autre style/budget, 1 clic sur le chip suffit (sync
+ * useProfile global, le clic édite le profil).
+ */
+function PersonalizedCompose({ paletteNumber }: { paletteNumber: string }) {
+  const { effective, save, hydrated } = useProfile();
+  const [occasion, setOccasion] = useState<"bureau" | "quotidien" | "soiree">("quotidien");
+
+  if (!hydrated) {
+    return <div style={{ height: 280, marginBottom: 26 }} aria-hidden />;
+  }
+
+  /* Mapping occasion → style WADA (registre de tenue). Cohérence avec
+     les anciennes VariantCard. */
+  const STYLE_BY_OCCASION = {
+    bureau:    "Classique",
+    quotidien: "Minimal",
+    soiree:    "Old%20money",
+  } as const;
+  const genreParam = effective.genre === "Femme" ? "femme" : "homme";
+  const maxPrice = effective.budget === "< 150€" ? 150
+    : effective.budget === "150–400€" ? 400
+    : null; // Premium = pas de plafond
+
+  const composeHref = `/ma-tenue?palette=${paletteNumber}&style=${STYLE_BY_OCCASION[occasion]}&occasion=${occasion}&genre=${genreParam}${maxPrice ? `&maxPrice=${maxPrice}` : ""}`;
+
+  /* Styles partagés. */
+  const cardStyle: React.CSSProperties = {
+    background: palette.cream,
+    border: `1px solid ${palette.line}`,
+    borderRadius: 22,
+    padding: "26px 24px",
+    maxWidth: 720,
+    margin: "0 auto",
+    boxShadow: "0 4px 18px -10px rgba(30,30,30,.10)",
+  };
+  const sectionLabel: React.CSSProperties = {
+    fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase",
+    color: palette.inkSoft, fontWeight: 600,
+    margin: "0 0 10px",
+  };
+  const chipRow: React.CSSProperties = {
+    display: "flex", flexWrap: "wrap", gap: 7,
+  };
+  const chipBase = (active: boolean): React.CSSProperties => ({
+    fontFamily: fonts.sans, fontSize: 13, fontWeight: active ? 600 : 500,
+    padding: "9px 14px", borderRadius: 999,
+    cursor: "pointer",
+    border: `1px solid ${active ? palette.bordeaux : palette.line}`,
+    background: active ? palette.bordeaux : "#fff",
+    color: active ? palette.cream : palette.ink,
+    transition: `all 0.16s ${ease}`,
+  });
+
+  const GENRES = ["Femme", "Homme"] as const;
+  const BUDGETS = ["< 150€", "150–400€", "Premium"] as const;
+  const STYLES = ["Minimaliste", "Classique", "Streetwear", "Décontracté"] as const;
+  const OCCASIONS = [
+    { key: "bureau"    as const, label: "Au bureau",    desc: "Tailoring, autorité tranquille" },
+    { key: "quotidien" as const, label: "Au quotidien", desc: "Casual chic confortable" },
+    { key: "soiree"    as const, label: "En soirée",    desc: "Pièces nobles, accent sombre" },
+  ];
+
+  return (
+    <div style={cardStyle}>
+      {/* ── Bloc 1 : ton profil (3 lignes compactes) ── */}
+      <p style={{ ...sectionLabel, color: palette.bordeaux }}>Pour vous</p>
+      <div style={{ display: "grid", gap: 10, marginBottom: 22 }}>
+        <div>
+          <span style={{ fontSize: 11, color: palette.inkSoft, marginRight: 8, fontWeight: 500 }}>Genre :</span>
+          <span style={chipRow}>
+            {GENRES.map((g) => (
+              <button key={g} type="button" onClick={() => save({ genre: g })} style={chipBase(effective.genre === g)}>{g}</button>
+            ))}
+          </span>
+        </div>
+        <div>
+          <span style={{ fontSize: 11, color: palette.inkSoft, marginRight: 8, fontWeight: 500 }}>Budget :</span>
+          <span style={chipRow}>
+            {BUDGETS.map((b) => (
+              <button key={b} type="button" onClick={() => save({ budget: b })} style={chipBase(effective.budget === b)}>{b}</button>
+            ))}
+          </span>
+        </div>
+        <div>
+          <span style={{ fontSize: 11, color: palette.inkSoft, marginRight: 8, fontWeight: 500 }}>Style :</span>
+          <span style={chipRow}>
+            {STYLES.map((s) => (
+              <button key={s} type="button" onClick={() => save({ style: s })} style={chipBase(effective.style === s)}>{s}</button>
+            ))}
+          </span>
+        </div>
+      </div>
+
+      {/* ── Bloc 2 : occasion ── */}
+      <p style={sectionLabel}>Quelle occasion ?</p>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 8, marginBottom: 24 }}>
+        {OCCASIONS.map((o) => (
+          <button
+            key={o.key}
+            type="button"
+            onClick={() => setOccasion(o.key)}
+            style={{
+              padding: "14px 16px",
+              borderRadius: 14,
+              border: `1.5px solid ${occasion === o.key ? palette.bordeaux : palette.line}`,
+              background: occasion === o.key ? "#fff" : "#fdfbf7",
+              cursor: "pointer",
+              textAlign: "left",
+              transition: `all 0.16s ${ease}`,
+              boxShadow: occasion === o.key ? "0 2px 10px -4px rgba(107,58,50,0.25)" : "none",
+            }}
+          >
+            <div style={{
+              fontFamily: fonts.display, fontWeight: 600, fontSize: 15,
+              color: occasion === o.key ? palette.bordeaux : palette.ink,
+              marginBottom: 2,
+            }}>
+              {o.label}
+            </div>
+            <div style={{ fontSize: 12, color: palette.inkSoft, lineHeight: 1.35 }}>
+              {o.desc}
+            </div>
+          </button>
+        ))}
+      </div>
+
+      {/* ── Bloc 3 : CTA primaire ── */}
+      <Link
+        href={composeHref}
+        style={{
+          display: "block",
+          textAlign: "center",
+          padding: "16px 22px",
+          background: palette.bordeaux,
+          color: palette.cream,
+          borderRadius: 14,
+          textDecoration: "none",
+          fontFamily: fonts.display, fontSize: 16, fontWeight: 600,
+          boxShadow: "0 8px 24px -10px rgba(107,58,50,0.55)",
+          transition: `all 0.16s ${ease}`,
+        }}
+      >
+        Voir ma tenue&nbsp;→
+      </Link>
+      <p style={{
+        fontSize: 12, color: palette.inkSoft, textAlign: "center",
+        margin: "10px 0 0", lineHeight: 1.45,
+      }}>
+        Une tenue 5 pièces composée pour {effective.genre.toLowerCase()},
+        budget {effective.budget.toLowerCase()},
+        style {effective.style.toLowerCase()}.
+      </p>
+    </div>
+  );
+}
+
+/**
+ * ProfileQuickChips — DÉPRÉCATÉ 2026-05-31 v3. Remplacé par
+ * PersonalizedCompose au-dessus. Définition conservée pour
+ * rétrocompatibilité (référencée nulle part dans le rendu actuel).
  */
 function ProfileQuickChips({ paletteNumber }: { paletteNumber: string }) {
   const { effective, save, hydrated } = useProfile();
