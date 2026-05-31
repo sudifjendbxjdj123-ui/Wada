@@ -1014,10 +1014,16 @@ function MaTenueContent() {
                 inviter au clic, sans surcharger
               - réassurance passe aussi en colonne sur mobile */}
           <style jsx>{`
+            /* Fix 2026-05-31 v2 (user screenshot iPhone : cartes trop
+               grandes en 1 colonne stretch) : on garde la grille 2
+               colonnes même sur mobile, comme le desktop. La pièce
+               vedette continue de spanner les 2 colonnes via grid-column:
+               1 / -1. Les 4 autres en 2×2 compactes. Le client voit
+               4 cartes lisibles d'un seul scroll au lieu d'1 carte par
+               écran. Gap réduit pour gagner de la place. */
             @media (max-width: 640px) {
               :global(.wada-tenue-grid) {
-                grid-template-columns: 1fr !important;
-                gap: 18px !important;
+                gap: 12px !important;
               }
             }
             @media (max-width: 540px) {

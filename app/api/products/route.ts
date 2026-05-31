@@ -216,6 +216,17 @@ export async function GET(req: Request) {
   // et leakaient dans les deux genres).
   if (genre === "homme" || genre === "femme") {
     filtered = filtered.filter((p) => p.genre === genre || p.genre === "unisexe");
+    /* Fix 2026-05-31 (user screenshot « Puncture M A-Stabbing Women shirt »
+       sur tenue Homme à 2604€) : le tag genre est parfois absent ou
+       "unisexe" sur des produits dont le NOM contient clairement "Women" /
+       "Femme". On filtre alors par mot-clé pour être strict. */
+    const OPPOSITE_GENDER = genre === "homme"
+      ? /\b(women|womens|woman|woman's|womenswear|femme|f[ée]minine?s?|pour\s+(elle|femme))\b/i
+      : /\b(men|mens|man|men's|menswear|homme|masculine?s?|pour\s+(lui|homme))\b/i;
+    filtered = filtered.filter((p) => {
+      const hay = `${p.nom} ${p.description || ""}`;
+      return !OPPOSITE_GENDER.test(hay);
+    });
   }
 
   // Brief §1 : exclusions de sous-types par slot
@@ -263,22 +274,34 @@ export async function GET(req: Request) {
     });
   }
 
-  /* Fix 2026-05-31 (user screenshot « Strong Will T-shirt » sur tenue
-     Minimal) : quand style = Minimaliste, on EXCLUT en plus tout produit
-     avec un graphique voyant / logo XL / texte imprimé / motif visible.
-     Le test : EXCLUDE_ACCENT_PATTERN s'applique à TOUS les slots (pas
-     juste accent). En plus, on exclut explicitement les noms contenant
-     "graphic" / "print" / "logo" / "embroider" / "appliqué" / texte slogan. */
+  /* Fix 2026-05-31 v2 (user screenshot « Puncture M A-Stabbing Women
+     shirt » Yohji 2604€ sur tenue Classique) : les exclusions graphique /
+     print / slogan s'appliquent maintenant à TOUS les styles, pas juste
+     Minimaliste. Un blazer Classique ne doit JAMAIS être un t-shirt à
+     dessin imprimé avec « Stabbing » dans le titre. Les seules tenues
+     qui acceptent un graphique = Streetwear (logos sneakers OK) et
+     Décontracté (motifs textiles légers OK), mais pour le slot HAUT on
+     préfère toujours du sobre. */
   const isMinimaliste = (style || "").toLowerCase().includes("minimal");
-  if (isMinimaliste) {
-    const MINIMAL_FORBIDDEN = /\b(graphic|graphique|print(ed)?|imprim[ée]e?|logo\s+(t-shirt|tee|sweat)|big\s+logo|all[\s-]?over|patch(work)?|embroider|broderie|appliqu[ée]|slogan|tag(line)?|patterned|motif)/i;
-    filtered = filtered.filter((p) => {
-      const hay = `${p.nom} ${p.description || ""}`.toLowerCase();
-      if (EXCLUDE_ACCENT_PATTERN.test(hay)) return false;
-      if (MINIMAL_FORBIDDEN.test(hay)) return false;
-      return true;
-    });
-  }
+  const isClassique = (style || "").toLowerCase().includes("classique");
+  /* Liste élargie : tout ce qui dénote un visuel marqué / texte / dessin
+     central / nom artistique provocateur (« Stabbing », « Puncture »,
+     « Bleeding », « Suicide » — fréquents chez Yohji / Comme des
+     Garçons / Junya). */
+  const VISUAL_FORBIDDEN = /\b(graphic|graphique|print(ed)?|imprim[ée]e?|logo\s+(t-shirt|tee|sweat)|big\s+logo|all[\s-]?over|patch(work)?|embroider|broderie|appliqu[ée]|slogan|tag(line)?|patterned|motif|stabbing|puncture|bleeding|skull|dripping|crucifix|cross\s+print|bondage)/i;
+
+  filtered = filtered.filter((p) => {
+    const hay = `${p.nom} ${p.description || ""}`.toLowerCase();
+    /* EXCLUDE_ACCENT_PATTERN (carreaux, rayures, motifs) appliqué à TOUS
+       les slots quand Minimaliste ou Classique — registres qui visent la
+       sobriété. Pour Streetwear/Décontracté, on garde l'accent comme
+       seul slot bloqué (cf. plus haut). */
+    if ((isMinimaliste || isClassique) && EXCLUDE_ACCENT_PATTERN.test(hay)) return false;
+    /* VISUAL_FORBIDDEN : graphique provocant / slogan / dessin central —
+       jamais OK pour Classique ou Minimaliste, peu importe le slot. */
+    if ((isMinimaliste || isClassique) && VISUAL_FORBIDDEN.test(hay)) return false;
+    return true;
+  });
 
   /* Brief 2026-05-30 §3 : filtrer par saison palette.
      Cachemire/laine épaisse interdits pour palette « été »,
@@ -307,10 +330,16 @@ export async function GET(req: Request) {
      applique Streetwear → ne ressort pas une veste Lemaire 673€ ou un
      jean Jacquemus 503€ qui font total 1600€ alors que les Veja valent
      150€. Coherent total ≤ ~1500€ pour 4 pièces (~400 × 4). */
+  /* Fix 2026-05-31 v2 (user screenshot Yohji 2604€ sur tenue Classique) :
+     même Classique a maintenant un cap (1500€/pièce). 2604€ pour un seul
+     vêtement est aberrant — quiconque shoppe à ce niveau passe par une
+     boutique, pas par une app. Si l'user veut vraiment du Brioni à 3000€,
+     il configure son profil Premium et les caps disparaissent. */
   const REGISTRE_CAP: Record<string, number> = {
     minimaliste: 700,
     streetwear: 400,
     decontracte: 250,
+    classique: 1500,
   };
   const registreCap = targetRegistre ? REGISTRE_CAP[targetRegistre] : null;
   const effectiveMaxPrice = maxPrice ?? registreCap ?? null;
