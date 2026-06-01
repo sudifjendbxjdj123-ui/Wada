@@ -403,6 +403,24 @@ function slugMerchant(name: string): string {
 }
 
 /**
+ * Extrait l'URL CDN directe depuis une URL proxy Awin (images2.productserve.com).
+ * Format : https://images2.productserve.com/?...&url=ssl%3Acdn.shopify.com%2F...
+ * → https://cdn.shopify.com/...
+ * Retourne null si l'URL n'est pas une URL proxy Awin ou si l'extraction échoue.
+ */
+function extractFromAwinProxy(proxyUrl: string | undefined): string | null {
+  if (!proxyUrl || !proxyUrl.includes("productserve.com")) return null;
+  try {
+    const urlMatch = /[?&]url=([^&]+)/.exec(proxyUrl);
+    if (!urlMatch) return null;
+    const extracted = decodeURIComponent(urlMatch[1]).replace(/^ssl:/, "https:");
+    return extracted.startsWith("https://") ? extracted : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Convertit une ligne brute Awin en ProduitAwin canonique.
  * Retourne null si le produit n'est pas exploitable (champ critique manquant).
  */
@@ -616,48 +634,18 @@ export function normalizeAwinProduct(raw: RawAwinProduct): ProduitAwin | null {
        Pour TBF : on extrait l'URL Shopify depuis aw_image_url (plat, sans mannequin).
        Pour MUJI : merchant_image_url est le CDN BigCommerce (images propres, pas de modèle).
        Pour Suitable FR : merchant_image_url = cdn.suitableshop.net. */
-    image: (() => {
-      if (merchantSlug === "the-business-fashion") {
-        /* Extrait l'URL CDN sous-jacente du proxy Awin pour avoir le plein format.
-           Format proxy : https://images2.productserve.com/?...&url=ssl%3Acdn.shopify.com%2F...
-           → décode → https://cdn.shopify.com/... (200 OK sans restriction) */
-        const proxyUrl = raw.aw_image_url || "";
-        const urlMatch = /[?&]url=([^&]+)/.exec(proxyUrl);
-        if (urlMatch) {
-          const extracted = decodeURIComponent(urlMatch[1]).replace(/^ssl:/, "https:");
-          if (extracted.startsWith("https://")) return extracted;
-        }
-        /* Fallback sur l'URL brute si extraction échoue */
-        return proxyUrl || raw.merchant_image_url || "";
-      }
-      /* MUJI + Suitable FR : merchant_image_url en priorité */
-      return raw.merchant_image_url || raw.aw_image_url || "";
-    })(),
+    /* Image — Brief 2026-06-02 SANS MANNEQUIN (user) : toutes marques.
+       aw_image_url = image canonique Awin = photo produit seul (flat/ghost).
+       On extrait l'URL CDN directe depuis le proxy Awin pour le plein format.
+       merchant_image_url / large_image = souvent photo avec mannequin → éviter. */
+    image: extractFromAwinProxy(raw.aw_image_url) || raw.aw_image_url || raw.merchant_image_url || "",
     thumb: raw.aw_thumb_url,
-    /* Brief 2026-05-28 (cards plein cadre) : on garde la source large
-       quand elle existe — évite le flou à l'agrandissement 4/5.
-       Brief « Page Tenue maître » P0-2 (24/05) — bug critique :
-       MUJI N'A PAS de colonne `large_image` dans son CSV → largeImage
-       était toujours vide → frontend retombait sur image (200px) →
-       photos floues sur toutes les cartes. Fallback sur
-       `merchant_image_url` qui est l'URL CDN directe ~1280px côté MUJI.
-       Pour les marchands qui ont vraiment `large_image`, on garde la
-       priorité dessus. Pour MUJI, on utilise merchant_image_url. */
-    /* largeImage : même logique que image — pour TBF on extrait depuis aw_image_url
-       pour éviter les photos éditoriales avec mannequin (large_image / merchant_image_url).
-       Pour MUJI : merchant_image_url (CDN BigCommerce ~1280px). */
-    largeImage: (() => {
-      if (merchantSlug === "the-business-fashion") {
-        const proxyUrl = raw.aw_image_url || "";
-        const urlMatch = /[?&]url=([^&]+)/.exec(proxyUrl);
-        if (urlMatch) {
-          const extracted = decodeURIComponent(urlMatch[1]).replace(/^ssl:/, "https:");
-          if (extracted.startsWith("https://")) return extracted;
-        }
-        return raw.large_image || raw.merchant_image_url || "";
-      }
-      return raw.large_image || raw.merchant_image_url || "";
-    })(),
+    /* largeImage : même logique. large_image du feed = version HD de l'image canonique Awin. */
+    largeImage: raw.large_image
+      || extractFromAwinProxy(raw.aw_image_url)
+      || raw.aw_image_url
+      || raw.merchant_image_url
+      || "",
     urlProduit: raw.aw_deep_link, // déjà tracké Awin, on ne re-wrappe pas
     paletteRef: match?.paletteRef,
     paletteDistance: match?.distance,
