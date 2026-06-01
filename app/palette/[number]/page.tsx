@@ -456,15 +456,8 @@ export default function PalettePage({ params }: { params: Promise<{ number: stri
             COUPES / BUDGETS (state local) sont remplacés par useProfile
             global synchronisé avec le ProfileSwitcher. */}
 
-        {/* Brief « appli efficace » §6 — repère « Ensuite : … » qui
-            indique que choisir un look mène à la tenue à acheter.
-            Vise les utilisateurs qui ont scrollé jusqu'ici sans
-            cliquer sur les 3 cards (peut-être hésitants) — on
-            réaffirme la direction du tunnel. */}
-        <NextStepHint
-          label="Choisissez un look pour voir la tenue à acheter"
-          href={`/ma-tenue?palette=${entry.number}&style=Classique&occasion=bureau`}
-        />
+        {/* NextStepHint retiré (user 2026-06-01 : redondant avec le CTA
+            « Voir ma tenue → » déjà présent dans PersonalizedCompose). */}
 
         {/* Section TRUST (4 pills Curation/Sans inscription/Affiliation/
             348 palettes) RETIRÉE — brief client 2026-05-26 « rends la
