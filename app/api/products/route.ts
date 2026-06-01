@@ -805,7 +805,31 @@ export async function GET(req: Request) {
     }
   }
 
-  const products: ProduitAwin[] = finalList.slice(0, limit);
+  /* Brief 2026-06-01 — Proxy image : les CDNs partenaires (suitableshop.net,
+     shopify.com) bloquent les requêtes depuis wada.style via hotlink protection
+     (contrôle du header Referer). Solution : on passe les URLs d'image par
+     /api/img qui fetche côté serveur sans Referer. imageLocal (Vercel Blob)
+     n'a pas ce problème → on garde l'URL directe. */
+  const IMG_PROXY_HOSTS = new Set([
+    "cdn.suitableshop.net",
+    "images2.productserve.com",
+  ]);
+  function proxyImageUrl(url: string | undefined): string {
+    if (!url) return "";
+    try {
+      const host = new URL(url).hostname;
+      if (IMG_PROXY_HOSTS.has(host)) {
+        return `/api/img?url=${encodeURIComponent(url)}`;
+      }
+    } catch {}
+    return url;
+  }
+
+  const products: ProduitAwin[] = finalList.slice(0, limit).map((p) => ({
+    ...p,
+    image: p.imageLocal ? p.imageLocal : proxyImageUrl(p.image),
+    largeImage: p.imageLocal ? p.imageLocal : proxyImageUrl(p.largeImage || p.image),
+  }));
 
   return Response.json(
     {
