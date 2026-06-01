@@ -235,6 +235,86 @@ const BRAND_REGISTRE: Record<string, BrandRegistre> = {
   "heliot emil": "streetwear",
   "44 label group": "streetwear",
   "objects iv life": "streetwear",
+
+  // ─── SUITABLE FR (Awin mid 34175 — menswear formel + business casual) ───
+  // Brief 2026-06-01 : intégration flux Suitable FR (19 591 produits, 58
+  // marques). Shop dominé par chemises/pantalons/polos formels. Toutes
+  // les marques sont taggées explicitement car le fallback global est
+  // désormais `outdoor` (qui exclut) — sans tag, ces marques disparaissent.
+  // Classification : tailoring/business → classique ; jeans/casual/sport
+  // → decontracte ; outerwear technique → outdoor.
+  "suitable": "classique",
+  "olymp": "classique",
+  "profuomo": "classique",
+  "meyer": "classique",
+  "desoto": "classique",
+  "casamoda": "classique",
+  "boss": "classique", // alias de "hugo boss" déjà classique
+  "pierre cardin": "classique",
+  "gant": "classique",
+  "slater": "classique",
+  "william lockie": "classique",
+  "r2 amsterdam": "classique",
+  "pure": "classique",
+  "alberto": "classique",
+  "gardeur": "classique",
+  "mcgregor": "classique",
+  "fynch-hatton": "classique",
+  "blue industry": "classique",
+  "giorgio": "classique",
+  "michaelis": "classique",
+  "ledub": "classique",
+  "venti": "classique",
+  "seidensticker": "classique",
+  "eterna": "classique",
+  // Décontracté (jeans / casual / sportswear-leisure)
+  "pme legend": "decontracte",
+  "vanguard": "decontracte",
+  "state of art": "decontracte",
+  "steppin' out": "decontracte",
+  "steppin out": "decontracte",
+  "no excess": "decontracte",
+  "tommy hilfiger": "decontracte",
+  "mac": "decontracte",
+  "garage": "decontracte",
+  "cast iron": "decontracte",
+  "sun68": "decontracte",
+  "bjorn borg": "decontracte",
+  "björn borg": "decontracte",
+  "lyle and scott": "decontracte",
+  "lyle & scott": "decontracte",
+  "scotch and soda": "decontracte",
+  "scotch & soda": "decontracte",
+  "king essentials": "decontracte",
+  "alan red": "decontracte",
+  "marc o'polo": "decontracte",
+  "marc o polo": "decontracte",
+  "new zealand auckland": "decontracte",
+  "nza": "decontracte",
+  "superdry": "decontracte",
+  "shiwi": "decontracte",
+  "dstrezzed": "decontracte",
+  "knowledgecotton apparel": "decontracte",
+  "knowledge cotton apparel": "decontracte",
+  "petrol": "decontracte",
+  "petrol industries": "decontracte",
+  "supply & co": "decontracte",
+  "supply and co": "decontracte",
+  "hoff": "decontracte",
+  "greyder lab": "decontracte",
+  "reset": "decontracte",
+  "mey": "decontracte",
+  // Classique additions Suitable
+  "sir redman": "classique",
+  "cavallaro napoli": "classique",
+  "cavallaro": "classique",
+  "sebago": "classique",
+  // Streetwear additions Suitable
+  "new era": "streetwear",
+  // Outdoor (puffers / outerwear technique)
+  "save the duck": "outdoor",
+  "tenson": "outdoor",
+  "didriksons": "outdoor",
 };
 
 /* Mapping style profil utilisateur → registre catalogue.

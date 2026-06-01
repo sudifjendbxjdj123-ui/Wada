@@ -208,8 +208,14 @@ function MaTenueContent() {
     prix_eur: number;
   };
   const [resolvedPieces, setResolvedPieces] = useState<Record<string, ResolvedPiece>>({});
+  /* Brief 2026-06-01 v3 (user) : « propose TOUJOURS une tenue ».
+     L'état `incoherent` qui masquait la grille est supprimé — la tenue
+     s'affiche dans tous les cas. La validation LLM continue de tourner
+     côté serveur pour le monitoring, mais son verdict n'a plus d'effet
+     bloquant côté UI. Le badge « ✓ Tenue validée par le styliste WADA »
+     reste affiché tant que la requête a abouti (state "coherent"). */
   const [validation, setValidation] = useState<{
-    state: "idle" | "loading" | "coherent" | "incoherent";
+    state: "idle" | "loading" | "coherent";
     raison?: string;
     piece?: string | null;
   }>({ state: "idle" });
@@ -442,15 +448,15 @@ function MaTenueContent() {
       .then((r) => r.json())
       .then((data) => {
         if (cancelled) return;
-        if (data?.verdict === "INCOHERENT") {
-          setValidation({
-            state: "incoherent",
-            raison: data.raison || "Tenue non cohérente avec la palette.",
-            piece: data.piece_la_plus_problematique || null,
-          });
-        } else {
-          setValidation({ state: "coherent" });
+        /* Brief 2026-06-01 v3 (user) : on n'utilise plus le verdict pour
+           bloquer l'affichage. Si INCOHERENT, on log juste la raison en
+           console (pour debug) et on passe à coherent. La tenue s'affiche
+           toujours. */
+        if (data?.verdict === "INCOHERENT" && data?.raison) {
+          // eslint-disable-next-line no-console
+          console.info("[WADA validator]", data.raison);
         }
+        setValidation({ state: "coherent" });
       })
       .catch(() => {
         if (cancelled) return;
@@ -647,7 +653,7 @@ function MaTenueContent() {
               et V3 Accessible sont placeholders visuels (le code V2/V3
               avec exclusions cross-tab arrive en sprint 5). Click sur
               V2 ou V3 affiche un toast « bientôt disponible ». */}
-          {!anchor && composition.length > 0 && validation.state !== "incoherent" && (
+          {!anchor && composition.length > 0 && (
             <div style={{
               display: "flex", gap: 8, justifyContent: "center",
               marginBottom: 22, padding: 5,
@@ -737,79 +743,13 @@ function MaTenueContent() {
             La tenue complète en détail
           </p>
 
-          {/* Brief 2026-05-31 v8 — Couche 7 : dégradation gracieuse.
-              Si le LLM validateur a rejeté la tenue (INCOHERENT), on
-              n'affiche PAS la grille de pièces et on est honnête avec
-              le client : « catalogue insuffisant, revenez bientôt ».
-              Texte verbatim du brief « Logique IA composer renforcée ». */}
-          {validation.state === "incoherent" && (
-            <div style={{
-              maxWidth: 580, margin: "0 auto 28px",
-              padding: "26px 28px",
-              background: "rgba(107, 58, 50, 0.05)",
-              border: `1px solid rgba(107, 58, 50, 0.18)`,
-              borderRadius: 18,
-              textAlign: "center",
-            }}>
-              <p style={{
-                fontSize: 11, letterSpacing: "0.18em",
-                textTransform: "uppercase", color: "#6B3A32",
-                fontWeight: 600, margin: 0,
-              }}>
-                Le styliste WADA
-              </p>
-              <p style={{
-                fontFamily: "'Fredoka', sans-serif", fontWeight: 500,
-                fontSize: 17, color: "#1E1E1E",
-                margin: "8px 0 12px", lineHeight: 1.45,
-              }}>
-                Pour cette palette précise et votre profil, je n'ai pas trouvé de tenue à la hauteur dans notre catalogue actuel.
-              </p>
-              <p style={{
-                fontSize: 13, color: textSecondary,
-                margin: "0 0 18px", lineHeight: 1.55,
-                fontStyle: "italic",
-              }}>
-                On enrichit nos marques partenaires chaque semaine — revenez bientôt, ou essayez une autre palette.
-              </p>
-              <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
-                <Link
-                  href="/palettes"
-                  style={{
-                    background: "#6B3A32", color: "#FAF8F4",
-                    padding: "11px 20px", borderRadius: 999,
-                    fontFamily: "'Fredoka', sans-serif",
-                    fontSize: 13, fontWeight: 500,
-                    textDecoration: "none",
-                  }}
-                >
-                  Voir une autre palette
-                </Link>
-                <Link
-                  href="/compte"
-                  style={{
-                    background: "transparent", color: "#6B3A32",
-                    padding: "11px 20px", borderRadius: 999,
-                    border: "1px solid rgba(107,58,50,0.4)",
-                    fontFamily: "'Fredoka', sans-serif",
-                    fontSize: 13, fontWeight: 500,
-                    textDecoration: "none",
-                  }}
-                >
-                  Ajuster mon profil
-                </Link>
-              </div>
-              {/* Petit log discret pour debug — visible seulement si verbose. */}
-              {validation.raison && (
-                <p style={{
-                  fontSize: 11, color: "rgba(30,30,30,0.4)",
-                  margin: "16px 0 0", fontStyle: "italic",
-                }}>
-                  Note interne : {validation.raison}
-                </p>
-              )}
-            </div>
-          )}
+          {/* Brief 2026-06-01 v3 (user) : la dégradation gracieuse
+              « Pour cette palette précise et votre profil, je n'ai pas
+              trouvé de tenue à la hauteur » a été RETIRÉE. La tenue doit
+              TOUJOURS s'afficher, quitte à proposer un set imparfait
+              plutôt qu'un message décevant. Le validator LLM continue
+              de tourner pour le monitoring (cf. effect plus haut) mais
+              son verdict n'influence plus l'UI. */}
 
           {/* Badge « ✓ Validée par le styliste WADA » quand cohérent. */}
           {validation.state === "coherent" && (
@@ -991,13 +931,13 @@ function MaTenueContent() {
               Plus de trou orphelin pour la 5ème pièce.
               CSS Grid : on définit explicitement 2 colonnes et la 1ère
               card s'étend sur `grid-column: 1 / -1`. */}
-          {/* Brief 2026-05-31 v8 (Couche 7) : la grille de pièces est
-              CACHÉE quand le LLM validateur a rejeté la tenue. Message
-              de dégradation gracieuse au-dessus tient le rôle. */}
+          {/* Brief 2026-06-01 v3 (user) : grille TOUJOURS visible. Le
+              fallback INCOHERENT a été supprimé — on propose toujours
+              une tenue, quitte à ce qu'elle ne soit pas parfaite. */}
           <div
             className="wada-tenue-grid"
             style={{
-              display: validation.state === "incoherent" ? "none" : "grid",
+              display: "grid",
               gridTemplateColumns: "repeat(2, 1fr)",
               gap: 22,
             }}

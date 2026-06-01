@@ -57,6 +57,11 @@ export interface RawAwinProduct {
   merchant_id?: string;
   category_name?: string;
   category_id?: string;
+  /** Brief 2026-06-01 (Suitable FR) : libellé catégorie côté marchand,
+   *  en FRANÇAIS pour Suitable (« Chemises », « Pantalons », « Vestes »…).
+   *  Suitable a `category_name` vide pour TOUS les produits, donc on lit
+   *  merchant_category à la place. MUJI ne l'utilise pas. */
+  merchant_category?: string;
   /** Chemin catégorie marchand. Souvent vide chez Muji, mais utilisé en
    *  fallback pour détecter le genre par d'autres marchands (Sézane, COS…). */
   merchant_product_category_path?: string;
@@ -185,12 +190,54 @@ const CATEGORY_MAPPING: Record<string, ProductCategorie> = {
   // Accent
   "accessories": "accent", "bags": "accent", "belts": "accent", "hats": "accent",
   "scarves": "accent", "sunglasses": "accent",
+
+  // ─── Suitable FR (merchant_category en FRANÇAIS) ─── Brief 2026-06-01
+  // Le flux Suitable FR a `category_name` VIDE pour les 19 591 produits.
+  // On utilise `merchant_category` à la place (cf. branche dédiée dans
+  // normalizeAwinProduct). Les libellés sont en français.
+  // Note : "polos", "t-shirts", "shorts" sont déjà mappés plus haut (EN) → on
+  // ne les redéclare pas ici (TS1117 : duplicate keys).
+  "chemises": "haut",
+  "pulls et sweats": "haut",
+  "pantalons": "bas",
+  "vestes": "veste",
+  "vestes & blazers": "veste",
+  "gilets": "veste",
+  "costumes": "veste", // suit set → fallback veste (slot le plus pertinent)
+  "costume de soirée": "veste",
+  "costumes de cérémonie & accessoires": "veste",
+  "costumes de mariage": "veste",
+  "smoking": "veste",
+  "chaussures": "chaussures",
+  "ceintures": "accent",
+  "cravates": "accent",
+  "noeuds papillon & ceintures de smoking": "accent",
+  "bretelles": "accent",
+  "boutons de manchette": "accent",
+  "pochettes de costume": "accent",
+  "casquettes et chapeaux": "accent",
+  "bonnets": "accent",
+  "écharpes": "accent",
+  "echarpes": "accent",
+  "gants": "accent",
+  "sacs": "accent",
 };
 
 /** Catégories Muji explicitement EXCLUES de l'affichage public — brief
  *  2026-05-27 §4 « rester tenue de ville ». normalizeAwinProduct() drop
- *  ces lignes au lieu de les normaliser. */
-const EXCLUDED_CATEGORIES = new Set(["underwear", "nightwear"]);
+ *  ces lignes au lieu de les normaliser.
+ *
+ *  Brief 2026-06-01 (Suitable FR) : ajout des catégories FR équivalentes
+ *  (boxers, shorts de bain, peignoirs, chaussettes) — hors mode de ville. */
+const EXCLUDED_CATEGORIES = new Set([
+  "underwear",
+  "nightwear",
+  // Suitable FR — libellés français
+  "boxers",
+  "shorts de bain",
+  "peignoirs de bain",
+  "chaussettes",
+]);
 
 function isExcludedCategory(categoryName?: string): boolean {
   if (!categoryName) return false;
@@ -250,6 +297,15 @@ const COLOR_TO_HEX: Record<string, string> = {
   "rouge": "#9B2D20", "red": "#9B2D20",
   "bordeaux": "#6B3A32", "burgundy": "#6B3A32", "wine": "#6B3A32",
   "rose": "#D6A8A8", "pink": "#D6A8A8",
+  // Brief 2026-06-01 (Suitable FR) — libellés français/EN manquants
+  "violet": "#6B4A8A", "purple": "#6B4A8A", "lilas": "#9A85B0",
+  "jaune": "#D6BE6B", "yellow": "#D6BE6B",
+  "orange": "#C97A3A",
+  "cognac": "#8A5A33",
+  "argenté": "#B8B8B8", "argente": "#B8B8B8", "silver": "#B8B8B8",
+  "doré": "#B89A4A", "dore": "#B89A4A", "gold": "#B89A4A",
+  "multicoloré": "#9B9B96", "multicolore": "#9B9B96", "multi": "#9B9B96",
+  "turquoise": "#4A9A9A",
 };
 
 function colorNameToHex(colour?: string): string {
@@ -361,10 +417,17 @@ export function normalizeAwinProduct(raw: RawAwinProduct): ProduitAwin | null {
     return null;
   }
 
-  // Brief Muji 2026-05-27 §4 — exclure underwear/nightwear de l'affichage public
-  if (isExcludedCategory(raw.category_name)) return null;
-
   const merchantSlug = slugMerchant(raw.merchant_name);
+
+  /* Brief Muji 2026-05-27 §4 — exclure underwear/nightwear de l'affichage
+     public. Brief 2026-06-01 (Suitable FR) : Suitable utilise
+     `merchant_category` (« Boxers », « Shorts de bain ») au lieu de
+     `category_name` qui est vide pour eux → on teste les deux. */
+  const categorySourceForExclusion =
+    merchantSlug === "suitable-fr"
+      ? (raw as RawAwinProduct & { merchant_category?: string }).merchant_category
+      : raw.category_name;
+  if (isExcludedCategory(categorySourceForExclusion)) return null;
 
   /* Brief TBF 2026-05-29 — slot par inférence depuis product_name :
      TBF a `category_name = "Home Accessories"` MENSONGER pour TOUS les
@@ -372,10 +435,22 @@ export function normalizeAwinProduct(raw: RawAwinProduct): ProduitAwin | null {
      "accessories"→"accent" et faisait tomber sneakers/pulls/pantalons en
      accent). Fix : pour TBF on IGNORE complètement category_name et on
      passe DIRECTEMENT à l'inférence par mots-clés du nom. Pour les autres
-     marchands (MUJI) on garde le pipeline standard parseCategory → fallback. */
+     marchands (MUJI) on garde le pipeline standard parseCategory → fallback.
+
+     Brief 2026-06-01 (Suitable FR) : Suitable a `category_name` VIDE pour
+     les 19 591 produits mais `merchant_category` en FRANÇAIS (« Chemises »,
+     « Pantalons », « Vestes & Blazers », « Costumes »…). On lit donc
+     merchant_category en priorité pour ce marchand. CATEGORY_MAPPING a
+     été enrichi avec les libellés FR (cf. plus haut). */
   let category: ProductCategorie | null;
   if (merchantSlug === "the-business-fashion") {
     category = inferCategoryFromProductName(raw.product_name);
+  } else if (merchantSlug === "suitable-fr") {
+    const merchantCat = (raw as RawAwinProduct & { merchant_category?: string }).merchant_category;
+    category = parseCategory(merchantCat) || parseCategory(raw.category_name);
+    if (!category) {
+      category = inferCategoryFromProductName(raw.product_name);
+    }
   } else {
     category = parseCategory(raw.category_name);
     if (!category) {
@@ -447,6 +522,13 @@ export function normalizeAwinProduct(raw: RawAwinProduct): ProduitAwin | null {
      (Birkenstock, Comme des Garçons) sont déjà captées par le pattern
      « unisex » dans parseGender — sinon homme par défaut. */
   if (merchantSlug === "the-business-fashion" && gender === "inconnu") {
+    gender = "homme";
+  }
+  /* Brief 2026-06-01 (Suitable FR) : 100 % menswear (« Suitable Menswear »
+     dans le nom du feed). Aucune colonne ne tag explicitement le genre
+     dans le CSV → parseGender retourne « inconnu » → exclu pour un homme
+     filtré. Fix : on force homme pour Suitable comme on l'a fait pour TBF. */
+  if (merchantSlug === "suitable-fr" && gender === "inconnu") {
     gender = "homme";
   }
   const sizes = raw.product_size
@@ -524,8 +606,15 @@ export function normalizeAwinProduct(raw: RawAwinProduct): ProduitAwin | null {
     tailles: sizes,
     enStock: inStock,
     /* Image principale : brief Muji utilise `aw_image_url` (200×200 détouré).
-       Autres flux utilisent `merchant_image_url`. On essaie les deux. */
-    image: raw.aw_image_url || raw.merchant_image_url || "",
+       Autres flux utilisent `merchant_image_url`. On essaie les deux.
+       Brief 2026-06-01 (Suitable FR) : `aw_image_url` Suitable est une URL
+       productserve.com proxifiée en 200×200 (forcée par t=letterbox) qui
+       perd la qualité. `merchant_image_url` pointe directement sur
+       cdn.suitableshop.net en 2200×3064. On préfère merchant_image_url
+       pour Suitable afin d'avoir une carte produit nette. */
+    image: merchantSlug === "suitable-fr"
+      ? (raw.merchant_image_url || raw.aw_image_url || "")
+      : (raw.aw_image_url || raw.merchant_image_url || ""),
     thumb: raw.aw_thumb_url,
     /* Brief 2026-05-28 (cards plein cadre) : on garde la source large
        quand elle existe — évite le flou à l'agrandissement 4/5.

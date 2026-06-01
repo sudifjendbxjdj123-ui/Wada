@@ -401,7 +401,7 @@ export default function PalettePage({ params }: { params: Promise<{ number: stri
           textAlign: "center", fontSize: 14, color: palette.inkSoft,
           margin: "0 auto 26px", maxWidth: 480,
         }}>
-          Choisissez l'occasion — WADA compose la tenue adaptée.
+          Réglez vos préférences — WADA compose la tenue adaptée.
         </p>
         {/* User feedback 2026-05-31 « rends cette page cohérente elle
             n'a aucun sens pour le client » : retrait du bloc de 5 lignes
@@ -421,7 +421,7 @@ export default function PalettePage({ params }: { params: Promise<{ number: stri
             personnalisé qui montre le profil + 1 picker d'occasion +
             1 CTA. Le client voit IMMÉDIATEMENT pour qui est composée
             la tenue et la modifie en 1 clic si besoin. */}
-        <PersonalizedCompose paletteNumber={entry.number} />
+        <PersonalizedCompose entry={entry} />
 
         {/* ═══ STYLISTE IA — alternative aux 3 looks fixes ═══
             Brief client 2026-05-26 « ameliore plus intuitif » : pour
@@ -582,173 +582,460 @@ function PersoRow({ label, options, value, onChange }: {
 }
 
 /**
- * PersonalizedCompose — bloc unifié 2026-05-31 v3 (feedback user :
- * « il y a juste 3 looks pour je ne sais pas qui »).
+ * PersonalizedCompose — refonte 2026-06-01 (mockup « Composer ma tenue »).
  *
- * Remplace les 3 cartes anonymes (Bureau / Quotidien / Soirée) par UN
- * bloc qui montre :
- *   1. Le profil du client en haut (Femme · 150-400€ · Minimaliste)
- *      → modifiable en 1 clic, chaque chip ouvre un picker
- *   2. Un picker d'occasion (Bureau / Quotidien / Soirée)
- *   3. UN bouton « Voir ma tenue → » qui route vers /ma-tenue avec
- *      TOUS les params : palette + style + occasion + genre + maxPrice
+ * 4 sections + résumé palette + CTA :
+ *   1. Pour quelle occasion ? (Au bureau / Au quotidien / En soirée)
+ *   2. Quel univers ? (Minimaliste / Classique / Streetwear / Décontracté)
+ *   3. Budget tenue — slider 100€ → 1500€+ (granulaire)
+ *   4. Pour qui ? (Femme / Homme / Mixte)
+ *   5. Résumé palette (3 swatches + name + recap meta + Modifier)
+ *   6. CTA bordeaux pleine largeur
  *
- * Le client voit IMMÉDIATEMENT pour qui est composée la tenue. S'il
- * veut tester un autre style/budget, 1 clic sur le chip suffit (sync
- * useProfile global, le clic édite le profil).
+ * Différences vs v3 (chips compactes) :
+ *   - BUDGET passe en slider numérique → paramètre maxPrice exact (avant
+ *     bucket "< 150€"/"150–400€"/"Premium" → maxPrice 150/400/null).
+ *   - GENRE ajoute « Mixte » qui s'envoie en `genre=unisexe` (API accepte).
+ *   - Cartes plus aérées, résumé visuel des choix avant CTA.
+ *
+ * État :
+ *   - Pré-rempli depuis useProfile (genre/style)
+ *   - Modifs occasion + univers + budget restent LOCALES (one-shot
+ *     composition session). Le profil n'est PAS écrasé — l'utilisateur
+ *     peut tester un look précis sans changer ses préférences globales.
+ *   - Genre est aussi local (Mixte n'existe pas dans le profil).
+ *
+ * URL params transmis à /ma-tenue : palette, occasion, style, genre, maxPrice.
  */
-function PersonalizedCompose({ paletteNumber }: { paletteNumber: string }) {
-  const { effective, save, hydrated } = useProfile();
-  const [occasion, setOccasion] = useState<"bureau" | "quotidien" | "soiree">("quotidien");
+type Occasion = "bureau" | "quotidien" | "soiree";
+type Univers = "Minimaliste" | "Classique" | "Streetwear" | "Décontracté";
+type Genre = "Femme" | "Homme" | "Mixte";
+
+function PersonalizedCompose({ entry }: { entry: DictionaryEntry }) {
+  const { effective, hydrated } = useProfile();
+  const [occasion, setOccasion] = useState<Occasion>("quotidien");
+  const [univers, setUnivers] = useState<Univers>("Classique");
+  const [genre, setGenre] = useState<Genre>("Homme");
+  const [budget, setBudget] = useState<number>(450);
+
+  /* Re-sync au hydrate : on prend les valeurs du profil comme défaut. */
+  useEffect(() => {
+    if (!hydrated) return;
+    if (effective.style && ["Minimaliste", "Classique", "Streetwear", "Décontracté"].includes(effective.style)) {
+      setUnivers(effective.style as Univers);
+    }
+    if (effective.genre === "Femme" || effective.genre === "Homme") {
+      setGenre(effective.genre);
+    }
+    /* Budget profil → valeur slider raisonnable */
+    if (effective.budget === "< 150€") setBudget(150);
+    else if (effective.budget === "150–400€") setBudget(400);
+    else if (effective.budget === "Premium") setBudget(1000);
+  }, [hydrated, effective.style, effective.genre, effective.budget]);
 
   if (!hydrated) {
-    return <div style={{ height: 280, marginBottom: 26 }} aria-hidden />;
+    return <div style={{ height: 600, marginBottom: 26 }} aria-hidden />;
   }
 
-  /* Mapping occasion → style WADA (registre de tenue). Cohérence avec
-     les anciennes VariantCard. */
-  const STYLE_BY_OCCASION = {
-    bureau:    "Classique",
-    quotidien: "Minimal",
-    soiree:    "Old%20money",
-  } as const;
-  const genreParam = effective.genre === "Femme" ? "femme" : "homme";
-  const maxPrice = effective.budget === "< 150€" ? 150
-    : effective.budget === "150–400€" ? 400
-    : null; // Premium = pas de plafond
+  const genreParam = genre === "Femme" ? "femme" : genre === "Homme" ? "homme" : "unisexe";
+  const composeHref = `/ma-tenue?palette=${entry.number}&style=${encodeURIComponent(univers)}&occasion=${occasion}&genre=${genreParam}&maxPrice=${budget >= 1500 ? "" : budget}`;
 
-  const composeHref = `/ma-tenue?palette=${paletteNumber}&style=${STYLE_BY_OCCASION[occasion]}&occasion=${occasion}&genre=${genreParam}${maxPrice ? `&maxPrice=${maxPrice}` : ""}`;
-
-  /* Styles partagés. */
+  /* ─────────── Styles ─────────── */
   const cardStyle: React.CSSProperties = {
-    background: palette.cream,
+    background: "#fbf7f0",
     border: `1px solid ${palette.line}`,
-    borderRadius: 22,
-    padding: "26px 24px",
-    maxWidth: 720,
+    borderRadius: 24,
+    padding: "34px clamp(20px,4vw,40px)",
+    maxWidth: 780,
     margin: "0 auto",
-    boxShadow: "0 4px 18px -10px rgba(30,30,30,.10)",
+    boxShadow: "0 18px 50px -28px rgba(60,40,25,.45)",
   };
-  const sectionLabel: React.CSSProperties = {
-    fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase",
-    color: palette.inkSoft, fontWeight: 600,
-    margin: "0 0 10px",
+  const secTitle: React.CSSProperties = {
+    fontFamily: fonts.display, fontSize: 12.5, fontWeight: 600,
+    letterSpacing: "0.22em", textTransform: "uppercase",
+    color: palette.bordeaux, marginBottom: 14,
   };
-  const chipRow: React.CSSProperties = {
-    display: "flex", flexWrap: "wrap", gap: 7,
+  const divider: React.CSSProperties = {
+    height: 1, background: "rgba(0,0,0,.07)", margin: "30px 0 26px",
   };
-  const chipBase = (active: boolean): React.CSSProperties => ({
-    fontFamily: fonts.sans, fontSize: 13, fontWeight: active ? 600 : 500,
-    padding: "9px 14px", borderRadius: 999,
+
+  /* Cartes type "Occasion" et "Pour qui" — icône + label, check badge actif */
+  const occCardStyle = (active: boolean): React.CSSProperties => ({
+    background: active ? "#f7e9e3" : "#fff",
+    border: `1.5px solid ${active ? palette.bordeaux : palette.line}`,
+    borderRadius: 16,
+    padding: "22px 16px",
+    textAlign: "center",
     cursor: "pointer",
-    border: `1px solid ${active ? palette.bordeaux : palette.line}`,
+    position: "relative",
+    fontFamily: fonts.display,
+    transition: "all 0.18s",
+    color: active ? palette.bordeaux : palette.ink,
+  });
+  const occIconStyle: React.CSSProperties = {
+    width: 36, height: 36, margin: "0 auto 10px",
+    display: "grid", placeItems: "center",
+  };
+  const occLabelStyle = (active: boolean): React.CSSProperties => ({
+    fontSize: 14, fontWeight: active ? 600 : 500,
+  });
+  const checkBadge: React.CSSProperties = {
+    position: "absolute", top: 10, right: 10,
+    width: 22, height: 22, borderRadius: "50%",
+    background: palette.bordeaux, color: "#fff",
+    display: "grid", placeItems: "center", fontSize: 11,
+  };
+
+  /* Chips type "Univers" — plus compacts, fill bordeaux actif */
+  const univChipStyle = (active: boolean): React.CSSProperties => ({
     background: active ? palette.bordeaux : "#fff",
-    color: active ? palette.cream : palette.ink,
-    transition: `all 0.16s ${ease}`,
+    color: active ? "#fff" : palette.ink,
+    border: `1.5px solid ${active ? palette.bordeaux : palette.line}`,
+    borderRadius: 14,
+    padding: "14px 10px",
+    cursor: "pointer",
+    display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+    fontFamily: fonts.display, fontSize: 14, fontWeight: 500,
+    transition: "all 0.18s",
   });
 
-  const GENRES = ["Femme", "Homme"] as const;
-  const BUDGETS = ["< 150€", "150–400€", "Premium"] as const;
-  const STYLES = ["Minimaliste", "Classique", "Streetwear", "Décontracté"] as const;
-  const OCCASIONS = [
-    { key: "bureau"    as const, label: "Au bureau",    desc: "Tailoring, autorité tranquille" },
-    { key: "quotidien" as const, label: "Au quotidien", desc: "Casual chic confortable" },
-    { key: "soiree"    as const, label: "En soirée",    desc: "Pièces nobles, accent sombre" },
-  ];
+  /* Slider */
+  const pct = ((budget - 100) / (1500 - 100)) * 100;
+
+  /* ─────────── Données affichage ─────────── */
+  const occasionLabel = occasion === "bureau" ? "bureau" : occasion === "quotidien" ? "quotidien" : "soirée";
+  const summaryColors = entry.colors.slice(0, 3);
 
   return (
-    <div style={cardStyle}>
-      {/* ── Bloc 1 : ton profil (3 lignes compactes) ── */}
-      <p style={{ ...sectionLabel, color: palette.bordeaux }}>Pour vous</p>
-      <div style={{ display: "grid", gap: 10, marginBottom: 22 }}>
-        <div>
-          <span style={{ fontSize: 11, color: palette.inkSoft, marginRight: 8, fontWeight: 500 }}>Genre :</span>
-          <span style={chipRow}>
-            {GENRES.map((g) => (
-              <button key={g} type="button" onClick={() => save({ genre: g })} style={chipBase(effective.genre === g)}>{g}</button>
-            ))}
-          </span>
+    <div style={cardStyle} className="wada-compose-card">
+
+      {/* ═══════ 1. Pour quelle occasion ? ═══════ */}
+      <div style={secTitle}>Pour quelle occasion&nbsp;?</div>
+      <div className="wada-occ-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12 }}>
+        {[
+          { v: "bureau" as const,    label: "Au bureau",    icon: <BriefcaseIcon /> },
+          { v: "quotidien" as const, label: "Au quotidien", icon: <UserIcon /> },
+          { v: "soiree" as const,    label: "En soirée",    icon: <GlassIcon /> },
+        ].map((o) => {
+          const active = occasion === o.v;
+          return (
+            <button key={o.v} type="button" onClick={() => setOccasion(o.v)} style={occCardStyle(active)}>
+              <div style={{ ...occIconStyle, color: active ? palette.bordeaux : palette.inkSoft }}>{o.icon}</div>
+              <div style={occLabelStyle(active)}>{o.label}</div>
+              {active && <span style={checkBadge} aria-hidden>✓</span>}
+            </button>
+          );
+        })}
+      </div>
+
+      <div style={divider} />
+
+      {/* ═══════ 2. Quel univers ? ═══════ */}
+      <div style={secTitle}>Quel univers&nbsp;?</div>
+      <div className="wada-univ-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 10 }}>
+        {(["Minimaliste", "Classique", "Streetwear", "Décontracté"] as Univers[]).map((u) => {
+          const active = univers === u;
+          return (
+            <button key={u} type="button" onClick={() => setUnivers(u)} style={univChipStyle(active)}>
+              <span style={{ width: 22, height: 22, display: "grid", placeItems: "center" }}>{UNIVERS_ICON[u]}</span>
+              {u}
+            </button>
+          );
+        })}
+      </div>
+
+      <div style={divider} />
+
+      {/* ═══════ 3. Budget tenue ═══════ */}
+      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 18 }}>
+        <div style={{ ...secTitle, marginBottom: 0 }}>Budget tenue</div>
+        <span style={{ fontFamily: fonts.sans, fontSize: 12, color: palette.inkSoft, fontWeight: 500 }}>(total)</span>
+        <span
+          title="Budget total estimé pour les 5 pièces de la tenue"
+          style={{
+            width: 18, height: 18, borderRadius: "50%",
+            border: `1px solid ${palette.inkSoft}`,
+            color: palette.inkSoft, fontSize: 11,
+            display: "grid", placeItems: "center", cursor: "help",
+          }}
+        >i</span>
+      </div>
+      <div style={{ position: "relative", padding: "0 4px", marginBottom: 18 }}>
+        <div style={{
+          display: "flex", justifyContent: "space-between",
+          fontFamily: fonts.sans, fontSize: 12,
+          color: palette.inkSoft, marginBottom: 8,
+        }}>
+          <span>100€</span>
+          <span>1500€+</span>
         </div>
-        <div>
-          <span style={{ fontSize: 11, color: palette.inkSoft, marginRight: 8, fontWeight: 500 }}>Budget :</span>
-          <span style={chipRow}>
-            {BUDGETS.map((b) => (
-              <button key={b} type="button" onClick={() => save({ budget: b })} style={chipBase(effective.budget === b)}>{b}</button>
-            ))}
-          </span>
+        <input
+          type="range" min={100} max={1500} step={50}
+          value={budget}
+          onChange={(e) => setBudget(parseInt(e.target.value))}
+          className="wada-budget-slider"
+          style={{
+            width: "100%", height: 8, borderRadius: 999,
+            background: `linear-gradient(to right, ${palette.bordeaux} 0%, ${palette.bordeaux} ${pct}%, #efe7da ${pct}%, #efe7da 100%)`,
+            WebkitAppearance: "none", appearance: "none",
+            outline: "none", cursor: "pointer",
+          }}
+        />
+      </div>
+      <div style={{ textAlign: "center", marginTop: 18 }}>
+        <div style={{
+          fontFamily: fonts.display, fontSize: 30, fontWeight: 500,
+          color: palette.bordeaux, lineHeight: 1, letterSpacing: "-0.5px",
+        }}>
+          {budget >= 1500 ? "1500 €+" : `${budget} €`}
         </div>
-        <div>
-          <span style={{ fontSize: 11, color: palette.inkSoft, marginRight: 8, fontWeight: 500 }}>Style :</span>
-          <span style={chipRow}>
-            {STYLES.map((s) => (
-              <button key={s} type="button" onClick={() => save({ style: s })} style={chipBase(effective.style === s)}>{s}</button>
-            ))}
-          </span>
+        <div style={{ fontFamily: fonts.sans, fontSize: 13, color: palette.inkSoft, marginTop: 6 }}>
+          Budget estimé pour la tenue complète
         </div>
       </div>
 
-      {/* ── Bloc 2 : occasion ── */}
-      <p style={sectionLabel}>Quelle occasion ?</p>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 8, marginBottom: 24 }}>
-        {OCCASIONS.map((o) => (
-          <button
-            key={o.key}
-            type="button"
-            onClick={() => setOccasion(o.key)}
-            style={{
-              padding: "14px 16px",
-              borderRadius: 14,
-              border: `1.5px solid ${occasion === o.key ? palette.bordeaux : palette.line}`,
-              background: occasion === o.key ? "#fff" : "#fdfbf7",
-              cursor: "pointer",
-              textAlign: "left",
-              transition: `all 0.16s ${ease}`,
-              boxShadow: occasion === o.key ? "0 2px 10px -4px rgba(107,58,50,0.25)" : "none",
-            }}
-          >
-            <div style={{
-              fontFamily: fonts.display, fontWeight: 600, fontSize: 15,
-              color: occasion === o.key ? palette.bordeaux : palette.ink,
-              marginBottom: 2,
-            }}>
-              {o.label}
-            </div>
-            <div style={{ fontSize: 12, color: palette.inkSoft, lineHeight: 1.35 }}>
-              {o.desc}
-            </div>
-          </button>
-        ))}
+      <div style={divider} />
+
+      {/* ═══════ 4. Pour qui ? ═══════ */}
+      <div style={secTitle}>Pour qui&nbsp;?</div>
+      <div className="wada-occ-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12 }}>
+        {[
+          { v: "Femme" as const, icon: <WomanIcon /> },
+          { v: "Homme" as const, icon: <ManIcon /> },
+          { v: "Mixte" as const, icon: <MixIcon /> },
+        ].map((g) => {
+          const active = genre === g.v;
+          return (
+            <button key={g.v} type="button" onClick={() => setGenre(g.v)} style={occCardStyle(active)}>
+              <div style={{ ...occIconStyle, color: active ? palette.bordeaux : palette.inkSoft }}>{g.icon}</div>
+              <div style={occLabelStyle(active)}>{g.v}</div>
+              {active && <span style={checkBadge} aria-hidden>✓</span>}
+            </button>
+          );
+        })}
       </div>
 
-      {/* ── Bloc 3 : CTA primaire ── */}
+      {/* ═══════ 5. Résumé palette ═══════ */}
+      <div className="wada-summary-grid" style={{
+        background: palette.beige,
+        border: `1.5px solid ${palette.line}`,
+        borderRadius: 18,
+        padding: "22px 24px",
+        marginTop: 30,
+        display: "grid",
+        gridTemplateColumns: "auto 1fr auto",
+        gap: 18,
+        alignItems: "center",
+      }}>
+        <div className="wada-sum-pal" style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          {summaryColors.map((c, i) => (
+            <i key={i} style={{
+              width: 38, height: 14, borderRadius: 4, display: "block",
+              border: "1px solid rgba(0,0,0,0.05)",
+              background: c.hex,
+            }} />
+          ))}
+        </div>
+        <div style={{ minWidth: 0 }}>
+          <div style={{
+            fontFamily: fonts.display, fontSize: 10.5, fontWeight: 600,
+            letterSpacing: "0.22em", textTransform: "uppercase",
+            color: palette.inkSoft, marginBottom: 4,
+          }}>
+            Votre sélection
+          </div>
+          <div style={{
+            fontFamily: fonts.display, fontSize: 26, fontWeight: 500,
+            letterSpacing: "-0.3px", marginBottom: 10, lineHeight: 1.1,
+          }}>
+            {entry.name}
+          </div>
+          <div style={{
+            display: "flex", gap: 16, flexWrap: "wrap",
+            fontSize: 13, color: palette.inkSoft,
+            fontFamily: fonts.sans, marginBottom: 6,
+          }}>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+              Style <b style={{ marginLeft: 3, color: palette.ink, fontWeight: 500 }}>{univers.toLowerCase()}</b>
+            </span>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+              Usage <b style={{ marginLeft: 3, color: palette.ink, fontWeight: 500 }}>{occasionLabel}</b>
+            </span>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+              Budget&nbsp;: <b style={{ marginLeft: 3, color: palette.ink, fontWeight: 500 }}>
+                {budget >= 1500 ? "1500 €+" : `${budget} €`}
+              </b>
+            </span>
+          </div>
+          <div style={{ fontSize: 12, color: palette.inkSoft, marginTop: 8 }}>
+            5 pièces sélectionnées
+          </div>
+        </div>
+        <Link
+          href={`/compte`}
+          className="wada-modif-btn"
+          style={{
+            background: "#fff",
+            border: `1px solid ${palette.line}`,
+            borderRadius: 11,
+            padding: "9px 14px",
+            fontFamily: fonts.display, fontSize: 13, fontWeight: 500,
+            color: palette.ink,
+            display: "inline-flex", alignItems: "center", gap: 6,
+            textDecoration: "none",
+          }}
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" width={13} height={13}>
+            <path d="M12 20h9M16 4l4 4-11 11H5v-4z" />
+          </svg>
+          Modifier
+        </Link>
+      </div>
+
+      {/* ═══════ 6. CTA primaire ═══════ */}
       <Link
         href={composeHref}
         style={{
-          display: "block",
-          textAlign: "center",
-          padding: "16px 22px",
+          display: "block", width: "100%",
           background: palette.bordeaux,
-          color: palette.cream,
-          borderRadius: 14,
+          color: "#fff",
+          borderRadius: 16,
+          padding: 18,
+          fontFamily: fonts.display, fontSize: 17, fontWeight: 500,
+          marginTop: 18,
+          textAlign: "center",
           textDecoration: "none",
-          fontFamily: fonts.display, fontSize: 16, fontWeight: 600,
-          boxShadow: "0 8px 24px -10px rgba(107,58,50,0.55)",
-          transition: `all 0.16s ${ease}`,
+          boxShadow: "0 10px 30px -10px rgba(110,59,50,0.5)",
+          transition: "all 0.18s",
         }}
       >
         Voir ma tenue&nbsp;→
       </Link>
+
+      {/* Foot message */}
       <p style={{
-        fontSize: 12, color: palette.inkSoft, textAlign: "center",
-        margin: "10px 0 0", lineHeight: 1.45,
+        textAlign: "center", marginTop: 22,
+        fontSize: 13.5, color: palette.inkSoft,
+        display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
       }}>
-        Une tenue 5 pièces composée pour {effective.genre.toLowerCase()},
-        budget {effective.budget.toLowerCase()},
-        style {effective.style.toLowerCase()}.
+        <span style={{ color: palette.bordeaux, fontSize: 14 }}>✦</span>
+        <span>
+          <b style={{ fontFamily: fonts.display, fontWeight: 500, color: palette.ink }}>WADA</b>
+          {" "}compose pour vous une tenue harmonieuse et adaptée à votre style.
+        </span>
       </p>
+
+      <style jsx>{`
+        :global(.wada-budget-slider::-webkit-slider-thumb) {
+          -webkit-appearance: none;
+          appearance: none;
+          width: 22px; height: 22px;
+          border-radius: 50%;
+          background: ${palette.bordeaux};
+          cursor: pointer;
+          border: none;
+          box-shadow: 0 2px 8px rgba(110,59,50,0.4);
+          transition: transform 0.14s;
+        }
+        :global(.wada-budget-slider::-webkit-slider-thumb:hover) {
+          transform: scale(1.1);
+        }
+        :global(.wada-budget-slider::-moz-range-thumb) {
+          width: 22px; height: 22px;
+          border-radius: 50%;
+          background: ${palette.bordeaux};
+          cursor: pointer;
+          border: none;
+          box-shadow: 0 2px 8px rgba(110,59,50,0.4);
+        }
+        @media (max-width: 680px) {
+          :global(.wada-occ-grid) {
+            grid-template-columns: 1fr !important;
+            gap: 8px !important;
+          }
+          :global(.wada-univ-grid) {
+            grid-template-columns: 1fr 1fr !important;
+            gap: 8px !important;
+          }
+          :global(.wada-summary-grid) {
+            grid-template-columns: auto 1fr !important;
+            gap: 14px !important;
+          }
+          :global(.wada-summary-grid .wada-modif-btn) {
+            grid-column: 1 / -1 !important;
+            justify-self: end !important;
+            margin-top: 6px !important;
+          }
+          :global(.wada-sum-pal) {
+            flex-direction: row !important;
+          }
+        }
+      `}</style>
     </div>
   );
 }
+
+/* ──────────── Icônes inline (stroke 1.6-1.8) ──────────── */
+const BriefcaseIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" width={24} height={24}>
+    <rect x="3" y="7" width="18" height="13" rx="2" />
+    <path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+  </svg>
+);
+const UserIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" width={24} height={24}>
+    <circle cx="12" cy="8" r="4" />
+    <path d="M4 21a8 8 0 0 1 16 0" />
+  </svg>
+);
+const GlassIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" width={24} height={24}>
+    <path d="M8 3h8M12 13v8M7 21h10M8 3l1.5 5h5L16 3M8 3a4 4 0 0 0 8 0" />
+  </svg>
+);
+const WomanIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" width={24} height={24}>
+    <circle cx="12" cy="8" r="5" />
+    <path d="M12 13v8M9 18h6" />
+  </svg>
+);
+const ManIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" width={24} height={24}>
+    <circle cx="12" cy="8" r="4" />
+    <path d="M4 21a8 8 0 0 1 16 0" />
+  </svg>
+);
+const MixIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" width={24} height={24}>
+    <circle cx="9" cy="10" r="3.5" />
+    <circle cx="15" cy="10" r="3.5" />
+    <path d="M4 21c0-3 2.5-5.5 5-5.5M20 21c0-3-2.5-5.5-5-5.5" />
+  </svg>
+);
+const UNIVERS_ICON: Record<Univers, React.ReactNode> = {
+  Minimaliste: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" width={18} height={18}>
+      <circle cx="12" cy="12" r="9" />
+    </svg>
+  ),
+  Classique: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" width={18} height={18}>
+      <path d="M7 4h10l-1 5-2 4h-4l-2-4-1-5z" />
+      <path d="M9 13v8M15 13v8" />
+    </svg>
+  ),
+  Streetwear: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" width={18} height={18}>
+      <path d="M4 16c0-5 4-9 8-9s8 4 8 9" />
+      <path d="M4 16h16" />
+    </svg>
+  ),
+  Décontracté: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" width={18} height={18}>
+      <path d="M8 5l-3 4 3 3v8h8v-8l3-3-3-4-2 2h-4l-2-2z" />
+    </svg>
+  ),
+};
 
 /**
  * ProfileQuickChips — DÉPRÉCATÉ 2026-05-31 v3. Remplacé par
