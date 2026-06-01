@@ -1153,6 +1153,42 @@ function MaTenueContent() {
             if (resolved.length < composition.length) return null;
             const total = Math.round(resolved.reduce((a, b) => a + b, 0));
             if (total === 0) return null;
+
+            /* Brief 2026-06-01 « Toujours proposer une tenue » :
+               calcul de l'overshoot vs budget profil pour afficher le
+               badge transparent. 4 scénarios :
+                 A (≤10%)  → pas de badge
+                 B (10-30%) → badge ambre « Dépasse votre budget de X% »
+                 C (30-100%) → badge orange « investissement notable »
+                 D (>100%)   → badge bordeaux « palette luxe » */
+            let budgetCible: number | null = null;
+            try {
+              const profileRaw = typeof window !== "undefined" ? localStorage.getItem("wada.profile") : null;
+              if (profileRaw) {
+                const profile = JSON.parse(profileRaw);
+                /* Budget profil → cible TOTAL tenue (≈ 4-5 pièces × cap pièce).
+                   On utilise les fourchettes du brief : <150€ → cible 600€,
+                   150-400€ → 1500€, Premium → null (jamais d'overshoot). */
+                if (profile?.budget === "< 150€") budgetCible = 600;
+                else if (profile?.budget === "150–400€") budgetCible = 1500;
+              }
+            } catch {}
+            const overshoot = budgetCible !== null && total > budgetCible
+              ? (total - budgetCible) / budgetCible
+              : 0;
+            let badgeColors: { bg: string; fg: string } | null = null;
+            let badgeLabel = "";
+            if (overshoot > 1.0) {
+              badgeColors = { bg: "#f5d9d4", fg: "#6e3b32" };
+              badgeLabel = `Palette luxe — ${Math.round(overshoot * 100)}% au-dessus de ton budget`;
+            } else if (overshoot > 0.3) {
+              badgeColors = { bg: "#fbd4a8", fg: "#7e4a16" };
+              badgeLabel = `Dépasse ton budget de ${Math.round(overshoot * 100)}%`;
+            } else if (overshoot > 0.1) {
+              badgeColors = { bg: "#fbe9c5", fg: "#8a6608" };
+              badgeLabel = `Dépasse ton budget de ${Math.round(overshoot * 100)}%`;
+            }
+
             return (
               <div style={{
                 marginTop: 28,
@@ -1184,14 +1220,32 @@ function MaTenueContent() {
                       : "Estimation — prix réels chez chaque marchand au clic"}
                   </p>
                 </div>
-                <p style={{
-                  fontFamily: "'Fredoka', sans-serif",
-                  fontWeight: 600, fontSize: 28,
-                  color: "#6B3A32",
-                  margin: 0, lineHeight: 1,
-                }}>
-                  ~{total} €
-                </p>
+                <div style={{ textAlign: "right" }}>
+                  <p style={{
+                    fontFamily: "'Fredoka', sans-serif",
+                    fontWeight: 600, fontSize: 28,
+                    color: "#6B3A32",
+                    margin: 0, lineHeight: 1,
+                  }}>
+                    ~{total} €
+                  </p>
+                  {badgeColors && (
+                    <span style={{
+                      display: "inline-block",
+                      fontFamily: "'Inter', sans-serif",
+                      fontSize: 10.5,
+                      letterSpacing: "0.04em",
+                      fontWeight: 600,
+                      padding: "3px 10px",
+                      borderRadius: 999,
+                      marginTop: 8,
+                      background: badgeColors.bg,
+                      color: badgeColors.fg,
+                    }}>
+                      {badgeLabel}
+                    </span>
+                  )}
+                </div>
               </div>
             );
           })()}
@@ -1200,7 +1254,39 @@ function MaTenueContent() {
               Carte chaude beige avec citation éditoriale sur le pourquoi
               de la tenue. Affichée uniquement si tenue validée (COHERENT)
               pour ne pas contradicter la dégradation gracieuse. */}
-          {validation.state === "coherent" && entry && composition.length > 0 && (
+          {validation.state === "coherent" && entry && composition.length > 0 && (() => {
+            /* Brief 2026-06-01 §scénarios — message styliste adapté à
+               l'overshoot budget. On recalcule l'overshoot ici (déjà fait
+               dans le bloc total mais scope local, c'est OK). */
+            const resolvedNote = composition.map((p) => realPrices[p.piece] || 0).filter((v) => v > 0);
+            const totalNote = resolvedNote.length === composition.length
+              ? Math.round(resolvedNote.reduce((a, b) => a + b, 0))
+              : 0;
+            let budgetCibleNote: number | null = null;
+            try {
+              const profileRaw = typeof window !== "undefined" ? localStorage.getItem("wada.profile") : null;
+              if (profileRaw) {
+                const profile = JSON.parse(profileRaw);
+                if (profile?.budget === "< 150€") budgetCibleNote = 600;
+                else if (profile?.budget === "150–400€") budgetCibleNote = 1500;
+              }
+            } catch {}
+            const overshootNote = budgetCibleNote !== null && totalNote > budgetCibleNote
+              ? (totalNote - budgetCibleNote) / budgetCibleNote
+              : 0;
+            /* Message verbatim du brief par scénario (A/B/C/D). */
+            let noteText: string;
+            if (overshootNote > 1.0) {
+              noteText = `Cette palette est exigeante. Pour rendre ses tons profonds, il faut du cachemire et du cuir noble — voici la version idéale (${totalNote} €). Je peux te trouver une approximation honnête à ton budget, ou te proposer une palette qui matche mieux ton enveloppe.`;
+            } else if (overshootNote > 0.3) {
+              noteText = `Cette palette demande des matières plus nobles pour rendre vraiment. Voici la version qui en fait honneur — ${Math.round(overshootNote * 100)}% au-dessus de ton budget. Si tu veux rester ferme, je peux te composer une approximation à ton tarif (les couleurs seront là, les matières moins riches).`;
+            } else if (overshootNote > 0.1) {
+              noteText = `Voici la composition que je préfère pour cette palette. Elle dépasse ton budget de ${Math.round(overshootNote * 100)}% — c'est l'écart entre du basique propre et une vraie pièce qui dure. À toi de décider.`;
+            } else {
+              /* Scenario A (in-budget) — version mood/style générique. */
+              noteText = `Cette tenue tient sur un seul registre — ${(prefs.style || "minimaliste").toLowerCase()}. La couleur forte est portée par une seule pièce ; le reste reste sourd. Tu peux la porter trois fois par semaine sans t'en lasser.`;
+            }
+            return (
             <div style={{
               background: "linear-gradient(180deg, #fbf4e7, #f7eed8)",
               border: "1px solid #e5d8b8",
@@ -1231,11 +1317,12 @@ function MaTenueContent() {
                   fontSize: 13.5, color: "#1E1E1E",
                   lineHeight: 1.5, margin: 0,
                 }}>
-                  Cette tenue tient sur un seul registre — {(prefs.style || "minimaliste").toLowerCase()}. La couleur forte est portée par une seule pièce ; le reste reste sourd. Tu peux la porter trois fois par semaine sans t&apos;en lasser.
+                  {noteText}
                 </p>
               </div>
             </div>
-          )}
+            );
+          })()}
 
           {/* Brief 2026-06-01 (mockup) — Stylist CTA « Quelque chose ne te
               plaît pas ? » → invite à dialoguer avec le styliste IA. */}
@@ -1841,22 +1928,24 @@ function useMujiProduct(
        vers la palette demandée). MUJI reste dominant sur les palettes
        neutres, TBF apparaît sur les palettes sombres/luxury. */
     const params = new URLSearchParams({ slot, limit: "1" });
-    /* Brief 2026-05-30 §3 + §7 : on propage la saison de la palette et
-       le plafond prix par pièce vers l'API pour matching cohérent. */
+    /* Brief 2026-06-01 « Toujours proposer une tenue » : on n'applique
+       PLUS le maxPrice strict du profil sur le pick principal. Le
+       composer ramène la tenue IDÉALE pour la palette/registre — quitte
+       à dépasser le budget profil de 10-100%. L'UI affiche ensuite un
+       badge « Dépasse votre budget de X% » et offre une porte de sortie
+       (alternative strict, ajustement styliste, augmenter budget).
+       Le soft cap par REGISTRE reste appliqué côté API (Décontracté
+       600€, Streetwear 800€, Minimaliste 1000€, Classique 2000€) pour
+       garder une fourchette réaliste sans laisser des Brioni 5000€
+       passer par défaut.
+
+       La saison reste propagée — c'est une contrainte de cohérence
+       (lin en hiver = pas idéal), pas un compromis budget. */
     if (typeof window !== "undefined") {
       try {
         const profileRaw = localStorage.getItem("wada.profile");
         if (profileRaw) {
           const profile = JSON.parse(profileRaw);
-          if (profile?.budget === "< 150€") params.set("maxPrice", "150");
-          else if (profile?.budget === "150–400€") params.set("maxPrice", "400");
-          // Premium : pas de plafond
-          /* Saison choisie par le client via chip sur /palette/[number].
-             Mapping label profil → tag interne API :
-               « Hiver » → hiver,automne (couvre les 2 saisons froides)
-               « Été »   → été,printemps
-               « Mi-saison » → automne,printemps
-               « Toute saison » → on ne passe rien (pas de filtre) */
           if (profile?.saison === "Hiver") params.set("season", "hiver,automne");
           else if (profile?.saison === "Été") params.set("season", "été,printemps");
           else if (profile?.saison === "Mi-saison") params.set("season", "automne,printemps");
