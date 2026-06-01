@@ -309,15 +309,28 @@ export async function GET(req: Request) {
      CDG) et classique (Brunello/Tom Ford) sur ces slots → TBF revient.
      Le slot reste filtré strict registre pour haut/accent (sobriété). */
   const targetRegistre = styleToRegistre(style);
+  /* NON_MUJI_BIAS_SLOTS conservé pour la logique de soft cap budget plus
+     bas — ces slots acceptent un +50% du maxPrice pour laisser passer
+     TBF / Suitable / luxury qui dépassent souvent le ticket basique. */
   const NON_MUJI_BIAS_SLOTS = new Set(["bas", "veste", "chaussures"]);
+  /* Brief 2026-06-01 v4 (user « pourquoi tu ne propose plus de Muji ») :
+     régression introduite par le nouveau sélecteur (univers explicite
+     Classique → strict filter classique → MUJI decontracte balayé). Le
+     fix élargit l'adjacence :
+       1. `classique` accepte désormais `decontracte` (smart casual : tee
+          MUJI + blazer Suitable = combinaison parfaitement crédible).
+       2. L'adjacence s'applique maintenant aussi sur `haut` (où MUJI
+          excelle avec ses t-shirts/chemises basiques). `accent` reste
+          strict registre car c'est le slot signature qui ancre le style. */
+  const ADJACENCY_SLOTS = new Set(["haut", "bas", "veste", "chaussures"]);
   const REGISTRE_ADJACENCY: Record<string, string[]> = {
     decontracte:  ["decontracte", "minimaliste", "classique"],
     minimaliste:  ["minimaliste", "decontracte", "classique"],
-    classique:    ["classique", "minimaliste"],
+    classique:    ["classique", "minimaliste", "decontracte"],
     streetwear:   ["streetwear", "decontracte"],
   };
   if (targetRegistre) {
-    const allowExpand = slot && NON_MUJI_BIAS_SLOTS.has(slot);
+    const allowExpand = slot && ADJACENCY_SLOTS.has(slot);
     const allowedRegistres = allowExpand
       ? new Set(REGISTRE_ADJACENCY[targetRegistre] || [targetRegistre])
       : new Set([targetRegistre]);
