@@ -1899,6 +1899,19 @@ function useMujiProduct(
     if (seed) params.set("seed", seed);
     if (excludeKey) params.set("excludeIds", excludeKey);
 
+    /* Brief URGENT 2026-06-01 Nemanja — Règle 3 : propager `occasion` à
+       l'API pour activer les FORBIDDEN_TYPES (short_bain interdit en
+       voyage/bureau, sneakers_sport en cérémonie, etc.). On lit l'URL
+       parent côté client puisque PieceLine est un sous-composant qui ne
+       reçoit pas explicitement l'occasion en prop (1900 lignes refactor
+       prévu Phase C). */
+    if (typeof window !== "undefined") {
+      try {
+        const urlOcc = new URLSearchParams(window.location.search).get("occasion");
+        if (urlOcc) params.set("occasion", urlOcc);
+      } catch {}
+    }
+
     /* Brief 2026-06-01 « dimensions IA » §1 — traduit wada.mood.perception
        en param `envie` API. Mapping :
          Élégant     → elegant

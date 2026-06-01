@@ -34,6 +34,9 @@ import { deltaEHex, hexToLab } from "@/lib/colorDistance";
 import { dictionary } from "@/lib/data";
 import { styleToRegistre, brandToRegistreOrFallback } from "@/lib/brandRegistre";
 import { detectSeason, isSeasonCompatible } from "@/lib/seasonDetect";
+/* Brief URGENT 2026-06-01 Nemanja — Règle 3 : occasion → FORBIDDEN_TYPES
+   + whitelist source affiliée. Module lib/composer/occasionRules.ts. */
+import { isAffiliated, isProductOkForOccasion } from "@/lib/composer/occasionRules";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -175,6 +178,9 @@ export async function GET(req: Request) {
   /* §1 — chip INSPIRATION. 4 valeurs : tendance | intemporel | avant-garde | classique-revisite
      Filtre additionnel sur les marques/tags. */
   const inspiration = (url.searchParams.get("inspiration") || "").toLowerCase().trim() || null;
+  /* Brief URGENT 2026-06-01 Nemanja — Règle 3 : occasion → FORBIDDEN_TYPES.
+     Empêche short_bain/sneakers_sport/cravate en mauvaise occasion. */
+  const occasion = (url.searchParams.get("occasion") || "").toLowerCase().trim() || null;
   const limitRaw = parseInt(url.searchParams.get("limit") || "", 10);
   const limit = Math.min(
     Math.max(Number.isFinite(limitRaw) ? limitRaw : DEFAULT_LIMIT, 1),
@@ -229,6 +235,19 @@ export async function GET(req: Request) {
      + pas shopifypreview) avant tout filtre métier. Sert au fallback
      registre plus bas (cf. commentaire « FALLBACK REGISTRE »). */
   const initialPool = filtered.slice();
+
+  /* Brief URGENT 2026-06-01 Nemanja — Règle 1 : WHITELIST SOURCES.
+     Seules les marques affiliées (MUJI / TBF / Suitable FR) passent. Les
+     produits qui auraient pu transiter via d'autres marchands sont rejetés
+     — pas de commission, pas de fiabilité. */
+  filtered = filtered.filter((p) => isAffiliated(p.marchandSlug || ""));
+
+  /* Brief URGENT 2026-06-01 Nemanja — Règle 3 : FORBIDDEN_TYPES par occasion.
+     Rejette short_bain / sneakers_sport / cravate / costume_ceremonie / etc.
+     quand l'occasion ne les autorise pas. Match par mots-clés dans product_name. */
+  if (occasion) {
+    filtered = filtered.filter((p) => isProductOkForOccasion(p.nom, occasion));
+  }
 
   // Brief §1 : strict slot match
   if (slot) filtered = filtered.filter((p) => p.categorie === slot);
@@ -313,30 +332,17 @@ export async function GET(req: Request) {
      bas — ces slots acceptent un +50% du maxPrice pour laisser passer
      TBF / Suitable / luxury qui dépassent souvent le ticket basique. */
   const NON_MUJI_BIAS_SLOTS = new Set(["bas", "veste", "chaussures"]);
-  /* Brief 2026-06-01 v4 (user « pourquoi tu ne propose plus de Muji ») :
-     régression introduite par le nouveau sélecteur (univers explicite
-     Classique → strict filter classique → MUJI decontracte balayé). Le
-     fix élargit l'adjacence :
-       1. `classique` accepte désormais `decontracte` (smart casual : tee
-          MUJI + blazer Suitable = combinaison parfaitement crédible).
-       2. L'adjacence s'applique maintenant aussi sur `haut` (où MUJI
-          excelle avec ses t-shirts/chemises basiques). `accent` reste
-          strict registre car c'est le slot signature qui ancre le style. */
-  const ADJACENCY_SLOTS = new Set(["haut", "bas", "veste", "chaussures"]);
-  const REGISTRE_ADJACENCY: Record<string, string[]> = {
-    decontracte:  ["decontracte", "minimaliste", "classique"],
-    minimaliste:  ["minimaliste", "decontracte", "classique"],
-    classique:    ["classique", "minimaliste", "decontracte"],
-    streetwear:   ["streetwear", "decontracte"],
-  };
+  /* Brief URGENT 2026-06-01 Nemanja — Règle 2 « Une marque = un registre.
+     Pas de mix ». Le filtre devient STRICT : on n'accepte que les produits
+     dont brandRegistre === targetRegistre. Plus d'adjacency permissive.
+     Conséquence assumée : palette minimaliste n'aura PAS MUJI (decontracte)
+     sauf si l'utilisateur choisit explicitement l'univers « Décontracté ».
+     Le nouveau sélecteur palette demande l'univers en clair — c'est lui
+     qui pilote la cohérence cross-pièces. */
   if (targetRegistre) {
-    const allowExpand = slot && ADJACENCY_SLOTS.has(slot);
-    const allowedRegistres = allowExpand
-      ? new Set(REGISTRE_ADJACENCY[targetRegistre] || [targetRegistre])
-      : new Set([targetRegistre]);
     filtered = filtered.filter((p) => {
       const productRegistre = p.brandRegistre || brandToRegistreOrFallback(p.marque || p.marchand);
-      return allowedRegistres.has(productRegistre);
+      return productRegistre === targetRegistre;
     });
   }
 
