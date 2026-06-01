@@ -147,7 +147,18 @@ export interface ProduitAwin {
    *  Brief 2026-05-31 v8 (user bug Studio danois) : ajout `outdoor`
    *  pour exclure North Face / Barbour / Moon Boot / Patagonia des
    *  tenues mode. Outdoor n'est jamais dans l'adjacence. */
-  brandRegistre?: "classique" | "streetwear" | "minimaliste" | "decontracte" | "outdoor";
+  /* Brief 2026-06-01 « Composer IA » : registres étendus à 8 valeurs
+     (ajout avant_garde / heritage_country / apres_ski). Aligné sur le
+     type BrandRegistre canonique de lib/brandRegistre. */
+  brandRegistre?:
+    | "classique"
+    | "streetwear"
+    | "minimaliste"
+    | "decontracte"
+    | "outdoor"
+    | "avant_garde"
+    | "heritage_country"
+    | "apres_ski";
 }
 
 /* ──────────────────────────────────────────────────────────────────────

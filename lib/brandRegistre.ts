@@ -17,18 +17,27 @@
  */
 
 export type BrandRegistre =
-  | "classique"     // Brunello, Tom Ford, Zegna, Loro Piana, Polo Ralph Lauren…
-  | "streetwear"    // Amiri, Rick Owens, Off-White, Palm Angels, AMI, A Bathing Ape…
-  | "minimaliste"   // Jacquemus, Lemaire, Comme des Garçons, Acne Studios…
-  | "decontracte"   // MUJI, Armor Lux, American Vintage, Birkenstock…
-  | "outdoor";      // The North Face, Patagonia, Arc'teryx, Moon Boot, Barbour…
-                    // Brief 2026-05-31 (user bug Studio danois) : ces marques
-                    // sont fonctionnelles (outdoor/heritage/après-ski/country)
-                    // et ne s'habillent PAS avec du tailoring/minimaliste/
-                    // streetwear urbain. Ce registre est EXCLU de tous les
-                    // autres par défaut (jamais d'adjacence vers/depuis
-                    // outdoor). Une tenue spécifique « rando » pourrait
-                    // les solliciter (futur registre dédié).
+  | "classique"        // Brunello, Tom Ford, Zegna, Loro Piana, Polo Ralph Lauren…
+  | "streetwear"       // Amiri, Off-White, Palm Angels, AMI, A Bathing Ape…
+  | "minimaliste"      // Jacquemus, Lemaire, Acne Studios, COS, A.P.C., Norse Projects…
+  | "decontracte"      // MUJI, Uniqlo, Armor Lux, American Vintage, Birkenstock…
+  | "outdoor"          // The North Face, Patagonia, Arc'teryx, Snow Peak, Salomon…
+  | "avant_garde"      // Rick Owens, Yohji Yamamoto, Issey Miyake, Junya Watanabe, Sacai,
+                       // Comme des Garçons, Maison Margiela. Brief 2026-06-01 : registre
+                       // distinct car ces marques ont une grammaire formelle (drapés,
+                       // déconstruction, mono-couleur) qui ne s'associe pas avec
+                       // classique tailoring ni avec MUJI/casual basique.
+  | "heritage_country" // Barbour, Burberry, Mackintosh, Belstaff, Filson. Brief 2026-06-01 :
+                       // wax/quilted/trench heritage UK. Plus précis qu'outdoor. Adjacent
+                       // à classique (warn) mais pas à minimaliste/streetwear/avant-garde.
+  | "apres_ski";       // Moon Boot, Sorel, doudounes-cabines, fourrures synthétiques.
+                       // Brief 2026-06-01 : registre saisonnier hiver uniquement.
+
+/* Brief 2026-05-31 (user bug Studio danois) : outdoor + apres_ski + heritage_country
+   sont des registres fonctionnels qui ne s'habillent PAS avec du tailoring /
+   minimaliste / streetwear urbain par défaut. La matrice de compat (lib/composer/
+   registreCompat) gère finement quels couples « ok / warn / no » sont admissibles.
+   Avant le brief 06-01 ces 3 cas étaient regroupés sous « outdoor » fourre-tout. */
 
 /* Table BRAND → REGISTRE. Les clés sont normalisées (lowercase, accents
    retirés, espaces preserves) pour permettre un lookup robuste depuis
@@ -55,17 +64,18 @@ const BRAND_REGISTRE: Record<string, BrandRegistre> = {
   "suitsupply": "classique",
   "the shirt company": "classique",
   "ami paris": "classique", // ambigu mais penche tailoring soft
-  "givenchy": "classique",
+  /* "givenchy" déplacé en AVANT_GARDE plus bas. */
   "dolce & gabbana": "classique",
-  "alexander mcqueen": "classique",
-  "burberry": "classique",
+  /* "alexander mcqueen" déplacé en AVANT_GARDE (corps couture, drapés). */
+  /* "burberry" déplacé en HERITAGE_COUNTRY (trench + check Nova, signature UK). */
   "saint laurent": "classique",
   "ysl": "classique",
   "valentino": "classique",
   "kiton": "classique",
   "santoni": "classique",
   "lanvin": "classique",
-  /* "belstaff" et "barbour" déplacés en OUTDOOR (heritage country / wax). */
+  /* "belstaff" + "barbour" + "mackintosh" : HERITAGE_COUNTRY (cf. plus bas). */
+  /* "givenchy" déplacé en AVANT_GARDE (Tisci/Williams direction couture). */
   "church's": "classique",
   "churchs": "classique",
   /* "canada goose" / "moose knuckles" déplacés en OUTDOOR (doudounes). */
@@ -89,7 +99,7 @@ const BRAND_REGISTRE: Record<string, BrandRegistre> = {
 
   // ─── STREETWEAR / CASUAL CHIC ───
   "amiri": "streetwear",
-  "rick owens": "streetwear",
+  /* "rick owens" déplacé en AVANT_GARDE (drapés / déconstruction noir). */
   "off-white": "streetwear",
   "off white": "streetwear",
   "palm angels": "streetwear",
@@ -100,9 +110,8 @@ const BRAND_REGISTRE: Record<string, BrandRegistre> = {
   "a bathing ape": "streetwear",
   "a bathing ape®": "streetwear",
   "anti social social club": "streetwear",
-  "boris bidjan saberi": "streetwear",
-  "bianca saunders": "streetwear",
-  "charles jeffrey loverboy": "streetwear",
+  /* "boris bidjan saberi" / "bianca saunders" / "charles jeffrey loverboy"
+     déplacés en AVANT_GARDE plus bas (esthétique déconstructive). */
   "fear of god": "streetwear",
   "fear of god essentials": "streetwear",
   "essentials": "streetwear",
@@ -125,7 +134,7 @@ const BRAND_REGISTRE: Record<string, BrandRegistre> = {
   "wtaps": "streetwear",
   "human made": "streetwear",
   "marni": "streetwear",
-  "raf simons": "streetwear",
+  /* "raf simons" déplacé en AVANT_GARDE plus bas. */
   "balenciaga": "streetwear",
   "vetements": "streetwear",
   "represent": "streetwear",
@@ -142,16 +151,13 @@ const BRAND_REGISTRE: Record<string, BrandRegistre> = {
   // ─── MINIMALISTE / ARCHITECTURAL ───
   "jacquemus": "minimaliste",
   "lemaire": "minimaliste",
-  "comme des garçons": "minimaliste",
-  "comme des garcons": "minimaliste",
-  "comme des garçons shirt": "minimaliste",
-  "comme des garçons play": "minimaliste",
+  /* "comme des garçons" + "comme des garçons shirt" déplacés en AVANT_GARDE.
+     "comme des garçons play" reste streetwear (cf. plus bas — t-shirts cœur). */
   "ann demeulemeester": "minimaliste",
   "cos": "minimaliste",
   "acne studios": "minimaliste",
   "acne": "minimaliste",
-  "maison margiela": "minimaliste",
-  "margiela": "minimaliste",
+  /* "maison margiela" + "margiela" déplacés en AVANT_GARDE (héritage CDG family). */
   "the row": "minimaliste",
   "khaite": "minimaliste",
   "totême": "minimaliste",
@@ -161,7 +167,7 @@ const BRAND_REGISTRE: Record<string, BrandRegistre> = {
   "auralee": "minimaliste",
   "our legacy": "minimaliste",
   "jil sander": "minimaliste",
-  "issey miyake": "minimaliste",
+  /* "issey miyake" déplacé en AVANT_GARDE (pleats / 132 5. / Bao Bao). */
   "uniform experiment": "minimaliste",
   "post archive faction (paf)": "minimaliste",
   "paf": "minimaliste",
@@ -213,12 +219,8 @@ const BRAND_REGISTRE: Record<string, BrandRegistre> = {
   "fjällräven": "outdoor",
   "and wander": "outdoor",
   "and-wander": "outdoor",
-  "barbour": "outdoor",
-  "belstaff": "outdoor",
-  "filson": "outdoor",
-  "moon boot": "outdoor",
-  "moonboot": "outdoor",
-  "sorel": "outdoor",
+  /* "barbour" + "belstaff" + "filson" déplacés en HERITAGE_COUNTRY (cf. plus bas). */
+  /* "moon boot" + "moonboot" + "sorel" déplacés en APRES_SKI (cf. plus bas). */
   "merrell": "outdoor",
   "columbia": "outdoor",
   "hiking patrol": "outdoor",
@@ -235,6 +237,70 @@ const BRAND_REGISTRE: Record<string, BrandRegistre> = {
   "heliot emil": "streetwear",
   "44 label group": "streetwear",
   "objects iv life": "streetwear",
+
+  // ─── AVANT-GARDE / DÉCONSTRUCTION ─── Brief 2026-06-01
+  // Drapés, déconstruction, mono-couleur (souvent noir), couture asymétrique.
+  // Famille japonaise (Rei Kawakubo / Yamamoto / Miyake / Watanabe / Sacai /
+  // Undercover) + Anvers (Margiela / Demeulemeester) + ramifications Givenchy,
+  // McQueen, Rick Owens. Compat : avec minimaliste en WARN, avec streetwear en
+  // WARN, avec classique/outdoor/heritage_country/apres_ski → NO.
+  "rick owens": "avant_garde",
+  "yohji yamamoto": "avant_garde",
+  "yohji": "avant_garde",
+  "issey miyake": "avant_garde",
+  "pleats please": "avant_garde",
+  "homme plissé issey miyake": "avant_garde",
+  "junya watanabe": "avant_garde",
+  "junya watanabe man": "avant_garde",
+  "sacai": "avant_garde",
+  "undercover": "avant_garde",
+  "comme des garçons": "avant_garde",
+  "comme des garcons": "avant_garde",
+  "comme des garçons shirt": "avant_garde",
+  "comme des garcons shirt": "avant_garde",
+  "comme des garçons homme plus": "avant_garde",
+  "comme des garçons play": "streetwear",
+  "comme des garcons play": "streetwear",
+  "maison margiela": "avant_garde",
+  "margiela": "avant_garde",
+  "mm6 maison margiela": "avant_garde",
+  "mm6": "avant_garde",
+  "givenchy": "avant_garde",
+  "alexander mcqueen": "avant_garde",
+  "alexandermcqueen": "avant_garde",
+  "raf simons": "avant_garde",
+  "boris bidjan saberi": "avant_garde",
+  "bianca saunders": "avant_garde",
+  "charles jeffrey loverboy": "avant_garde",
+
+  // ─── HERITAGE COUNTRY ─── Brief 2026-06-01
+  // Heritage UK : wax / quilted / trench / tweed / nova check. Pas outdoor
+  // technique. Compat : warn avec classique (un trench Burberry + costume
+  // classique fonctionne), no avec tout le reste sauf decontracte (warn).
+  "barbour": "heritage_country",
+  "burberry": "heritage_country",
+  "burberry london": "heritage_country",
+  "mackintosh": "heritage_country",
+  "mackintosh philosophy": "heritage_country",
+  "belstaff": "heritage_country",
+  "filson": "heritage_country",
+  "ralph lauren rrl": "heritage_country",
+  "rrl": "heritage_country",
+  "drake's london": "heritage_country",
+  "private white v.c.": "heritage_country",
+
+  // ─── APRES_SKI / SAISONNIER HIVER ─── Brief 2026-06-01
+  // Moon Boot, doudounes-cabines, fourrures synthétiques, mukluks. Tenue de
+  // chalet, pas tenue de ville. Compat : ne va avec PERSONNE (sauf weekend
+  // ski explicite). Le registre est exclu de toutes les tenues par défaut.
+  "moon boot": "apres_ski",
+  "moonboot": "apres_ski",
+  "sorel": "apres_ski",
+  /* "merrell" reste outdoor (rando, pas chalet) — déjà déclaré plus haut. */
+  "fendi ski": "apres_ski",
+  "moncler grenoble": "apres_ski",
+  "perfect moment": "apres_ski",
+  "bogner": "apres_ski",
 
   // ─── SUITABLE FR (Awin mid 34175 — menswear formel + business casual) ───
   // Brief 2026-06-01 : intégration flux Suitable FR (19 591 produits, 58
