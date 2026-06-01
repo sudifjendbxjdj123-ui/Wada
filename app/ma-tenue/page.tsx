@@ -2278,7 +2278,13 @@ function PieceCard({
               comme avant (état placeholder cohérent). */}
           {(mujiProduct ? mujiProduct.couleurNom : color.name) && (
             <span style={{ color: textSecondary, fontWeight: 500 }}>
-              · {mujiProduct ? mujiProduct.couleurNom : color.name}
+              · {/* Brief 2026-06-01 : certains flux TBF ont couleurNom =
+                   "BROWN D4B35,ENCRE" (deux couleurs concaténées). On prend
+                   le premier mot/segment avant la virgule ou le code hex. */
+                (mujiProduct?.couleurNom || color.name)
+                  .split(/,|\s+[0-9A-F]{4,}/i)[0]
+                  .trim()
+              }
             </span>
           )}
         </p>
