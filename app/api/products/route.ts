@@ -37,6 +37,7 @@ import { detectSeason, isSeasonCompatible } from "@/lib/seasonDetect";
 /* Brief URGENT 2026-06-01 Nemanja — Règle 3 : occasion → FORBIDDEN_TYPES
    + whitelist source affiliée. Module lib/composer/occasionRules.ts. */
 import { isAffiliated, isProductOkForOccasion } from "@/lib/composer/occasionRules";
+import { isCompatibleWithOutfit } from "@/lib/composer/microTypes";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -159,6 +160,14 @@ export async function GET(req: Request) {
   const seed = url.searchParams.get("seed");
   const excludeIdsRaw = url.searchParams.get("excludeIds");
   const excludeIds = excludeIdsRaw ? new Set(excludeIdsRaw.split(",").filter(Boolean)) : null;
+  /* Brief 2026-06-01 MICRO_TYPES : noms des pièces déjà sélectionnées dans
+     la tenue. Transmis par /ma-tenue en JSON encodé URI. Utilisé pour
+     vérifier la cohérence intra-tenue (short + cardigan = NO).
+     Format : ?selectedNames=Chemise%20MUJI|Pull%20en%20laine */
+  const selectedNamesRaw = url.searchParams.get("selectedNames");
+  const selectedNames: { nom: string }[] = selectedNamesRaw
+    ? selectedNamesRaw.split("|").filter(Boolean).map((n) => ({ nom: decodeURIComponent(n) }))
+    : [];
   /* Brief 2026-05-30 § 3 + 7 : saison + budget plafond.
      ?season=<comma-list> — saisons palette (« hiver,automne ») : filtre les
        produits dont la matière/coupe ne colle pas (pas de cachemire en été,
@@ -663,7 +672,55 @@ export async function GET(req: Request) {
   }
 
   const colorValid = filtered.filter(passesColorGuard);
-  const filteredForOutput = colorValid.length > 0 ? colorValid : filtered;
+
+  /* ─── Garde couleur STRICTE par slot (Trou 1 — Brief 2026-06-01) ───
+     Le filtre passesColorGuard s'applique seulement quand ?color=<hex>
+     est passé explicitement. Sur les appels via /ma-tenue, c'est
+     slotTargetColor qui est utilisé pour le SORT — mais pas pour filtrer.
+     Conséquence : un short gris (ΔE=50 vs sauge) passe et se retrouve
+     en slot=bas d'une palette pastel sauge.
+
+     Fix : on applique un filtre ΔE < SLOT_COLOR_THRESHOLD (30) par rapport
+     à la couleur cible du slot QUAND on a une palette + un slot définis.
+     Si aucun produit ne passe le seuil strict, on relâche à 50 puis à la
+     liste complète (fail-open → Trou 1 partiellement résolu même quand le
+     catalogue est pauvre sur une couleur précise). */
+  const SLOT_COLOR_THRESHOLD_STRICT = 30;
+  const SLOT_COLOR_THRESHOLD_RELAXED = 50;
+
+  let filteredForOutput: typeof filtered;
+  if (palette && slotTargetColor && colorValid.length > 0) {
+    const strictSlot = colorValid.filter(
+      (p) => deltaEHex(p.hex, slotTargetColor) < SLOT_COLOR_THRESHOLD_STRICT,
+    );
+    if (strictSlot.length > 0) {
+      filteredForOutput = strictSlot;
+    } else {
+      // Relâche à 50
+      const relaxedSlot = colorValid.filter(
+        (p) => deltaEHex(p.hex, slotTargetColor) < SLOT_COLOR_THRESHOLD_RELAXED,
+      );
+      filteredForOutput = relaxedSlot.length > 0 ? relaxedSlot : colorValid;
+    }
+  } else {
+    filteredForOutput = colorValid.length > 0 ? colorValid : filtered;
+  }
+
+  /* ─── Filtre MICRO_TYPES intra-tenue (Trou 2 — Brief 2026-06-01) ───
+     Rejette les produits dont le micro-type est incompatible avec les
+     pièces déjà sélectionnées dans la tenue courante.
+     Ex : short déjà sélectionné → cardigan rejeté pour slot=veste.
+     N'est actif que si selectedNames est transmis par le client. */
+  if (selectedNames.length > 0) {
+    const microFiltered = filteredForOutput.filter((p) =>
+      isCompatibleWithOutfit(p.nom, selectedNames),
+    );
+    /* Fail-open : si le filtre micro-type vide le pool, on garde l'original
+       (pas de pièce = pire que pièce imparfaite). */
+    if (microFiltered.length > 0) {
+      filteredForOutput = microFiltered;
+    }
+  }
 
   /* Variété par seed — brief 2026-05-28 :
      Au lieu de toujours retourner le top-1 (qui donne la MÊME tenue à

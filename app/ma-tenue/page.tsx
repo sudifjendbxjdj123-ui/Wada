@@ -1070,6 +1070,15 @@ function MaTenueContent() {
                   featured={featured}
                   onPriceResolved={handlePriceResolved}
                   onPieceMetaResolved={handlePieceResolved}
+                  /* Brief URGENT 2026-06-01 MICRO_TYPES : noms des pièces
+                     déjà résolues dans la tenue → filtre de cohérence
+                     intra-tenue côté API (short + cardigan NO, etc.). */
+                  selectedNamesStr={
+                    Object.values(resolvedPieces)
+                      .filter((rp) => rp.type)
+                      .map((rp) => encodeURIComponent(rp.type))
+                      .join("|") || undefined
+                  }
                 />
               </div>
             );
@@ -1827,6 +1836,10 @@ function useMujiProduct(
   seed: string | null,
   excludeIds: string[],
   onPicked?: (id: string) => void,
+  /** Brief URGENT 2026-06-01 MICRO_TYPES — noms des pièces déjà sélectionnées
+   *  dans la tenue, encodés "|" séparés. Transmis à /api/products pour le
+   *  filtre de cohérence intra-tenue (short + cardigan NO, etc.). */
+  selectedNamesStr?: string,
 ) {
   const [product, setProduct] = useState<{
     id: string;
@@ -1860,6 +1873,7 @@ function useMujiProduct(
 
   useEffect(() => {
     if (!slot) return;
+    void selectedNamesStr; // inclus dans les deps ci-dessous
     let cancelled = false;
     /* Fix 2026-05-30 « toujours pas de photo TBF » : avant on hardcodait
        merchant=muji-france, ce qui exclut TBF (et tout autre flux futur)
@@ -1901,16 +1915,18 @@ function useMujiProduct(
 
     /* Brief URGENT 2026-06-01 Nemanja — Règle 3 : propager `occasion` à
        l'API pour activer les FORBIDDEN_TYPES (short_bain interdit en
-       voyage/bureau, sneakers_sport en cérémonie, etc.). On lit l'URL
-       parent côté client puisque PieceLine est un sous-composant qui ne
-       reçoit pas explicitement l'occasion en prop (1900 lignes refactor
-       prévu Phase C). */
+       voyage/bureau, sneakers_sport en cérémonie, etc.). */
     if (typeof window !== "undefined") {
       try {
         const urlOcc = new URLSearchParams(window.location.search).get("occasion");
         if (urlOcc) params.set("occasion", urlOcc);
       } catch {}
     }
+
+    /* Brief URGENT 2026-06-01 MICRO_TYPES : pièces déjà sélectionnées dans
+       la tenue. Permet à /api/products de rejeter les incompatibilités
+       intra-tenue (short + cardigan NO, sandal plage + blazer NO, etc.). */
+    if (selectedNamesStr) params.set("selectedNames", selectedNamesStr);
 
     /* Brief 2026-06-01 « dimensions IA » §1 — traduit wada.mood.perception
        en param `envie` API. Mapping :
@@ -1980,7 +1996,7 @@ function useMujiProduct(
       .catch(() => { /* silencieux — fallback Amazon */ });
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [slot, colorHex, paletteRef, genre, style, seed, excludeKey]);
+  }, [slot, colorHex, paletteRef, genre, style, seed, excludeKey, selectedNamesStr]);
 
   return product;
 }
@@ -1988,6 +2004,7 @@ function useMujiProduct(
 function PieceCard({
   piece, itemName, color, merchants, paletteRef, genre, style,
   seed, excludeIds, onPicked, featured, onPriceResolved, onPieceMetaResolved,
+  selectedNamesStr,
 }: {
   piece: string;
   itemName: string;
@@ -1999,6 +2016,9 @@ function PieceCard({
   seed?: string | null;
   excludeIds?: string[];
   onPicked?: (id: string) => void;
+  /** Brief URGENT 2026-06-01 MICRO_TYPES : noms des pièces déjà sélectionnées
+   *  "|"-séparés. Transmis à useMujiProduct puis à /api/products. */
+  selectedNamesStr?: string;
   /** Brief 2026-05-28 (vedette) : carte 1ère pièce pleine largeur,
    *  ratio image 16/10 plus paysage que portrait pour bien remplir.
    *  Les autres restent en 4/5 portrait. */
@@ -2029,6 +2049,7 @@ function PieceCard({
     seed || null,
     excludeIds || [],
     onPicked,
+    selectedNamesStr,
   );
   /* Quand le produit est résolu (prix réel arrivé), on remonte au parent. */
   useEffect(() => {
