@@ -21,6 +21,10 @@ import Toast from "@/components/Toast";
    existe déjà — donc safe à monter globalement, le user existant ne
    voit JAMAIS l'overlay. */
 import OnboardingOverlay from "@/components/OnboardingOverlay";
+/* Brief 2026-06-01 « Pages légales » §7 : bandeau RGPD au 1er accès.
+   Affiché si localStorage.wada_consent absent ou >13 mois (TTL CNIL).
+   Ne pose AUCUN cookie analytics avant l'accord explicite. */
+import CookieBanner from "@/components/CookieBanner";
 /* Brief P2 (24/05) — Vercel Web Analytics : zéro cookie, conforme à la
    promesse « pas de tracking publicitaire ». Coexiste avec GoogleAnalytics
    (qui peut être désactivé plus tard si on veut un setup pur sans-cookie). */
@@ -329,6 +333,9 @@ export default function RootLayout({
         <Toast />
         {/* Onboarding overlay : ne rend rien si profile déjà en localStorage. */}
         <OnboardingOverlay />
+        {/* Bandeau RGPD — affiché AVANT toute pose de cookie analytics.
+            Caché si l'user a déjà donné son consentement (TTL 13 mois). */}
+        <CookieBanner />
         <Analytics />
         <ServiceWorkerRegister />
         <InstallPrompt />
