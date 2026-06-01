@@ -605,16 +605,34 @@ export function normalizeAwinProduct(raw: RawAwinProduct): ProduitAwin | null {
     devise: isGBP ? "EUR" : ((raw.currency as "EUR" | "CHF" | "USD" | "GBP") || "EUR"),
     tailles: sizes,
     enStock: inStock,
-    /* Image principale — Brief 2026-06-01 FIX PHOTOS :
-       `images2.productserve.com` (Awin proxy) renvoie 403 Forbidden quand
-       le referer est wada.style → toutes les photos TBF/Suitable cassées.
-       Fix : on préfère TOUJOURS merchant_image_url (CDN marchand direct,
-       accessible sans restriction) et on ne tombe sur aw_image_url qu'en
-       dernier recours. Pour MUJI, merchant_image_url est l'URL BigCommerce
-       CDN (~1280px) et aw_image_url est le proxy Awin (accessible aussi).
-       Pour TBF, merchant_image_url = cdn.shopify.com (200 OK confirmé).
-       Pour Suitable FR, merchant_image_url = cdn.suitableshop.net. */
-    image: raw.merchant_image_url || raw.aw_image_url || "",
+    /* Image principale — Brief 2026-06-01 FIX PHOTOS + 2026-06-02 SANS MANNEQUIN :
+       L'utilisateur préfère les images PRODUIT SEUL (fond blanc, pas de modèle).
+       - aw_image_url = image officielle Awin = photo produit seul (flat/ghost),
+         mais passe par images2.productserve.com qui bloque le Referer wada.style.
+         Solution : on extrait l'URL CDN directe depuis le paramètre `url=` du proxy.
+       - merchant_image_url / large_image = photo éditoriale avec mannequin (à éviter).
+       - Suitable FR : toutes les images sont sur cdn.suitableshop.net (pas de modèle
+         en général). On conserve merchant_image_url pour Suitable.
+       Pour TBF : on extrait l'URL Shopify depuis aw_image_url (plat, sans mannequin).
+       Pour MUJI : merchant_image_url est le CDN BigCommerce (images propres, pas de modèle).
+       Pour Suitable FR : merchant_image_url = cdn.suitableshop.net. */
+    image: (() => {
+      if (merchantSlug === "the-business-fashion") {
+        /* Extrait l'URL CDN sous-jacente du proxy Awin pour avoir le plein format.
+           Format proxy : https://images2.productserve.com/?...&url=ssl%3Acdn.shopify.com%2F...
+           → décode → https://cdn.shopify.com/... (200 OK sans restriction) */
+        const proxyUrl = raw.aw_image_url || "";
+        const urlMatch = /[?&]url=([^&]+)/.exec(proxyUrl);
+        if (urlMatch) {
+          const extracted = decodeURIComponent(urlMatch[1]).replace(/^ssl:/, "https:");
+          if (extracted.startsWith("https://")) return extracted;
+        }
+        /* Fallback sur l'URL brute si extraction échoue */
+        return proxyUrl || raw.merchant_image_url || "";
+      }
+      /* MUJI + Suitable FR : merchant_image_url en priorité */
+      return raw.merchant_image_url || raw.aw_image_url || "";
+    })(),
     thumb: raw.aw_thumb_url,
     /* Brief 2026-05-28 (cards plein cadre) : on garde la source large
        quand elle existe — évite le flou à l'agrandissement 4/5.
@@ -625,7 +643,21 @@ export function normalizeAwinProduct(raw: RawAwinProduct): ProduitAwin | null {
        `merchant_image_url` qui est l'URL CDN directe ~1280px côté MUJI.
        Pour les marchands qui ont vraiment `large_image`, on garde la
        priorité dessus. Pour MUJI, on utilise merchant_image_url. */
-    largeImage: raw.large_image || raw.merchant_image_url || "",
+    /* largeImage : même logique que image — pour TBF on extrait depuis aw_image_url
+       pour éviter les photos éditoriales avec mannequin (large_image / merchant_image_url).
+       Pour MUJI : merchant_image_url (CDN BigCommerce ~1280px). */
+    largeImage: (() => {
+      if (merchantSlug === "the-business-fashion") {
+        const proxyUrl = raw.aw_image_url || "";
+        const urlMatch = /[?&]url=([^&]+)/.exec(proxyUrl);
+        if (urlMatch) {
+          const extracted = decodeURIComponent(urlMatch[1]).replace(/^ssl:/, "https:");
+          if (extracted.startsWith("https://")) return extracted;
+        }
+        return raw.large_image || raw.merchant_image_url || "";
+      }
+      return raw.large_image || raw.merchant_image_url || "";
+    })(),
     urlProduit: raw.aw_deep_link, // déjà tracké Awin, on ne re-wrappe pas
     paletteRef: match?.paletteRef,
     paletteDistance: match?.distance,
