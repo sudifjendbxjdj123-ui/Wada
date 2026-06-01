@@ -605,16 +605,16 @@ export function normalizeAwinProduct(raw: RawAwinProduct): ProduitAwin | null {
     devise: isGBP ? "EUR" : ((raw.currency as "EUR" | "CHF" | "USD" | "GBP") || "EUR"),
     tailles: sizes,
     enStock: inStock,
-    /* Image principale : brief Muji utilise `aw_image_url` (200×200 détouré).
-       Autres flux utilisent `merchant_image_url`. On essaie les deux.
-       Brief 2026-06-01 (Suitable FR) : `aw_image_url` Suitable est une URL
-       productserve.com proxifiée en 200×200 (forcée par t=letterbox) qui
-       perd la qualité. `merchant_image_url` pointe directement sur
-       cdn.suitableshop.net en 2200×3064. On préfère merchant_image_url
-       pour Suitable afin d'avoir une carte produit nette. */
-    image: merchantSlug === "suitable-fr"
-      ? (raw.merchant_image_url || raw.aw_image_url || "")
-      : (raw.aw_image_url || raw.merchant_image_url || ""),
+    /* Image principale — Brief 2026-06-01 FIX PHOTOS :
+       `images2.productserve.com` (Awin proxy) renvoie 403 Forbidden quand
+       le referer est wada.style → toutes les photos TBF/Suitable cassées.
+       Fix : on préfère TOUJOURS merchant_image_url (CDN marchand direct,
+       accessible sans restriction) et on ne tombe sur aw_image_url qu'en
+       dernier recours. Pour MUJI, merchant_image_url est l'URL BigCommerce
+       CDN (~1280px) et aw_image_url est le proxy Awin (accessible aussi).
+       Pour TBF, merchant_image_url = cdn.shopify.com (200 OK confirmé).
+       Pour Suitable FR, merchant_image_url = cdn.suitableshop.net. */
+    image: raw.merchant_image_url || raw.aw_image_url || "",
     thumb: raw.aw_thumb_url,
     /* Brief 2026-05-28 (cards plein cadre) : on garde la source large
        quand elle existe — évite le flou à l'agrandissement 4/5.
