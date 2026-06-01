@@ -635,17 +635,23 @@ export function normalizeAwinProduct(raw: RawAwinProduct): ProduitAwin | null {
        Pour MUJI : merchant_image_url est le CDN BigCommerce (images propres, pas de modèle).
        Pour Suitable FR : merchant_image_url = cdn.suitableshop.net. */
     /* Image — Brief 2026-06-02 SANS MANNEQUIN (user) : toutes marques.
-       aw_image_url = image canonique Awin = photo produit seul (flat/ghost).
-       On extrait l'URL CDN directe depuis le proxy Awin pour le plein format.
-       merchant_image_url / large_image = souvent photo avec mannequin → éviter. */
-    image: extractFromAwinProxy(raw.aw_image_url) || raw.aw_image_url || raw.merchant_image_url || "",
+       Stratégie par marchand :
+       - MUJI / TBF : aw_image_url → extraction CDN directe → image flat (fond blanc) ✅
+       - Suitable FR : n'a QUE des photos mannequin (--full-- dans l'URL CDN).
+         On garde l'URL proxy Awin (images2.productserve.com) qui applique
+         bg=white + trim + letterbox → fond blanc uniforme côté serveur via /api/img. */
+    image: merchantSlug === "suitable-fr"
+      /* Proxy Awin brut → /api/img le fetche sans Referer + white-bg letterbox */
+      ? (raw.aw_image_url || raw.merchant_image_url || "")
+      /* MUJI / TBF : extrait l'URL CDN directe (image plate plein format) */
+      : (extractFromAwinProxy(raw.aw_image_url) || raw.aw_image_url || raw.merchant_image_url || ""),
     thumb: raw.aw_thumb_url,
-    /* largeImage : même logique. large_image du feed = version HD de l'image canonique Awin. */
-    largeImage: raw.large_image
-      || extractFromAwinProxy(raw.aw_image_url)
-      || raw.aw_image_url
-      || raw.merchant_image_url
-      || "",
+    /* largeImage : version haute résolution.
+       - Suitable FR : proxy Awin → même traitement bg=white (mannequin mais propre)
+       - MUJI / TBF : CDN extrait plein format (flat) */
+    largeImage: merchantSlug === "suitable-fr"
+      ? (raw.aw_image_url || raw.merchant_image_url || "")
+      : (raw.large_image || extractFromAwinProxy(raw.aw_image_url) || raw.aw_image_url || raw.merchant_image_url || ""),
     urlProduit: raw.aw_deep_link, // déjà tracké Awin, on ne re-wrappe pas
     paletteRef: match?.paletteRef,
     paletteDistance: match?.distance,
