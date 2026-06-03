@@ -1,14 +1,13 @@
 "use client";
 /**
- * CategoryPage — Grille shopping style Lyst/MUJI.fr.
- * Brief 2026-06-03 : cards épurées, 4 colonnes desktop, filtres genre/style.
+ * CategoryPage — Grille shopping style Lyst avec Quick View modal.
+ * Clic sur une carte → modal produit par-dessus la grille (X pour fermer).
  */
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import type { ProduitAwin } from "@/lib/schema";
 
 interface BreadcrumbItem { label: string; href: string; }
-
 interface Props {
   title: string;
   breadcrumb: BreadcrumbItem[];
@@ -16,7 +15,7 @@ interface Props {
   q?: string;
   genre?: string;
   style?: string;
-  page?: number;
+  page?: number; // conservé pour compat mais non utilisé (modal remplace la pagination)
 }
 
 const SOURCE_LABEL: Record<string, string> = {
@@ -25,125 +24,259 @@ const SOURCE_LABEL: Record<string, string> = {
   "suitable-fr": "Suitable FR",
 };
 
-function ProductCard({ p }: { p: ProduitAwin }) {
+/* ── Quick View Modal ── */
+function ProductModal({ product: p, onClose }: { product: ProduitAwin; onClose: () => void }) {
+  const source = SOURCE_LABEL[p.marchandSlug || ""] || p.marchand;
+
+  /* Fermer sur Escape ou clic backdrop */
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", onKey);
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = "";
+    };
+  }, [onClose]);
+
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: "fixed", inset: 0, zIndex: 9999,
+        background: "rgba(0,0,0,0.55)", backdropFilter: "blur(3px)",
+        display: "flex", alignItems: "flex-end", justifyContent: "center",
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          background: "#fff",
+          width: "100%", maxWidth: 900,
+          maxHeight: "90vh",
+          borderRadius: "20px 20px 0 0",
+          overflow: "hidden",
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          position: "relative",
+          animation: "slideUp 0.3s cubic-bezier(.22,1,.36,1)",
+        }}
+        className="wada-modal-grid"
+      >
+        {/* ── Bouton Fermer ── */}
+        <button
+          onClick={onClose}
+          style={{
+            position: "absolute", top: 16, right: 16, zIndex: 10,
+            width: 36, height: 36, borderRadius: "50%",
+            background: "#f5f1eb", border: "none",
+            cursor: "pointer", fontSize: 18, fontWeight: 300,
+            display: "flex", alignItems: "center", justifyContent: "center",
+          }}
+          aria-label="Fermer"
+        >
+          ✕
+        </button>
+
+        {/* ── Colonne gauche : infos produit ── */}
+        <div style={{ padding: "32px 32px 40px", overflowY: "auto" }}>
+          <p style={{
+            fontSize: 10, letterSpacing: "0.2em", textTransform: "uppercase",
+            color: "#8a7a68", margin: "0 0 6px", fontFamily: "'Inter'", fontWeight: 600,
+          }}>
+            {p.marque}
+          </p>
+          <h2 style={{
+            fontFamily: "'Fredoka'", fontSize: 22, fontWeight: 500,
+            color: "#1a1a1a", margin: "0 0 16px", lineHeight: 1.2,
+          }}>
+            {p.nom}
+          </h2>
+
+          <p style={{
+            fontFamily: "'Inter'", fontSize: 26, fontWeight: 600,
+            color: "#1a1a1a", margin: "0 0 24px",
+          }}>
+            {p.prix?.toLocaleString("fr-FR")} €
+          </p>
+
+          {/* CTA principal */}
+          <a
+            href={p.urlProduit} target="_blank" rel="noopener sponsored"
+            style={{
+              display: "block", width: "100%",
+              background: "#1a1a1a", color: "#fff",
+              borderRadius: 12, padding: "16px 0",
+              fontSize: 14, fontWeight: 600, textAlign: "center",
+              textDecoration: "none", fontFamily: "'Inter'",
+              marginBottom: 12,
+            }}
+          >
+            Acheter maintenant →
+          </a>
+
+          {/* Source */}
+          <div style={{
+            border: "1px solid #e8dfd0", borderRadius: 10,
+            padding: "14px 16px", marginBottom: 20,
+          }}>
+            <p style={{ margin: "0 0 6px", fontSize: 12, color: "#8a7a68", fontFamily: "'Inter'" }}>
+              Extrait de{" "}
+              <strong style={{ color: "#1a1a1a" }}>{source}</strong>
+            </p>
+            <p style={{ margin: "0 0 3px", fontSize: 12, color: "#5a5a5a", fontFamily: "'Inter'" }}>
+              ✓ Lien partenaire Awin · prix identique chez le marchand
+            </p>
+            <p style={{ margin: 0, fontSize: 12, color: "#5a5a5a", fontFamily: "'Inter'" }}>
+              ✓ Paiement sécurisé sur {source}
+            </p>
+          </div>
+
+          {/* Infos couleur / pastille */}
+          {p.couleurNom && (
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
+              <span style={{
+                width: 16, height: 16, borderRadius: "50%",
+                background: p.hex || "#9B9B96",
+                border: "1px solid rgba(0,0,0,0.12)", flexShrink: 0,
+              }} />
+              <span style={{ fontSize: 13, color: "#5a5a5a", fontFamily: "'Inter'" }}>
+                Couleur : {p.couleurNom}
+              </span>
+            </div>
+          )}
+
+          {/* Palette WADA si disponible */}
+          {p.paletteRef && (
+            <div style={{
+              background: "#faf6ee", borderRadius: 10, padding: "12px 14px",
+              borderLeft: "2px solid #6e3b32",
+            }}>
+              <p style={{ margin: "0 0 3px", fontSize: 11, color: "#6e3b32", fontFamily: "'Inter'", fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase" }}>
+                Palette Sanzō Wada
+              </p>
+              <Link href={`/palette/${p.paletteRef}`} style={{
+                fontSize: 13, color: "#1a1a1a", fontFamily: "'Inter'",
+                textDecoration: "underline",
+              }}>
+                Voir la palette n°{p.paletteRef} →
+              </Link>
+            </div>
+          )}
+        </div>
+
+        {/* ── Colonne droite : image ── */}
+        <div style={{
+          background: "#f5f1eb",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          minHeight: 400,
+        }}>
+          {(p.largeImage || p.image) ? (
+            <img
+              src={p.largeImage || p.image}
+              alt={p.nom}
+              style={{
+                maxWidth: "90%", maxHeight: "85%",
+                objectFit: "contain",
+              }}
+            />
+          ) : (
+            <span style={{ fontSize: 48, opacity: 0.3 }}>◻</span>
+          )}
+        </div>
+      </div>
+
+      <style>{`
+        @keyframes slideUp {
+          from { transform: translateY(40px); opacity: 0; }
+          to { transform: translateY(0); opacity: 1; }
+        }
+        @media (max-width: 640px) {
+          .wada-modal-grid {
+            grid-template-columns: 1fr !important;
+          }
+        }
+      `}</style>
+    </div>
+  );
+}
+
+/* ── Carte produit ── */
+function ProductCard({ p, onClick }: { p: ProduitAwin; onClick: () => void }) {
   const [liked, setLiked] = useState(false);
   const source = SOURCE_LABEL[p.marchandSlug || ""] || p.marchand;
 
   return (
-    <article style={{ position: "relative" }}>
-      <a href={p.urlProduit} target="_blank" rel="noopener sponsored"
-        style={{ textDecoration: "none", color: "inherit", display: "block" }}>
-        {/* Image */}
+    <article style={{ position: "relative", cursor: "pointer" }}>
+      <div onClick={onClick} style={{ display: "block" }}>
         <div style={{
-          background: "#f5f1eb",
-          borderRadius: 12,
-          overflow: "hidden",
-          aspectRatio: "3/4",
-          position: "relative",
-          marginBottom: 10,
-        }}>
+          background: "#f5f1eb", borderRadius: 12, overflow: "hidden",
+          aspectRatio: "3/4", position: "relative", marginBottom: 10,
+          transition: "box-shadow 0.2s",
+        }}
+          onMouseOver={(e) => (e.currentTarget.style.boxShadow = "0 4px 16px rgba(0,0,0,0.12)")}
+          onMouseOut={(e) => (e.currentTarget.style.boxShadow = "none")}
+        >
           {(p.image || p.largeImage) ? (
-            <img
-              src={p.image || p.largeImage}
-              alt={p.nom}
-              loading="lazy"
-              style={{ width: "100%", height: "100%", objectFit: "contain", padding: 8 }}
-            />
+            <img src={p.image || p.largeImage} alt={p.nom} loading="lazy"
+              style={{ width: "100%", height: "100%", objectFit: "contain", padding: 8 }} />
           ) : (
-            <div style={{
-              width: "100%", height: "100%",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              color: "#c5b9a8", fontSize: 28,
-            }}>◻</div>
+            <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#c5b9a8", fontSize: 28 }}>◻</div>
           )}
-
-          {/* Badge solde si prix inférieur au prix normal — indication simple */}
-
-          {/* Pastille couleur */}
           <span style={{
             position: "absolute", top: 10, left: 10,
             width: 8, height: 8, borderRadius: "50%",
-            background: p.hex || "#9B9B96",
-            border: "1px solid rgba(0,0,0,0.1)",
+            background: p.hex || "#9B9B96", border: "1px solid rgba(0,0,0,0.1)",
           }} />
         </div>
 
-        {/* Texte sous la carte */}
-        <p style={{
-          margin: "0 0 1px",
-          fontSize: 10, fontWeight: 700,
-          letterSpacing: "0.12em", textTransform: "uppercase",
-          color: "#8a7a68", fontFamily: "'Inter', sans-serif",
-        }}>
+        <p style={{ margin: "0 0 1px", fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#8a7a68", fontFamily: "'Inter'" }}>
           {p.marque}
         </p>
-
-        <p style={{
-          margin: "0 0 4px", fontSize: 13, lineHeight: 1.35,
-          color: "#1a1a1a", fontFamily: "'Inter', sans-serif",
-          display: "-webkit-box", WebkitLineClamp: 2,
-          WebkitBoxOrient: "vertical", overflow: "hidden",
-        }}>
+        <p style={{ margin: "0 0 4px", fontSize: 13, lineHeight: 1.35, color: "#1a1a1a", fontFamily: "'Inter'", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
           {p.nom}
         </p>
-
-        <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginBottom: 3 }}>
-          <span style={{
-            fontSize: 14, fontWeight: 600,
-            color: "#1a1a1a", fontFamily: "'Inter', sans-serif",
-          }}>
-            {p.prix?.toLocaleString("fr-FR")} €
-          </span>
-        </div>
-
-        <p style={{
-          margin: 0, fontSize: 11, color: "#a89880",
-          fontFamily: "'Inter', sans-serif",
-          display: "flex", alignItems: "center", gap: 4,
-        }}>
+        <p style={{ margin: "0 0 2px", fontSize: 14, fontWeight: 600, color: "#1a1a1a", fontFamily: "'Inter'" }}>
+          {p.prix?.toLocaleString("fr-FR")} €
+        </p>
+        <p style={{ margin: 0, fontSize: 11, color: "#a89880", fontFamily: "'Inter'", display: "flex", alignItems: "center", gap: 3 }}>
           <span style={{ fontSize: 9 }}>↗</span> {source}
         </p>
-      </a>
+      </div>
 
-      {/* Cœur */}
-      <button
-        onClick={() => setLiked(!liked)}
-        aria-label="Ajouter aux favoris"
+      <button onClick={(e) => { e.stopPropagation(); setLiked(!liked); }}
+        aria-label="Favoris"
         style={{
           position: "absolute", top: 10, right: 10,
-          width: 32, height: 32,
-          background: "rgba(255,255,255,0.9)",
-          border: "none", borderRadius: "50%",
-          cursor: "pointer", fontSize: 15,
-          display: "flex", alignItems: "center", justifyContent: "center",
+          width: 32, height: 32, background: "rgba(255,255,255,0.9)",
+          border: "none", borderRadius: "50%", cursor: "pointer",
+          fontSize: 15, display: "flex", alignItems: "center", justifyContent: "center",
           boxShadow: "0 1px 4px rgba(0,0,0,0.1)",
-        }}
-      >
+        }}>
         {liked ? "❤️" : "🤍"}
       </button>
     </article>
   );
 }
 
-export default function CategoryPage({
-  title, breadcrumb, slot, q, genre: initGenre, style: initStyle, page: initPage = 1,
-}: Props) {
+/* ── Page principale ── */
+export default function CategoryPage({ title, breadcrumb, slot, q, genre: initGenre, style: initStyle }: Props) {
   const [products, setProducts] = useState<ProduitAwin[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [genre, setGenre] = useState(initGenre ?? "");
   const [style, setStyle] = useState(initStyle ?? "");
+  const [selected, setSelected] = useState<ProduitAwin | null>(null);
 
   const fetchProducts = useCallback(async () => {
     setLoading(true);
     const slots = slot.split(",");
     const results = await Promise.all(slots.map(async (s) => {
-      const p = new URLSearchParams({ slot: s.trim(), limit: "32" });
-      if (q) p.set("q", q);
-      if (genre) p.set("genre", genre);
-      if (style) p.set("style", style);
-      const r = await fetch(`/api/products?${p}`).then(res => res.json()).catch(() => ({ products: [] }));
-      return r;
+      const par = new URLSearchParams({ slot: s.trim(), limit: "48" });
+      if (q) par.set("q", q);
+      if (genre) par.set("genre", genre);
+      if (style) par.set("style", style);
+      return fetch(`/api/products?${par}`).then(r => r.json()).catch(() => ({ products: [] }));
     }));
     const all: ProduitAwin[] = results.flatMap(r => r.products ?? []);
     setProducts(all);
@@ -158,7 +291,6 @@ export default function CategoryPage({
     { value: "homme", label: "Hommes" },
     { value: "femme", label: "Femmes" },
   ];
-
   const STYLES = [
     { value: "", label: "Tous les styles" },
     { value: "Classique", label: "Classique" },
@@ -192,14 +324,12 @@ export default function CategoryPage({
         </div>
       </div>
 
-      {/* Filtres — style MUJI.fr */}
+      {/* Filtres sticky */}
       <div style={{
-        padding: "12px 20px", background: "#fff",
-        borderBottom: "0.5px solid #e8dfd0",
+        padding: "12px 20px", background: "#fff", borderBottom: "0.5px solid #e8dfd0",
         display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap",
         position: "sticky", top: 0, zIndex: 10,
       }}>
-        {/* Genre chips */}
         {GENRES.map((g) => (
           <button key={g.value} onClick={() => setGenre(g.value)}
             style={{
@@ -213,10 +343,7 @@ export default function CategoryPage({
             {g.label}
           </button>
         ))}
-
         <span style={{ width: 1, height: 20, background: "#e8dfd0", margin: "0 4px" }} />
-
-        {/* Style select */}
         <select value={style} onChange={(e) => setStyle(e.target.value)}
           style={{
             padding: "7px 12px", borderRadius: 999, fontSize: 13,
@@ -228,53 +355,48 @@ export default function CategoryPage({
         </select>
       </div>
 
-      {/* Grille — 4 colonnes desktop style Lyst */}
+      {/* Grille */}
       <div style={{ padding: "20px 16px 60px" }}>
         {loading ? (
           <div className="wada-shop-grid" style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 16 }}>
             {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} style={{ aspectRatio: "3/4", background: "#ede8e0", borderRadius: 12, opacity: 0.6 }} />
+              <div key={i} style={{ aspectRatio: "3/4", background: "#ede8e0", borderRadius: 12, opacity: 0.5 }} />
             ))}
           </div>
         ) : products.length === 0 ? (
           <div style={{ textAlign: "center", padding: "60px 0" }}>
             <p style={{ fontFamily: "'Fredoka'", fontSize: 20, color: "#8a7a68" }}>Aucun produit trouvé</p>
-            <p style={{ fontSize: 13, color: "#a89880" }}>Essayez un autre style ou genre.</p>
           </div>
         ) : (
           <div className="wada-shop-grid" style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 16 }}>
-            {products.map((p) => <ProductCard key={p.id} p={p} />)}
+            {products.map((p) => (
+              <ProductCard key={p.id} p={p} onClick={() => setSelected(p)} />
+            ))}
           </div>
         )}
       </div>
 
       {/* CTA palette */}
-      <div style={{
-        margin: "0 16px 40px", padding: "18px 20px",
-        background: "#f2ede4", borderRadius: 14, textAlign: "center",
-      }}>
+      <div style={{ margin: "0 16px 40px", padding: "18px 20px", background: "#f2ede4", borderRadius: 14, textAlign: "center" }}>
         <p style={{ fontFamily: "'Fredoka'", fontSize: 17, fontWeight: 500, margin: "0 0 6px" }}>
           Trouver les pièces de ta palette
-        </p>
-        <p style={{ fontSize: 13, color: "#8a7a68", margin: "0 0 12px", fontFamily: "'Inter'" }}>
-          Scanner une couleur pour voir les palettes Sanzō Wada qui vont avec
         </p>
         <Link href="/palettes" style={{
           display: "inline-block", background: "#1a1a1a", color: "#fff",
           borderRadius: 999, padding: "10px 22px",
           fontSize: 13, fontFamily: "'Inter'", fontWeight: 500, textDecoration: "none",
+          marginTop: 10,
         }}>
           Explorer les 348 palettes →
         </Link>
       </div>
 
-      <style jsx>{`
-        @media (min-width: 640px) {
-          .wada-shop-grid { grid-template-columns: repeat(3, 1fr) !important; }
-        }
-        @media (min-width: 1024px) {
-          .wada-shop-grid { grid-template-columns: repeat(4, 1fr) !important; }
-        }
+      {/* Modal Quick View */}
+      {selected && <ProductModal product={selected} onClose={() => setSelected(null)} />}
+
+      <style>{`
+        @media (min-width: 640px) { .wada-shop-grid { grid-template-columns: repeat(3,1fr) !important; } }
+        @media (min-width: 1024px) { .wada-shop-grid { grid-template-columns: repeat(4,1fr) !important; } }
       `}</style>
     </main>
   );
