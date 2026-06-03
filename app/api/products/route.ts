@@ -38,6 +38,11 @@ import { detectSeason, isSeasonCompatible } from "@/lib/seasonDetect";
    + whitelist source affiliée. Module lib/composer/occasionRules.ts. */
 import { isAffiliated, isProductOkForOccasion } from "@/lib/composer/occasionRules";
 import { isCompatibleWithOutfit } from "@/lib/composer/microTypes";
+/* Brief 2026-06-02 « Composer cohérent » : taxonomie MacroStyle + kill-switches
+   paires interdites + profil stylistique palette → filtre sur les pièces candidates. */
+import { inferMacroStyle } from "@/lib/composer/bridgeStyle";
+import { checkForbiddenStyles } from "@/lib/composer/compatibility";
+import { getPaletteStyleProfile } from "@/lib/composer/paletteStyleMap";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -256,6 +261,38 @@ export async function GET(req: Request) {
      quand l'occasion ne les autorise pas. Match par mots-clés dans product_name. */
   if (occasion) {
     filtered = filtered.filter((p) => isProductOkForOccasion(p.nom, occasion));
+  }
+
+  /* Brief 2026-06-02 « Composer cohérent » — Couche 2 : identité de palette.
+     La palette a des styles préférés et interdits (cf. lib/composer/paletteStyleMap).
+     On exclut les produits dont le macro-style est dans `forbidden` pour cette palette.
+     Exemple : palette "Bal au Palais" (or/rouge/émeraude) interdit streetwear →
+     un hoodie BAPE sera rejeté même si sa couleur matche la palette. */
+  const paletteEntry = palette ? dictionary.find((d) => d.number === palette) : null;
+  if (paletteEntry) {
+    const paletteProfile = getPaletteStyleProfile(paletteEntry.name);
+    if (paletteProfile.forbidden.length > 0) {
+      filtered = filtered.filter((p) => {
+        const ms = inferMacroStyle(p.nom, p.brandRegistre ?? null);
+        return !paletteProfile.forbidden.includes(ms);
+      });
+    }
+  }
+
+  /* Brief 2026-06-02 — Couche 3 : kill-switch macro-styles pièces déjà sélectionnées.
+     Si selectedNames contient des pièces, on vérifie qu'aucune combinaison de
+     macro-styles n'est dans FORBIDDEN_STYLE_PAIRS. Plus précis que MICRO_TYPES
+     (qui travaille sur le type de pièce) car ça détecte streetwear+soirée
+     même si les types individuels sont OK. */
+  if (selectedNames.length > 0) {
+    const existingStyles = selectedNames.map((s) =>
+      inferMacroStyle(s.nom, null)
+    );
+    filtered = filtered.filter((p) => {
+      const pStyle = inferMacroStyle(p.nom, p.brandRegistre ?? null);
+      const combined = [...existingStyles, pStyle];
+      return checkForbiddenStyles(combined) === null;
+    });
   }
 
   // Brief §1 : strict slot match
