@@ -668,16 +668,18 @@ export function normalizeAwinProduct(raw: RawAwinProduct): ProduitAwin | null {
       /* TBF  : garde proxy Awin (bg=white + letterbox → fond blanc uniforme)
                car les images Shopify TBF sont souvent des mannequins en pied.
                Le proxy rogne autour du vêtement et uniformise. */
-      : merchantSlug === "the-business-fashion"
-        ? (raw.aw_image_url || raw.merchant_image_url || "")  // → proxifié par /api/img
-        : (extractFromAwinProxy(raw.aw_image_url) || raw.aw_image_url || raw.merchant_image_url || ""),
+      /* MUJI / TBF : images2.productserve.com retourne 403 même côté serveur.
+         On extrait TOUJOURS l'URL CDN directe (Shopify/BigCommerce) qui est
+         accessible sans restriction. Pour TBF ça peut montrer un mannequin
+         mais au moins l'image s'affiche. */
+      : (extractFromAwinProxy(raw.aw_image_url) || raw.merchant_image_url || ""),
     thumb: raw.aw_thumb_url,
-    /* largeImage : même logique */
     largeImage: merchantSlug === "suitable-fr"
       ? suitableFlatImage(raw.merchant_image_url || raw.aw_image_url || "")
-      : merchantSlug === "the-business-fashion"
-        ? (raw.aw_image_url || raw.merchant_image_url || "")
-        : (raw.large_image || extractFromAwinProxy(raw.aw_image_url) || raw.aw_image_url || raw.merchant_image_url || ""),
+      : (raw.large_image
+          || extractFromAwinProxy(raw.aw_image_url)
+          || raw.merchant_image_url
+          || ""),
     urlProduit: raw.aw_deep_link, // déjà tracké Awin, on ne re-wrappe pas
     paletteRef: match?.paletteRef,
     paletteDistance: match?.distance,
