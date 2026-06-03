@@ -468,11 +468,20 @@ export async function GET(req: Request) {
        Streetwear  : 400 → 800  (TBF sneakers / outerwear passe)
        Minimaliste : 700 → 1000 (Lemaire / Jacquemus passe)
        Classique   : 2000 inchangé (Brunello milieu de gamme) */
+  /* Prix plafond par pièce selon le registre — quand aucun maxPrice n'est
+     fourni par le sélecteur. Brief 2026-06-02 (user) : streetwear baissé
+     de 800€ à 300€ pour éviter Y-3/Off-White à 800€+ sur une tenue courante.
+     Le catalogue TBF streetwear a aussi des marques à 50-200€ (Carhartt,
+     Adidas, neighborhood) qui passeront ce filtre. */
   const REGISTRE_CAP: Record<string, number> = {
-    minimaliste: 1000,
-    streetwear: 800,
-    decontracte: 600,
-    classique: 2000,
+    minimaliste: 600,
+    streetwear: 300,
+    decontracte: 300,
+    classique: 800,
+    avant_garde: 500,
+    heritage_country: 400,
+    outdoor: 400,
+    apres_ski: 300,
   };
   const registreCap = targetRegistre ? REGISTRE_CAP[targetRegistre] : null;
   /* Fix 2026-05-31 v5 (user feedback « sur ordinateur je reçois des
