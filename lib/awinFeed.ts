@@ -403,6 +403,24 @@ function slugMerchant(name: string): string {
 }
 
 /**
+ * Suitable FR — transforme une URL CDN en image plate (produit seul, sans mannequin).
+ * Sur cdn.suitableshop.net, le pattern est :
+ *   {nom-produit}--full--{id}-{N}.jpg  où N=1 = photo plate, N>1 = mannequin/détail.
+ * On remplace le numéro de fin par 1.
+ * Exemple :
+ *   alan-red--full--62255-13.jpg → alan-red--full--62255-1.jpg  (image plate confirmée)
+ */
+function suitableFlatImage(url: string): string {
+  if (!url) return "";
+  // Extrait l'URL CDN depuis le proxy Awin si nécessaire
+  const extracted = extractFromAwinProxy(url);
+  const cdnUrl = extracted || url;
+  // Remplace -N.jpg (N = chiffres) par -1.jpg
+  const flat = cdnUrl.replace(/-(\d+)\.jpg($|\?)/, "-1.jpg$2");
+  return flat;
+}
+
+/**
  * Extrait l'URL CDN directe depuis une URL proxy Awin (images2.productserve.com).
  * Format : https://images2.productserve.com/?...&url=ssl%3Acdn.shopify.com%2F...
  * → https://cdn.shopify.com/...
@@ -641,17 +659,25 @@ export function normalizeAwinProduct(raw: RawAwinProduct): ProduitAwin | null {
          On garde l'URL proxy Awin (images2.productserve.com) qui applique
          bg=white + trim + letterbox → fond blanc uniforme côté serveur via /api/img. */
     image: merchantSlug === "suitable-fr"
-      /* Proxy Awin brut → /api/img le fetche sans Referer + white-bg letterbox */
-      ? (raw.aw_image_url || raw.merchant_image_url || "")
-      /* MUJI / TBF : extrait l'URL CDN directe (image plate plein format) */
-      : (extractFromAwinProxy(raw.aw_image_url) || raw.aw_image_url || raw.merchant_image_url || ""),
+      /* Suitable FR : remplace le numéro d'image par -1 → image principale
+         plate (vêtement seul) plutôt que l'image éditoriale avec mannequin.
+         Confirmé : cdn.suitableshop.net image -1.jpg = photo plate,
+         image -N.jpg (N>1) = mannequin ou détail. */
+      ? suitableFlatImage(raw.merchant_image_url || raw.aw_image_url || "")
+      /* MUJI : extrait URL CDN directe (images BigCommerce, plates) */
+      /* TBF  : garde proxy Awin (bg=white + letterbox → fond blanc uniforme)
+               car les images Shopify TBF sont souvent des mannequins en pied.
+               Le proxy rogne autour du vêtement et uniformise. */
+      : merchantSlug === "the-business-fashion"
+        ? (raw.aw_image_url || raw.merchant_image_url || "")  // → proxifié par /api/img
+        : (extractFromAwinProxy(raw.aw_image_url) || raw.aw_image_url || raw.merchant_image_url || ""),
     thumb: raw.aw_thumb_url,
-    /* largeImage : version haute résolution.
-       - Suitable FR : proxy Awin → même traitement bg=white (mannequin mais propre)
-       - MUJI / TBF : CDN extrait plein format (flat) */
+    /* largeImage : même logique */
     largeImage: merchantSlug === "suitable-fr"
-      ? (raw.aw_image_url || raw.merchant_image_url || "")
-      : (raw.large_image || extractFromAwinProxy(raw.aw_image_url) || raw.aw_image_url || raw.merchant_image_url || ""),
+      ? suitableFlatImage(raw.merchant_image_url || raw.aw_image_url || "")
+      : merchantSlug === "the-business-fashion"
+        ? (raw.aw_image_url || raw.merchant_image_url || "")
+        : (raw.large_image || extractFromAwinProxy(raw.aw_image_url) || raw.aw_image_url || raw.merchant_image_url || ""),
     urlProduit: raw.aw_deep_link, // déjà tracké Awin, on ne re-wrappe pas
     paletteRef: match?.paletteRef,
     paletteDistance: match?.distance,
