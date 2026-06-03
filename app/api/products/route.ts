@@ -80,7 +80,7 @@ const DEPRIORITIZE_ACCENT = /\b(sac\s+(boston|de\s+sport|de\s+voyage|polochon)|s
  *  Exclusion stricte des produits utilitaires/fonctionnels pour ACCENT.
  *  Ces produits restent disponibles ailleurs (catalogue complet) mais
  *  ne sortent JAMAIS comme accessoire de tenue. */
-const EXCLUDE_ACCENT = /\b(parapluie|umbrella|serviette|towel|gant(s)?\s+(de\s+ski|de\s+pluie)|cagoule|tour\s+de\s+cou|masque|porte[-\s]?cl[ée]|trousse|étui|protection|housse|sac\s+(à\s+linge|de\s+rangement)|jet|bouteille|gourde|stylo|carnet)/i;
+const EXCLUDE_ACCENT = /\b(parapluie|umbrella|serviette|towel|gant(s)?\s+(de\s+ski|de\s+pluie)|cagoule|tour\s+de\s+cou|masque|porte[-\s]?cl[ée]|trousse|étui|protection|housse|sac\s+(à\s+linge|de\s+rangement)|jet|bouteille|gourde|stylo|carnet|bouton\s+de\s+manchette|cufflink|manchette|noeud\s+papillon|bow\s+tie|pochette\s+de\s+costume|pocket\s+square|bretelles|braces?|suspenders)/i;
 
 /** Brief 2026-05-30 — accent à motifs RETIRÉ.
  *  Cas client : sur palette Encre/Noyer/Os (neutres sobres), un Burberry
