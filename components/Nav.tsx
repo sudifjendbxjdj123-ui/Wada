@@ -49,7 +49,7 @@ const NAV_LINKS: Array<{ href: string; label: string }> = [
   { href: "/palettes", label: "Palettes" },
   { href: "/scanner", label: "Scanner" },
   { href: "/stylist", label: "Styliste" },
-  { href: "/favoris", label: "Favoris" },
+  { href: "/vetements", label: "Boutique" },
 ];
 
 /* Drawer mobile : toutes les destinations, hiérarchisées en sections. */
@@ -225,14 +225,27 @@ export default function Nav() {
           </div>
         </div>
 
-        {/* ─── Droite : Abonnement (ghost) + ProfileMenu ─── */}
+        {/* ─── Droite : Favoris + Abonnement + ProfileMenu ─── */}
         <div
           className="wada-nav-right"
           style={{ display: "flex", alignItems: "center", gap: 12 }}
         >
-          {/* Brief refonte 2026-05-30 : Abonnement en GHOST (contour
-              bordeaux + transparent intérieur) au lieu du plein bordeaux.
-              Moins agressif, conserve la couleur d'identité. */}
+          {/* Favoris — déplacé à droite, à côté d'Abonnement */}
+          <Link
+            href="/favoris"
+            className="wada-nav-favoris"
+            style={{
+              fontFamily: "'Inter', sans-serif",
+              fontSize: "0.875rem",
+              fontWeight: 500,
+              color: "#1E1E1E",
+              textDecoration: "none",
+              whiteSpace: "nowrap",
+            }}
+          >
+            Favoris
+          </Link>
+
           <Link
             href="/tarifs"
             className="wada-nav-tarifs"
