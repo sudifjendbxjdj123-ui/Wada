@@ -320,7 +320,6 @@ export default function RootLayout({
             et garantit qu'une refonte future ne soit pas oubliée sur une
             page. Nav reste sticky (body est l'ancêtre scrollant). */}
         <ConditionalNav />
-        <ConditionalCategoryNav />
         {children}
         <ConditionalFooter />
         {/* Audit mobile (24/05) §1 : barre d'onglets bottom-nav fixée,
