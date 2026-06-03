@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="fr" data-theme="jour">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WADA — version aboutie</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,500&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --beige:#F4EFE7;--cream:#FBF9F5;--ink:#1E1E1E;--ink-soft:#6f685f;--olive:#A8B29A;--bordeaux:#6B3A32;
+    --line:rgba(30,30,30,.10);--pill:999px;--soft:0 8px 30px rgba(30,30,30,.06);
+    --fd:"Fredoka",sans-serif;--serif:"Fraunces",Georgia,serif;--sans:"Inter",Arial,sans-serif;--ease:cubic-bezier(.22,1,.36,1);
+    --bg:#F4EFE7;--surf:#FBF9F5;--txt:#1E1E1E;--txt-soft:#6f685f;--ln:rgba(30,30,30,.10);
+  }
+  html[data-theme="nuit"]{--bg:#16140f;--surf:#211e18;--txt:#F4EFE7;--txt-soft:#cfc8bd;--ln:rgba(244,239,231,.14)}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:var(--sans);background:var(--bg);color:var(--txt);line-height:1.6;transition:background .4s,color .4s}
+  .wrap{max-width:1080px;margin:0 auto;padding:0 24px}
+
+  /* HEADER */
+  .hdr{position:sticky;top:0;z-index:20;display:flex;align-items:center;justify-content:space-between;padding:14px 24px;transition:.3s}
+  .hdr.float{color:#FAF8F4}
+  .hdr.solid{background:color-mix(in srgb,var(--bg) 90%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--ln);color:var(--txt)}
+  .hdr .abo{font-size:13px;font-weight:500;border:1px solid currentColor;border-radius:999px;padding:8px 16px;text-decoration:none;color:inherit;opacity:.95}
+  .hdr .logo{font-family:var(--fd);font-weight:700;font-size:18px}
+  .hdr .r{display:flex;align-items:center;gap:14px;font-size:12px;letter-spacing:.06em;text-transform:uppercase}
+  .tg{cursor:pointer;border:1px solid currentColor;border-radius:999px;width:34px;height:34px;display:flex;align-items:center;justify-content:center;font-size:14px;background:transparent;color:inherit}
+
+  /* HERO */
+  .hero{position:relative;height:100vh;min-height:600px;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;margin-top:-62px}
+  .hero img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+  .hero .veil{position:absolute;inset:0;background:linear-gradient(180deg,rgba(20,18,16,.14),rgba(20,18,16,.22) 50%,rgba(20,18,16,.3))}
+  .hero .glow{position:absolute;left:50%;bottom:6%;transform:translateX(-50%);width:130%;height:55%;background:radial-gradient(60% 70% at 50% 100%,rgba(20,18,16,.32),transparent)}
+  .hero .fade{position:absolute;left:0;right:0;bottom:0;height:120px;background:linear-gradient(180deg,rgba(244,239,231,0),var(--bg))}
+  .hero .in{position:relative;z-index:2;color:#FAF8F4;padding:0 22px}
+  .hero .k{font-size:11px;letter-spacing:.32em;text-transform:uppercase;opacity:.9}
+  .hero h1{font-family:var(--fd);font-weight:700;font-size:60px;line-height:1.05;margin:14px 0 12px;text-shadow:0 2px 24px rgba(0,0,0,.3)}
+  .hero p{font-family:var(--serif);font-style:italic;font-size:18px;max-width:42ch;margin:0 auto 18px;color:rgba(250,248,244,.95)}
+  .gp{display:inline-flex;align-items:center;gap:3px;background:rgba(250,248,244,.16);border:1px solid rgba(250,248,244,.32);border-radius:999px;padding:5px;margin-bottom:16px}
+  .gp .gl{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:rgba(250,248,244,.85);padding:0 10px}
+  .gp button{font-size:13px;padding:8px 16px;border:none;background:transparent;color:#FAF8F4;border-radius:999px;cursor:pointer}
+  .gp button.on{background:#FAF8F4;color:#1E1E1E}
+  .heroBtn{font-size:15px;padding:16px 32px;border-radius:999px;background:#FAF8F4;color:#1E1E1E;border:none;cursor:pointer}
+
+  section{padding:70px 0}
+  .lbl{text-align:center;font-size:11px;letter-spacing:.32em;text-transform:uppercase;color:var(--bordeaux);font-weight:500}
+  .h2{text-align:center;font-family:var(--fd);font-weight:700;font-size:34px;margin:10px 0 30px}
+
+  /* atelier */
+  .ag{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+  .tile{background:var(--surf);border:1px solid var(--ln);border-radius:20px;overflow:hidden;box-shadow:var(--soft);cursor:pointer;transition:transform .35s var(--ease)}
+  .tile:hover{transform:translateY(-5px)}
+  .tile .ph{height:130px;position:relative}.tile .ph img{width:100%;height:100%;object-fit:cover}
+  .tile .ph .ov{position:absolute;inset:0;background:linear-gradient(180deg,rgba(20,18,16,.1),rgba(20,18,16,.4))}
+  .tile .ph .n{position:absolute;top:12px;right:16px;font-family:var(--fd);font-weight:600;color:rgba(255,255,255,.9)}
+  .tile .b{padding:20px 22px}
+  .tile h3{font-family:var(--fd);font-weight:600;font-size:23px}
+  .tile p{color:var(--txt-soft);font-size:14px;margin-top:5px}
+  .tile .o{font-size:13px;margin-top:10px;color:var(--txt)}
+
+  /* palettes */
+  .pg{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:18px}
+  .pc{background:var(--surf);border:1px solid var(--ln);border-radius:16px;overflow:hidden;box-shadow:var(--soft);cursor:pointer;transition:transform .3s var(--ease)}
+  .pc:hover{transform:translateY(-4px)}
+  .pc .bands{display:flex;height:120px}.pc .bands span{flex:1;transition:flex .35s var(--ease)}
+  .pc:hover .bands span:first-child{flex:1.6}
+  .pc .b{padding:13px 15px}
+  .pc .nm{font-family:var(--serif);font-weight:500;font-size:17px}
+  .pc .geo{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--txt-soft);margin-top:3px}
+  .center{text-align:center;margin-top:28px}
+  .btn2{font-size:14px;padding:14px 28px;border-radius:999px;background:transparent;border:1px solid var(--ln);color:var(--txt);cursor:pointer}
+
+  /* manifeste */
+  .mani{text-align:center;max-width:640px;margin:0 auto}
+  .mani p{font-family:var(--serif);font-style:italic;font-size:22px;line-height:1.4}
+  .mani .small{font-size:14px;color:var(--txt-soft);margin-top:12px}
+
+  /* footer discret */
+  footer{border-top:1px solid var(--ln);padding:40px 0 30px}
+  .fin{display:grid;grid-template-columns:1.6fr 1fr 1fr 1fr;gap:24px}
+  .flogo{font-family:var(--fd);font-weight:700;font-size:16px}
+  .fd{font-family:var(--serif);font-style:italic;font-size:12.5px;color:var(--txt-soft);margin-top:8px;max-width:30ch}
+  footer h4{font-size:9.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--olive);margin-bottom:10px}
+  footer a{display:block;color:var(--txt-soft);text-decoration:none;font-size:12.5px;margin-bottom:7px}
+  footer a:hover{color:var(--txt)}
+  .copy{border-top:1px solid var(--ln);margin-top:22px;padding-top:14px;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--txt-soft)}
+  @media(max-width:760px){.hero h1{font-size:40px}.ag{grid-template-columns:1fr}.fin{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+  <header class="hdr float" id="hdr">
+    <a class="abo" href="#">Abonnement</a>
+    <div class="logo">WADA和田</div>
+    <div class="r"><button class="tg" id="tg" title="Jour / Nuit">☾</button><span>Panier</span></div>
+  </header>
+
+  <section class="hero">
+    <img src="./hero-banner-photo.webp" alt="">
+    <div class="veil"></div><div class="glow"></div>
+    <div class="in">
+      <div class="k">Inspiré de Sanzo Wada · 1933</div>
+      <h1>Trouvez la couleur.<br>Trouvez votre style.</h1>
+      <p>Un dictionnaire de 348 accords, traduits en tenues que vous pouvez porter — et acheter.</p>
+      <div class="gp"><span class="gl">Je m'habille</span><button>Femme</button><button class="on">Homme</button><button>Unisexe</button></div>
+      <div><button class="heroBtn">Entrer dans l'atelier →</button></div>
+    </div>
+    <div class="fade"></div>
+  </section>
+
+  <section><div class="wrap">
+    <div class="lbl">Sommaire</div><div class="h2">L'atelier</div>
+    <div class="ag">
+      <div class="tile"><div class="ph"><img src="./photo-mood-1.png" alt=""><div class="ov"></div><div class="n">01</div></div><div class="b"><h3>Scanner une couleur</h3><p>Une photo — un mur, une fleur, un vêtement. WADA compose la tenue qui s'accorde.</p><div class="o">Ouvrir →</div></div></div>
+      <div class="tile"><div class="ph"><img src="./photo-mood-2.png" alt=""><div class="ov"></div><div class="n">02</div></div><div class="b"><h3>Composer une tenue</h3><p>Choisissez une palette parmi les 348, WADA compose autour.</p><div class="o">Ouvrir →</div></div></div>
+      <div class="tile"><div class="ph"><img src="./photo-mood-3.png" alt=""><div class="ov"></div><div class="n">IA</div></div><div class="b"><h3>Assistant</h3><p>Dites une pièce, une humeur. Il compose et explique pourquoi ça marche.</p><div class="o">Ouvrir →</div></div></div>
+      <div class="tile"><div class="ph"><img src="./photo-mood-4.png" alt=""><div class="ov"></div><div class="n">04</div></div><div class="b"><h3>Mon dressing</h3><p>Votre mémoire vestimentaire — WADA devine ce qui vous ira demain.</p><div class="o">Ouvrir →</div></div></div>
+    </div>
+  </div></section>
+
+  <section style="padding-top:0"><div class="wrap">
+    <div class="lbl">Le dictionnaire · 348 accords</div><div class="h2">Les palettes</div>
+    <div class="pg">
+      <div class="pc"><div class="bands"><span style="background:#7D8A4A"></span><span style="background:#C9B79C"></span><span style="background:#6B4A33"></span><span style="background:#EFE7D6"></span></div><div class="b"><div class="nm">Béton & Lin</div><div class="geo">Scandinave</div></div></div>
+      <div class="pc"><div class="bands"><span style="background:#B98A5E"></span><span style="background:#B5603C"></span><span style="background:#C7A06A"></span><span style="background:#EFE2D2"></span></div><div class="b"><div class="nm">Aube sur Berlin</div><div class="geo">Africaine</div></div></div>
+      <div class="pc"><div class="bands"><span style="background:#3A3F44"></span><span style="background:#56657A"></span><span style="background:#C28A3E"></span><span style="background:#ECE6DC"></span></div><div class="b"><div class="nm">Pluie de Tokyo</div><div class="geo">Japonaise</div></div></div>
+      <div class="pc"><div class="bands"><span style="background:#E7D6CE"></span><span style="background:#6B2D2A"></span><span style="background:#EFE7D6"></span><span style="background:#cbb0a0"></span></div><div class="b"><div class="nm">Bal au Palais</div><div class="geo">Française</div></div></div>
+    </div>
+    <div class="center"><button class="btn2">Voir les 348 palettes →</button></div>
+  </div></section>
+
+  <section style="padding-top:0"><div class="wrap"><div class="mani">
+    <div class="lbl">D'après Sanzo Wada · 1933</div>
+    <p>On n'achète pas les mauvaises pièces — on achète les mauvaises couleurs.</p>
+    <div class="small">WADA part de la couleur, pas de la tendance.</div>
+  </div></div></section>
+
+  <footer><div class="wrap">
+    <div class="fin">
+      <div><div class="flogo">WADA和田</div><div class="fd">Un dictionnaire de palettes pour composer la tenue parfaite. D'après Sanzo Wada (1933).</div></div>
+      <div><h4>Explorer</h4><a href="#">Tenues</a><a href="#">Scanner</a><a href="#">Découverte</a><a href="#">Cultures</a><a href="#">Calendrier</a></div>
+      <div><h4>Compte</h4><a href="#">Mes favoris</a><a href="#">À propos</a><a href="#">FAQ</a><a href="#">Abonnement</a><a href="#">Panier</a></div>
+      <div><h4>Contact</h4><a href="#">hello@wada.style</a><a href="#">Pour les marques</a><a href="#">Affiliation</a><a href="#">Mentions légales</a><a href="#">Genève</a></div>
+    </div>
+    <div class="copy">© 2026 WADA · D'après Sanzo Wada · 1933</div>
+  </div></footer>
+
+<script>
+  var hdr=document.getElementById('hdr');
+  addEventListener('scroll',function(){var s=scrollY>window.innerHeight*0.7;hdr.classList.toggle('solid',s);hdr.classList.toggle('float',!s);});
+  var tg=document.getElementById('tg'),h=document.documentElement;
+  tg.addEventListener('click',function(){var n=h.getAttribute('data-theme')==='nuit';h.setAttribute('data-theme',n?'jour':'nuit');tg.textContent=n?'☾':'☀';});
+  document.querySelectorAll('.gp button').forEach(function(b){b.addEventListener('click',function(){document.querySelectorAll('.gp button').forEach(function(x){x.classList.remove('on')});b.classList.add('on');});});
+</script>
+</body>
+</html>

@@ -96,10 +96,18 @@ export default function AffiliationPage() {
         {/* LE PRINCIPE */}
         <h2 style={h2Style}>Le principe</h2>
         <p style={pStyle}>
-          Quand WADA vous propose une pièce et que vous l'achetez chez sa marque
-          (COS, Sézane, Vinted, Net-a-Porter…), la marque nous reverse une petite
+          Quand WADA vous propose une pièce et que vous l'achetez chez l'un de nos
+          marchands partenaires (<b>MUJI</b>, <b>The Business Fashion</b>,{" "}
+          <b>The Shirt Company</b>), le marchand nous reverse une petite
           commission. <b>Vous payez exactement le même prix</b> que si vous étiez
           allé directement sur son site — aucun surcoût.
+        </p>
+        <p style={pStyle}>
+          Nous ne proposons un bouton « Acheter » que pour des marques avec
+          lesquelles nous avons un partenariat d'affiliation <b>actif et vérifié</b>.
+          Si aucune de nos marques partenaires n'a la pièce idéale pour un emplacement,
+          nous préférons le laisser vide plutôt que de vous envoyer vers un lien qui
+          ne nous rémunère pas. Notre catalogue s'enrichit chaque semaine.
         </p>
 
         {/* CE QUE ÇA NE CHANGE PAS — 2×2 cards */}
@@ -145,10 +153,10 @@ export default function AffiliationPage() {
         {/* COMMENT RECONNAÎTRE */}
         <h2 style={h2Style}>Comment reconnaître un lien affilié</h2>
         <p style={pStyle}>
-          Tous nos liens d'achat sont des liens d'affiliation. Ils sont trackés via
-          notre réseau partenaire (Awin Publisher 2879911, Amazon Associates
-          wadastyle-21) pour attribuer la commission. Nous l'indiquons sur le site
-          (mention « Affiliation ») par souci d'honnêteté.
+          Tous nos boutons « Acheter » sont des liens d'affiliation. Ils sont
+          trackés via notre réseau partenaire (Awin, Publisher 2879911) pour
+          attribuer la commission. Nous l'indiquons sous chaque lien (mention
+          « Lien partenaire ») par souci d'honnêteté.
         </p>
 
         <span

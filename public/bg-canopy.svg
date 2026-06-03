@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  viewBox="0 0 1600 1000"
+  width="1600"
+  height="1000"
+  preserveAspectRatio="xMidYMid slice"
+  aria-hidden="true"
+>
+  <!--
+    WADA — Fond canopée inspiré (pas une copie de l'image partagée)
+    ─────────────────────────────────────────────────────────────────
+    Inspiration : tree canopy vue d'en bas. Lecture éditoriale plutôt
+    qu'illustration réaliste. Couleurs piochées dans la grammaire WADA
+    (Olive #5C5A3C, Sauge #9CAF88, Cyprès #3A4A2C, Mousse #6B7E5E,
+    Branches Selle #5C2A1A) — donc fond parfaitement compatible cream
+    paper + accent Mojo, jamais en conflit avec la DA.
+
+    Le SVG est volontairement non-tilable et larger-than-life : à 12 %
+    d'opacité + filtre sepia (cf. body::before dans globals.css), il
+    devient un filigrane organique qui donne de la profondeur sans
+    fight le contenu.
+    ─────────────────────────────────────────────────────────────── */
+  -->
+
+  <defs>
+    <!-- Léger flou pour casser le côté "vectoriel net" — proche d'une aquarelle -->
+    <filter id="soften" x="-5%" y="-5%" width="110%" height="110%">
+      <feGaussianBlur stdDeviation="0.6" />
+    </filter>
+
+    <!-- Bruit subtil pour donner de la texture aux canopées (touche organique) -->
+    <filter id="texture" x="0" y="0" width="100%" height="100%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" stitchTiles="stitch" />
+      <feColorMatrix values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.12 0" />
+      <feComposite in2="SourceGraphic" operator="in" />
+    </filter>
+  </defs>
+
+  <!-- ════════════════════════════════════════════════════════════════
+       BRANCHES — lignes courbes qui radient depuis 3 troncs cachés
+       Tracées d'abord pour que les feuillages les masquent partiellement
+       ════════════════════════════════════════════════════════════════ -->
+  <g stroke="#5C2A1A" stroke-linecap="round" fill="none" opacity="0.85">
+    <!-- Tronc 1 — coin haut-gauche, branches qui descendent -->
+    <path d="M 80 -20 Q 130 200 220 380 Q 280 500 380 620" stroke-width="14" />
+    <path d="M 180 50 Q 280 180 360 260 Q 440 330 510 380" stroke-width="9" />
+    <path d="M 110 120 Q 220 250 320 320" stroke-width="6" />
+
+    <!-- Tronc 2 — milieu-haut -->
+    <path d="M 820 -30 Q 760 180 740 380 Q 720 540 700 680" stroke-width="13" />
+    <path d="M 850 60 Q 920 220 980 360 Q 1040 480 1100 580" stroke-width="9" />
+    <path d="M 780 110 Q 680 250 590 360" stroke-width="6" />
+
+    <!-- Tronc 3 — droite -->
+    <path d="M 1500 -10 Q 1420 180 1340 360 Q 1280 500 1220 620" stroke-width="12" />
+    <path d="M 1440 80 Q 1280 200 1120 290" stroke-width="8" />
+    <path d="M 1380 180 Q 1280 330 1180 460" stroke-width="6" />
+
+    <!-- Branches secondaires fines — éparses, donnent du dessin -->
+    <path d="M 420 470 Q 480 530 540 590" stroke-width="3" opacity="0.7" />
+    <path d="M 940 480 Q 880 560 820 620" stroke-width="3" opacity="0.7" />
+    <path d="M 1080 540 Q 1020 620 960 680" stroke-width="3" opacity="0.7" />
+    <path d="M 300 720 Q 360 780 420 820" stroke-width="3" opacity="0.7" />
+  </g>
+
+  <!-- ════════════════════════════════════════════════════════════════
+       CANOPÉES — 8 blobs organiques, lecture "vue d'en bas"
+       Couleurs alternées (sauge/olive/cyprès/mousse), tailles variées,
+       chevauchements légers pour donner de la profondeur
+       ════════════════════════════════════════════════════════════════ -->
+  <g filter="url(#soften)">
+
+    <!-- Blob 1 — coin haut-gauche (Sauge claire) -->
+    <path
+      d="M 200 80
+         Q 80 90 60 230
+         Q 40 360 140 410
+         Q 240 460 350 410
+         Q 460 360 440 250
+         Q 420 130 320 90
+         Q 260 70 200 80 Z"
+      fill="#9CAF88" opacity="0.92"
+    />
+
+    <!-- Blob 2 — gros central (Olive WADA) -->
+    <path
+      d="M 600 40
+         Q 470 60 430 200
+         Q 390 340 480 440
+         Q 580 540 720 520
+         Q 860 500 880 380
+         Q 900 240 810 130
+         Q 720 30 600 40 Z"
+      fill="#5C5A3C" opacity="0.88"
+    />
+
+    <!-- Blob 3 — droite haut (Cyprès profond) -->
+    <path
+      d="M 1180 50
+         Q 1080 70 1050 180
+         Q 1020 290 1110 360
+         Q 1200 430 1320 400
+         Q 1440 370 1450 260
+         Q 1460 150 1370 80
+         Q 1280 30 1180 50 Z"
+      fill="#3A4A2C" opacity="0.85"
+    />
+
+    <!-- Blob 4 — droite tout en haut (Mousse) -->
+    <path
+      d="M 1430 -30
+         Q 1380 60 1480 130
+         Q 1580 200 1620 110
+         L 1620 -30 Z"
+      fill="#6B7E5E" opacity="0.9"
+    />
+
+    <!-- Blob 5 — milieu-gauche (Sauge plus foncée) -->
+    <path
+      d="M 100 460
+         Q 50 540 110 640
+         Q 170 740 290 720
+         Q 410 700 420 580
+         Q 430 460 320 430
+         Q 200 400 100 460 Z"
+      fill="#7A8F73" opacity="0.85"
+    />
+
+    <!-- Blob 6 — milieu-bas (Olive) -->
+    <path
+      d="M 560 580
+         Q 440 620 460 740
+         Q 480 860 610 870
+         Q 740 880 790 780
+         Q 840 680 740 610
+         Q 640 540 560 580 Z"
+      fill="#5C5A3C" opacity="0.82"
+    />
+
+    <!-- Blob 7 — droite bas (Cyprès) -->
+    <path
+      d="M 1000 620
+         Q 920 660 940 780
+         Q 960 900 1090 890
+         Q 1220 880 1250 770
+         Q 1280 660 1180 610
+         Q 1080 560 1000 620 Z"
+      fill="#3A4A2C" opacity="0.82"
+    />
+
+    <!-- Blob 8 — coin bas-droite (Sauge) -->
+    <path
+      d="M 1370 580
+         Q 1280 620 1310 740
+         Q 1340 860 1470 850
+         Q 1600 840 1620 720
+         L 1620 580 Z"
+      fill="#9CAF88" opacity="0.88"
+    />
+
+    <!-- Petits feuillages d'appoint pour combler les blancs -->
+    <ellipse cx="850" cy="180" rx="50" ry="40" fill="#7A8F73" opacity="0.75" />
+    <ellipse cx="300" cy="520" rx="40" ry="35" fill="#5C5A3C" opacity="0.7" />
+    <ellipse cx="1100" cy="500" rx="55" ry="45" fill="#9CAF88" opacity="0.75" />
+    <ellipse cx="680" cy="780" rx="45" ry="38" fill="#3A4A2C" opacity="0.7" />
+  </g>
+
+  <!-- ════════════════════════════════════════════════════════════════
+       TEXTURE NOISE par-dessus les canopées — donne le côté "aquarelle"
+       ════════════════════════════════════════════════════════════════ -->
+  <rect width="1600" height="1000" fill="#1F1B16" filter="url(#texture)" opacity="0.7" />
+
+  <!-- ════════════════════════════════════════════════════════════════
+       NERVURES — quelques lignes fines pour évoquer les détails des
+       feuilles (sans dessiner chaque feuille, beaucoup trop chargé)
+       ════════════════════════════════════════════════════════════════ -->
+  <g stroke="#3A4A2C" stroke-linecap="round" fill="none" opacity="0.45">
+    <path d="M 250 200 Q 220 260 260 320" stroke-width="1.2" />
+    <path d="M 320 180 Q 290 240 330 300" stroke-width="1" />
+    <path d="M 700 250 Q 660 320 720 400" stroke-width="1.2" />
+    <path d="M 750 200 Q 720 280 780 340" stroke-width="1" />
+    <path d="M 1200 250 Q 1170 320 1220 380" stroke-width="1.2" />
+    <path d="M 1260 200 Q 1230 280 1280 340" stroke-width="1" />
+    <path d="M 200 580 Q 170 640 220 700" stroke-width="1" />
+    <path d="M 1050 740 Q 1020 800 1070 850" stroke-width="1" />
+    <path d="M 1450 720 Q 1420 780 1470 830" stroke-width="1" />
+  </g>
+</svg>

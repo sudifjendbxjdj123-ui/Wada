@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WADA — Assistant conversationnel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{--beige:#F4EFE7;--cream:#FAF8F4;--olive:#A8B29A;--bordeaux:#6B3A32;--ink:#1E1E1E;--ink-soft:#6a6259;
+    --line:rgba(30,30,30,.10);--pill:999px;--soft:0 8px 36px rgba(30,30,30,.06);
+    --fd:"Fredoka","Inter",sans-serif;--sans:"Inter",Arial,sans-serif;--ease:cubic-bezier(.22,1,.36,1)}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:var(--sans);background:var(--beige);color:var(--ink);line-height:1.55}
+  .wrap{max-width:620px;margin:0 auto;padding:34px 20px 60px}
+  .head{text-align:center;margin-bottom:18px}
+  .kicker{font-size:11px;letter-spacing:.3em;text-transform:uppercase;color:var(--olive);font-weight:500}
+  .head h1{font-family:var(--fd);font-weight:700;font-size:30px;margin-top:6px}
+  .chat{display:flex;flex-direction:column;gap:12px;min-height:200px}
+  .msg{max-width:82%;padding:13px 17px;font-size:15px;line-height:1.5;border-radius:18px}
+  .bot{align-self:flex-start;background:var(--cream);border:1px solid var(--line);border-bottom-left-radius:5px}
+  .me{align-self:flex-end;background:var(--bordeaux);color:#FAF8F4;border-bottom-right-radius:5px}
+  .bot .who{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--olive);margin-bottom:4px}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
+  .chip{font-family:var(--sans);font-size:14px;padding:10px 16px;border-radius:var(--pill);border:1px solid var(--line);background:var(--cream);color:var(--ink);cursor:pointer;transition:all .2s}
+  .chip:hover{background:#fff;border-color:var(--olive)}
+  .chip.primary{background:var(--bordeaux);color:#FAF8F4;border-color:var(--bordeaux)}
+  .chip.primary:hover{background:#5a3029}
+  .composer{display:flex;gap:8px;margin-top:16px;background:var(--cream);border:1px solid var(--line);border-radius:var(--pill);padding:6px 6px 6px 18px}
+  .composer input{flex:1;border:none;background:transparent;outline:none;font-family:var(--sans);font-size:15px;color:var(--ink)}
+  .composer button{font-size:13px;letter-spacing:.1em;text-transform:uppercase;background:var(--ink);color:var(--cream);border:none;border-radius:var(--pill);padding:10px 18px;cursor:pointer}
+  /* outfit */
+  .outfit{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-top:6px}
+  .piece{background:var(--cream);border:1px solid var(--line);border-radius:14px;overflow:hidden;box-shadow:var(--soft)}
+  .piece.anchor{border:1.5px solid var(--bordeaux)}
+  .piece .sw{height:74px}
+  .piece .b{padding:9px 10px}
+  .piece .role{font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--olive)}
+  .piece .nm{font-family:var(--fd);font-weight:600;font-size:12px;margin-top:2px;line-height:1.15}
+  .piece .buy{display:block;margin-top:7px;text-align:center;font-size:11px;text-decoration:none;background:var(--ink);color:var(--cream);border-radius:var(--pill);padding:6px 8px}
+  .piece .mine{font-size:10px;color:var(--ink-soft);text-align:center;margin-top:7px}
+  .strip{display:flex;gap:6px;margin-top:10px}.strip span{flex:1;height:24px;border-radius:6px}
+  .restart{margin-top:14px;font-size:13px;color:var(--bordeaux);background:none;border:none;cursor:pointer;text-decoration:underline}
+  @media(max-width:560px){.outfit{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="head"><div class="kicker">Le styliste · WADA AI</div><h1>Composons votre tenue.</h1></div>
+  <div class="chat" id="chat"></div>
+  <div id="chipArea"></div>
+  <div class="composer"><input id="input" placeholder="Décrivez ce que vous avez, ou ce que vous cherchez…"><button id="send">Envoyer</button></div>
+  <button class="restart" id="restart" style="display:none">↺ Recommencer</button>
+</div>
+
+<script>
+(function(){
+  var chat=document.getElementById('chat'), chipArea=document.getElementById('chipArea');
+  var state={};
+  function reset(){ state={mode:null,genre:null,piece:null,anchorRole:null,couleur:null,couleurHex:null,style:null,occasion:null,pieces:null}; }
+
+  var COULEURS={ "Bleu":"#33586B","Beige":"#C7A06A","Noir":"#1E1E1E","Marron":"#6B4A33","Blanc":"#ECE4D6","Vert olive":"#7D8A4A","Bordeaux":"#6B3A32" };
+  // chaque style = 5 emplacements : haut, bas, chaussures, veste, accent
+  var STYLES={
+    "Minimal":{haut:["Tee col rond","#ECE4D6"],bas:["Pantalon droit","#C9B79C"],chauss:["Sneakers cuir","#E8E2D6"],veste:["Surchemise","#8E9A82"],accent:["Tote en cuir","#6B4A33"]},
+    "Classique":{haut:["Chemise oxford","#F0E9DB"],bas:["Chino","#C9B79C"],chauss:["Derbies cuir","#5A4636"],veste:["Blazer","#33586B"],accent:["Ceinture cuir","#6B4A33"]},
+    "Old money":{haut:["Polo cachemire","#F0E9DB"],bas:["Pantalon à pinces","#CDBB9B"],chauss:["Mocassins","#5A4636"],veste:["Blazer croisé","#33586B"],accent:["Foulard","#6B3A32"]},
+    "Décontracté":{haut:["Tee coton","#ECE4D6"],bas:["Chino souple","#C9B79C"],chauss:["Sneakers","#E8E2D6"],veste:["Surchemise","#8E9A82"],accent:["Casquette","#6B4A33"]}
+  };
+
+  function add(role,html){var d=document.createElement('div');d.className='msg '+role;d.innerHTML=(role==='bot'?'<div class="who">WADA</div>':'')+html;chat.appendChild(d);d.scrollIntoView({behavior:'smooth',block:'end'});}
+  function chips(arr,cb){chipArea.innerHTML='';var c=document.createElement('div');c.className='chips';arr.forEach(function(t){var label=(typeof t==='object')?t.l:t;var prim=(typeof t==='object')&&t.p;var b=document.createElement('button');b.className='chip'+(prim?' primary':'');b.textContent=label;b.onclick=function(){add('me',label);chipArea.innerHTML='';cb(label);};c.appendChild(b);});chipArea.appendChild(c);}
+  function clearChips(){chipArea.innerHTML='';}
+  function botDelay(fn){setTimeout(fn,450);}
+
+  /* ---------- DÉPART : deux voies ---------- */
+  function start(){
+    chat.innerHTML=''; reset();
+    document.getElementById('restart').style.display='none';
+    add('bot','Bonjour 👋 On compose ensemble. Vous avez déjà une pièce à mettre en valeur, ou vous partez de zéro ?');
+    chips([{l:"J'ai déjà une pièce",p:false},{l:"Composez-moi une tenue complète",p:true}], onMode);
+  }
+  function onMode(t){
+    if(/complet|zéro|zero|compos/i.test(t)){ state.mode='full';
+      botDelay(function(){ add('bot','Parfait, je pars de zéro. Pour qui je compose ?'); chips(["Femme","Homme","Unisexe"], onGenre); });
+    } else { state.mode='anchor';
+      botDelay(function(){ add('bot','Très bien. Dites-moi la pièce que vous voulez garder.'); chips(["Mes Loro Piana","Un pull noir","Une chemise","Autre…"], onPiece); });
+    }
+  }
+
+  /* ---------- MODE TENUE COMPLÈTE ---------- */
+  function onGenre(t){ state.genre=t;
+    botDelay(function(){ add('bot','Sur quelle couleur on construit ? Ce sera la teinte signature.'); askCouleur(); });
+  }
+
+  /* ---------- MODE PIÈCE EXISTANTE ---------- */
+  function onPiece(t){
+    if(/loro|piana/i.test(t)){ state.piece="Loro Piana"; state.anchorRole="Chaussures";
+      botDelay(function(){ add('bot','Très beau choix — le luxe discret, le daim. De quelle couleur sont-elles ?'); askCouleur(); });
+    } else if(/pull/i.test(t)){ state.piece="Pull"; state.anchorRole="Haut";
+      botDelay(function(){ add('bot','Parfait. De quelle couleur, ce pull ?'); askCouleur(); });
+    } else if(/chemise/i.test(t)){ state.piece="Chemise"; state.anchorRole="Haut";
+      botDelay(function(){ add('bot','Bien. Sa couleur ?'); askCouleur(); });
+    } else if(/chaussure|derby|basket|sneaker|mocassin/i.test(t)){ state.piece=t; state.anchorRole="Chaussures";
+      botDelay(function(){ add('bot','Notées. Leur couleur ?'); askCouleur(); });
+    } else if(/pantalon|chino|jean/i.test(t)){ state.piece=t; state.anchorRole="Bas";
+      botDelay(function(){ add('bot','D\'accord. Sa couleur ?'); askCouleur(); });
+    } else if(/veste|blazer|manteau/i.test(t)){ state.piece=t; state.anchorRole="Veste";
+      botDelay(function(){ add('bot','Très bien. Sa couleur ?'); askCouleur(); });
+    } else { state.piece=(/autre/i.test(t)?"votre pièce":t); state.anchorRole="Haut";
+      botDelay(function(){ add('bot','Notée. De quelle couleur est-elle ?'); askCouleur(); });
+    }
+  }
+
+  /* ---------- COMMUN : couleur → style → occasion ---------- */
+  function askCouleur(){ chips(Object.keys(COULEURS), onCouleur); }
+  function onCouleur(t){ state.couleur=t; state.couleurHex=COULEURS[t]||"#888";
+    botDelay(function(){ add('bot','Joli. Vous cherchez quel style autour ?'); chips(Object.keys(STYLES), onStyle); });
+  }
+  function onStyle(t){ state.style=t;
+    botDelay(function(){ add('bot','Et pour quelle occasion ?'); chips(["Bureau","Sorties / dîner","Quotidien","Voyage"], onOccasion); });
+  }
+  function onOccasion(t){ state.occasion=t; botDelay(compose); }
+
+  /* ---------- POURQUOI ÇA MARCHE ---------- */
+  var POURQUOI={
+    "Bleu":"Le bleu est froid : on le réchauffe avec des neutres sable et un cuir brun, pour qu'il respire sans durcir.",
+    "Beige":"Le beige est doux : on lui donne du relief avec une touche sombre et une matière mate, sinon tout s'efface.",
+    "Noir":"Le noir appelle la chaleur — sable et cuir brun l'adoucissent, le bordeaux le réchauffe. Jamais noir sur noir.",
+    "Marron":"Le marron est terreux : on reste dans la même famille chaude et on éclaire avec de l'écru.",
+    "Blanc":"Le blanc est lumineux : on l'ancre avec un neutre plus profond et une matière, pour éviter l'effet clinique.",
+    "Vert olive":"L'olive aime les neutres chauds (sable, cuir) et une pointe de bordeaux pour la profondeur.",
+    "Bordeaux":"Le bordeaux est riche : une seule pièce forte suffit, le reste en sourdine (beige, brun)."
+  };
+  function pourquoi(){ return POURQUOI[state.couleur] || "On garde une seule couleur forte et on l'entoure de neutres chauds : c'est ce qui rend une tenue juste."; }
+
+  /* ---------- ACHAT ---------- */
+  function buyLink(p){
+    if(p[4]) return '<div class="mine">à vous ✓</div>';
+    var q = encodeURIComponent((p[2]+' '+(state.couleur||'')).trim()).replace(/%20/g,'+');
+    var url = 'https://www.amazon.fr/s?k='+q+'&tag=TONTAG-21';   // ← remplace TONTAG-21 par ton vrai tag
+    return '<a class="buy" href="'+url+'" target="_blank" rel="noopener nofollow sponsored">Amazon →</a>';
+  }
+  function renderOutfit(pieces){
+    var html='<div class="outfit">';
+    pieces.forEach(function(p){ html+='<div class="piece'+(p[4]?' anchor':'')+'"><div class="sw" style="background:'+p[3]+'"></div><div class="b"><div class="role">'+p[0]+'</div><div class="nm">'+p[2]+'</div>'+buyLink(p)+'</div></div>'; });
+    html+='</div><div class="strip">'+pieces.map(function(p){return '<span style="background:'+p[3]+'"></span>';}).join('')+'</div>';
+    var d=document.createElement('div');d.className='msg bot';d.style.maxWidth='100%';d.innerHTML='<div class="who">La tenue</div>'+html;chat.appendChild(d);d.scrollIntoView({behavior:'smooth',block:'end'});
+  }
+  function setSlot(role,nm,hex){ for(var i=0;i<state.pieces.length;i++){ if(state.pieces[i][1]===role){ state.pieces[i][2]=nm; state.pieces[i][3]=hex; return; } } }
+
+  /* ---------- COMPOSITION ---------- */
+  function buildFull(){
+    var s=STYLES[state.style]||STYLES["Classique"];
+    state.pieces=[
+      ["Proposé","Haut",s.haut[0],s.haut[1],false],
+      ["Proposé","Bas",s.bas[0],s.bas[1],false],
+      ["Proposé","Chaussures",s.chauss[0],s.chauss[1],false],
+      ["Signature","Veste",s.veste[0],s.veste[1],false],
+      ["Touche","Accent",s.accent[0],s.accent[1],false]
+    ];
+    // la couleur choisie devient la pièce signature (la veste), le reste en neutres chauds
+    setSlot('Veste', s.veste[0]+' '+state.couleur.toLowerCase(), state.couleurHex);
+  }
+  function buildAnchor(){
+    var s=STYLES[state.style]||STYLES["Classique"];
+    var anchorLabel = state.piece==="Loro Piana" ? "Loro Piana ("+state.couleur.toLowerCase()+")" : (state.piece.charAt(0).toUpperCase()+state.piece.slice(1))+" "+state.couleur.toLowerCase();
+    // base proposée
+    var base={
+      "Haut":["Proposé","Haut",s.haut[0],s.haut[1],false],
+      "Bas":["Proposé","Bas",s.bas[0],s.bas[1],false],
+      "Chaussures":["Proposé","Chaussures",s.chauss[0],s.chauss[1],false],
+      "Veste":["Proposé","Veste",s.veste[0],s.veste[1],false],
+      "Accent":["Touche","Accent",s.accent[0],s.accent[1],false]
+    };
+    // la pièce de l'utilisateur remplace son emplacement et porte la couleur forte
+    base[state.anchorRole]=["Votre pièce",state.anchorRole,anchorLabel,state.couleurHex,true];
+    state.pieces=[base["Haut"],base["Bas"],base["Chaussures"],base["Veste"],base["Accent"]];
+  }
+  function anchorName(){ return state.piece==="Loro Piana" ? "Loro Piana" : state.piece.toLowerCase(); }
+
+  function compose(){
+    clearChips();
+    if(state.mode==='full'){
+      buildFull();
+      add('bot','Voilà une tenue complète <b>'+state.style.toLowerCase()+'</b> pour <b>'+state.occasion.toLowerCase()+'</b> ('+state.genre.toLowerCase()+') : le '+state.couleur.toLowerCase()+' en signature, le reste en neutres chauds.');
+    } else {
+      buildAnchor();
+      add('bot','Voilà : autour de vos/votre '+anchorName()+', un look <b>'+state.style.toLowerCase()+'</b> pour <b>'+state.occasion.toLowerCase()+'</b> — neutres chauds, une seule couleur forte.');
+    }
+    renderOutfit(state.pieces);
+    botDelay(function(){ add('bot','<b>Pourquoi ça marche</b> — '+pourquoi()); });
+    setTimeout(function(){ add('bot','Je peux l\'ajuster — dites-moi.'); adjustChips(); document.getElementById('restart').style.display='inline-block'; }, 950);
+  }
+
+  /* ---------- AJUSTEMENTS ---------- */
+  function adjustChips(){ chips(["Plus chaud","Sans veste","Plus décontracté","Une autre couleur","C'est parfait"], onAdjust); }
+  function onAdjust(t){
+    if(/parfait/i.test(t)){ botDelay(function(){ add('bot','Très bien. Je l\'ajoute à votre dressing ✓'); document.getElementById('restart').style.display='inline-block'; }); return; }
+    if(/autre couleur/i.test(t)){ botDelay(function(){ add('bot','On change la teinte signature — laquelle ?'); chips(Object.keys(COULEURS), function(c){ state.couleur=c; state.couleurHex=COULEURS[c]; botDelay(compose); }); }); return; }
+    botDelay(function(){
+      if(/chaud/i.test(t)){ setSlot('Veste','Surveste terracotta','#B5613F'); setSlot('Accent','Touche brun chaud','#8a5a3a'); add('bot','Plus chaud : une terracotta et du brun.'); }
+      else if(/sans veste/i.test(t)){ state.pieces=state.pieces.filter(function(p){return p[1]!=='Veste';}); add('bot','Sans veste : on allège, plus épuré.'); }
+      else if(/décontract/i.test(t)){ setSlot('Haut','Tee coton','#ECE4D6'); setSlot('Bas','Chino souple','#C9B79C'); setSlot('Chaussures','Sneakers','#E8E2D6'); add('bot','Plus décontracté : tee, chino et sneakers, mêmes couleurs.'); }
+      renderOutfit(state.pieces); adjustChips();
+    });
+  }
+
+  /* ---------- SAISIE LIBRE ---------- */
+  document.getElementById('send').addEventListener('click',function(){
+    var v=document.getElementById('input').value.trim(); if(!v)return;
+    document.getElementById('input').value=''; add('me',v);
+    if(!state.mode){ // l'utilisateur décrit directement quelque chose
+      if(/rien|zéro|zero|complet|sais pas|propose|compose|tenue/i.test(v)){ state.mode='full'; botDelay(function(){ add('bot','Parfait, je pars de zéro. Pour qui je compose ?'); chips(["Femme","Homme","Unisexe"], onGenre); }); }
+      else { state.mode='anchor'; onPiece(v); }
+    }
+  });
+  document.getElementById('input').addEventListener('keydown',function(e){if(e.key==='Enter')document.getElementById('send').click();});
+  document.getElementById('restart').addEventListener('click',start);
+  start();
+})();
+</script>
+</body>
+</html>

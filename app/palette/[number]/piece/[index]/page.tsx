@@ -454,18 +454,26 @@ export default function PiecePage({
       <section style={{ background: paper, padding: "80px 5%", borderTop: `1px solid ${border}` }}>
         <div style={{ maxWidth: 1200, margin: "0 auto" }}>
           <div style={{ textAlign: "center", maxWidth: 720, margin: "0 auto 36px" }}>
-            <p style={{ ...sectionLabel, color: mojo, marginBottom: 14, fontWeight: 600 }}>Tous les marchands</p>
+            <p style={{ ...sectionLabel, color: mojo, marginBottom: 14, fontWeight: 600 }}>
+              {totalBrands > 0 ? "Nos marchands partenaires" : "Marchands partenaires"}
+            </p>
             <h2 style={{
               fontFamily: fontHeading, fontSize: 48, fontStyle: "italic", fontWeight: 500,
               margin: "0 0 12px", lineHeight: 1.05, letterSpacing: "-0.02em", color: ink,
             }}>
-              {totalBrands} options pour <span style={{ color: mojo }}>{piece.item.toLowerCase()}</span>.
+              {totalBrands > 0
+                ? <>{totalBrands} {totalBrands > 1 ? "options partenaires" : "option partenaire"} pour <span style={{ color: mojo }}>{piece.item.toLowerCase()}</span>.</>
+                : <>Pas encore de partenaire pour <span style={{ color: mojo }}>{piece.item.toLowerCase()}</span>.</>}
             </h2>
             <p style={{ fontFamily: fontBody, fontSize: 15, color: textSecondary, margin: 0, fontStyle: "italic" }}>
-              Chaque lien atterrit directement sur la recherche du marchand. Pas de détour.
+              {totalBrands > 0
+                ? "Uniquement des marques avec lesquelles WADA a un partenariat d'affiliation actif. Chaque lien atterrit directement sur la recherche du marchand."
+                : "On n'affiche ici que nos marques partenaires. La recherche multi-marchands ci-dessus reste disponible pour trouver cette pièce ailleurs."}
             </p>
           </div>
 
+          {totalBrands > 0 ? (
+          <>
           {/* Bouton "Filtrer" — révèle les chips style mode */}
           <div style={{ display: "flex", justifyContent: "center", marginBottom: 32 }}>
             <button
@@ -589,12 +597,24 @@ export default function PiecePage({
             })}
           </div>
 
-          {totalBrands === 0 && (
+          {totalBrands > 0 && allLinks.length > 0 &&
+           TIER_BUCKETS.every((b) => (linksByBucket[b.id]?.length || 0) === 0) && (
             <p style={{
               textAlign: "center", padding: 60,
               fontFamily: fontBody, fontSize: 15, color: subtle, fontStyle: "italic",
             }}>
-              Aucun marchand ne correspond. Essayez de retirer le filtre style.
+              Aucun marchand ne correspond à ce filtre. Essayez de retirer le filtre style.
+            </p>
+          )}
+          </>
+          ) : (
+            <p style={{
+              textAlign: "center", padding: "40px 20px 0",
+              fontFamily: fontBody, fontSize: 15, color: subtle, fontStyle: "italic",
+              lineHeight: 1.6, maxWidth: 560, margin: "0 auto",
+            }}>
+              Aucune de nos marques partenaires ne propose encore cette pièce. On
+              enrichit le catalogue chaque semaine.
             </p>
           )}
         </div>

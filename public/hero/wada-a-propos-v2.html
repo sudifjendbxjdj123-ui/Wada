@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WADA — À propos</title>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --cream:#f4eee4;--cream-2:#efe7da;--card:#fbf7f0;--ink:#2a2521;--muted:#8c8377;
+    --line:#e5dccc;--bordeaux:#6e3b32;--bordeaux-2:#82473c;--olive:#6f7a3f;
+    --gold:#c79a3c;--ink-soft:#3d3530;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Inter',system-ui,sans-serif;background:var(--cream);color:var(--ink);
+    -webkit-font-smoothing:antialiased;line-height:1.55}
+  h1,h2,h3,h4,.fk{font-family:'Fredoka',sans-serif}
+
+  /* NAV */
+  nav{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;
+    border-bottom:1px solid var(--line);background:rgba(244,238,228,.85);backdrop-filter:blur(8px);
+    position:sticky;top:0;z-index:20}
+  .brand{font-family:'Fredoka';font-size:20px;font-weight:600}
+  .pill-prof{width:34px;height:34px;border-radius:50%;background:var(--bordeaux);color:#fff;
+    display:grid;place-items:center;font-family:'Fredoka';font-size:13px;border:none}
+
+  /* BACK */
+  .wrap{max-width:680px;margin:0 auto;padding:0 22px}
+  .back{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--card);
+    border-radius:999px;padding:8px 16px;font-size:12px;letter-spacing:.12em;text-transform:uppercase;
+    color:var(--ink);text-decoration:none;margin-top:22px}
+
+  /* HERO */
+  .hero{padding:60px 0 50px;text-align:center;position:relative;overflow:hidden}
+  .hero::before{content:"";position:absolute;inset:0;
+    background:radial-gradient(circle at 30% 20%,rgba(202,164,121,.12),transparent 60%),
+               radial-gradient(circle at 70% 80%,rgba(110,59,50,.08),transparent 60%);
+    z-index:-1}
+  .kicker{display:inline-block;font-size:11px;letter-spacing:.24em;text-transform:uppercase;
+    color:var(--bordeaux);font-weight:600;margin-bottom:18px}
+  .hero h1{font-size:clamp(40px,9vw,58px);line-height:1.04;letter-spacing:-.5px;margin-bottom:18px}
+  .hero h1 em{font-style:normal;color:var(--bordeaux);font-weight:500}
+  .hero .lede{font-size:16px;color:var(--ink-soft);max-width:34ch;margin:0 auto}
+
+  /* SECTION TITLES */
+  .sec-kick{font-size:10.5px;letter-spacing:.28em;text-transform:uppercase;color:var(--muted);
+    font-weight:600;margin-bottom:14px;text-align:center}
+  .sec-title{font-size:clamp(28px,6vw,38px);line-height:1.1;letter-spacing:-.3px;text-align:center;
+    margin-bottom:34px;font-weight:500}
+  .sec-title em{font-style:normal;color:var(--bordeaux);font-weight:500}
+
+  /* SECTION 1 — L'IDÉE (storytelling avec citation) */
+  .idee{padding:60px 0 30px}
+  .idee h2{font-size:30px;line-height:1.1;margin-bottom:20px;font-weight:500;letter-spacing:-.3px}
+  .idee p{font-size:15.5px;color:var(--ink-soft);margin-bottom:18px;max-width:38ch}
+  .idee .quote{font-family:'Fredoka';font-weight:500;font-size:24px;line-height:1.3;
+    color:var(--bordeaux);margin:34px 0;padding:0 8px;position:relative;letter-spacing:-.3px}
+  .idee .quote::before{content:"« ";color:var(--bordeaux);opacity:.4;font-size:32px;line-height:1}
+  .idee .quote::after{content:" »";color:var(--bordeaux);opacity:.4;font-size:32px;line-height:1}
+  .idee p b{color:var(--ink);font-weight:600}
+  .idee .punch{font-family:'Fredoka';color:var(--bordeaux);font-size:21px;font-weight:500;
+    line-height:1.3;margin-top:32px;letter-spacing:-.2px;max-width:none}
+
+  /* DIVIDER */
+  .div{height:1px;background:linear-gradient(90deg,transparent,var(--line),transparent);margin:50px 0}
+
+  /* SECTION 2 — CE QUE FAIT WADA — repensé en colonnes alternées */
+  .actions{padding:30px 0 50px}
+  .action{display:grid;grid-template-columns:60px 1fr;gap:20px;align-items:start;margin-bottom:36px;
+    padding-bottom:36px;border-bottom:1px solid var(--line)}
+  .action:last-child{border-bottom:none;padding-bottom:0;margin-bottom:0}
+  .action-num{font-family:'Fredoka';font-weight:500;font-size:38px;line-height:1;
+    color:var(--bordeaux);opacity:.5;text-align:right;letter-spacing:-.02em}
+  .action h3{font-family:'Fredoka';font-size:22px;font-weight:500;margin-bottom:8px;letter-spacing:-.2px}
+  .action p{font-size:15px;color:var(--ink-soft);line-height:1.55}
+
+  /* SECTION 3 — EN UN EXEMPLE — vraies palettes */
+  .exemple{background:var(--card);margin:0 -22px;padding:60px 22px;border-top:1px solid var(--line);
+    border-bottom:1px solid var(--line)}
+  .pal-row{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-top:30px}
+  .pal-mini{width:118px;background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+  .pal-mini .strip{height:76px;display:flex}
+  .pal-mini .strip i{flex:1}
+  .pal-mini .nm{padding:10px 12px;font-family:'Fredoka';font-size:13px;font-weight:500;line-height:1.2}
+  .pal-mini .culture{font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);
+    padding:0 12px 10px;font-weight:600}
+  .mult{text-align:center;margin-top:30px;font-family:'Inter';font-size:16px;color:var(--ink-soft)}
+  .mult b{font-family:'Fredoka';color:var(--bordeaux);font-weight:600;font-size:26px;letter-spacing:-.02em}
+
+  /* SECTION 4 — BUDGETS — refondu en timeline horizontale */
+  .budgets{padding:60px 0 30px}
+  .budget-grid{display:flex;flex-direction:column;gap:0}
+  .b-row{display:grid;grid-template-columns:80px 1fr;gap:22px;align-items:start;padding:24px 0;
+    border-bottom:1px solid var(--line);position:relative}
+  .b-row:last-child{border-bottom:none}
+  .b-tag{font-family:'Fredoka';font-weight:500;font-size:12px;letter-spacing:.06em;
+    text-transform:uppercase;color:var(--bordeaux);text-align:right;padding-top:6px}
+  .b-row h4{font-family:'Fredoka';font-size:17px;font-weight:500;margin-bottom:6px}
+  .b-row p{font-size:14px;color:var(--ink-soft);margin-bottom:6px}
+  .b-row .prix{font-size:12.5px;color:var(--muted);font-feature-settings:'tnum'}
+  .b-row .prix b{color:var(--ink);font-weight:600}
+
+  /* SECTION 5 — PROMESSES — refondu en grid 2x2 simple */
+  .promesses{background:linear-gradient(180deg,#f7f0e2,#f4eee4);margin:60px -22px 0;padding:60px 22px;
+    border-top:1px solid var(--line)}
+  .prom-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:30px}
+  .prom{background:#fff;border:1px solid var(--line);border-radius:18px;padding:22px}
+  .prom-num{font-family:'Cormorant Garamond';font-size:24px;font-style:italic;color:var(--bordeaux);
+    margin-bottom:8px;display:block;line-height:1}
+  .prom h4{font-family:'Fredoka';font-size:14.5px;font-weight:500;margin-bottom:6px;line-height:1.2}
+  .prom p{font-size:12.5px;color:var(--ink-soft);line-height:1.5}
+
+  /* SECTION 6 — CŒUR DU PROJET — climax monumental */
+  .coeur{padding:80px 0 60px;text-align:center;position:relative}
+  .coeur .big{font-family:'Fredoka';font-size:clamp(64px,16vw,110px);line-height:.95;
+    font-weight:600;letter-spacing:-2px;color:var(--ink)}
+  .coeur .big-2{font-family:'Cormorant Garamond';font-style:italic;font-weight:400;
+    font-size:clamp(64px,16vw,110px);line-height:.95;letter-spacing:-2px;color:var(--bordeaux)}
+  .coeur .sub{font-size:15.5px;color:var(--ink-soft);margin:30px auto 0;max-width:34ch}
+
+  /* SECTION 7 — BIENVENUE */
+  .bienvenue{padding:50px 0 30px;text-align:center;background:var(--card);margin:50px -22px 0;
+    padding-left:22px;padding-right:22px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+  .bienvenue h2{font-family:'Cormorant Garamond';font-style:italic;font-size:38px;line-height:1.1;
+    margin-bottom:16px;color:var(--ink);letter-spacing:-.3px;font-weight:500}
+  .bienvenue p{font-size:15px;color:var(--ink-soft);max-width:32ch;margin:0 auto 16px}
+  .bienvenue .signed{margin-top:30px;font-size:11px;letter-spacing:.28em;text-transform:uppercase;
+    color:var(--muted);font-weight:600}
+
+  /* CTA FINAL */
+  .cta-final{padding:70px 0 40px;text-align:center}
+  .cta-final h3{font-family:'Cormorant Garamond';font-style:italic;font-size:26px;font-weight:500;
+    margin-bottom:14px;color:var(--ink);letter-spacing:-.3px}
+  .cta-final p{font-size:14.5px;color:var(--ink-soft);margin-bottom:24px;max-width:30ch;margin-left:auto;margin-right:auto}
+  .btn-primary{background:var(--bordeaux);color:#fff;border:none;border-radius:14px;padding:14px 26px;
+    font-family:'Fredoka';font-size:15px;font-weight:500;cursor:pointer;display:inline-block;text-decoration:none}
+  .btn-soft{background:#fff;color:var(--bordeaux);border:1px solid var(--bordeaux);border-radius:14px;
+    padding:13px 24px;font-family:'Fredoka';font-size:14.5px;font-weight:500;cursor:pointer;
+    display:inline-block;text-decoration:none;margin-left:10px}
+
+  /* FOOTER */
+  footer{background:#16130f;color:#cfc6b6;padding:36px 22px 26px;margin-top:60px;text-align:center}
+  footer .brand2{font-family:'Fredoka';color:#fff;font-size:20px;margin-bottom:8px}
+  footer p{font-size:12.5px;opacity:.7;max-width:280px;margin:0 auto}
+  footer .socials{margin-top:18px;display:flex;gap:14px;justify-content:center}
+  footer .socials a{color:#cfc6b6;font-size:18px;text-decoration:none}
+  footer .copy{margin-top:24px;font-size:11px;opacity:.5}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="brand">WADA 和田</div>
+  <button class="pill-prof">H</button>
+</nav>
+
+<div class="wrap">
+
+<a class="back" href="#">&larr;&nbsp; Retour</a>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="kicker">À propos</div>
+  <h1>Rendre le style <em>plus facile</em>.</h1>
+  <p class="lede">Pas besoin d'être expert. Vous scannez une couleur — WADA construit la tenue qui va avec.</p>
+</section>
+
+<!-- L'IDÉE — storytelling avec citation -->
+<section class="idee">
+  <div class="sec-kick">L'idée</div>
+  <h2>Tout est parti d'un problème très simple.</h2>
+  <p>Passer trop de temps devant son armoire sans savoir quoi mettre. Tester, hésiter, renoncer.</p>
+
+  <div class="quote">Pourquoi s'habiller doit-il toujours demander autant d'énergie ?</div>
+
+  <p>Quelques semaines plus tard, la découverte d'un ancien livre du peintre japonais <b>Sanzo Wada</b>. En 1933, il y avait réuni <b>348 combinaisons de couleurs</b> pensées pour fonctionner naturellement ensemble.</p>
+  <p>Si des couleurs fonctionnent ensemble, alors une tenue construite autour de ces couleurs fonctionne aussi.</p>
+
+  <p class="punch">C'est l'idée fondatrice de WADA.</p>
+</section>
+
+<div class="div"></div>
+
+<!-- CE QUE FAIT WADA — colonnes alternées avec chiffres romains italiques -->
+<section class="actions">
+  <div class="sec-kick">Ce que fait WADA</div>
+  <h2 class="sec-title">Chaque palette devient <em>quatre choses</em>.</h2>
+
+  <div class="action">
+    <div class="action-num">I</div>
+    <div>
+      <h3>Une tenue complète</h3>
+      <p>Composée pour fonctionner ensemble, du haut aux chaussures. Cinq pièces, un seul registre.</p>
+    </div>
+  </div>
+
+  <div class="action">
+    <div class="action-num">II</div>
+    <div>
+      <h3>Des idées de style</h3>
+      <p>Adaptées à votre humeur, à votre saison, à votre culture, à votre journée.</p>
+    </div>
+  </div>
+
+  <div class="action">
+    <div class="action-num">III</div>
+    <div>
+      <h3>Des vêtements réels</h3>
+      <p>Issus d'une sélection de boutiques cotées, du vintage au luxe. Aucune image inventée.</p>
+    </div>
+  </div>
+
+  <div class="action">
+    <div class="action-num">IV</div>
+    <div>
+      <h3>Des liens d'achat directs</h3>
+      <p>Transparents, sans intermédiaire caché. Vous achetez chez la marque, au même prix.</p>
+    </div>
+  </div>
+</section>
+
+<!-- EN UN EXEMPLE — palettes vivantes -->
+<section class="exemple">
+  <div class="sec-kick">En un exemple</div>
+  <h2 class="sec-title">Une palette, une tenue, <em>des pièces à acheter</em>.</h2>
+
+  <div class="pal-row">
+    <div class="pal-mini">
+      <div class="strip"><i style="background:#c9d0d8"></i><i style="background:#d4c8b4"></i><i style="background:#1c2030"></i></div>
+      <div class="nm">Rosée du matin</div>
+      <div class="culture">Française</div>
+    </div>
+    <div class="pal-mini">
+      <div class="strip"><i style="background:#8a8472"></i><i style="background:#d9c9a8"></i><i style="background:#7b2d26"></i></div>
+      <div class="nm">Béton &amp; Lin</div>
+      <div class="culture">Urbaine</div>
+    </div>
+    <div class="pal-mini">
+      <div class="strip"><i style="background:#1f3a4a"></i><i style="background:#dccab0"></i><i style="background:#5e6b3c"></i></div>
+      <div class="nm">Riviera</div>
+      <div class="culture">Italienne</div>
+    </div>
+  </div>
+
+  <p class="mult">Multiplié par <b>348</b>.</p>
+</section>
+
+<!-- LES PARTENAIRES — uniquement les vraies marques affiliées WADA -->
+<section class="budgets">
+  <div class="sec-kick">Les partenaires actuels</div>
+  <h2 class="sec-title">Une sélection qui <em>grandit chaque semaine</em>.</h2>
+
+  <div class="budget-grid">
+    <div class="b-row">
+      <div class="b-tag">L'essentiel</div>
+      <div>
+        <h4>MUJI</h4>
+        <p>Basiques minimalistes japonais, le vestiaire du quotidien.</p>
+        <span class="prix"><b>20 – 150 €</b> par pièce</span>
+      </div>
+    </div>
+    <div class="b-row">
+      <div class="b-tag">La chemise</div>
+      <div>
+        <h4>The Shirt Company</h4>
+        <p>Chemises et chemisiers femme premium, taillés à Londres.</p>
+        <span class="prix"><b>95 – 200 €</b> par pièce</span>
+      </div>
+    </div>
+    <div class="b-row">
+      <div class="b-tag">L'investissement</div>
+      <div>
+        <h4>Tom Ford · Brunello Cucinelli · Amiri</h4>
+        <p>Plus de 200 maisons de luxe homme via The Business Fashion : Rick Owens, Loro Piana, Jacquemus, Comme des Garçons, Acne, AMI Paris…</p>
+        <span class="prix"><b>200 – 2 000 €</b> par pièce</span>
+      </div>
+    </div>
+    <div class="b-row">
+      <div class="b-tag">À venir</div>
+      <div>
+        <h4>Sezane · Sandro · Maje · Net-a-Porter…</h4>
+        <p>D'autres marques rejoignent WADA chaque semaine. Vous voulez la vôtre ? <a href="#" style="color:var(--bordeaux);text-decoration:underline">Écrivez-nous</a>.</p>
+        <span class="prix"><b>Catalogue en croissance</b></span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PROMESSES — grille 2x2 -->
+<section class="promesses">
+  <div class="sec-kick">Gratuit, sans piège</div>
+  <h2 class="sec-title">Gratuit. <em>Simple</em>. Honnête.</h2>
+
+  <div class="prom-grid">
+    <div class="prom">
+      <span class="prom-num">i</span>
+      <h4>Site gratuit</h4>
+      <p>Palettes, scanner, recommandations — sans abonnement.</p>
+    </div>
+    <div class="prom">
+      <span class="prom-num">ii</span>
+      <h4>Pas de pub intrusive</h4>
+      <p>Aucun pop-up, aucune surcharge, pas de tracking publicitaire.</p>
+    </div>
+    <div class="prom">
+      <span class="prom-num">iii</span>
+      <h4>Liens transparents</h4>
+      <p>Vous achetez chez la marque, au prix marchand. WADA touche parfois une commission.</p>
+    </div>
+    <div class="prom">
+      <span class="prom-num">iv</span>
+      <h4>Abonnement optionnel</h4>
+      <p>Pour aller plus loin : recommandations personnalisées et calendrier de tenues.</p>
+    </div>
+  </div>
+</section>
+
+<!-- CŒUR DU PROJET — climax -->
+<section class="coeur">
+  <div class="sec-kick">Le cœur du projet</div>
+  <div class="big">348</div>
+  <div class="big-2">inspirations.</div>
+  <p class="sub">Chaque accord de couleurs devient une silhouette prête à porter. Des palettes inspirées du livre original de 1933, adaptées à aujourd'hui.</p>
+</section>
+
+<!-- BIENVENUE -->
+<section class="bienvenue">
+  <h2>Bienvenue dans le dictionnaire.</h2>
+  <p>WADA est indépendant. Pas d'investisseur, pas de pub. Juste les couleurs et vous.</p>
+  <div class="signed">Genève · 2026</div>
+</section>
+
+<!-- CTA FINAL -->
+<section class="cta-final">
+  <h3>Découvrez les palettes WADA.</h3>
+  <p>Le dictionnaire complet, pensé pour vous aider à mieux vous habiller au quotidien.</p>
+  <a href="#" class="btn-primary">Explorer les palettes &nbsp;&rarr;</a>
+  <a href="#" class="btn-soft">Scanner une couleur</a>
+</section>
+
+</div><!-- /wrap -->
+
+<footer>
+  <div class="brand2">WADA 和田</div>
+  <p>Un dictionnaire de palettes pour composer la tenue parfaite. D'après Sanzo Wada (1933).</p>
+  <div class="socials">
+    <a href="#" aria-label="Instagram">⓪</a>
+    <a href="#" aria-label="TikTok">♪</a>
+    <a href="#" aria-label="Pinterest">℗</a>
+  </div>
+  <div class="copy">© 2026 WADA · Genève</div>
+</footer>
+
+</body>
+</html>

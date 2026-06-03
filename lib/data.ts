@@ -2,6 +2,7 @@
 import { affiliate } from "./affiliate";
 import { amazonSearch, amazonBrandSearch, amazonLuxurySearch } from "./amazonAffiliate";
 import { buildSearchUrl } from "./merchantSearch";
+import { isAffiliatedBrand } from "./affiliate-brands";
 
 export type DictionaryEntry = {
   number: string;
@@ -614,12 +615,23 @@ export const shopOptions = (q: string, pieceType?: string): ShopLink[] => {
 };
 
 /**
- * Variante de shopOptions qui passe chaque URL par le wrapper Awin.
- * À utiliser dans l'UI à la place de shopOptions(). Comportement identique
- * tant qu'aucun publisher Awin n'est configuré.
+ * Variante de shopOptions qui passe chaque URL par le wrapper Awin ET ne
+ * garde QUE les marques réellement affiliées (whitelist lib/affiliate-brands).
+ *
+ * Bug critique 2026-05-31 : avant, cette fonction renvoyait tout le catalogue
+ * shopOptions (95% de recherches Amazon non taggées + COS/Veja/Nike directs)
+ * comme « liens partenaires » — alors qu'aucune n'est affiliée. Le client
+ * achetait, WADA ne touchait rien, et le libellé « Lien partenaire » était
+ * trompeur (RGPD). Désormais : filtre par `isAffiliatedBrand()` AVANT toute
+ * autre logique. Tant que seuls MUJI / TBF / The Shirt Company sont actifs,
+ * la liste est volontairement courte (ou vide) — c'est honnête. Les vraies
+ * fiches produit (image + prix réel + deep-link) viennent du flux Awin via
+ * /api/products, pas de ces recherches de fallback.
  */
 export const shopOptionsAffiliated = (q: string, pieceType?: string): ShopLink[] =>
-  shopOptions(q, pieceType).map((link) => ({ ...link, url: affiliate(link.url, link.label) }));
+  shopOptions(q, pieceType)
+    .filter((link) => isAffiliatedBrand(link.label))
+    .map((link) => ({ ...link, url: affiliate(link.url, link.label) }));
 
 /* ════════════════════════════════════════════════════════════════════════
    FILTRAGE PERSONNALISÉ — match le profil utilisateur avec la base de marques

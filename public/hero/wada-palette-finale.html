@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WADA — Tweed & Encre</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --cream:#f4eee4;--cream-2:#efe7da;--card:#fbf7f0;--ink:#2a2521;--muted:#8c8377;
+    --line:#e5dccc;--bordeaux:#6e3b32;--bordeaux-2:#82473c;--olive:#6f7a3f;
+    --shadow:0 18px 50px -28px rgba(60,40,25,.45);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Inter',system-ui,sans-serif;
+    background:radial-gradient(1000px 500px at 80% -10%,#fbf4e8 0%,transparent 60%),var(--cream);
+    color:var(--ink);-webkit-font-smoothing:antialiased;}
+  h1,h2,h3,h4,.brand,.chubby{font-family:'Fredoka',sans-serif}
+
+  /* ============== ONBOARDING ============== */
+  .onboarding{position:fixed;inset:0;background:var(--cream);z-index:100;display:grid;place-items:center;padding:24px}
+  .onb-card{max-width:520px;width:100%;background:var(--card);border:1px solid var(--line);border-radius:28px;padding:36px 30px;box-shadow:0 30px 80px -30px rgba(60,40,25,.4)}
+  .onb-brand{font-family:'Fredoka';font-size:28px;font-weight:600;text-align:center;margin-bottom:6px}
+  .onb-welcome{text-align:center;color:var(--muted);font-size:14.5px;margin-bottom:28px}
+  .onb-welcome b{color:var(--ink);font-weight:600}
+  .q{margin-bottom:22px}
+  .q-label{font-family:'Fredoka';font-size:15.5px;font-weight:500;margin-bottom:10px}
+  .q-opts{display:flex;flex-wrap:wrap;gap:8px}
+  .q-opts button{flex:1;min-width:max-content;background:#fff;border:1px solid var(--line);border-radius:14px;padding:13px 18px;font-family:'Fredoka';font-size:14.5px;color:var(--ink);cursor:pointer;transition:.14s}
+  .q-opts button:hover{border-color:var(--bordeaux)}
+  .q-opts button.on{background:var(--bordeaux);color:#fff;border-color:var(--bordeaux)}
+  .onb-go{display:block;width:100%;margin-top:8px;background:var(--bordeaux);color:#fff;border:none;border-radius:14px;padding:16px;font-family:'Fredoka';font-size:16px;font-weight:500;cursor:pointer;opacity:.5;pointer-events:none;transition:.18s}
+  .onb-go.ready{opacity:1;pointer-events:auto}
+  .onb-go:hover{background:var(--bordeaux-2)}
+  .onb-skip{display:block;text-align:center;margin-top:12px;color:var(--muted);font-size:13px;background:none;border:none;cursor:pointer;text-decoration:underline;width:100%}
+
+  /* ============== PAGE ============== */
+  .app{display:none}.app.show{display:block}
+
+  nav{display:flex;align-items:center;justify-content:space-between;padding:18px clamp(20px,5vw,56px);
+    border-bottom:1px solid var(--line);background:rgba(250,246,239,.7);backdrop-filter:blur(8px);position:sticky;top:0;z-index:20}
+  .nav-left{display:flex;gap:26px;font-weight:500;font-size:15px}
+  .nav-left a{color:var(--ink);text-decoration:none;opacity:.78}
+  .nav-left a:hover,.nav-left a.active{opacity:1}
+  .brand{font-size:26px;font-weight:600;letter-spacing:.5px;position:absolute;left:50%;transform:translateX(-50%)}
+  .nav-right{display:flex;align-items:center;gap:10px}
+  .profile-pill{display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:6px 14px 6px 6px;font-size:12.5px;color:var(--ink);cursor:pointer;font-family:'Inter';transition:.14s}
+  .profile-pill:hover{border-color:var(--bordeaux)}
+  .profile-pill .av{width:24px;height:24px;border-radius:50%;background:var(--bordeaux);color:#fff;display:grid;place-items:center;font-family:'Fredoka';font-size:12px}
+  .profile-pill .ch{margin-left:4px;font-size:10px;color:var(--muted)}
+
+  .wrap{max-width:1080px;margin:0 auto;padding:28px clamp(18px,5vw,40px) 80px}
+  .back{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--card);border-radius:999px;padding:9px 18px;font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink);cursor:pointer;text-decoration:none}
+  .back:hover{background:#fff}
+
+  /* HERO */
+  .hero{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:48px;align-items:center;margin-top:36px}
+  .palette-card{background:var(--card);border:1px solid var(--line);border-radius:24px;overflow:hidden;box-shadow:var(--shadow)}
+  .swatch{padding:24px 26px;color:#fff;position:relative;min-height:122px;display:flex;flex-direction:column;justify-content:center}
+  .swatch .ref{font-size:11px;letter-spacing:.16em;opacity:.78;text-transform:uppercase;margin-bottom:4px}
+  .swatch .nm{font-family:'Fredoka';font-size:22px;font-weight:500;text-shadow:0 1px 2px rgba(0,0,0,.25)}
+  .swatch .hex{position:absolute;right:24px;bottom:22px;font-size:13px;opacity:.82;font-feature-settings:'tnum'}
+  .swatch.light{color:#2a2521}.swatch.light .nm{text-shadow:none}.swatch.light .hex{opacity:.6}
+
+  .meta-block .kicker{display:inline-block;font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:12px}
+  h1{font-size:clamp(42px,5.2vw,60px);line-height:1.04;letter-spacing:-.5px;margin-bottom:12px}
+  .lede{font-size:16.5px;color:var(--muted);font-style:italic;margin-bottom:20px;max-width:42ch;line-height:1.5}
+
+  /* perso badge clickable */
+  .perso{display:inline-flex;align-items:center;gap:8px;background:#f6efdc;border:1px solid #e5d8b8;border-radius:999px;padding:7px 14px;font-size:12.5px;color:#5b4d2c;margin-bottom:18px;cursor:pointer;transition:.14s;font-family:'Inter'}
+  .perso:hover{background:#f1e6c8;border-color:#d9c79b}
+  .perso .dot{width:6px;height:6px;border-radius:50%;background:var(--olive)}
+  .perso .ch{margin-left:4px;font-size:11px;opacity:.65}
+
+  .mini-actions{display:flex;gap:10px;margin-top:4px}
+  .mini{width:40px;height:40px;border-radius:50%;border:1px solid var(--line);background:#fff;display:grid;place-items:center;cursor:pointer;font-size:14px}
+  .mini:hover{border-color:var(--bordeaux)}
+  .mini.heart.on{color:var(--bordeaux);border-color:var(--bordeaux)}
+  .mini svg{width:15px;height:15px}
+
+  /* COMMENT PORTER */
+  .section{margin-top:64px}
+  .sec-head{text-align:center;margin-bottom:28px}
+  .sec-head h2{font-size:clamp(28px,3.4vw,38px);letter-spacing:-.3px;font-weight:500}
+  .sec-head h2 em{font-style:normal;background:linear-gradient(180deg,transparent 62%,#f0e2c3 62%);padding:0 4px}
+  .sec-head p{color:var(--muted);font-size:14.5px;margin-top:6px}
+
+  .occ-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+  .occ{background:var(--card);border:1px solid var(--line);border-radius:22px;overflow:hidden;display:flex;flex-direction:column;transition:.18s;cursor:pointer}
+  .occ:hover{transform:translateY(-4px);box-shadow:var(--shadow);border-color:#d6c7a8}
+  .occ-strip{display:flex;height:72px}
+  .occ-strip i{flex:1}
+  .occ-body{padding:18px;display:flex;flex-direction:column;flex:1}
+  .occ-tag{display:inline-flex;align-items:center;gap:6px;align-self:flex-start;background:var(--cream-2);border-radius:999px;padding:5px 11px;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink);font-weight:600;margin-bottom:10px}
+  .occ h3{display:flex;align-items:center;gap:8px;font-size:18px;font-weight:500;margin-bottom:6px}
+  .occ p{font-size:13.5px;color:var(--muted);line-height:1.5;margin-bottom:12px}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px;min-height:54px}
+  .chip{font-size:12px;background:#fff;border:1px solid var(--line);border-radius:999px;padding:5px 11px;color:var(--ink)}
+  .occ .go{margin-top:auto;background:var(--bordeaux);color:#fff;border:none;border-radius:12px;padding:12px;font-family:'Fredoka';font-size:14.5px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px}
+  .occ .go:hover{background:var(--bordeaux-2)}
+
+  /* styliste line */
+  .styliste-note{margin-top:28px;text-align:center;color:var(--muted);font-size:14px}
+  .styliste-note a{color:var(--bordeaux);font-weight:600;text-decoration:none;border-bottom:1px dashed var(--bordeaux)}
+
+  /* PREV/NEXT light */
+  .pn{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:50px}
+  .pn a{display:flex;flex-direction:column;gap:4px;background:var(--card);border:1px solid var(--line);border-radius:18px;padding:18px 20px;text-decoration:none;color:var(--ink);transition:.16s}
+  .pn a:hover{border-color:var(--bordeaux);transform:translateY(-2px)}
+  .pn .k{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+  .pn .n{font-family:'Fredoka';font-size:18px;font-weight:500}
+  .pn .next{text-align:right}
+
+  /* FOOTER */
+  footer{background:#16130f;color:#cfc6b6;margin-top:70px;padding:54px clamp(20px,5vw,56px) 26px}
+  .fgrid{display:grid;grid-template-columns:1.6fr 1fr 1fr 1fr;gap:30px;max-width:1100px;margin:0 auto}
+  footer .brand2{font-family:'Fredoka';color:#fff;font-size:24px;margin-bottom:12px}
+  footer p{font-size:14px;line-height:1.6;opacity:.7;max-width:300px}
+  footer h4{font-size:12px;letter-spacing:.16em;color:#fff;margin-bottom:14px;text-transform:uppercase}
+  footer ul{list-style:none}footer li{margin-bottom:10px}
+  footer a{color:#cfc6b6;text-decoration:none;font-size:14px;opacity:.8}footer a:hover{opacity:1}
+  .fbar{max-width:1100px;margin:34px auto 0;border-top:1px solid #2c2620;padding-top:18px;font-size:12.5px;opacity:.6;display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;align-items:center}
+  .socials{display:flex;gap:10px}
+  .socials a{display:grid;place-items:center;width:34px;height:34px;border-radius:50%;border:1px solid #2c2620;color:#cfc6b6}
+  .socials svg{width:16px;height:16px;fill:currentColor}
+
+  /* SWITCHER */
+  .switcher-bg{position:fixed;inset:0;background:rgba(20,15,10,.35);z-index:90;display:none}
+  .switcher-bg.show{display:block}
+  .switcher{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:var(--card);
+    border:1px solid var(--line);border-radius:24px;padding:24px;width:min(440px,calc(100vw - 32px));
+    box-shadow:0 30px 80px -30px rgba(60,40,25,.5);z-index:91;display:none}
+  .switcher.show{display:block}
+  .sw-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:14px}
+  .sw-head h3{font-family:'Fredoka';font-size:17px;font-weight:500}
+  .sw-close{background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer;line-height:1}
+  .sw-hint{font-size:12.5px;color:var(--muted);margin-bottom:18px}
+  .sw-q{margin-bottom:14px}
+  .sw-q label{display:block;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:7px;font-weight:600}
+  .sw-segs{display:inline-flex;background:var(--cream-2);border-radius:999px;padding:4px;gap:2px;max-width:100%;flex-wrap:wrap}
+  .sw-segs button{border:none;background:transparent;padding:9px 16px;border-radius:999px;font-family:'Fredoka';font-size:13.5px;color:var(--muted);cursor:pointer;font-weight:500}
+  .sw-segs button.on{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.08)}
+  .sw-done{display:block;width:100%;margin-top:8px;background:var(--bordeaux);color:#fff;border:none;border-radius:14px;padding:14px;font-family:'Fredoka';font-size:15px;font-weight:500;cursor:pointer}
+
+  @media(max-width:880px){
+    .hero{grid-template-columns:1fr;gap:28px;margin-top:24px}
+    .occ-grid{grid-template-columns:1fr;gap:14px}
+    .chips{min-height:auto}
+    .pn{grid-template-columns:1fr}.pn .next{text-align:left}
+    .nav-left{display:none}.brand{position:static;transform:none}
+    .fgrid{grid-template-columns:1fr 1fr}
+    .q-opts button{flex:none;width:100%}
+    .profile-pill .lbl{display:none}
+  }
+</style>
+</head>
+<body>
+
+<!-- ONBOARDING -->
+<div class="onboarding" id="onb">
+  <div class="onb-card">
+    <div class="onb-brand">WADA 和田</div>
+    <p class="onb-welcome"><b>3 questions</b> pour personnaliser tes tenues. Modifiable à tout moment.</p>
+
+    <div class="q" data-key="genre">
+      <div class="q-label">Pour qui&nbsp;?</div>
+      <div class="q-opts">
+        <button data-v="Femme">Femme</button>
+        <button data-v="Homme">Homme</button>
+      </div>
+    </div>
+
+    <div class="q" data-key="budget">
+      <div class="q-label">Budget par tenue&nbsp;?</div>
+      <div class="q-opts">
+        <button data-v="< 150€">moins de 150 €</button>
+        <button data-v="150–400€">150 – 400 €</button>
+        <button data-v="Premium">Premium</button>
+      </div>
+    </div>
+
+    <div class="q" data-key="style">
+      <div class="q-label">Ton style&nbsp;?</div>
+      <div class="q-opts">
+        <button data-v="Minimaliste">Minimaliste</button>
+        <button data-v="Classique">Classique</button>
+        <button data-v="Streetwear">Streetwear</button>
+        <button data-v="Décontracté">Décontracté</button>
+      </div>
+    </div>
+
+    <button class="onb-go" id="onbGo">Commencer &nbsp;&rarr;</button>
+    <button class="onb-skip" onclick="finish(true)">Passer pour cette fois</button>
+  </div>
+</div>
+
+<!-- SWITCHER -->
+<div class="switcher-bg" id="swBg" onclick="closeSwitcher()"></div>
+<div class="switcher" id="sw">
+  <div class="sw-head">
+    <h3>Changer le profil</h3>
+    <button class="sw-close" onclick="closeSwitcher()">&times;</button>
+  </div>
+  <p class="sw-hint">Modifie n'importe quelle dimension — les tenues s'adaptent.</p>
+
+  <div class="sw-q" data-key="genre"><label>Pour qui</label>
+    <div class="sw-segs"><button data-v="Femme">Femme</button><button data-v="Homme">Homme</button></div>
+  </div>
+  <div class="sw-q" data-key="budget"><label>Budget</label>
+    <div class="sw-segs"><button data-v="< 150€">&lt; 150€</button><button data-v="150–400€">150–400€</button><button data-v="Premium">Premium</button></div>
+  </div>
+  <div class="sw-q" data-key="style"><label>Style</label>
+    <div class="sw-segs"><button data-v="Minimaliste">Minimaliste</button><button data-v="Classique">Classique</button><button data-v="Streetwear">Streetwear</button><button data-v="Décontracté">Décontracté</button></div>
+  </div>
+
+  <button class="sw-done" onclick="closeSwitcher()">Appliquer &nbsp;&rarr;</button>
+</div>
+
+<!-- PAGE -->
+<div class="app" id="app">
+  <nav>
+    <div class="nav-left">
+      <a href="#" class="active">Palettes</a>
+      <a href="#">Scanner</a>
+      <a href="#">Styliste</a>
+      <a href="#">Favoris</a>
+    </div>
+    <div class="brand">WADA 和田</div>
+    <div class="nav-right">
+      <button class="profile-pill" onclick="openSwitcher()" title="Changer le profil">
+        <span class="av" id="avInit">F</span>
+        <span class="lbl" id="profLbl">Femme · 150–400€ · Minimaliste</span>
+        <span class="ch">&#9662;</span>
+      </button>
+    </div>
+  </nav>
+
+  <div class="wrap">
+    <a class="back" href="#">&larr;&nbsp; Retour</a>
+
+    <!-- HERO : palette + nom -->
+    <section class="hero">
+      <div class="palette-card">
+        <div class="swatch" style="background:#8A8472">
+          <div class="ref">WADA · 138-0132-1331</div>
+          <div class="nm">Pierre</div>
+          <div class="hex">#8A8472</div>
+        </div>
+        <div class="swatch light" style="background:#D9C9A8">
+          <div class="ref">WADA · 217-0201-2026</div>
+          <div class="nm">Sable</div>
+          <div class="hex">#D9C9A8</div>
+        </div>
+        <div class="swatch" style="background:#7B2D26">
+          <div class="ref">WADA · 123-0045-4538</div>
+          <div class="nm">Vermillon</div>
+          <div class="hex">#7B2D26</div>
+        </div>
+      </div>
+
+      <div class="meta-block">
+        <span class="kicker">No. 162 · Japonaise</span>
+        <h1>Tweed &amp; Encre</h1>
+        <p class="lede">L'accord qui surprend par sa retenue.</p>
+
+        <button class="perso" onclick="openSwitcher()">
+          <span class="dot"></span><span id="persoTxt">Composée pour vous · Femme · 150–400€ · Minimaliste</span><span class="ch">&#9662;</span>
+        </button>
+
+        <div class="mini-actions">
+          <button class="mini heart on" title="Favori">&#9829;</button>
+          <button class="mini" title="Pinterest">
+            <svg viewBox="0 0 24 24" fill="#bd2c2c"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.08 3.16 9.42 7.62 11.17-.11-.95-.2-2.41.04-3.45.22-.94 1.4-5.98 1.4-5.98s-.36-.72-.36-1.78c0-1.67.97-2.91 2.17-2.91 1.02 0 1.52.77 1.52 1.69 0 1.03-.66 2.57-1 4-.28 1.2.6 2.18 1.79 2.18 2.15 0 3.8-2.27 3.8-5.54 0-2.9-2.08-4.93-5.05-4.93-3.44 0-5.46 2.58-5.46 5.25 0 1.04.4 2.16.9 2.76.1.12.11.23.08.35-.09.38-.29 1.2-.33 1.36-.05.22-.17.27-.4.16-1.49-.69-2.42-2.87-2.42-4.62 0-3.76 2.73-7.22 7.88-7.22 4.14 0 7.35 2.95 7.35 6.89 0 4.11-2.59 7.42-6.19 7.42-1.21 0-2.35-.63-2.74-1.37l-.74 2.84c-.27 1.04-1 2.34-1.49 3.13C9.57 23.82 10.76 24 12 24c6.63 0 12-5.37 12-12S18.63 0 12 0z"/></svg>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- COMMENT PORTER : 3 propositions personnalisées -->
+    <section class="section">
+      <div class="sec-head">
+        <h2>Comment porter <em>Tweed &amp; Encre</em>&nbsp;?</h2>
+        <p>Trois manières — composées pour votre profil.</p>
+      </div>
+
+      <div class="occ-grid">
+        <div class="occ">
+          <div class="occ-strip"><i style="background:#8A8472"></i><i style="background:#D9C9A8"></i><i style="background:#7B2D26"></i></div>
+          <div class="occ-body">
+            <span class="occ-tag">&#128188; Au bureau</span>
+            <h3>Tailoring classique</h3>
+            <p>Blazer impeccable, chemise et bonnes chaussures — autorité tranquille.</p>
+            <div class="chips" data-occ="bureau"></div>
+            <button class="go">Voir ce look &rarr;</button>
+          </div>
+        </div>
+
+        <div class="occ">
+          <div class="occ-strip"><i style="background:#D9C9A8"></i><i style="background:#8A8472"></i><i style="background:#7B2D26"></i></div>
+          <div class="occ-body">
+            <span class="occ-tag">&#9728; Au quotidien</span>
+            <h3>Casual chic</h3>
+            <p>Confortable sans négliger l'allure, à porter en vrai.</p>
+            <div class="chips" data-occ="quotidien"></div>
+            <button class="go">Voir ce look &rarr;</button>
+          </div>
+        </div>
+
+        <div class="occ">
+          <div class="occ-strip"><i style="background:#7B2D26"></i><i style="background:#8A8472"></i><i style="background:#D9C9A8"></i></div>
+          <div class="occ-body">
+            <span class="occ-tag">&#127769; En soirée</span>
+            <h3>Tenue habillée</h3>
+            <p>Pièces nobles, accent sombre — pour un dîner ou une sortie.</p>
+            <div class="chips" data-occ="soiree"></div>
+            <button class="go">Voir ce look &rarr;</button>
+          </div>
+        </div>
+      </div>
+
+      <p class="styliste-note">Ou <a href="#">dialoguez avec le styliste</a> pour une tenue sur-mesure autour de cette palette.</p>
+    </section>
+
+    <!-- PREV / NEXT light -->
+    <nav class="pn">
+      <a href="#" class="prev"><span class="k">&larr; Précédente · No. 161</span><span class="n">Cachemire &amp; Vent</span></a>
+      <a href="#" class="next"><span class="k">Suivante · No. 163 &rarr;</span><span class="n">Murmure d'Anvers</span></a>
+    </nav>
+  </div>
+
+  <footer>
+    <div class="fgrid">
+      <div>
+        <div class="brand2">WADA 和田</div>
+        <p>Un dictionnaire de palettes pour composer la tenue parfaite. D'après Sanzo Wada (1933).</p>
+      </div>
+      <div><h4>Explorer</h4><ul><li><a href="#">Palettes</a></li><li><a href="#">Scanner</a></li><li><a href="#">Découverte</a></li><li><a href="#">Cultures</a></li></ul></div>
+      <div><h4>Compte</h4><ul><li><a href="#">Mes favoris</a></li><li><a href="#">Abonnement</a></li><li><a href="#">À propos</a></li><li><a href="#">FAQ</a></li></ul></div>
+      <div><h4>Contact</h4><ul><li><a href="#">hello@wada.style</a></li><li><a href="#">Pour les marques</a></li><li><a href="#">Mentions légales</a></li></ul></div>
+    </div>
+    <div class="fbar">
+      <span>© 2026 WADA · Genève</span>
+      <div class="socials">
+        <a href="#" aria-label="Instagram"><svg viewBox="0 0 24 24"><path d="M12 2.16c3.2 0 3.58.01 4.85.07 1.17.05 1.8.25 2.23.41.56.22.96.48 1.38.9.42.42.68.82.9 1.38.16.42.36 1.06.41 2.23.06 1.27.07 1.65.07 4.85s-.01 3.58-.07 4.85c-.05 1.17-.25 1.8-.41 2.23-.22.56-.48.96-.9 1.38-.42.42-.82.68-1.38.9-.42.16-1.06.36-2.23.41-1.27.06-1.65.07-4.85.07s-3.58-.01-4.85-.07c-1.17-.05-1.8-.25-2.23-.41a3.7 3.7 0 0 1-1.38-.9 3.7 3.7 0 0 1-.9-1.38c-.16-.42-.36-1.06-.41-2.23C2.17 15.58 2.16 15.2 2.16 12s.01-3.58.07-4.85c.05-1.17.25-1.8.41-2.23.22-.56.48-.96.9-1.38.42-.42.82-.68 1.38-.9.42-.16 1.06-.36 2.23-.41C8.42 2.17 8.8 2.16 12 2.16M12 0C8.74 0 8.33.01 7.05.07 5.78.13 4.9.34 4.14.63a5.86 5.86 0 0 0-2.13 1.38A5.86 5.86 0 0 0 .63 4.14C.34 4.9.13 5.78.07 7.05.01 8.33 0 8.74 0 12s.01 3.67.07 4.95c.06 1.27.27 2.15.56 2.91.31.78.72 1.45 1.38 2.13.68.66 1.35 1.07 2.13 1.38.76.29 1.64.5 2.91.56C8.33 23.99 8.74 24 12 24s3.67-.01 4.95-.07c1.27-.06 2.15-.27 2.91-.56.78-.31 1.45-.72 2.13-1.38.66-.68 1.07-1.35 1.38-2.13.29-.76.5-1.64.56-2.91.06-1.28.07-1.69.07-4.95s-.01-3.67-.07-4.95c-.06-1.27-.27-2.15-.56-2.91a5.86 5.86 0 0 0-1.38-2.13A5.86 5.86 0 0 0 19.86.63C19.1.34 18.22.13 16.95.07 15.67.01 15.26 0 12 0zm0 5.84A6.16 6.16 0 1 0 12 18.16 6.16 6.16 0 0 0 12 5.84zm0 10.16A4 4 0 1 1 12 8a4 4 0 0 1 0 8zm6.4-11.84a1.44 1.44 0 1 0 0 2.88 1.44 1.44 0 0 0 0-2.88z"/></svg></a>
+        <a href="#" aria-label="Pinterest"><svg viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.08 3.16 9.42 7.62 11.17-.11-.95-.2-2.41.04-3.45.22-.94 1.4-5.98 1.4-5.98s-.36-.72-.36-1.78c0-1.67.97-2.91 2.17-2.91 1.02 0 1.52.77 1.52 1.69 0 1.03-.66 2.57-1 4-.28 1.2.6 2.18 1.79 2.18 2.15 0 3.8-2.27 3.8-5.54 0-2.9-2.08-4.93-5.05-4.93-3.44 0-5.46 2.58-5.46 5.25 0 1.04.4 2.16.9 2.76.1.12.11.23.08.35-.09.38-.29 1.2-.33 1.36-.05.22-.17.27-.4.16-1.49-.69-2.42-2.87-2.42-4.62 0-3.76 2.73-7.22 7.88-7.22 4.14 0 7.35 2.95 7.35 6.89 0 4.11-2.59 7.42-6.19 7.42-1.21 0-2.35-.63-2.74-1.37l-.74 2.84c-.27 1.04-1 2.34-1.49 3.13C9.57 23.82 10.76 24 12 24c6.63 0 12-5.37 12-12S18.63 0 12 0z"/></svg></a>
+      </div>
+    </div>
+  </footer>
+</div>
+
+<script>
+  const profile={genre:null,budget:null,style:null};
+
+  // CHIPS personnalisées par genre & budget
+  const looks={
+    bureau:{
+      Femme:{base:['Blazer fluide','Chemise sable','Pantalon droit','Mocassins cuir','Boucles dorées']},
+      Homme:{base:['Blazer pierre','Chemise sable','Pantalon laine','Derbies cuir','Pochette vermillon']}
+    },
+    quotidien:{
+      Femme:{base:['Tee sable','Jean droit','Veste légère','Sneakers crème','Sac vermillon']},
+      Homme:{base:['T-shirt sable','Chino pierre','Veste légère','Sneakers crème','Ceinture vermillon']}
+    },
+    soiree:{
+      Femme:{base:['Pull fin','Pantalon sombre','Manteau sable','Escarpins cuir','Bague vermillon']},
+      Homme:{base:['Pull fin','Pantalon sombre','Manteau sable','Chaussures cuir','Montre cuir']}
+    }
+  };
+
+  function renderChips(){
+    document.querySelectorAll('.chips').forEach(c=>{
+      const occ=c.dataset.occ;
+      const g=profile.genre||'Femme';
+      const list=looks[occ][g].base;
+      c.innerHTML=list.map(t=>`<span class="chip">${t}</span>`).join('');
+    });
+  }
+
+  // ONBOARDING
+  document.querySelectorAll('.onboarding .q').forEach(q=>{
+    const key=q.dataset.key;
+    q.querySelectorAll('button').forEach(b=>{
+      b.addEventListener('click',()=>{
+        q.querySelectorAll('button').forEach(x=>x.classList.remove('on'));
+        b.classList.add('on');
+        profile[key]=b.dataset.v;
+        if(profile.genre&&profile.budget&&profile.style){
+          document.getElementById('onbGo').classList.add('ready');
+        }
+      });
+    });
+  });
+  document.getElementById('onbGo').addEventListener('click',()=>finish(false));
+
+  function finish(skipped){
+    document.getElementById('onb').style.display='none';
+    document.getElementById('app').classList.add('show');
+    if(skipped||!profile.genre){
+      profile.genre='Femme';profile.budget='150–400€';profile.style='Minimaliste';
+    }
+    updateLabels(); renderChips(); syncSwitcher();
+  }
+
+  // SWITCHER
+  function openSwitcher(){ syncSwitcher();
+    document.getElementById('swBg').classList.add('show');
+    document.getElementById('sw').classList.add('show');
+  }
+  function closeSwitcher(){
+    document.getElementById('swBg').classList.remove('show');
+    document.getElementById('sw').classList.remove('show');
+    updateLabels(); renderChips();
+  }
+
+  document.querySelectorAll('.switcher .sw-q').forEach(q=>{
+    const key=q.dataset.key;
+    q.querySelectorAll('button').forEach(b=>{
+      b.addEventListener('click',()=>{
+        q.querySelectorAll('button').forEach(x=>x.classList.remove('on'));
+        b.classList.add('on');
+        profile[key]=b.dataset.v;
+        updateLabels(); renderChips();
+      });
+    });
+  });
+
+  function syncSwitcher(){
+    document.querySelectorAll('.switcher .sw-q').forEach(q=>{
+      const key=q.dataset.key;
+      q.querySelectorAll('button').forEach(b=>{
+        b.classList.toggle('on',b.dataset.v===profile[key]);
+      });
+    });
+  }
+  function updateLabels(){
+    if(!profile.genre) return;
+    document.getElementById('avInit').textContent=profile.genre.charAt(0);
+    document.getElementById('profLbl').textContent=`${profile.genre} · ${profile.budget} · ${profile.style}`;
+    document.getElementById('persoTxt').textContent=`Composées pour vous · ${profile.genre} · ${profile.budget} · ${profile.style}`;
+  }
+</script>
+</body>
+</html>

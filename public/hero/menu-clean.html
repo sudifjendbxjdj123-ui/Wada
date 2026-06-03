@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WADA — Menu (Abonnement seul)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{--beige:#F4EFE7;--ink:#1E1E1E;--ink-soft:#6a6259;--bordeaux:#6B3A32;
+    --fd:"Fredoka",sans-serif;--sans:"Inter",Arial,sans-serif}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:var(--sans);background:#cfc8bd;padding:20px;display:flex;justify-content:center}
+  .phone{width:390px;max-width:100%;min-height:760px;background:var(--beige);border-radius:28px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.25);padding:22px 24px 30px;display:flex;flex-direction:column}
+  .top{display:flex;justify-content:space-between;align-items:center}
+  .top .logo{font-family:var(--fd);font-weight:700;font-size:22px;color:var(--ink)}
+  .top .x{font-size:22px;color:var(--ink);background:none;border:none;cursor:pointer}
+  /* le menu ne contient QUE le bouton Abonnement, centré */
+  .center{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px}
+  .abo{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:var(--bordeaux);color:#FAF8F4;
+    text-decoration:none;border-radius:999px;padding:18px 40px;font-size:17px;font-weight:500}
+  .abo small{font-weight:400;opacity:.85;font-size:13px}
+  .note{font-size:13px;color:var(--ink-soft)}
+</style>
+</head>
+<body>
+  <div class="phone">
+    <div class="top"><div class="logo">WADA和田</div><button class="x">✕</button></div>
+    <div class="center">
+      <a class="abo" href="#">Abonnement <small>· 7 jours offerts</small></a>
+      <div class="note">7 jours offerts · sans carte · annulable</div>
+    </div>
+  </div>
+</body>
+</html>

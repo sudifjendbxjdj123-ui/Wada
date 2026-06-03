@@ -1,0 +1,55 @@
+E-MAIL DE LANCEMENT WADA — VERSION TEXTE
+=========================================
+
+Plusieurs objets possibles (teste-en 2-3 en A/B) :
+  1. Trouvez la couleur. Trouvez votre style.
+  2. La couleur qui vous va vraiment — scannez, WADA fait le reste
+  3. 348 palettes, une tenue prête à porter pour chacune
+  4. On a transformé un livre de 1933 en garde-robe
+
+Préheader (texte d'aperçu dans la boîte de réception) :
+  Scannez une couleur, recevez la tenue qui l'incarne, achetez chaque pièce en un clic.
+
+---------------------------------------------------
+
+Bonjour {{prénom}},
+
+Et si une seule couleur suffisait à composer toute une tenue ?
+
+C'est l'idée de WADA. On s'est inspiré du dictionnaire de couleurs de
+Sanzo Wada (1933) — 348 accords chromatiques pensés par un maître de
+l'harmonie — et on les a traduits en tenues à porter, et à acheter.
+
+Le principe est simple :
+
+  1. Scannez une couleur (une photo, un objet, une humeur).
+  2. WADA vous renvoie la palette qui l'accompagne et la tenue qui
+     l'incarne.
+  3. Achetez chaque pièce en un clic, chez la marque (Vinted, Sézane,
+     COS, Net-a-Porter…), au prix de la boutique.
+
+→ Essayez le scanner, c'est gratuit et illimité :
+  https://www.wada.style/scanner
+
+Ce qui est gratuit, pour toujours :
+  • Le scanner couleur, sans limite.
+  • Les 348 palettes et leur tenue prête à acheter.
+  • L'achat, sans même créer de compte.
+
+Et si vous voulez aller plus loin, WADA Premium (1,99 €/mois, ou
+17,99 €/an — le prix d'un café) ajoute la personnalisation, la mémoire
+de votre garde-robe et l'exploration des couleurs par teinte.
+
+→ Découvrir WADA Premium : https://www.wada.style/tarifs
+
+On a hâte de voir ce que vous allez composer.
+
+À très vite,
+L'équipe WADA 和田
+
+---------------------------------------------------
+WADA — Le dictionnaire des couleurs et de la mode
+https://www.wada.style · hello@wada.style
+
+Vous recevez cet e-mail car vous vous êtes inscrit·e à WADA.
+Se désinscrire : {{lien_desinscription}}

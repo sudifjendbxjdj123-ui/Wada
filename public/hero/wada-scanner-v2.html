@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WADA — Scanner (v2)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --cream:#f4eee4;
+    --cream-2:#efe7da;
+    --card:#fbf7f0;
+    --ink:#2a2521;
+    --muted:#8c8377;
+    --line:#e5dccc;
+    --bordeaux:#6e3b32;
+    --bordeaux-2:#82473c;
+    --olive:#6f7a3f;
+    --gold:#c79a3c;
+    --shadow:0 18px 50px -28px rgba(60,40,25,.45);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    font-family:'Inter',system-ui,sans-serif;
+    background:
+      radial-gradient(1200px 600px at 80% -10%, #fbf4e8 0%, transparent 60%),
+      var(--cream);
+    color:var(--ink);
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3,.brand,.chubby{font-family:'Fredoka',sans-serif}
+
+  /* NAV */
+  nav{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:18px clamp(20px,5vw,56px);
+    border-bottom:1px solid var(--line);
+    background:rgba(250,246,239,.7);
+    backdrop-filter:blur(8px);
+    position:sticky;top:0;z-index:20;
+  }
+  .nav-left{display:flex;gap:26px;font-weight:500;font-size:15px}
+  .nav-left a{color:var(--ink);text-decoration:none;opacity:.78}
+  .nav-left a:hover,.nav-left a.active{opacity:1}
+  .brand{font-size:26px;font-weight:600;letter-spacing:.5px;position:absolute;left:50%;transform:translateX(-50%)}
+  .nav-right{display:flex;align-items:center;gap:16px}
+  .icon-btn{width:38px;height:38px;border-radius:50%;border:1px solid var(--line);background:var(--card);display:grid;place-items:center;cursor:pointer;font-size:15px}
+  .cta{background:var(--bordeaux);color:#fff;border:none;padding:11px 22px;border-radius:999px;font-family:'Fredoka';font-size:15px;font-weight:500;cursor:pointer}
+  .cta:hover{background:var(--bordeaux-2)}
+
+  /* PAGE */
+  .wrap{max-width:760px;margin:0 auto;padding:28px clamp(18px,5vw,32px) 80px}
+  .back{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--card);border-radius:999px;padding:9px 18px;font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink);cursor:pointer;text-decoration:none}
+  .back:hover{background:#fff}
+
+  /* TOGGLE */
+  .toggle{display:flex;gap:4px;background:var(--cream-2);border:1px solid var(--line);border-radius:999px;padding:5px;width:max-content;margin:34px auto 0}
+  .toggle button{border:none;background:transparent;padding:10px 22px;border-radius:999px;font-family:'Fredoka';font-size:15px;font-weight:500;color:var(--muted);cursor:pointer;display:flex;align-items:center;gap:8px}
+  .toggle button.on{background:var(--bordeaux);color:#fff}
+
+  h1{font-size:clamp(38px,7vw,58px);text-align:center;margin:26px 0 8px;letter-spacing:-.5px}
+  .lede{text-align:center;color:var(--muted);font-size:16px;margin-bottom:30px}
+
+  /* PANEL */
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:26px;box-shadow:var(--shadow);padding:clamp(20px,4vw,30px)}
+
+  /* DROPZONE */
+  .drop{
+    border:2px dashed #d9ccb6;border-radius:18px;
+    background:linear-gradient(180deg,#fbf6ed,#f6efe2);
+    padding:34px 22px;text-align:center;transition:.18s;
+  }
+  .drop:hover{border-color:var(--bordeaux);background:#fbf4e7}
+  .target{width:46px;height:46px;border-radius:50%;border:2px solid var(--bordeaux);display:grid;place-items:center;margin:0 auto 14px;position:relative}
+  .target::after{content:"";width:8px;height:8px;border-radius:50%;background:var(--bordeaux)}
+  .drop h3{font-size:21px;font-weight:600;margin-bottom:4px}
+  .drop .hint{color:var(--muted);font-size:14px;margin-bottom:20px}
+  .btn-primary{display:block;width:100%;background:var(--bordeaux);color:#fff;border:none;padding:15px;border-radius:13px;font-family:'Fredoka';font-size:16px;font-weight:500;cursor:pointer;margin-bottom:10px}
+  .btn-primary:hover{background:var(--bordeaux-2)}
+  .btn-ghost{display:block;width:100%;background:transparent;color:var(--ink);border:1px solid var(--line);padding:14px;border-radius:13px;font-family:'Fredoka';font-size:15px;cursor:pointer}
+  .btn-ghost:hover{background:#fff}
+
+  /* DETECTED — single clear state */
+  .detected{
+    display:flex;align-items:center;gap:16px;
+    border:1px solid var(--line);border-radius:16px;
+    padding:16px 18px;margin-top:18px;background:#fff;
+  }
+  .chip{width:52px;height:52px;border-radius:14px;flex:0 0 auto;border:1px solid rgba(0,0,0,.06);
+    background:repeating-conic-gradient(#e9e0d0 0% 25%,#f4eee4 0% 50%) 50% / 16px 16px;}
+  .detected.empty .chip{}
+  .detected .meta{flex:1;min-width:0}
+  .detected .label{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin-bottom:3px}
+  .detected .val{font-family:'Fredoka';font-size:18px;font-weight:500;color:var(--ink)}
+  .detected.empty .val{color:var(--muted);font-weight:400}
+  .detected .go{background:var(--olive);color:#fff;border:none;border-radius:999px;padding:11px 20px;font-family:'Fredoka';font-size:14px;font-weight:500;cursor:pointer;flex:0 0 auto;opacity:.45;pointer-events:none}
+  .detected:not(.empty) .go{opacity:1;pointer-events:auto}
+
+  /* NEXT STEP hint */
+  .next{display:flex;align-items:center;gap:10px;justify-content:center;color:var(--muted);font-size:13.5px;margin-top:16px}
+  .next b{color:var(--bordeaux);font-weight:600}
+
+  /* ESSENTIALS */
+  .sep{display:flex;align-items:center;gap:14px;margin:30px 4px 20px;color:var(--muted);font-size:12px;letter-spacing:.18em;text-transform:uppercase}
+  .sep::before,.sep::after{content:"";height:1px;background:var(--line);flex:1}
+  .swatches{display:grid;grid-template-columns:repeat(6,1fr);gap:16px 10px}
+  .sw{display:flex;flex-direction:column;align-items:center;gap:8px;cursor:pointer;border:none;background:none}
+  .sw .dot{width:54px;height:54px;border-radius:50%;border:2px solid transparent;box-shadow:inset 0 0 0 2px #fff, 0 4px 10px -4px rgba(0,0,0,.25);transition:.16s}
+  .sw:hover .dot{transform:translateY(-3px) scale(1.04)}
+  .sw.sel .dot{border-color:var(--ink)}
+  .sw span{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600}
+  .sw.sel span{color:var(--ink)}
+
+  /* FOOTER */
+  footer{background:#16130f;color:#cfc6b6;margin-top:60px;padding:54px clamp(20px,5vw,56px) 26px}
+  .fgrid{display:grid;grid-template-columns:1.6fr 1fr 1fr 1fr;gap:30px;max-width:1100px;margin:0 auto}
+  footer .brand2{font-family:'Fredoka';color:#fff;font-size:24px;margin-bottom:12px}
+  footer p{font-size:14px;line-height:1.6;opacity:.7;max-width:300px}
+  footer h4{font-size:12px;letter-spacing:.16em;color:#fff;margin-bottom:14px;text-transform:uppercase}
+  footer ul{list-style:none}
+  footer li{margin-bottom:10px}
+  footer a{color:#cfc6b6;text-decoration:none;font-size:14px;opacity:.8}
+  footer a:hover{opacity:1}
+  .fbar{max-width:1100px;margin:34px auto 0;border-top:1px solid #2c2620;padding-top:18px;font-size:12.5px;opacity:.6;display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
+
+  @media(max-width:680px){
+    .nav-left{display:none}
+    .brand{position:static;transform:none}
+    .swatches{grid-template-columns:repeat(4,1fr)}
+    .fgrid{grid-template-columns:1fr 1fr}
+    .detected .go{padding:10px 14px}
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-left">
+    <a href="#">Palettes</a>
+    <a href="#" class="active">Scanner</a>
+    <a href="#">Styliste</a>
+    <a href="#">Favoris</a>
+  </div>
+  <div class="brand">WADA 和田</div>
+  <div class="nav-right">
+    <div class="icon-btn">&#128100;</div>
+    <div class="icon-btn">&#9790;</div>
+    <button class="cta">Abonnement</button>
+  </div>
+</nav>
+
+<div class="wrap">
+  <a class="back" href="#">&larr;&nbsp; Retour</a>
+
+  <div class="toggle">
+    <button class="on">&#9680; Une couleur</button>
+    <button>&#9671; Un vêtement</button>
+  </div>
+
+  <h1>Quelle couleur ?</h1>
+  <p class="lede">Prends une photo, ou choisis une teinte essentielle. WADA trouve les palettes qui matchent.</p>
+
+  <div class="panel">
+    <div class="drop">
+      <div class="target"></div>
+      <h3>Dépose ou photographie</h3>
+      <p class="hint">Un mur, une fleur, un tissu, un coucher de soleil…</p>
+      <button class="btn-primary" onclick="detect()">&#128247;&nbsp; Prendre une photo</button>
+      <button class="btn-ghost" onclick="detect()">Choisir un fichier</button>
+    </div>
+
+    <div class="detected empty" id="detected">
+      <div class="chip" id="chip"></div>
+      <div class="meta">
+        <div class="label">Couleur détectée</div>
+        <div class="val" id="val">En attente d'une photo ou d'une teinte</div>
+      </div>
+      <button class="go">Voir les palettes &rarr;</button>
+    </div>
+
+    <div class="next">
+      <span>Ensuite :</span> <b>palettes Sanzo Wada assorties</b> <span>&rarr;</span> <b>ta tenue à acheter</b>
+    </div>
+
+    <div class="sep">ou choisis une essentielle</div>
+
+    <div class="swatches" id="sw">
+      <button class="sw" data-n="Sumi"     style="--c:#1c1c1c"><span class="dot" style="background:#1c1c1c"></span><span>Sumi</span></button>
+      <button class="sw" data-n="Marine"   ><span class="dot" style="background:#26426b"></span><span>Marine</span></button>
+      <button class="sw" data-n="Brique"   ><span class="dot" style="background:#7d2f2c"></span><span>Brique</span></button>
+      <button class="sw" data-n="Olive"    ><span class="dot" style="background:#4f6128"></span><span>Olive</span></button>
+      <button class="sw" data-n="Sauge"    ><span class="dot" style="background:#7d9168"></span><span>Sauge</span></button>
+      <button class="sw" data-n="Terre"    ><span class="dot" style="background:#bd6536"></span><span>Terre</span></button>
+      <button class="sw" data-n="Cuir"     ><span class="dot" style="background:#b5602f"></span><span>Cuir</span></button>
+      <button class="sw" data-n="Lanterne" ><span class="dot" style="background:#e0b03c"></span><span>Lanterne</span></button>
+      <button class="sw" data-n="Doré"     ><span class="dot" style="background:#cda04e"></span><span>Doré</span></button>
+      <button class="sw" data-n="Taupe"    ><span class="dot" style="background:#9c9484"></span><span>Taupe</span></button>
+      <button class="sw" data-n="Crème"    ><span class="dot" style="background:#ddceb0"></span><span>Crème</span></button>
+      <button class="sw" data-n="Os"       ><span class="dot" style="background:#f3ece0"></span><span>Os</span></button>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <div class="fgrid">
+    <div>
+      <div class="brand2">WADA 和田</div>
+      <p>Un dictionnaire de palettes pour composer la tenue parfaite. D'après Sanzo Wada (1933).</p>
+    </div>
+    <div><h4>Explorer</h4><ul><li><a href="#">Palettes</a></li><li><a href="#">Scanner</a></li><li><a href="#">Découverte</a></li><li><a href="#">Cultures</a></li></ul></div>
+    <div><h4>Compte</h4><ul><li><a href="#">Mes favoris</a></li><li><a href="#">Abonnement</a></li><li><a href="#">À propos</a></li><li><a href="#">FAQ</a></li></ul></div>
+    <div><h4>Contact</h4><ul><li><a href="#">hello@wada.style</a></li><li><a href="#">Pour les marques</a></li><li><a href="#">Mentions légales</a></li></ul></div>
+  </div>
+  <div class="fbar">
+    <span>© 2026 WADA · Genève</span>
+    <span>Liens partenaires (MUJI via Awin · Amazon) — WADA peut toucher une commission, sans coût pour vous.</span>
+  </div>
+</footer>
+
+<script>
+  const detected=document.getElementById('detected');
+  const chip=document.getElementById('chip');
+  const val=document.getElementById('val');
+  function setColor(hex,name){
+    detected.classList.remove('empty');
+    chip.style.background=hex;
+    val.textContent=name+'  ·  '+hex.toUpperCase();
+  }
+  function detect(){ setColor('#bd6536','Terre cuite'); window.scrollTo({top:300,behavior:'smooth'}); }
+
+  document.querySelectorAll('.sw').forEach(b=>{
+    b.addEventListener('click',()=>{
+      document.querySelectorAll('.sw').forEach(x=>x.classList.remove('sel'));
+      b.classList.add('sel');
+      const hex=b.querySelector('.dot').style.background;
+      // convert rgb->hex
+      const m=hex.match(/\d+/g);
+      const toHex=m?('#'+m.slice(0,3).map(n=>(+n).toString(16).padStart(2,'0')).join('')):hex;
+      setColor(toHex,b.dataset.n);
+    });
+  });
+</script>
+</body>
+</html>

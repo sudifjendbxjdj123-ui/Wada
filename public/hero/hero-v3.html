@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WADA — Hero v3</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{--beige:#F4EFE7;--ink:#1E1E1E;--fd:"Fredoka","Inter",sans-serif;--sans:"Inter",Arial,sans-serif;--ease:cubic-bezier(.22,1,.36,1)}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:var(--sans);background:var(--beige)}
+  .hero{position:relative;min-height:100vh;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:0 22px}
+  .hero img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+  /* voile ALLÉGÉ : on voit le mannequin ; léger renfort en bas pour la lisibilité du texte */
+  .hero .veil{position:absolute;inset:0;background:linear-gradient(180deg,rgba(20,18,16,.12) 0%,rgba(20,18,16,.18) 45%,rgba(20,18,16,.34) 100%)}
+  /* halo doux DERRIÈRE le texte uniquement (radial centré bas), pas de wash global */
+  .hero .glow{position:absolute;left:50%;bottom:8%;transform:translateX(-50%);width:120%;height:60%;z-index:1;pointer-events:none;background:radial-gradient(60% 70% at 50% 100%,rgba(20,18,16,.34),rgba(20,18,16,0))}
+  .hero .fade{position:absolute;left:0;right:0;bottom:0;height:120px;background:linear-gradient(180deg,rgba(244,239,231,0),var(--beige))}
+  /* HEADER : plus de burger à gauche → bouton Abonnement à la place */
+  .topbar{position:absolute;top:0;left:0;right:0;z-index:3;display:flex;align-items:center;justify-content:space-between;padding:14px 18px;color:#FAF8F4}
+  .topbar .abo{font-family:var(--sans);font-size:13px;font-weight:500;color:#FAF8F4;text-decoration:none;background:rgba(250,248,244,.16);border:1px solid rgba(250,248,244,.5);border-radius:999px;padding:9px 16px}
+  .topbar .logo{font-family:var(--fd);font-weight:700;font-size:18px;letter-spacing:.04em}
+  .topbar .right{display:flex;align-items:center;gap:14px;font-size:12px;letter-spacing:.08em;text-transform:uppercase}
+  .in{position:relative;z-index:2;color:#FAF8F4}
+  .k{font-size:11px;letter-spacing:.3em;text-transform:uppercase;opacity:.9}
+  h1{font-family:var(--fd);font-weight:700;font-size:46px;line-height:1.05;margin:14px 0 12px;text-shadow:0 2px 22px rgba(0,0,0,.3)}
+  .sub{font-style:italic;font-family:var(--sans);max-width:38ch;margin:0 auto 24px;color:rgba(250,248,244,.94)}
+  /* SÉLECTEUR GENRE remonté AU-DESSUS des boutons, « Défiler » supprimé */
+  .gp{display:inline-flex;align-items:center;gap:4px;background:rgba(250,248,244,.16);border:1px solid rgba(250,248,244,.32);border-radius:999px;padding:5px;margin-bottom:18px}
+  .gp .gl{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:rgba(250,248,244,.85);padding:0 10px}
+  .gp button{font-size:14px;padding:9px 18px;border:none;background:transparent;color:#FAF8F4;border-radius:999px;cursor:pointer}
+  .gp button.on{background:#FAF8F4;color:var(--ink)}
+  .cta{display:flex;flex-direction:column;gap:12px;align-items:center}
+  .btn{font-size:15px;padding:16px 32px;border-radius:999px;background:#FAF8F4;color:var(--ink);border:none;cursor:pointer;min-width:240px}
+  .btn--ghost{background:transparent;color:#FAF8F4;border:1px solid rgba(250,248,244,.55)}
+</style>
+</head>
+<body>
+  <section class="hero">
+    <img src="./hero-banner-photo.webp" alt="">
+    <div class="veil"></div>
+    <div class="glow"></div>
+    <div class="topbar">
+      <a class="abo" href="#">Abonnement</a>
+      <div class="logo">WADA和田</div>
+      <div class="right"><span>☾</span><span>Panier</span></div>
+    </div>
+    <div class="in">
+      <div class="k">Inspiré de Sanzo Wada · 1933</div>
+      <h1>Trouvez la couleur.<br>Trouvez votre style.</h1>
+      <!-- 1) gender selector AU-DESSUS, plus de « Défiler » -->
+      <div class="gp"><span class="gl">Je m'habille</span><button>Femme</button><button class="on">Homme</button><button>Unisexe</button></div>
+      <div class="cta">
+        <button class="btn">Entrer dans l'atelier →</button>
+        <button class="btn btn--ghost">Notre histoire</button>
+      </div>
+    </div>
+    <div class="fade"></div>
+  </section>
+<script>
+  document.querySelectorAll('.gp button').forEach(function(b){b.addEventListener('click',function(){document.querySelectorAll('.gp button').forEach(function(x){x.classList.remove('on')});b.classList.add('on');});});
+</script>
+</body>
+</html>

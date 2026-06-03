@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!--
+    WADA — App Icon Master (1024×1024)
+    ─────────────────────────────────────────────────────────────────
+    Reprend exactement la DA WADA : papier cream, cadre fin éditorial,
+    trois bandes verticales = trois couleurs d'une palette du livre
+    Sanzo Wada (Bordeaux · Olive · Indigo). À 60×60 sur écran d'accueil,
+    les bandes restent identifiables — pas de wordmark (trop petit).
+
+    iOS/Android arrondissent automatiquement les coins. Le visuel
+    reste centré et tolère un rognage circulaire (mask Android).
+
+    Source à passer à `@capacitor/assets generate` qui produit toutes
+    les tailles requises iOS + Android + PWA.
+    ─────────────────────────────────────────────────────────────── */
+  -->
+
+  <!-- Fond papier cream — couleur paper WADA -->
+  <rect width="1024" height="1024" fill="#F4EFE6"/>
+
+  <!-- Grain papier très subtil pour éviter l'aplat IA -->
+  <filter id="grain" x="0" y="0" width="100%" height="100%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" stitchTiles="stitch"/>
+    <feColorMatrix values="0 0 0 0 0.12  0 0 0 0 0.10  0 0 0 0 0.08  0 0 0 0.06 0"/>
+    <feComposite in2="SourceGraphic" operator="in"/>
+  </filter>
+  <rect width="1024" height="1024" fill="#F4EFE6" filter="url(#grain)" opacity="0.6"/>
+
+  <!--
+    Cadre extérieur — référence directe à la page de livre Sanzo Wada
+    Stroke un peu plus épais qu'en favicon (16px) car visible à 60×60.
+  -->
+  <rect
+    x="96" y="96"
+    width="832" height="832"
+    fill="none"
+    stroke="#1F1B16"
+    stroke-width="14"
+  />
+
+  <!--
+    Trois bandes — bordeaux · olive · indigo
+    Largeur ~225px chacune avec gouttière de 12px → 80% du cadre intérieur
+    Hauteur descend jusqu'à laisser respiration en bas (place pour kanji)
+  -->
+  <g transform="translate(140, 140)">
+    <rect x="0"   y="0" width="240" height="700" fill="#5C2018"/>
+    <rect x="252" y="0" width="240" height="700" fill="#5C5A3C"/>
+    <rect x="504" y="0" width="240" height="700" fill="#1B4A6B"/>
+  </g>
+
+  <!--
+    Kanji 和田 en bas — signature éditoriale, taille modérée pour
+    rester lisible à toutes échelles mais discret en home screen
+  -->
+  <text
+    x="512" y="900"
+    text-anchor="middle"
+    font-family="'Noto Serif JP', 'Fraunces', serif"
+    font-size="62"
+    font-weight="500"
+    fill="#1F1B16"
+    letter-spacing="22"
+    opacity="0.75"
+  >和田</text>
+</svg>

@@ -1,0 +1,88 @@
+{
+  "name": "WADA — 348 palettes de Sanzō Wada",
+  "short_name": "WADA",
+  "description": "Translation des 348 palettes de Sanzō Wada (1933) en tenues qui se portent. Une couleur, une histoire, une garde-robe.",
+  "start_url": "/?source=pwa",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#f4eee4",
+  "theme_color": "#6e3b32",
+  "lang": "fr-FR",
+  "dir": "ltr",
+  "categories": ["lifestyle", "shopping", "art"],
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-maskable-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshots/screenshot-1.png",
+      "sizes": "1080x1920",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Découvrir les 348 palettes"
+    },
+    {
+      "src": "/screenshots/screenshot-2.png",
+      "sizes": "1080x1920",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Composer une tenue"
+    },
+    {
+      "src": "/screenshots/screenshot-3.png",
+      "sizes": "1080x1920",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Flat lay éditorial"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Composer une tenue",
+      "short_name": "Composer",
+      "description": "Composer une nouvelle tenue à partir d'une palette",
+      "url": "/composer?source=shortcut",
+      "icons": [{ "src": "/icons/shortcut-composer.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "Mes tenues sauvées",
+      "short_name": "Sauvées",
+      "description": "Retrouver tes tenues sauvées",
+      "url": "/mes-tenues?source=shortcut",
+      "icons": [{ "src": "/icons/shortcut-saved.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "Newsletter du dimanche",
+      "short_name": "Newsletter",
+      "description": "Lire la dernière lettre du dimanche",
+      "url": "/newsletter?source=shortcut",
+      "icons": [{ "src": "/icons/shortcut-newsletter.png", "sizes": "96x96" }]
+    }
+  ],
+  "prefer_related_applications": false,
+  "id": "/?utm_source=pwa"
+}

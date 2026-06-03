@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <!--
+    WADA — Favicon ultra-compact 32×32 (et lisible jusqu'à 16×16).
+    Pas de texte, pas de kanji — uniquement le motif 3-bandes signature.
+    Utilisé en favicon dans les onglets de navigateur + barre de recherche Google.
+    ──────────────────────────────────────────────────────────────── */
+  -->
+  <rect width="32" height="32" rx="6" fill="#F4EFE6"/>
+  <rect x="2" y="2" width="28" height="28" rx="4" fill="none" stroke="#1F1B16" stroke-width="1.5"/>
+  <rect x="6"  y="6" width="6" height="20" fill="#5C2018"/>
+  <rect x="13" y="6" width="6" height="20" fill="#5C5A3C"/>
+  <rect x="20" y="6" width="6" height="20" fill="#1B4A6B"/>
+</svg>

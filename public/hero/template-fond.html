@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="fr" data-theme="jour">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WADA — Template fond + jour/nuit</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Fraunces:opsz,wght@9..144,500&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --beige:#F4EFE7;--cream:#FBF9F5;--ink:#1E1E1E;--ink-soft:#6f685f;--olive:#A8B29A;--bordeaux:#6B3A32;
+    --line:rgba(30,30,30,.10);--pill:999px;--soft:0 10px 40px rgba(30,30,30,.10);
+    --fd:"Fredoka",sans-serif;--serif:"Fraunces",Georgia,serif;--sans:"Inter",Arial,sans-serif;--ease:cubic-bezier(.22,1,.36,1);
+    /* voile de fond — JOUR : crème léger, on voit le mannequin */
+    --veil:linear-gradient(180deg,rgba(244,239,231,.42),rgba(244,239,231,.30));
+    --panel:rgba(251,249,245,.92);     /* cartes presque opaques, lisibles */
+    --txt:#1E1E1E;--txt-soft:#6f685f;--panel-line:rgba(30,30,30,.10);
+  }
+  html[data-theme="nuit"]{
+    --veil:linear-gradient(180deg,rgba(18,16,14,.55),rgba(18,16,14,.42));
+    --panel:rgba(26,24,22,.86);--txt:#F4EFE7;--txt-soft:#cfc8bd;--panel-line:rgba(244,239,231,.14);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:var(--sans);color:var(--txt);line-height:1.6;min-height:100vh}
+  /* FOND mannequin FIXE sur toute la page (pas de gris) + voile léger */
+  .bg{position:fixed;inset:0;z-index:-2;background:url('./hero-banner-photo.webp') center/cover no-repeat}
+  .bg-veil{position:fixed;inset:0;z-index:-1;background:var(--veil)}
+
+  .hdr{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;position:sticky;top:0;z-index:10}
+  .hdr .abo{font-size:13px;font-weight:500;color:var(--txt);background:var(--panel);border:1px solid var(--panel-line);border-radius:999px;padding:9px 16px;text-decoration:none}
+  .hdr .logo{font-family:var(--fd);font-weight:700;font-size:18px;color:var(--txt)}
+  .hdr .r{display:flex;align-items:center;gap:14px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--txt)}
+  .toggle{cursor:pointer;font-size:16px;background:var(--panel);border:1px solid var(--panel-line);border-radius:999px;width:38px;height:38px;display:flex;align-items:center;justify-content:center}
+
+  .wrap{max-width:1000px;margin:0 auto;padding:30px 22px 70px}
+  /* le contenu est sur des PANNEAUX propres (lisibles), le fond respire entre eux */
+  .panel{background:var(--panel);backdrop-filter:blur(6px);border:1px solid var(--panel-line);border-radius:22px;padding:30px 28px;box-shadow:var(--soft);margin-bottom:22px}
+  .kicker{font-size:11px;letter-spacing:.3em;text-transform:uppercase;color:var(--olive);font-weight:500}
+  h1{font-family:var(--fd);font-weight:700;font-size:40px;line-height:1.05;margin:10px 0 10px}
+  .lead{font-family:var(--serif);font-style:italic;font-size:18px;color:var(--txt-soft);max-width:48ch}
+  .btn{display:inline-block;margin-top:18px;font-size:14px;padding:14px 26px;border-radius:999px;background:var(--bordeaux);color:#FAF8F4;border:none;cursor:pointer;text-decoration:none}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  .card{background:var(--panel);border:1px solid var(--panel-line);border-radius:18px;padding:22px;box-shadow:var(--soft)}
+  .card h3{font-family:var(--fd);font-weight:600;font-size:20px}
+  .card p{color:var(--txt-soft);font-size:14px;margin-top:6px}
+  .note{font-size:12px;color:var(--txt-soft);text-align:center;margin-top:8px}
+  @media(max-width:700px){.grid{grid-template-columns:1fr}h1{font-size:30px}}
+</style>
+</head>
+<body>
+  <div class="bg"></div>
+  <div class="bg-veil"></div>
+
+  <div class="hdr">
+    <a class="abo" href="#">Abonnement</a>
+    <div class="logo">WADA和田</div>
+    <div class="r"><span class="toggle" id="toggle" title="Jour / Nuit">☾</span><span>Panier</span></div>
+  </div>
+
+  <div class="wrap">
+    <div class="panel">
+      <div class="kicker">Exemple de page</div>
+      <h1>Le fond mannequin reste visible.</h1>
+      <div class="lead">Le contenu est posé sur des panneaux propres et lisibles — le fond respire entre eux, sans gris délavé. Même traitement sur toutes les pages.</div>
+      <a class="btn" href="#">Entrer dans l'atelier →</a>
+    </div>
+
+    <div class="grid">
+      <div class="card"><h3>Lisible</h3><p>Texte sur panneau crème (jour) ou encre (nuit) : toujours net.</p></div>
+      <div class="card"><h3>Le fond respire</h3><p>On voit le mannequin entre les panneaux, pas de wash gris.</p></div>
+      <div class="card"><h3>Jour / Nuit</h3><p>Le bouton ☾ bascule le thème : voile crème ↔ voile sombre.</p></div>
+      <div class="card"><h3>Cohérent</h3><p>Ce template s'applique à toutes les pages WADA.</p></div>
+    </div>
+    <div class="note">Clique sur ☾ en haut à droite pour tester le mode nuit.</div>
+  </div>
+
+<script>
+  var t=document.getElementById('toggle'), html=document.documentElement;
+  t.addEventListener('click',function(){
+    var nuit=html.getAttribute('data-theme')==='nuit';
+    html.setAttribute('data-theme', nuit?'jour':'nuit');
+    t.textContent = nuit ? '☾' : '☀';
+  });
+</script>
+</body>
+</html>

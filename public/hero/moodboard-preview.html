@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WADA — Aperçu intégration moodboards</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{--beige:#F4EFE7;--cream:#FAF8F4;--olive:#A8B29A;--bordeaux:#6B3A32;--ink:#1E1E1E;--ink-soft:#6a6259;
+    --line:rgba(30,30,30,.10);--pill:999px;--soft:0 12px 48px rgba(30,30,30,.12);
+    --fd:"Fredoka","Inter",sans-serif;--sans:"Inter",Arial,sans-serif;--ease:cubic-bezier(.22,1,.36,1)}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:var(--sans);background:var(--beige);color:var(--ink);line-height:1.6}
+  .label{max-width:1040px;margin:30px auto 6px;padding:0 24px;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--bordeaux)}
+  .media{position:relative;overflow:hidden;border-radius:22px;margin:0 auto;max-width:1040px}
+  .media>img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+  .scrim{position:absolute;inset:0;background:linear-gradient(180deg,rgba(25,22,18,.4),rgba(25,22,18,.72))}
+  /* hero */
+  .hero{height:62vh;min-height:440px}
+  .hero .content{position:relative;z-index:2;height:100%;display:flex;flex-direction:column;justify-content:center;padding:0 48px;color:#F4EFE7}
+  .hero .k{font-size:11px;letter-spacing:.32em;text-transform:uppercase;opacity:.85}
+  .hero h1{font-family:var(--fd);font-weight:700;font-size:54px;line-height:1.04;margin:12px 0 8px;text-shadow:0 2px 20px rgba(0,0,0,.3)}
+  .hero p{max-width:42ch;opacity:.92}
+  .hero .btn{margin-top:22px;align-self:flex-start;font-size:14px;padding:14px 26px;border-radius:var(--pill);background:#F4EFE7;color:var(--ink);border:none;cursor:pointer}
+  /* manifeste */
+  .manif{height:300px;margin-top:26px}
+  .manif .content{position:relative;z-index:2;height:100%;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:0 40px;color:#F4EFE7}
+  .manif h2{font-family:var(--fd);font-weight:600;font-size:28px;max-width:24ch}
+  /* cards */
+  .grid{max-width:1040px;margin:26px auto 0;padding:0 24px;display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  .tile{position:relative;height:240px;border-radius:20px;overflow:hidden;box-shadow:var(--soft);cursor:pointer;transition:transform .35s var(--ease)}
+  .tile:hover{transform:translateY(-4px)}
+  .tile>img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+  .tile .sc{position:absolute;inset:0;background:linear-gradient(180deg,rgba(25,22,18,.12),rgba(25,22,18,.7))}
+  .tile .c{position:absolute;left:22px;bottom:20px;right:22px;z-index:2;color:#F4EFE7}
+  .tile .n{position:absolute;top:16px;right:20px;z-index:2;font-family:var(--fd);font-weight:600;color:rgba(255,255,255,.9)}
+  .tile .c h3{font-family:var(--fd);font-weight:600;font-size:22px}
+  .tile .c span{font-size:13px;opacity:.9}
+  .foot{text-align:center;padding:40px 20px 70px;color:var(--ink-soft);font-size:12px}
+  @media(max-width:760px){.grid{grid-template-columns:1fr}.hero h1{font-size:38px}}
+</style>
+</head>
+<body>
+
+  <div class="label">Hero d'accueil — moodboard-3</div>
+  <section class="media hero">
+    <img src="./moodboard-3.webp" alt="">
+    <div class="scrim"></div>
+    <div class="content">
+      <div class="k">D'après Sanzo Wada · 1933</div>
+      <h1>Trouvez la couleur.<br>Trouvez votre style.</h1>
+      <p>Un dictionnaire de 348 accords, traduits en tenues à porter — et à acheter.</p>
+      <button class="btn">Entrer dans l'atelier →</button>
+    </div>
+  </section>
+
+  <div class="label">Section calme / manifeste — moodboard-4</div>
+  <section class="media manif">
+    <img src="./moodboard-4.webp" alt="">
+    <div class="scrim" style="background:linear-gradient(180deg,rgba(25,22,18,.3),rgba(25,22,18,.6))"></div>
+    <div class="content"><h2>La couleur d'abord. La tenue suit.</h2></div>
+  </section>
+
+  <div class="label">Cartes Atelier avec image</div>
+  <div class="grid">
+    <div class="tile"><img src="./moodboard-1.webp" alt=""><div class="sc"></div><div class="n">01</div><div class="c"><h3>Scanner une couleur</h3><span>Ouvrir →</span></div></div>
+    <div class="tile"><img src="./moodboard-7.webp" alt=""><div class="sc"></div><div class="n">02</div><div class="c"><h3>Composer une tenue</h3><span>Ouvrir →</span></div></div>
+    <div class="tile"><img src="./moodboard-8.webp" alt=""><div class="sc"></div><div class="n">IA</div><div class="c"><h3>Assistant</h3><span>Ouvrir →</span></div></div>
+    <div class="tile"><img src="./moodboard-6.webp" alt=""><div class="sc"></div><div class="n">04</div><div class="c"><h3>Mon dressing</h3><span>Ouvrir →</span></div></div>
+  </div>
+
+  <div class="foot">Aperçu d'intégration · images réelles de ton dossier /hero · voile de lisibilité appliqué</div>
+</body>
+</html>

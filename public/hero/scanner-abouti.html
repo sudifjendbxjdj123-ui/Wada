@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="fr" data-theme="jour">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WADA — Scanner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,500&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{--olive:#A8B29A;--bordeaux:#6B3A32;--fd:"Fredoka",sans-serif;--serif:"Fraunces",Georgia,serif;--sans:"Inter",Arial,sans-serif;--ease:cubic-bezier(.22,1,.36,1);--pill:999px;--soft:0 8px 30px rgba(30,30,30,.06);
+    --bg:#F4EFE7;--surf:#FBF9F5;--txt:#1E1E1E;--txt-soft:#6f685f;--ln:rgba(30,30,30,.10)}
+  html[data-theme="nuit"]{--bg:#16140f;--surf:#211e18;--txt:#F4EFE7;--txt-soft:#cfc8bd;--ln:rgba(244,239,231,.14)}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:var(--sans);background:var(--bg);color:var(--txt);line-height:1.55;transition:background .4s,color .4s}
+  .wrap{max-width:1000px;margin:0 auto;padding:0 24px}
+  .hdr{display:flex;align-items:center;justify-content:space-between;padding:14px 24px;border-bottom:1px solid var(--ln);position:sticky;top:0;background:color-mix(in srgb,var(--bg) 92%,transparent);backdrop-filter:blur(10px);z-index:20}
+  .hdr .abo{font-size:13px;font-weight:500;border:1px solid var(--ln);border-radius:999px;padding:8px 16px;text-decoration:none;color:var(--txt)}
+  .hdr .logo{font-family:var(--fd);font-weight:700;font-size:18px}
+  .hdr .r{display:flex;align-items:center;gap:14px;font-size:12px;letter-spacing:.06em;text-transform:uppercase}
+  .tg{cursor:pointer;border:1px solid var(--ln);border-radius:999px;width:34px;height:34px;display:flex;align-items:center;justify-content:center;background:transparent;color:var(--txt)}
+
+  .top{padding:34px 0 8px;text-align:center}
+  .kicker{font-size:11px;letter-spacing:.32em;text-transform:uppercase;color:var(--bordeaux);font-weight:500}
+  h1{font-family:var(--fd);font-weight:700;font-size:40px;margin:8px 0 6px}
+  .sub{color:var(--txt-soft);max-width:50ch;margin:0 auto}
+  .modes{display:inline-flex;background:var(--surf);border:1px solid var(--ln);border-radius:999px;padding:5px;gap:4px;margin:20px auto 0}
+  .modes button{font-family:var(--sans);font-size:14px;padding:10px 20px;border:none;background:transparent;color:var(--txt-soft);border-radius:999px;cursor:pointer}
+  .modes button.on{background:var(--bordeaux);color:#FAF8F4}
+
+  .panel{background:var(--surf);border:1px solid var(--ln);border-radius:24px;padding:30px;box-shadow:var(--soft);margin:26px 0 0;display:grid;grid-template-columns:1fr 1fr;gap:34px;align-items:center}
+  .drop{border:1.5px dashed var(--ln);border-radius:18px;background:var(--bg);padding:34px 20px;text-align:center}
+  .drop .ic{font-size:30px;color:var(--olive)}
+  .drop h3{font-family:var(--serif);font-weight:500;font-size:20px;margin:10px 0 6px;font-style:italic}
+  .drop p{font-size:13px;color:var(--txt-soft)}
+  .drop .btns{display:flex;flex-direction:column;gap:8px;margin-top:16px}
+  .drop .b1{background:var(--bordeaux);color:#FAF8F4;border:none;border-radius:999px;padding:13px;font-size:14px;cursor:pointer}
+  .drop .b2{background:transparent;color:var(--txt);border:1px solid var(--ln);border-radius:999px;padding:12px;font-size:14px;cursor:pointer}
+  .det{display:flex;align-items:center;gap:14px;background:var(--bg);border:1px solid var(--ln);border-radius:14px;padding:14px 16px;margin-top:14px}
+  .det .dot{width:40px;height:40px;border-radius:10px;background:#cfc8bd;border:1px solid var(--ln)}
+  .det .k{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--olive)}
+  .det .v{font-family:var(--serif);font-style:italic;font-size:15px;color:var(--txt-soft)}
+
+  .info h2{font-family:var(--fd);font-weight:700;font-size:34px;line-height:1.1}
+  .info p{color:var(--txt-soft);margin:12px 0 16px}
+  .info .li{display:flex;gap:10px;margin-bottom:10px;font-size:13px}
+  .info .li .c{color:var(--bordeaux)}
+  .info b{font-weight:600}
+  .ess{margin:30px 0 0;background:var(--surf);border:1px solid var(--ln);border-radius:24px;padding:26px 30px;text-align:center}
+  .ess .h{font-family:var(--fd);font-weight:700;font-size:24px;margin:6px 0 4px}
+  .ess .grid{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:16px}
+  .ess .grid span{width:46px;height:46px;border-radius:50%;border:2px solid var(--surf);box-shadow:0 0 0 1px var(--ln);cursor:pointer;transition:transform .2s}
+  .ess .grid span:hover{transform:scale(1.1)}
+
+  footer{border-top:1px solid var(--ln);padding:36px 0 28px;margin-top:46px}
+  .fin{display:grid;grid-template-columns:1.6fr 1fr 1fr 1fr;gap:24px}
+  .flogo{font-family:var(--fd);font-weight:700;font-size:16px}
+  .fd{font-family:var(--serif);font-style:italic;font-size:12.5px;color:var(--txt-soft);margin-top:8px;max-width:30ch}
+  footer h4{font-size:9.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--olive);margin-bottom:10px}
+  footer a{display:block;color:var(--txt-soft);text-decoration:none;font-size:12.5px;margin-bottom:7px}
+  @media(max-width:760px){.panel{grid-template-columns:1fr;gap:22px}h1{font-size:30px}.fin{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+  <header class="hdr">
+    <a class="abo" href="#">Abonnement</a><div class="logo">WADA和田</div>
+    <div class="r"><button class="tg" id="tg">☾</button><span>Panier</span></div>
+  </header>
+
+  <div class="wrap">
+    <div class="top">
+      <div class="kicker">Scanner</div>
+      <h1>Trouvez votre couleur exacte.</h1>
+      <div class="sub">Photographiez une couleur ou un vêtement — WADA lit la teinte vraie et propose les palettes qui s'accordent.</div>
+      <div class="modes"><button class="on">Une couleur</button><button>Un vêtement</button></div>
+    </div>
+
+    <div class="panel">
+      <div>
+        <div class="drop">
+          <div class="ic">◇</div>
+          <h3>Déposez ou photographiez</h3>
+          <p>Un mur, une fleur, un tissu</p>
+          <div class="btns"><button class="b1">📷 Prendre une photo</button><button class="b2">Choisir un fichier</button></div>
+        </div>
+        <div class="det"><div class="dot"></div><div><div class="k">Couleur détectée</div><div class="v">Aucune couleur scannée pour le moment</div></div></div>
+      </div>
+      <div class="info">
+        <h2>La teinte vraie, pas une approximation.</h2>
+        <p>WADA détecte la couleur dans votre navigateur et la rattache à l'accord de Sanzo Wada le plus proche.</p>
+        <div class="li"><span class="c">✓</span><span><b>Précision</b> — analyse pondérée, ignore le bruit.</span></div>
+        <div class="li"><span class="c">✓</span><span><b>Sans inscription</b> — tout reste sur votre appareil.</span></div>
+        <div class="li"><span class="c">✓</span><span><b>348 palettes</b> — le dictionnaire complet, à portée.</span></div>
+      </div>
+    </div>
+
+    <div class="ess">
+      <div class="kicker">Raccourcis</div>
+      <div class="h">Ou choisissez parmi les essentielles</div>
+      <div class="grid">
+        <span style="background:#1E1E1E"></span><span style="background:#1f3a5f"></span><span style="background:#6B2D2A"></span><span style="background:#556b2f"></span><span style="background:#7A8F73"></span><span style="background:#c46b4a"></span><span style="background:#b5613f"></span><span style="background:#D4A24E"></span><span style="background:#c7a06a"></span><span style="background:#a89e8e"></span><span style="background:#D8C9B2"></span><span style="background:#FBF9F5"></span>
+      </div>
+    </div>
+  </div>
+
+  <footer><div class="wrap">
+    <div class="fin">
+      <div><div class="flogo">WADA和田</div><div class="fd">Un dictionnaire de palettes pour composer la tenue parfaite. D'après Sanzo Wada (1933).</div></div>
+      <div><h4>Explorer</h4><a href="#">Tenues</a><a href="#">Scanner</a><a href="#">Découverte</a><a href="#">Cultures</a></div>
+      <div><h4>Compte</h4><a href="#">Mes favoris</a><a href="#">À propos</a><a href="#">FAQ</a><a href="#">Abonnement</a></div>
+      <div><h4>Contact</h4><a href="#">hello@wada.style</a><a href="#">Pour les marques</a><a href="#">Mentions légales</a><a href="#">Genève</a></div>
+    </div>
+  </div></footer>
+<script>
+  var tg=document.getElementById('tg'),h=document.documentElement;
+  tg.addEventListener('click',function(){var n=h.getAttribute('data-theme')==='nuit';h.setAttribute('data-theme',n?'jour':'nuit');tg.textContent=n?'☾':'☀';});
+  document.querySelectorAll('.modes button').forEach(function(b){b.addEventListener('click',function(){document.querySelectorAll('.modes button').forEach(function(x){x.classList.remove('on')});b.classList.add('on');});});
+</script>
+</body>
+</html>

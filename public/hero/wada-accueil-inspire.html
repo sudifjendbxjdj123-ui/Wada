@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WADA — Votre style commence par une couleur</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Merriweather+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    /* tokens repris du kit */
+    --white:#FFFFFF;
+    --n-lightest:#F2F2F2; --n-lighter:#D9D9D9; --n:#838380;
+    --n-dark:#51514D; --n-darker:#1F1F1B; --ink:#070702;
+    --plum:#8B2F6E; --plum-dark:#6F2558; --plum-light:#AD6D99; --plum-lightest:#F3EAF0;
+    --cream:#FDF9ED; --cream-mid:#FCF4DB; --gold:#F2C94C;
+    --green:#4AA96C; --wasabi:#84892C;
+    --paper:#F7F1E6;
+    --serif:"Fraunces",Georgia,serif;
+    --sans:"Merriweather Sans","Helvetica Neue",Arial,sans-serif;
+    --rb:6.25rem; --rc:1rem;
+    --ease:cubic-bezier(.22,1,.36,1);
+    --maxw:80rem;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{font-family:var(--sans);color:var(--ink);background:var(--white);line-height:1.6;-webkit-font-smoothing:antialiased}
+  h1,h2,h3,h4,h5,h6{font-family:var(--serif);font-weight:700;letter-spacing:.01em;line-height:1.1}
+  img{max-width:100%;display:block}
+  a{color:inherit;text-decoration:none}
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 28px}
+  .btn{display:inline-flex;align-items:center;gap:8px;font-family:var(--sans);font-weight:600;font-size:1rem;
+    border-radius:var(--rb);padding:14px 26px;border:1px solid transparent;cursor:pointer;transition:.25s var(--ease)}
+  .btn--plum{background:var(--plum);color:#fff}
+  .btn--plum:hover{background:var(--plum-dark)}
+  .btn--ghost{background:transparent;color:#fff;border-color:rgba(255,255,255,.55)}
+  .btn--ghost:hover{background:rgba(255,255,255,.12)}
+  .btn--dark{background:var(--ink);color:#fff}
+  .btn--dark:hover{background:var(--n-darker)}
+  .kicker{font-family:var(--sans);font-size:.8rem;font-weight:600;letter-spacing:.28em;text-transform:uppercase}
+
+  /* ---------- NAVBAR ---------- */
+  .nav{position:fixed;inset:0 0 auto 0;z-index:50;display:flex;align-items:center;justify-content:space-between;
+    padding:18px 28px;transition:.35s var(--ease)}
+  .nav .links{display:flex;gap:30px;font-size:.98rem;font-weight:500;align-items:center}
+  .nav .logo{font-family:var(--serif);font-weight:700;font-size:1.5rem;letter-spacing:.02em}
+  .nav.float{color:#fff;background:transparent}
+  .nav.float .btn--nav{background:var(--plum);color:#fff;border-color:var(--plum)}
+  .nav.solid{color:var(--ink);background:rgba(255,255,255,.9);backdrop-filter:blur(12px);
+    box-shadow:0 1px 0 rgba(7,7,2,.08);padding-top:14px;padding-bottom:14px}
+  .nav.solid .btn--nav{background:var(--plum);color:#fff}
+  .btn--nav{border-radius:var(--rb);padding:11px 22px;font-weight:600;font-size:.95rem;transition:.25s}
+  .nav .links a{position:relative;opacity:.92}
+  .nav .links a:hover{opacity:1}
+  .nav-r{display:flex;align-items:center;gap:18px}
+
+  /* ---------- HERO ---------- */
+  .hero{position:relative;min-height:100vh;display:flex;align-items:flex-end;overflow:hidden;color:#fff}
+  .hero .bgv{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0}
+  .hero .scrim{position:absolute;inset:0;z-index:1;
+    background:
+      linear-gradient(100deg, rgba(7,7,2,.72) 0%, rgba(7,7,2,.45) 38%, rgba(7,7,2,.12) 66%, rgba(7,7,2,.05) 100%),
+      linear-gradient(0deg, rgba(7,7,2,.55) 0%, rgba(7,7,2,0) 42%)}
+  .hero .inner{position:relative;z-index:2;width:100%;max-width:var(--maxw);margin:0 auto;padding:0 28px 8vh}
+  .hero .kicker{color:var(--gold);margin-bottom:18px}
+  .hero h1{font-size:clamp(3rem,8vw,5.5rem);font-weight:700;max-width:14ch;text-shadow:0 2px 30px rgba(0,0,0,.35)}
+  .hero .lead{font-size:clamp(1.05rem,1.6vw,1.35rem);max-width:46ch;margin:22px 0 30px;color:rgba(255,255,255,.92);font-weight:300}
+  .hero .cta{display:flex;gap:14px;flex-wrap:wrap}
+  .scroll-cue{position:absolute;left:50%;bottom:22px;transform:translateX(-50%);z-index:2;color:rgba(255,255,255,.7);
+    font-size:.72rem;letter-spacing:.3em;text-transform:uppercase}
+
+  /* ---------- SECTION GENERIC ---------- */
+  section{padding:96px 0}
+  .sec-head{text-align:center;max-width:42rem;margin:0 auto 54px}
+  .sec-head .kicker{color:var(--plum);display:block;margin-bottom:14px}
+  .sec-head h2{font-size:clamp(2rem,4.2vw,3.4rem)}
+  .sec-head p{margin-top:16px;color:var(--n-dark);font-size:1.1rem;font-weight:300}
+
+  /* ---------- FEATURES ---------- */
+  .features{background:var(--white)}
+  .fgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:22px}
+  .fcard{border-radius:var(--rc);background:var(--n-lightest);overflow:hidden;display:flex;flex-direction:column;
+    transition:.3s var(--ease)}
+  .fcard:hover{transform:translateY(-4px)}
+  .fcard .media{aspect-ratio:16/10;overflow:hidden;background:var(--paper)}
+  .fcard .media img{width:100%;height:100%;object-fit:cover;transition:.6s var(--ease)}
+  .fcard:hover .media img{transform:scale(1.05)}
+  .fcard .body{padding:26px 26px 30px}
+  .fcard .ic{width:44px;height:44px;border-radius:12px;background:var(--plum-lightest);color:var(--plum);
+    display:flex;align-items:center;justify-content:center;font-size:20px;margin-bottom:16px}
+  .fcard h3{font-size:1.5rem;margin-bottom:8px}
+  .fcard p{color:var(--n-dark);font-weight:300}
+
+  /* ---------- BENEFIT ROWS ---------- */
+  .benefit{background:var(--white);padding:60px 0}
+  .brow{display:grid;grid-template-columns:1fr 1fr;gap:60px;align-items:center;max-width:var(--maxw);margin:0 auto;padding:36px 28px}
+  .brow.rev .media{order:2}
+  .brow .media{position:relative;border-radius:var(--rc);overflow:hidden;aspect-ratio:5/4;background:var(--ink)}
+  .brow .media video,.brow .media img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+  .brow .media::after{content:"";position:absolute;inset:0;background:linear-gradient(0deg,rgba(7,7,2,.25),rgba(7,7,2,0) 55%)}
+  .brow .step{font-family:var(--serif);font-size:.95rem;font-weight:600;color:var(--plum);letter-spacing:.04em;margin-bottom:14px}
+  .brow h3{font-size:clamp(1.8rem,3.4vw,2.8rem);margin-bottom:18px}
+  .brow p{color:var(--n-dark);font-size:1.1rem;font-weight:300;margin-bottom:22px}
+  .brow .mini{display:flex;gap:8px;margin-top:18px}
+  .brow .mini span{width:26px;height:26px;border-radius:50%;box-shadow:0 0 0 1px rgba(7,7,2,.1)}
+
+  /* ---------- COMMENT CA MARCHE ---------- */
+  .how{background:var(--cream)}
+  .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:24px}
+  .stepc{background:#fff;border-radius:var(--rc);padding:34px 28px;position:relative}
+  .stepc .n{font-family:var(--serif);font-size:2.6rem;font-weight:700;color:var(--plum-light);line-height:1}
+  .stepc h4{font-size:1.4rem;margin:14px 0 8px}
+  .stepc p{color:var(--n-dark);font-weight:300}
+
+  /* ---------- CTA ---------- */
+  .cta-band{position:relative;overflow:hidden;color:#fff;text-align:center;padding:120px 0}
+  .cta-band .bgv{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0}
+  .cta-band .scrim{position:absolute;inset:0;z-index:1;background:linear-gradient(0deg,rgba(55,18,44,.82),rgba(41,14,33,.7))}
+  .cta-band .inner{position:relative;z-index:2;max-width:42rem;margin:0 auto;padding:0 28px}
+  .cta-band h2{font-size:clamp(2.2rem,5vw,3.6rem);margin-bottom:18px}
+  .cta-band p{font-size:1.15rem;font-weight:300;color:rgba(255,255,255,.9);margin-bottom:32px}
+  .cta-band .btn--plum{background:#fff;color:var(--plum)}
+  .cta-band .btn--plum:hover{background:var(--cream)}
+
+  /* ---------- FOOTER ---------- */
+  footer{background:var(--ink);color:rgba(255,255,255,.72);padding:72px 0 36px}
+  .fgrid2{display:grid;grid-template-columns:1.7fr 1fr 1fr 1fr;gap:30px}
+  footer .flogo{font-family:var(--serif);font-weight:700;font-size:1.6rem;color:#fff}
+  footer .fdesc{margin-top:14px;max-width:32ch;font-weight:300;font-size:.95rem}
+  footer h5{color:#fff;font-family:var(--sans);font-size:.78rem;letter-spacing:.18em;text-transform:uppercase;margin-bottom:16px;font-weight:600}
+  footer a{display:block;margin-bottom:10px;font-size:.95rem;font-weight:300;opacity:.8}
+  footer a:hover{opacity:1;color:#fff}
+  .fbar{border-top:1px solid rgba(255,255,255,.12);margin-top:48px;padding-top:24px;display:flex;justify-content:space-between;
+    font-size:.82rem;opacity:.7;flex-wrap:wrap;gap:10px}
+
+  @media(max-width:880px){
+    .fgrid{grid-template-columns:1fr}
+    .brow{grid-template-columns:1fr;gap:28px}
+    .brow.rev .media{order:0}
+    .steps{grid-template-columns:1fr}
+    .fgrid2{grid-template-columns:1fr 1fr}
+    .nav .links{display:none}
+    section{padding:72px 0}
+  }
+</style>
+</head>
+<body>
+
+<!-- NAVBAR -->
+<nav class="nav float" id="nav">
+  <div class="links">
+    <a href="#">Palettes</a>
+    <a href="#">Scanner</a>
+    <a href="#">À propos</a>
+  </div>
+  <div class="logo">WADA&#x548C;&#x7530;</div>
+  <div class="nav-r">
+    <a class="btn btn--nav" href="#">Commencer</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<header class="hero">
+  <video class="bgv" autoplay muted loop playsinline poster="femme-wada-bg-photo.webp">
+    <source src="femme-wada-bg.mp4" type="video/mp4">
+  </video>
+  <div class="scrim"></div>
+  <div class="inner">
+    <span class="kicker">Inspiré de Sanzo Wada · 1933</span>
+    <h1>Votre style commence par une couleur.</h1>
+    <p class="lead">Un dictionnaire de 348 accords, traduits en tenues que vous pouvez porter — et acheter. Photographiez une teinte, WADA compose autour.</p>
+    <div class="cta">
+      <a class="btn btn--plum" href="#">Scanner une couleur</a>
+      <a class="btn btn--ghost" href="#">Explorer les palettes</a>
+    </div>
+  </div>
+  <div class="scroll-cue">Défiler</div>
+</header>
+
+<!-- FOOTER -->
+<footer>
+  <div class="wrap">
+    <div class="fgrid2">
+      <div>
+        <div class="flogo">WADA&#x548C;&#x7530;</div>
+        <p class="fdesc">Un dictionnaire de palettes pour composer la tenue parfaite. D'après Sanzo Wada (1933).</p>
+      </div>
+      <div>
+        <h5>Explorer</h5>
+        <a href="#">Palettes</a><a href="#">Scanner</a><a href="#">Découverte</a><a href="#">Cultures</a>
+      </div>
+      <div>
+        <h5>Compte</h5>
+        <a href="#">Mes favoris</a><a href="#">Abonnement</a><a href="#">À propos</a><a href="#">FAQ</a>
+      </div>
+      <div>
+        <h5>Contact</h5>
+        <a href="#">hello@wada.style</a><a href="#">Pour les marques</a><a href="#">Mentions légales</a><a href="#">Genève</a>
+      </div>
+    </div>
+    <div class="fbar">
+      <span>© 2026 WADA · Genève</span>
+      <span>Fait avec soin, d'après Sanzo Wada.</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+  // Navbar float -> solid au scroll
+  var nav=document.getElementById('nav');
+  function onScroll(){
+    var solid = window.scrollY > (window.innerHeight*0.72);
+    nav.classList.toggle('solid', solid);
+    nav.classList.toggle('float', !solid);
+  }
+  onScroll();
+  window.addEventListener('scroll', onScroll, {passive:true});
+</script>
+</body>
+</html>

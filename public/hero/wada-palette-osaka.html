@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WADA — Osaka au thé</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --cream:#f4eee4;--cream-2:#efe7da;--card:#fbf7f0;--ink:#2a2521;--muted:#8c8377;
+    --line:#e5dccc;--bordeaux:#6e3b32;--bordeaux-2:#82473c;--olive:#6f7a3f;
+    --dark:#1f1d18;
+    --shadow:0 18px 50px -28px rgba(60,40,25,.45);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Inter',system-ui,sans-serif;background:var(--cream);color:var(--ink);-webkit-font-smoothing:antialiased}
+  h1,h2,h3,h4,.brand,.chubby{font-family:'Fredoka',sans-serif}
+
+  /* NAV */
+  nav{display:flex;align-items:center;justify-content:space-between;padding:18px clamp(20px,5vw,56px);
+    border-bottom:1px solid var(--line);background:rgba(250,246,239,.7);backdrop-filter:blur(8px);position:sticky;top:0;z-index:20}
+  .nav-left{display:flex;gap:26px;font-weight:500;font-size:15px}
+  .nav-left a{color:var(--ink);text-decoration:none;opacity:.78}
+  .nav-left a:hover,.nav-left a.active{opacity:1}
+  .brand{font-size:26px;font-weight:600;letter-spacing:.5px;position:absolute;left:50%;transform:translateX(-50%)}
+  .nav-right{display:flex;align-items:center;gap:10px}
+  .icon-btn{width:38px;height:38px;border-radius:50%;border:1px solid var(--line);background:var(--card);display:grid;place-items:center;cursor:pointer;font-size:15px}
+  .lang{padding:8px 14px;border:1px solid var(--line);border-radius:999px;background:var(--card);font-size:12px;font-weight:600;cursor:pointer}
+  .cta{background:var(--bordeaux);color:#fff;border:none;padding:11px 22px;border-radius:999px;font-family:'Fredoka';font-size:15px;font-weight:500;cursor:pointer}
+  .cta:hover{background:var(--bordeaux-2)}
+
+  .wrap{max-width:1180px;margin:0 auto;padding:24px clamp(18px,5vw,40px) 60px}
+  .back{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--card);border-radius:999px;padding:9px 18px;font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink);cursor:pointer;text-decoration:none}
+  .back:hover{background:#fff}
+
+  /* HERO */
+  .hero{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:50px;align-items:start;margin-top:28px}
+  .palette-card{background:var(--card);border:1px solid var(--line);border-radius:24px;overflow:hidden;box-shadow:var(--shadow)}
+  .swatch{padding:24px 26px;color:#fff;position:relative;min-height:124px;display:flex;flex-direction:column;justify-content:center}
+  .swatch .ref{font-size:11px;letter-spacing:.16em;opacity:.8;text-transform:uppercase;margin-bottom:6px}
+  .swatch .nm{font-family:'Fredoka';font-size:24px;font-weight:500;text-shadow:0 1px 2px rgba(0,0,0,.25)}
+  .swatch .hex{position:absolute;right:24px;bottom:22px;font-size:13px;opacity:.85;font-feature-settings:'tnum'}
+
+  .meta-block{padding-top:8px}
+  .meta-block .kicker{display:inline-block;font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:14px}
+  h1{font-size:clamp(46px,5.6vw,68px);line-height:1.04;letter-spacing:-.5px;margin-bottom:14px}
+  .lede{font-size:18px;color:var(--muted);font-style:italic;margin-bottom:22px;line-height:1.5}
+
+  .mini-actions{display:flex;gap:10px;margin-bottom:24px}
+  .mini{width:42px;height:42px;border-radius:50%;border:1px solid var(--line);background:#fff;display:grid;place-items:center;cursor:pointer}
+  .mini:hover{border-color:var(--bordeaux)}
+  .mini.heart.on{color:var(--bordeaux);border-color:var(--bordeaux)}
+  .mini svg{width:16px;height:16px}
+
+  /* metadata grid */
+  .meta-grid{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px 18px;display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+  .mt{display:flex;align-items:center;gap:10px;border-right:1px solid var(--line);padding-right:14px}
+  .mt:last-child{border-right:none;padding-right:0}
+  .mt-ic{font-size:18px;color:var(--bordeaux);flex:0 0 auto}
+  .mt-tx .l{font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:600;display:block;margin-bottom:2px}
+  .mt-tx .v{font-family:'Fredoka';font-size:13.5px;font-weight:500;line-height:1.2}
+
+  /* FILTER */
+  .filter{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:22px;margin-top:38px;display:grid;grid-template-columns:repeat(4,1fr) auto;gap:22px;align-items:end}
+  .filter h3{grid-column:1 / -1;font-size:18px;font-weight:500;margin-bottom:-6px}
+  .f-col{display:flex;flex-direction:column;gap:8px}
+  .f-col label{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:600}
+  .seg{display:inline-flex;background:var(--cream);border:1px solid var(--line);border-radius:999px;padding:3px;gap:0;width:max-content;max-width:100%;flex-wrap:wrap}
+  .seg button{border:none;background:transparent;padding:8px 14px;border-radius:999px;font-family:'Fredoka';font-size:13.5px;color:var(--muted);cursor:pointer;font-weight:500}
+  .seg button.on{background:var(--bordeaux);color:#fff}
+  .f-col select{padding:11px 14px;border:1px solid var(--line);background:#fff;border-radius:12px;font-family:'Inter';font-size:14px;color:var(--ink);cursor:pointer;width:100%}
+  .reset{display:inline-flex;align-items:center;gap:6px;background:none;border:none;color:var(--muted);font-size:13px;cursor:pointer;padding:11px 12px}
+  .reset:hover{color:var(--bordeaux)}
+
+  /* LOOKS */
+  .looks-head{margin:50px 0 20px}
+  .looks-head h2{font-size:28px;font-weight:500;margin-bottom:4px}
+  .looks-head p{color:var(--muted);font-size:14px}
+  .looks{display:grid;grid-template-columns:repeat(3,1fr);gap:22px}
+  .look{background:var(--card);border:1px solid var(--line);border-radius:20px;overflow:hidden;display:flex;flex-direction:column;transition:.18s}
+  .look:hover{transform:translateY(-4px);box-shadow:var(--shadow);border-color:#d6c7a8}
+  .look-img{position:relative;aspect-ratio:4/5;background:linear-gradient(180deg,#cfc1a8,#a89272);overflow:hidden}
+  .look-img.b{background:linear-gradient(180deg,#d8ad7e,#a36e3f)}
+  .look-img.c{background:linear-gradient(180deg,#7f8b91,#3e4d5a)}
+  .look-img::before{content:"";position:absolute;inset:0;background-image:radial-gradient(circle at 50% 60%,rgba(0,0,0,.15),transparent 60%)}
+  .look-img .fig{position:absolute;left:50%;bottom:0;width:60%;height:90%;transform:translateX(-50%);
+    background:linear-gradient(180deg,rgba(40,30,20,.6),rgba(20,15,10,.85));border-radius:50% 50% 0 0 / 30% 30% 0 0;opacity:.6}
+  .tag-row{position:absolute;top:14px;left:14px;right:14px;display:flex;justify-content:space-between;gap:8px;z-index:2}
+  .tag{background:rgba(255,255,255,.94);padding:6px 12px;border-radius:999px;font-size:11px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;color:var(--ink);font-family:'Fredoka'}
+  .tag.price{background:rgba(0,0,0,.72);color:#fff;font-family:'Inter';font-weight:600;letter-spacing:0;text-transform:none;font-size:12px}
+
+  .look-body{padding:20px;display:flex;flex-direction:column;flex:1}
+  .look-body h3{font-size:20px;font-weight:500;margin-bottom:4px}
+  .look-desc{color:var(--muted);font-size:13.5px;margin-bottom:14px;line-height:1.5}
+  .swatches{display:flex;gap:6px;margin-bottom:12px}
+  .swatches i{width:24px;height:24px;border-radius:6px;display:block}
+  .look-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px}
+  .lchip{font-size:12px;background:var(--cream);border:1px solid var(--line);border-radius:999px;padding:4px 10px;color:var(--ink)}
+
+  .pieces{border-top:1px solid var(--line);padding-top:14px;margin-bottom:18px}
+  .pc{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:6px 0;font-size:13.5px}
+  .pc .name{display:flex;align-items:center;gap:10px;color:var(--ink)}
+  .pc .name .ic{width:18px;color:var(--muted);text-align:center}
+  .pc .pr{color:var(--muted);font-weight:600;font-family:'Inter';letter-spacing:.05em}
+
+  .look .go{margin-top:auto;background:var(--bordeaux);color:#fff;border:none;border-radius:13px;padding:14px;font-family:'Fredoka';font-size:15px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px}
+  .look .go:hover{background:var(--bordeaux-2)}
+
+  /* CONSEIL DU STYLISTE */
+  .stylo{margin-top:36px;background:var(--card);border:1px solid var(--line);border-radius:18px;padding:20px 22px;display:flex;align-items:center;gap:18px}
+  .stylo-av{width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#caa479,#8a6f4a);flex:0 0 auto;display:grid;place-items:center;color:#fff;font-family:'Fredoka';font-size:24px}
+  .stylo-tx{flex:1;min-width:0}
+  .stylo-tx h4{font-family:'Fredoka';font-size:15px;font-weight:500;margin-bottom:4px}
+  .stylo-tx p{font-size:13.5px;color:var(--muted);line-height:1.5}
+  .stylo-go{background:var(--bordeaux);color:#fff;border:none;border-radius:999px;padding:11px 20px;font-family:'Fredoka';font-size:14px;font-weight:500;cursor:pointer;flex:0 0 auto;text-decoration:none}
+  .stylo-go:hover{background:var(--bordeaux-2)}
+
+  /* PREV / NEXT (dark) */
+  .pn{display:grid;grid-template-columns:1fr 1fr;background:#2a3026;color:#e9e3d3;border-radius:18px;margin-top:40px;overflow:hidden}
+  .pn a{padding:22px 28px;text-decoration:none;color:inherit;display:flex;flex-direction:column;gap:5px;transition:.16s}
+  .pn a:hover{background:rgba(255,255,255,.05)}
+  .pn .k{font-size:11px;letter-spacing:.14em;text-transform:uppercase;opacity:.7}
+  .pn .n{font-family:'Fredoka';font-size:20px;font-weight:500}
+  .pn .next{text-align:right}
+  .pn a + a{border-left:1px solid rgba(255,255,255,.08)}
+
+  /* FOOTER */
+  footer{background:#16130f;color:#cfc6b6;margin-top:60px;padding:54px clamp(20px,5vw,56px) 28px}
+  .fgrid{display:grid;grid-template-columns:1.6fr 1fr 1fr 1fr;gap:30px;max-width:1180px;margin:0 auto}
+  footer .brand2{font-family:'Fredoka';color:#fff;font-size:24px;margin-bottom:12px}
+  footer p{font-size:14px;line-height:1.6;opacity:.7;max-width:300px}
+  footer h4{font-size:12px;letter-spacing:.16em;color:#fff;margin-bottom:14px;text-transform:uppercase}
+  footer ul{list-style:none}footer li{margin-bottom:10px}
+  footer a{color:#cfc6b6;text-decoration:none;font-size:14px;opacity:.85}footer a:hover{opacity:1}
+  .socials{margin-top:18px;display:flex;gap:14px}
+  .socials a{display:grid;place-items:center;width:24px;height:24px;color:#cfc6b6}
+  .socials svg{width:20px;height:20px;fill:currentColor}
+  .fbar{max-width:1180px;margin:34px auto 0;border-top:1px solid #2c2620;padding-top:18px;font-size:12.5px;opacity:.6;display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
+
+  @media(max-width:980px){
+    .hero{grid-template-columns:1fr;gap:30px}
+    .meta-grid{grid-template-columns:1fr 1fr;gap:14px 18px}
+    .mt:nth-child(2n){border-right:none;padding-right:0}
+    .filter{grid-template-columns:1fr 1fr;gap:18px}
+    .filter h3{margin-bottom:0}
+    .reset{justify-self:start;padding-left:0}
+    .looks{grid-template-columns:1fr}
+    .pn{grid-template-columns:1fr}
+    .pn a + a{border-left:none;border-top:1px solid rgba(255,255,255,.08)}
+    .pn .next{text-align:left}
+    .nav-left{display:none}.brand{position:static;transform:none}
+    .fgrid{grid-template-columns:1fr 1fr}
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-left">
+    <a href="#" class="active">Palettes</a>
+    <a href="#">Scanner</a>
+    <a href="#">Styliste</a>
+    <a href="#">Favoris</a>
+  </div>
+  <div class="brand">WADA 和田</div>
+  <div class="nav-right">
+    <div class="icon-btn">&#128100;</div>
+    <div class="icon-btn">&#9790;</div>
+    <div class="lang">EN</div>
+    <button class="cta">Abonnement</button>
+  </div>
+</nav>
+
+<div class="wrap">
+  <a class="back" href="#">&larr;&nbsp; Retour</a>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="palette-card">
+      <div class="swatch" style="background:#7B2D26">
+        <div class="ref">WADA · 123-0045-4538</div>
+        <div class="nm">Vermillon</div>
+        <div class="hex">#7B2D26</div>
+      </div>
+      <div class="swatch" style="background:#A8784A">
+        <div class="ref">WADA · 168-0120-1207</div>
+        <div class="nm">Cuir naturel</div>
+        <div class="hex">#A8784A</div>
+      </div>
+      <div class="swatch" style="background:#3E5A7C">
+        <div class="ref">WADA · 62-0090-9124</div>
+        <div class="nm">Bleu pierre</div>
+        <div class="hex">#3E5A7C</div>
+      </div>
+    </div>
+
+    <div class="meta-block">
+      <span class="kicker">No. 009 · Japonaise</span>
+      <h1>Osaka au thé</h1>
+      <p class="lede">Trois teintes qui parlent à voix basse.</p>
+
+      <div class="mini-actions">
+        <button class="mini heart" title="Favori">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+        </button>
+        <button class="mini" title="Pinterest">
+          <svg viewBox="0 0 24 24" fill="#bd2c2c"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.08 3.16 9.42 7.62 11.17-.11-.95-.2-2.41.04-3.45.22-.94 1.4-5.98 1.4-5.98s-.36-.72-.36-1.78c0-1.67.97-2.91 2.17-2.91 1.02 0 1.52.77 1.52 1.69 0 1.03-.66 2.57-1 4-.28 1.2.6 2.18 1.79 2.18 2.15 0 3.8-2.27 3.8-5.54 0-2.9-2.08-4.93-5.05-4.93-3.44 0-5.46 2.58-5.46 5.25 0 1.04.4 2.16.9 2.76.1.12.11.23.08.35-.09.38-.29 1.2-.33 1.36-.05.22-.17.27-.4.16-1.49-.69-2.42-2.87-2.42-4.62 0-3.76 2.73-7.22 7.88-7.22 4.14 0 7.35 2.95 7.35 6.89 0 4.11-2.59 7.42-6.19 7.42-1.21 0-2.35-.63-2.74-1.37l-.74 2.84c-.27 1.04-1 2.34-1.49 3.13C9.57 23.82 10.76 24 12 24c6.63 0 12-5.37 12-12S18.63 0 12 0z"/></svg>
+        </button>
+      </div>
+
+      <div class="meta-grid">
+        <div class="mt"><span class="mt-ic">&#9962;</span><div class="mt-tx"><span class="l">Ambiance</span><span class="v">Chaleureuse &amp; intemporelle</span></div></div>
+        <div class="mt"><span class="mt-ic">&#127809;</span><div class="mt-tx"><span class="l">Saison</span><span class="v">Automne / Hiver</span></div></div>
+        <div class="mt"><span class="mt-ic">&#9728;</span><div class="mt-tx"><span class="l">Luminosité</span><span class="v">Douce</span></div></div>
+        <div class="mt"><span class="mt-ic">&#9728;&#65039;</span><div class="mt-tx"><span class="l">Contraste</span><span class="v">Moyen</span></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FILTER -->
+  <section class="filter">
+    <h3>Trouvez votre tenue idéale</h3>
+    <div class="f-col">
+      <label>Genre</label>
+      <div class="seg" data-key="genre">
+        <button class="on">Homme</button>
+        <button>Femme</button>
+        <button>Mixte</button>
+      </div>
+    </div>
+    <div class="f-col">
+      <label>Prix</label>
+      <div class="seg" data-key="prix">
+        <button>€</button>
+        <button>€€</button>
+        <button class="on">€€€</button>
+        <button>€€€€</button>
+      </div>
+    </div>
+    <div class="f-col">
+      <label>Style</label>
+      <select>
+        <option>Tous les styles</option>
+        <option>Minimaliste</option>
+        <option>Classique</option>
+        <option>Décontracté</option>
+        <option>Streetwear</option>
+      </select>
+    </div>
+    <div class="f-col">
+      <label>Occasion</label>
+      <select>
+        <option>Toutes occasions</option>
+        <option>Bureau</option>
+        <option>Quotidien</option>
+        <option>Soirée</option>
+      </select>
+    </div>
+    <button class="reset">&#8635; Réinitialiser</button>
+  </section>
+
+  <!-- LOOKS -->
+  <div class="looks-head">
+    <h2 class="chubby">Inspirations de looks</h2>
+    <p>Des idées de tenues pour adopter <em>Osaka au thé</em>.</p>
+  </div>
+
+  <section class="looks">
+    <!-- Look 1 : Homme -->
+    <article class="look">
+      <div class="look-img a">
+        <div class="tag-row"><span class="tag">Homme</span><span class="tag price">€€€€</span></div>
+        <div class="fig"></div>
+      </div>
+      <div class="look-body">
+        <h3>Élégance décontractée</h3>
+        <p class="look-desc">Un look raffiné pour le quotidien.</p>
+        <div class="swatches"><i style="background:#7B2D26"></i><i style="background:#A8784A"></i><i style="background:#3E5A7C"></i></div>
+        <div class="look-chips">
+          <span class="lchip">Automne / Hiver</span>
+          <span class="lchip">Bureau</span>
+          <span class="lchip">Décontracté</span>
+        </div>
+        <div class="pieces">
+          <div class="pc"><span class="name"><span class="ic">&#129507;</span> Manteau en laine</span><span class="pr">€€</span></div>
+          <div class="pc"><span class="name"><span class="ic">&#128090;</span> Pull en cachemire</span><span class="pr">€€€</span></div>
+          <div class="pc"><span class="name"><span class="ic">&#128087;</span> Pantalon en laine</span><span class="pr">€€</span></div>
+          <div class="pc"><span class="name"><span class="ic">&#128095;</span> Baskets en cuir</span><span class="pr">€€€</span></div>
+        </div>
+        <button class="go">Voir le look &rarr;</button>
+      </div>
+    </article>
+
+    <!-- Look 2 : Femme -->
+    <article class="look">
+      <div class="look-img b">
+        <div class="tag-row"><span class="tag">Femme</span><span class="tag price">€€€€</span></div>
+        <div class="fig"></div>
+      </div>
+      <div class="look-body">
+        <h3>Chic minimaliste</h3>
+        <p class="look-desc">Des pièces essentielles, en harmonie.</p>
+        <div class="swatches"><i style="background:#7B2D26"></i><i style="background:#A8784A"></i><i style="background:#3E5A7C"></i></div>
+        <div class="look-chips">
+          <span class="lchip">Automne / Hiver</span>
+          <span class="lchip">Sortie</span>
+          <span class="lchip">Minimaliste</span>
+        </div>
+        <div class="pieces">
+          <div class="pc"><span class="name"><span class="ic">&#129507;</span> Manteau long</span><span class="pr">€€€</span></div>
+          <div class="pc"><span class="name"><span class="ic">&#128090;</span> Pull en laine</span><span class="pr">€€</span></div>
+          <div class="pc"><span class="name"><span class="ic">&#128087;</span> Pantalon taille haute</span><span class="pr">€€</span></div>
+          <div class="pc"><span class="name"><span class="ic">&#128095;</span> Bottines en cuir</span><span class="pr">€€€</span></div>
+        </div>
+        <button class="go">Voir le look &rarr;</button>
+      </div>
+    </article>
+
+    <!-- Look 3 : Mixte -->
+    <article class="look">
+      <div class="look-img c">
+        <div class="tag-row"><span class="tag">Mixte</span><span class="tag price">€€€€</span></div>
+        <div class="fig"></div>
+      </div>
+      <div class="look-body">
+        <h3>Esprit contemporain</h3>
+        <p class="look-desc">Un équilibre entre confort et style.</p>
+        <div class="swatches"><i style="background:#7B2D26"></i><i style="background:#A8784A"></i><i style="background:#3E5A7C"></i></div>
+        <div class="look-chips">
+          <span class="lchip">Mi-saison</span>
+          <span class="lchip">Weekend</span>
+          <span class="lchip">Confortable</span>
+        </div>
+        <div class="pieces">
+          <div class="pc"><span class="name"><span class="ic">&#129509;</span> Veste overshirt</span><span class="pr">€€</span></div>
+          <div class="pc"><span class="name"><span class="ic">&#128085;</span> Tee-shirt épais</span><span class="pr">€€</span></div>
+          <div class="pc"><span class="name"><span class="ic">&#128087;</span> Pantalon droit</span><span class="pr">€€</span></div>
+          <div class="pc"><span class="name"><span class="ic">&#128094;</span> Sneakers</span><span class="pr">€€€</span></div>
+        </div>
+        <button class="go">Voir le look &rarr;</button>
+      </div>
+    </article>
+  </section>
+
+  <!-- CONSEIL DU STYLISTE -->
+  <section class="stylo">
+    <div class="stylo-av">和</div>
+    <div class="stylo-tx">
+      <h4>Conseil du styliste</h4>
+      <p>Osaka au thé fonctionne à merveille avec des matières naturelles : laine, coton épais, cuir. Jouez sur les textures pour un rendu profond et élégant.</p>
+    </div>
+    <a class="stylo-go" href="#">Dialoguer avec le styliste</a>
+  </section>
+
+  <!-- PREV / NEXT -->
+  <nav class="pn">
+    <a href="#"><span class="k">&larr; Précédente · No. 008</span><span class="n">Crépuscule sur Nara</span></a>
+    <a href="#" class="next"><span class="k">Suivante · No. 010 &rarr;</span><span class="n">Le Caire en printemps</span></a>
+  </nav>
+</div>
+
+<footer>
+  <div class="fgrid">
+    <div>
+      <div class="brand2">WADA 和田</div>
+      <p>Un dictionnaire de palettes pour composer la tenue parfaite. D'après Sanzo Wada (1933).</p>
+      <div class="socials">
+        <a href="#" aria-label="Instagram"><svg viewBox="0 0 24 24"><path d="M12 2.16c3.2 0 3.58.01 4.85.07 1.17.05 1.8.25 2.23.41.56.22.96.48 1.38.9.42.42.68.82.9 1.38.16.42.36 1.06.41 2.23.06 1.27.07 1.65.07 4.85s-.01 3.58-.07 4.85c-.05 1.17-.25 1.8-.41 2.23-.22.56-.48.96-.9 1.38-.42.42-.82.68-1.38.9-.42.16-1.06.36-2.23.41-1.27.06-1.65.07-4.85.07s-3.58-.01-4.85-.07c-1.17-.05-1.8-.25-2.23-.41a3.7 3.7 0 0 1-1.38-.9 3.7 3.7 0 0 1-.9-1.38c-.16-.42-.36-1.06-.41-2.23C2.17 15.58 2.16 15.2 2.16 12s.01-3.58.07-4.85c.05-1.17.25-1.8.41-2.23.22-.56.48-.96.9-1.38.42-.42.82-.68 1.38-.9.42-.16 1.06-.36 2.23-.41C8.42 2.17 8.8 2.16 12 2.16M12 0C8.74 0 8.33.01 7.05.07 5.78.13 4.9.34 4.14.63a5.86 5.86 0 0 0-2.13 1.38A5.86 5.86 0 0 0 .63 4.14C.34 4.9.13 5.78.07 7.05.01 8.33 0 8.74 0 12s.01 3.67.07 4.95c.06 1.27.27 2.15.56 2.91.31.78.72 1.45 1.38 2.13.68.66 1.35 1.07 2.13 1.38.76.29 1.64.5 2.91.56C8.33 23.99 8.74 24 12 24s3.67-.01 4.95-.07c1.27-.06 2.15-.27 2.91-.56.78-.31 1.45-.72 2.13-1.38.66-.68 1.07-1.35 1.38-2.13.29-.76.5-1.64.56-2.91.06-1.28.07-1.69.07-4.95s-.01-3.67-.07-4.95c-.06-1.27-.27-2.15-.56-2.91a5.86 5.86 0 0 0-1.38-2.13A5.86 5.86 0 0 0 19.86.63C19.1.34 18.22.13 16.95.07 15.67.01 15.26 0 12 0zm0 5.84A6.16 6.16 0 1 0 12 18.16 6.16 6.16 0 0 0 12 5.84zm0 10.16A4 4 0 1 1 12 8a4 4 0 0 1 0 8zm6.4-11.84a1.44 1.44 0 1 0 0 2.88 1.44 1.44 0 0 0 0-2.88z"/></svg></a>
+        <a href="#" aria-label="TikTok"><svg viewBox="0 0 24 24"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5.8 20.1a6.34 6.34 0 0 0 10.86-4.43V8.93a8.16 8.16 0 0 0 4.77 1.52V7a4.85 4.85 0 0 1-1.84-.31z"/></svg></a>
+        <a href="#" aria-label="Pinterest"><svg viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.08 3.16 9.42 7.62 11.17-.11-.95-.2-2.41.04-3.45.22-.94 1.4-5.98 1.4-5.98s-.36-.72-.36-1.78c0-1.67.97-2.91 2.17-2.91 1.02 0 1.52.77 1.52 1.69 0 1.03-.66 2.57-1 4-.28 1.2.6 2.18 1.79 2.18 2.15 0 3.8-2.27 3.8-5.54 0-2.9-2.08-4.93-5.05-4.93-3.44 0-5.46 2.58-5.46 5.25 0 1.04.4 2.16.9 2.76.1.12.11.23.08.35-.09.38-.29 1.2-.33 1.36-.05.22-.17.27-.4.16-1.49-.69-2.42-2.87-2.42-4.62 0-3.76 2.73-7.22 7.88-7.22 4.14 0 7.35 2.95 7.35 6.89 0 4.11-2.59 7.42-6.19 7.42-1.21 0-2.35-.63-2.74-1.37l-.74 2.84c-.27 1.04-1 2.34-1.49 3.13C9.57 23.82 10.76 24 12 24c6.63 0 12-5.37 12-12S18.63 0 12 0z"/></svg></a>
+      </div>
+    </div>
+    <div><h4>Explorer</h4><ul><li><a href="#">Palettes</a></li><li><a href="#">Scanner</a></li><li><a href="#">Découverte</a></li><li><a href="#">Cultures</a></li></ul></div>
+    <div><h4>Compte</h4><ul><li><a href="#">Mes favoris</a></li><li><a href="#">Abonnement</a></li><li><a href="#">À propos</a></li><li><a href="#">FAQ</a></li><li><a href="#">Installer l'app</a></li></ul></div>
+    <div><h4>Contact</h4><ul><li><a href="#">hello@wada.style</a></li><li><a href="#">Pour les marques</a></li><li><a href="#">Mentions légales</a></li><li><a href="#">Genève</a></li></ul></div>
+  </div>
+  <div class="fbar">
+    <span>© 2026 WADA · Genève</span>
+    <span>Liens partenaires (MUJI via Awin · Amazon) — WADA peut toucher une commission, sans coût pour vous.</span>
+  </div>
+</footer>
+
+<script>
+  document.querySelectorAll('.seg').forEach(s=>{
+    s.querySelectorAll('button').forEach(b=>{
+      b.addEventListener('click',()=>{
+        s.querySelectorAll('button').forEach(x=>x.classList.remove('on'));
+        b.classList.add('on');
+      });
+    });
+  });
+</script>
+</body>
+</html>

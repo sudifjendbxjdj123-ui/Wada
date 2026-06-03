@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!--
+    WADA — Android Adaptive Icon Foreground (1024×1024)
+    ─────────────────────────────────────────────────────────────────
+    Android utilise deux couches : foreground (ce fichier) + background
+    (icon-background.png, simple aplat). Le système peut rogner/zoomer
+    sur le foreground selon la forme du masque utilisateur (cercle,
+    squircle, rond, tear drop).
+
+    RÈGLE D'OR : tout contenu vital doit tenir dans le cercle de 512px
+    de rayon centré (= safe zone). Au-delà → potentiellement rogné.
+    Le visuel ici est centré dans une zone safe de ~660×660 au milieu.
+
+    Pas de fond → le système met `icon-background.png` derrière.
+    ─────────────────────────────────────────────────────────────── */
+  -->
+
+  <!--
+    Trois bandes centrées dans la safe zone
+    Taille volontairement réduite vs icon.svg car Android zoome ~108%
+    sur le foreground (pour permettre les animations parallax)
+  -->
+  <g transform="translate(245, 245)">
+    <!-- Cadre extérieur fin -->
+    <rect
+      x="0" y="0"
+      width="534" height="534"
+      fill="#F4EFE6"
+      stroke="#1F1B16"
+      stroke-width="10"
+    />
+    <!-- Trois bandes -->
+    <g transform="translate(40, 40)">
+      <rect x="0"   y="0" width="148" height="454" fill="#5C2018"/>
+      <rect x="156" y="0" width="148" height="454" fill="#5C5A3C"/>
+      <rect x="312" y="0" width="148" height="454" fill="#1B4A6B"/>
+    </g>
+  </g>
+</svg>

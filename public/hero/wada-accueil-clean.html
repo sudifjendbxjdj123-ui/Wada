@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WADA — Accueil</title>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --cream:#f4eee4;--cream-2:#efe7da;--card:#fbf7f0;--ink:#2a2521;--muted:#8c8377;
+    --line:#e5dccc;--bordeaux:#6e3b32;--bordeaux-2:#82473c;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;overflow:hidden}
+  body{font-family:'Inter',system-ui,sans-serif;background:#000;color:#fff;
+    -webkit-font-smoothing:antialiased;line-height:1.5}
+  h1,.fk{font-family:'Fredoka',sans-serif}
+
+  /* HERO = 100% de l'écran */
+  .hero{position:relative;width:100%;height:100svh;overflow:hidden}
+
+  /* Vidéo plein écran (remplacer src par la vraie vidéo mannequin) */
+  .hero video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+  .hero .poster-fallback{position:absolute;inset:0;background:
+    linear-gradient(135deg,#2a1f15 0%,#5a3d28 40%,#8a5a3a 100%)}
+  .hero::after{content:"";position:absolute;inset:0;
+    background:linear-gradient(180deg,rgba(0,0,0,.4) 0%,transparent 30%,transparent 60%,rgba(0,0,0,.65) 100%);
+    pointer-events:none}
+
+  /* NAV minimaliste superposée */
+  nav{position:absolute;top:0;left:0;right:0;z-index:20;
+    display:flex;align-items:center;justify-content:space-between;
+    padding:18px 22px;color:#fff}
+  .brand{font-family:'Fredoka';font-size:21px;font-weight:600;letter-spacing:.5px}
+  .nav-right{display:flex;align-items:center;gap:10px}
+  .nav-link{color:#fff;text-decoration:none;font-size:13px;letter-spacing:.04em;padding:8px 14px;
+    border:1px solid rgba(255,255,255,.3);border-radius:999px;font-family:'Fredoka';font-weight:500;
+    backdrop-filter:blur(8px);background:rgba(0,0,0,.15)}
+  .nav-link:hover{background:rgba(0,0,0,.3)}
+
+  /* CONTENU centré dans le hero */
+  .hero-content{position:absolute;left:0;right:0;bottom:140px;z-index:10;
+    text-align:center;padding:0 24px}
+  .kicker{display:inline-block;font-size:10px;letter-spacing:.32em;text-transform:uppercase;
+    color:rgba(255,255,255,.85);font-weight:600;margin-bottom:18px;
+    padding:6px 12px;border:1px solid rgba(255,255,255,.25);border-radius:999px;
+    backdrop-filter:blur(4px)}
+  h1{font-size:clamp(36px,9vw,52px);font-weight:500;line-height:1.04;letter-spacing:-.5px;
+    color:#fff;margin-bottom:14px;text-shadow:0 2px 16px rgba(0,0,0,.4)}
+  .sub{font-size:15.5px;color:rgba(255,255,255,.92);max-width:36ch;margin:0 auto 30px;
+    text-shadow:0 1px 8px rgba(0,0,0,.4)}
+
+  /* CTA */
+  .cta-row{display:flex;flex-direction:column;gap:10px;align-items:center;max-width:300px;margin:0 auto}
+  .btn-primary{display:inline-flex;align-items:center;justify-content:center;gap:8px;
+    background:var(--bordeaux);color:#fff;border:none;border-radius:14px;
+    padding:15px 26px;font-family:'Fredoka';font-size:16px;font-weight:500;cursor:pointer;
+    width:100%;text-decoration:none;box-shadow:0 10px 30px -10px rgba(110,59,50,.6)}
+  .btn-primary:hover{background:var(--bordeaux-2)}
+  .btn-ghost{display:inline-flex;align-items:center;justify-content:center;
+    background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.35);border-radius:14px;
+    padding:13px 22px;font-family:'Fredoka';font-size:14.5px;font-weight:500;cursor:pointer;
+    width:100%;text-decoration:none;backdrop-filter:blur(6px)}
+  .btn-ghost:hover{background:rgba(255,255,255,.2)}
+
+  /* TAB BAR mobile en bas */
+  .tabs{position:fixed;left:0;right:0;bottom:0;z-index:30;
+    background:rgba(244,238,228,.96);backdrop-filter:blur(14px);
+    border-top:1px solid rgba(0,0,0,.06);
+    display:flex;align-items:flex-end;justify-content:space-around;
+    padding:8px 6px calc(8px + env(safe-area-inset-bottom))}
+  .tab{display:flex;flex-direction:column;align-items:center;gap:4px;flex:1;
+    text-decoration:none;color:var(--muted);font-size:10.5px;font-weight:500}
+  .tab .ic{font-size:18px;line-height:1}
+  .tab.on{color:var(--bordeaux)}
+  .tab.scan{margin-top:-22px}
+  .tab.scan .ic-scan{width:52px;height:52px;border-radius:50%;background:var(--bordeaux);color:#fff;
+    display:grid;place-items:center;font-size:22px;
+    box-shadow:0 8px 20px -6px rgba(110,59,50,.6);border:4px solid var(--cream)}
+  .tab.scan .lbl{color:var(--bordeaux);font-weight:600;margin-top:4px}
+
+  /* Indicateur scroll subtil */
+  .scroll-hint{position:absolute;bottom:120px;left:50%;transform:translateX(-50%);
+    color:rgba(255,255,255,.55);font-size:11px;letter-spacing:.16em;text-transform:uppercase;
+    display:none}
+
+  /* Desktop : couleur ajustée et CTA en ligne */
+  @media(min-width:880px){
+    .hero-content{bottom:auto;top:50%;transform:translateY(-50%)}
+    .cta-row{flex-direction:row;max-width:none;justify-content:center;gap:14px}
+    .btn-primary{width:auto}
+    .btn-ghost{width:auto}
+    .tabs{display:none}
+    .scroll-hint{display:block}
+  }
+</style>
+</head>
+<body>
+
+<section class="hero">
+  <!-- Vidéo mannequin en boucle -->
+  <video autoplay muted loop playsinline poster="hero/femme-wada-bg-photo.webp">
+    <source src="hero/femme-wada-bg.mp4" type="video/mp4">
+  </video>
+  <!-- Fallback gradient si pas de vidéo -->
+  <div class="poster-fallback" aria-hidden="true"></div>
+
+  <!-- NAV superposée -->
+  <nav>
+    <div class="brand">WADA 和田</div>
+    <div class="nav-right">
+      <a href="#" class="nav-link">Abonnement</a>
+    </div>
+  </nav>
+
+  <!-- CONTENU central -->
+  <div class="hero-content">
+    <span class="kicker">Inspiré de Sanzo Wada · 1933</span>
+    <h1>Trouvez la couleur.<br>Trouvez votre style.</h1>
+    <p class="sub">Scannez une couleur. WADA construit la tenue qui va avec.</p>
+
+    <div class="cta-row">
+      <a href="#scanner" class="btn-primary">Scanner une couleur &nbsp;&rarr;</a>
+      <a href="#a-propos" class="btn-ghost">Notre histoire</a>
+    </div>
+  </div>
+
+  <span class="scroll-hint">↓ Explorer les palettes</span>
+</section>
+
+<!-- TAB BAR (mobile uniquement) -->
+<nav class="tabs">
+  <a href="#" class="tab on">
+    <span class="ic">🏠</span>
+    <span class="lbl">Accueil</span>
+  </a>
+  <a href="#" class="tab">
+    <span class="ic">⊞</span>
+    <span class="lbl">Palettes</span>
+  </a>
+  <a href="#" class="tab scan">
+    <span class="ic-scan">◉</span>
+    <span class="lbl">Scanner</span>
+  </a>
+  <a href="#" class="tab">
+    <span class="ic">✦</span>
+    <span class="lbl">Styliste</span>
+  </a>
+  <a href="#" class="tab">
+    <span class="ic">♥</span>
+    <span class="lbl">Favoris</span>
+  </a>
+</nav>
+
+</body>
+</html>

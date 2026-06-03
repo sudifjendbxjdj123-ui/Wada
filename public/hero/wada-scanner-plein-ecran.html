@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WADA — Scanner plein écran (type app)</title>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --cream:#f4eee4;--card:#fbf7f0;--ink:#2a2521;--muted:#8c8377;--line:#e5dccc;
+    --bordeaux:#6e3b32;--olive:#6f7a3f;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Inter',system-ui,sans-serif;background:linear-gradient(180deg,#e9e0d0,#dcd0bb);min-height:100vh;padding:40px 20px;color:var(--ink)}
+  h1,h2,.fk{font-family:'Fredoka',sans-serif}
+
+  .head{max-width:1100px;margin:0 auto 30px;text-align:center}
+  .head h1{font-size:32px;font-weight:600;margin-bottom:6px;color:#3a322b}
+  .head p{font-size:14.5px;color:#6b6256;max-width:600px;margin:0 auto}
+
+  .phones{max-width:1200px;margin:0 auto;display:grid;grid-template-columns:repeat(3,1fr);gap:30px;justify-items:center}
+
+  /* PHONE FRAME */
+  .phone{width:280px;background:#000;border-radius:36px;
+    padding:8px;box-shadow:0 30px 70px -30px rgba(40,25,15,.5),0 0 0 2px #2a2620 inset;
+    position:relative;height:600px;overflow:hidden}
+  .phone-screen{position:relative;width:100%;height:100%;border-radius:28px;overflow:hidden;background:#1a1a1a}
+  .notch{position:absolute;top:0;left:50%;transform:translateX(-50%);width:90px;height:22px;background:#000;border-radius:0 0 14px 14px;z-index:30}
+  .status{position:absolute;top:0;left:0;right:0;padding:6px 22px 0;display:flex;justify-content:space-between;color:#fff;font-size:11px;font-weight:600;z-index:20;font-family:'Inter'}
+
+  /* CAMERA VIEW */
+  .cam{position:absolute;inset:0;background:linear-gradient(160deg,#3d3024 0%,#1f1814 100%)}
+  .cam.veste{background:linear-gradient(160deg,#5d4a3a 0%,#2a1e16 100%)}
+  .cam::after{content:"";position:absolute;inset:0;background-image:
+    radial-gradient(circle at 35% 45%,rgba(255,255,255,.04),transparent 50%),
+    radial-gradient(circle at 70% 30%,rgba(255,200,150,.08),transparent 50%);
+    opacity:.7;pointer-events:none}
+
+  /* placeholder subject */
+  .subject{position:absolute;top:38%;left:50%;transform:translateX(-50%);width:140px;height:140px;
+    background:radial-gradient(circle at 35% 35%,#a36b3a,#3e2510);
+    border-radius:30%;filter:blur(.5px);box-shadow:0 30px 60px -20px rgba(0,0,0,.6)}
+  .subject.veste{width:170px;height:200px;border-radius:18px;
+    background:linear-gradient(135deg,#7e623e 20%,#3a2917 95%);top:30%}
+
+  /* TOP BAR icons */
+  .top-icons{position:absolute;top:36px;left:0;right:0;padding:0 18px;display:flex;justify-content:space-between;z-index:20}
+  .ti{width:34px;height:34px;border-radius:50%;background:rgba(0,0,0,.4);backdrop-filter:blur(8px);display:grid;place-items:center;color:#fff;font-size:14px;border:1px solid rgba(255,255,255,.12)}
+
+  /* TARGET FRAME */
+  .target{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none;z-index:15}
+  .target.color{width:120px;height:120px}
+  .target.veste-frame{width:200px;height:240px}
+  .target svg{width:100%;height:100%;overflow:visible}
+  .target svg .corner{stroke:#fff;stroke-width:3;fill:none;filter:drop-shadow(0 1px 3px rgba(0,0,0,.5))}
+  .target svg .dot{fill:#fff;filter:drop-shadow(0 1px 3px rgba(0,0,0,.5))}
+  .pulse{position:absolute;top:50%;left:50%;width:30px;height:30px;border-radius:50%;background:#fff;transform:translate(-50%,-50%);animation:pulse 1.6s infinite ease-out;opacity:.4}
+  @keyframes pulse{0%{transform:translate(-50%,-50%) scale(.6);opacity:.9}100%{transform:translate(-50%,-50%) scale(2.4);opacity:0}}
+
+  /* HINT */
+  .hint{position:absolute;bottom:140px;left:0;right:0;text-align:center;color:#fff;font-size:13px;text-shadow:0 1px 6px rgba(0,0,0,.7);z-index:18;letter-spacing:.02em;font-family:'Fredoka';font-weight:500}
+
+  /* BOTTOM TOGGLE + CAPTURE */
+  .bottom{position:absolute;bottom:0;left:0;right:0;padding:14px 18px 28px;z-index:25}
+  .toggle{display:flex;background:rgba(255,255,255,.92);backdrop-filter:blur(10px);border-radius:999px;padding:4px;width:max-content;margin:0 auto 18px;gap:3px}
+  .toggle button{background:none;border:none;padding:8px 16px;border-radius:999px;font-family:'Fredoka';font-size:13px;font-weight:500;color:#6b6256;cursor:pointer}
+  .toggle button.on{background:#fff;color:var(--bordeaux);box-shadow:0 1px 3px rgba(0,0,0,.1)}
+  .capture-row{display:flex;align-items:center;justify-content:space-between;padding:0 14px}
+  .cap-side{width:38px;height:38px;border-radius:9px;background:rgba(255,255,255,.18);backdrop-filter:blur(10px);display:grid;place-items:center;color:#fff;font-size:18px}
+  .capture{width:66px;height:66px;border-radius:50%;background:#fff;border:4px solid rgba(255,255,255,.5);box-shadow:0 8px 22px -6px rgba(0,0,0,.4);cursor:pointer}
+  .capture:hover{transform:scale(.96)}
+
+  /* RESULT MODAL (3ème phone) */
+  .blur-overlay{position:absolute;inset:0;backdrop-filter:blur(4px);background:rgba(0,0,0,.3);z-index:18}
+  .result{position:absolute;left:10px;right:10px;bottom:10px;background:#fff;border-radius:22px;padding:18px;z-index:30;box-shadow:0 -10px 30px -10px rgba(0,0,0,.3)}
+  .result-handle{width:36px;height:4px;background:#ddd;border-radius:2px;margin:0 auto 12px}
+  .result-row{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+  .result-row .pre{width:48px;height:48px;border-radius:12px;flex:0 0 auto;background:#a36b3a}
+  .result-row .tx{flex:1;min-width:0}
+  .result-row .lab{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:600}
+  .result-row .nm{font-family:'Fredoka';font-size:16px;font-weight:500;color:var(--ink)}
+  .result-pal{display:flex;gap:4px;margin-bottom:14px}
+  .result-pal i{flex:1;height:34px;border-radius:6px}
+  .result-meta{font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.4}
+  .result-meta b{color:var(--ink);font-family:'Fredoka';font-weight:500}
+  .result-cta{background:var(--bordeaux);color:#fff;border:none;border-radius:12px;padding:13px;font-family:'Fredoka';font-size:14.5px;font-weight:500;width:100%;cursor:pointer}
+
+  /* phone label below */
+  .phone-lab{margin-top:14px;text-align:center;font-family:'Fredoka';font-size:14px;color:#3a322b;font-weight:500}
+  .phone-lab small{display:block;font-family:'Inter';font-weight:400;color:#6b6256;font-size:12px;margin-top:2px}
+
+  .note{max-width:900px;margin:40px auto 0;background:#fff;border:1px solid #d8caa6;border-radius:18px;padding:22px 26px;font-size:14px;color:#5a4d40;line-height:1.6}
+  .note h3{font-family:'Fredoka';font-size:17px;font-weight:500;color:var(--ink);margin-bottom:10px}
+  .note b{color:var(--ink)}
+  .note ul{margin-top:10px;padding-left:22px}
+  .note li{margin-bottom:6px}
+
+  @media(max-width:900px){
+    .phones{grid-template-columns:1fr;gap:34px}
+  }
+</style>
+</head>
+<body>
+
+<div class="head">
+  <h1>Scanner WADA — version plein écran</h1>
+  <p>Inspiré des apps mobiles modernes : caméra en plein écran, frame de visée minimaliste, capture en un tap, résultat qui glisse depuis le bas.</p>
+</div>
+
+<div class="phones">
+
+  <!-- PHONE 1 : SCANNER COULEUR -->
+  <div>
+  <div class="phone">
+    <div class="notch"></div>
+    <div class="phone-screen">
+      <div class="cam">
+        <div class="subject"></div>
+        <div class="status"><span>9:41</span><span>📶 100%</span></div>
+        <div class="top-icons">
+          <div class="ti">×</div>
+          <div class="ti">⚡</div>
+        </div>
+
+        <div class="target color">
+          <div class="pulse"></div>
+          <svg viewBox="0 0 100 100">
+            <path class="corner" d="M5,25 L5,5 L25,5"/>
+            <path class="corner" d="M75,5 L95,5 L95,25"/>
+            <path class="corner" d="M95,75 L95,95 L75,95"/>
+            <path class="corner" d="M25,95 L5,95 L5,75"/>
+            <circle class="dot" cx="50" cy="50" r="3"/>
+          </svg>
+        </div>
+
+        <div class="hint">Visez la couleur</div>
+
+        <div class="bottom">
+          <div class="toggle">
+            <button class="on">⦿ Une couleur</button>
+            <button>◇ Un vêtement</button>
+          </div>
+          <div class="capture-row">
+            <div class="cap-side">🖼</div>
+            <div class="capture"></div>
+            <div class="cap-side">⊙</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="phone-lab">Scanner couleur<small>Mire ronde, capture en un tap</small></div>
+  </div>
+
+  <!-- PHONE 2 : SCANNER VÊTEMENT -->
+  <div>
+  <div class="phone">
+    <div class="notch"></div>
+    <div class="phone-screen">
+      <div class="cam veste">
+        <div class="subject veste"></div>
+        <div class="status"><span>9:41</span><span>📶 100%</span></div>
+        <div class="top-icons">
+          <div class="ti">×</div>
+          <div class="ti">⚡</div>
+        </div>
+
+        <div class="target veste-frame">
+          <svg viewBox="0 0 200 240">
+            <path class="corner" d="M10,40 L10,10 L40,10"/>
+            <path class="corner" d="M160,10 L190,10 L190,40"/>
+            <path class="corner" d="M190,200 L190,230 L160,230"/>
+            <path class="corner" d="M40,230 L10,230 L10,200"/>
+          </svg>
+        </div>
+
+        <div class="hint">Cadrez la pièce</div>
+
+        <div class="bottom">
+          <div class="toggle">
+            <button>⦿ Une couleur</button>
+            <button class="on">◇ Un vêtement</button>
+          </div>
+          <div class="capture-row">
+            <div class="cap-side">🖼</div>
+            <div class="capture"></div>
+            <div class="cap-side">⊙</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="phone-lab">Scanner vêtement<small>Frame rectangulaire pour cadrer la pièce</small></div>
+  </div>
+
+  <!-- PHONE 3 : RÉSULTAT QUI SLIDE -->
+  <div>
+  <div class="phone">
+    <div class="notch"></div>
+    <div class="phone-screen">
+      <div class="cam">
+        <div class="subject" style="opacity:.7"></div>
+        <div class="status"><span>9:41</span><span>📶 100%</span></div>
+        <div class="blur-overlay"></div>
+
+        <div class="result">
+          <div class="result-handle"></div>
+          <div class="result-row">
+            <div class="pre" style="background:#A8784A"></div>
+            <div class="tx">
+              <div class="lab">Couleur détectée</div>
+              <div class="nm">Cuir naturel · #A8784A</div>
+            </div>
+          </div>
+          <div class="result-pal">
+            <i style="background:#7B2D26"></i>
+            <i style="background:#A8784A"></i>
+            <i style="background:#3E5A7C"></i>
+          </div>
+          <div class="result-meta">Cette teinte appartient à la palette <b>Osaka au thé</b> — n° 009, tradition japonaise.</div>
+          <button class="result-cta">Voir la palette & ma tenue &nbsp;→</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="phone-lab">Résultat instantané<small>Pas de rechargement, résultat slide en bas</small></div>
+  </div>
+
+</div>
+
+<div class="note">
+  <h3>Ce qui change vs le scanner actuel</h3>
+  <p>Aujourd'hui le scanner est <b>une carte dans une page</b> avec un bouton « Prendre une photo ». L'utilisateur prend la photo, attend, voit le résultat. C'est une étape de plus, et ça ne donne pas la sensation d'une vraie appli.</p>
+  <ul>
+    <li><b>Plein écran immersif</b> : la caméra prend tout l'écran. Pas de cadre, pas de fond. L'œil va à l'essentiel : ce qu'on filme.</li>
+    <li><b>Toggle Couleur / Vêtement directement dans le scanner</b> : on passe de l'un à l'autre en restant dans le mode caméra. Plus rapide.</li>
+    <li><b>Mire de visée selon le mode</b> : cercle pour la couleur (on vise un point), rectangle pour le vêtement (on cadre une pièce). Le client comprend visuellement ce que l'app attend.</li>
+    <li><b>Pulse animée</b> dans la mire = signal « je suis prêt à capturer ».</li>
+    <li><b>Capture en un tap</b> : un gros bouton blanc central, comme l'app photo native. Icônes de côté pour torch + galerie.</li>
+    <li><b>Résultat qui slide depuis le bas</b> : pas de changement de page, juste un modal qui apparaît avec la couleur/pièce détectée + la palette assortie + un bouton pour aller à la tenue.</li>
+    <li><b>Le client peut re-scanner immédiatement</b> en fermant le résultat — pas besoin de revenir au menu.</li>
+  </ul>
+  <p style="margin-top:14px"><b>Bonus à donner au codeur</b> : utiliser l'API <code>getUserMedia({ video: { facingMode: 'environment' } })</code> pour la caméra. Pour la détection de couleur, échantillonner les pixels au centre de la mire au moment du tap. Pour le vêtement, envoyer la photo capturée à l'API de classification (ou au styliste IA).</p>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2732 2732" width="2732" height="2732">
+  <!--
+    WADA — Splash Screen (2732×2732)
+    ─────────────────────────────────────────────────────────────────
+    Capacitor produit toutes les variantes iOS (iPhone portrait/landscape,
+    iPad) et Android (mdpi → xxxhdpi) à partir de ce master carré. Le
+    système rogne aux bonnes proportions selon l'appareil.
+
+    Safe zone centrale (1024×1024 au milieu) — tout contenu critique
+    doit y rester. Au-delà : décor ou couleur de remplissage seulement.
+
+    Visuel : lockup complet WADA (mark + wordmark + kanji + tagline)
+    centré, sur papier cream. Affichage pendant 1.5s au cold start.
+    ─────────────────────────────────────────────────────────────── */
+  -->
+
+  <!-- Fond papier cream plein bleed -->
+  <rect width="2732" height="2732" fill="#F4EFE6"/>
+
+  <!-- Grain papier — donne de la matière au fond uni -->
+  <filter id="grain" x="0" y="0" width="100%" height="100%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" stitchTiles="stitch"/>
+    <feColorMatrix values="0 0 0 0 0.12  0 0 0 0 0.10  0 0 0 0 0.08  0 0 0 0.04 0"/>
+    <feComposite in2="SourceGraphic" operator="in"/>
+  </filter>
+  <rect width="2732" height="2732" fill="#F4EFE6" filter="url(#grain)" opacity="0.5"/>
+
+  <!--
+    Bloc central — safe zone de 1024×1024 centrée
+    Positionné légèrement haut (y=900 au lieu de 1366-512=854) pour
+    laisser de la place sous la tagline.
+  -->
+  <g transform="translate(1366, 1100)">
+    <!-- Logomark : cadre + 3 bandes, taille ~450px -->
+    <g transform="translate(-225, -340)">
+      <rect
+        x="0" y="0"
+        width="450" height="570"
+        fill="none"
+        stroke="#1F1B16"
+        stroke-width="8"
+      />
+      <rect x="30" y="36"  width="124" height="498" fill="#5C2018"/>
+      <rect x="163" y="36" width="124" height="498" fill="#5C5A3C"/>
+      <rect x="296" y="36" width="124" height="498" fill="#1B4A6B"/>
+    </g>
+
+    <!-- Wordmark "Wada" italique Fraunces -->
+    <text
+      x="0" y="380"
+      text-anchor="middle"
+      font-family="'Fraunces', 'EB Garamond', Georgia, serif"
+      font-size="220"
+      font-style="italic"
+      font-weight="500"
+      fill="#1F1B16"
+      letter-spacing="12"
+    >Wada</text>
+
+    <!-- Kanji 和田 sous le wordmark -->
+    <text
+      x="0" y="490"
+      text-anchor="middle"
+      font-family="'Noto Serif JP', 'Fraunces', serif"
+      font-size="64"
+      font-weight="500"
+      fill="#1F1B16"
+      letter-spacing="30"
+      opacity="0.7"
+    >和田</text>
+  </g>
+
+  <!-- Tagline éditoriale en bas, petite et discrète -->
+  <text
+    x="1366" y="1900"
+    text-anchor="middle"
+    font-family="'Inter', sans-serif"
+    font-size="38"
+    font-weight="600"
+    fill="#1F1B16"
+    letter-spacing="14"
+    opacity="0.65"
+  >LE DICTIONNAIRE DES COULEURS</text>
+
+  <!-- Année / lineage Sanzo Wada, encore plus discret -->
+  <text
+    x="1366" y="1965"
+    text-anchor="middle"
+    font-family="'Fraunces', 'EB Garamond', Georgia, serif"
+    font-size="32"
+    font-style="italic"
+    fill="#1F1B16"
+    opacity="0.5"
+  >d'après Sanzo Wada · 1933</text>
+</svg>

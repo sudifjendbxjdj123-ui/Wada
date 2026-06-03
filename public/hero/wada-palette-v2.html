@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WADA — Tweed & Encre</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --cream:#f4eee4;--cream-2:#efe7da;--card:#fbf7f0;--ink:#2a2521;--muted:#8c8377;
+    --line:#e5dccc;--bordeaux:#6e3b32;--bordeaux-2:#82473c;
+    --shadow:0 18px 50px -28px rgba(60,40,25,.45);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Inter',system-ui,sans-serif;
+    background:radial-gradient(1000px 500px at 80% -10%,#fbf4e8 0%,transparent 60%),var(--cream);
+    color:var(--ink);-webkit-font-smoothing:antialiased;}
+  h1,h2,h3,.brand,.chubby{font-family:'Fredoka',sans-serif}
+
+  nav{display:flex;align-items:center;justify-content:space-between;padding:18px clamp(20px,5vw,56px);
+    border-bottom:1px solid var(--line);background:rgba(250,246,239,.7);backdrop-filter:blur(8px);position:sticky;top:0;z-index:20;}
+  .nav-left{display:flex;gap:26px;font-weight:500;font-size:15px}
+  .nav-left a{color:var(--ink);text-decoration:none;opacity:.78}
+  .nav-left a:hover,.nav-left a.active{opacity:1}
+  .brand{font-size:26px;font-weight:600;letter-spacing:.5px;position:absolute;left:50%;transform:translateX(-50%)}
+  .nav-right{display:flex;align-items:center;gap:12px}
+  .icon-btn{width:38px;height:38px;border-radius:50%;border:1px solid var(--line);background:var(--card);display:grid;place-items:center;cursor:pointer;font-size:15px}
+  .cta{background:var(--bordeaux);color:#fff;border:none;padding:11px 22px;border-radius:999px;font-family:'Fredoka';font-size:15px;font-weight:500;cursor:pointer}
+  .cta:hover{background:var(--bordeaux-2)}
+
+  .wrap{max-width:980px;margin:0 auto;padding:28px clamp(18px,5vw,40px) 80px}
+  .back{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--card);border-radius:999px;padding:9px 18px;font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink);cursor:pointer;text-decoration:none}
+  .back:hover{background:#fff}
+
+  /* HERO */
+  .hero{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:50px;align-items:center;margin-top:44px}
+  .palette-card{background:var(--card);border:1px solid var(--line);border-radius:24px;overflow:hidden;box-shadow:var(--shadow)}
+  .swatch{padding:26px;color:#fff;position:relative;min-height:118px;display:flex;flex-direction:column;justify-content:center}
+  .swatch .nm{font-family:'Fredoka';font-size:21px;font-weight:500;text-shadow:0 1px 2px rgba(0,0,0,.25)}
+  .swatch .hex{position:absolute;right:24px;bottom:22px;font-size:13px;opacity:.82;font-feature-settings:'tnum'}
+  .swatch.light{color:#2a2521}
+  .swatch.light .nm{text-shadow:none}
+  .swatch.light .hex{opacity:.6}
+
+  .meta-block .kicker{display:inline-block;font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:14px}
+  h1{font-size:clamp(42px,5.2vw,60px);line-height:1.04;letter-spacing:-.5px;margin-bottom:12px}
+  .lede{font-size:17px;color:var(--muted);margin-bottom:24px;max-width:42ch;line-height:1.5}
+  .mini-actions{display:flex;gap:10px}
+  .mini{width:40px;height:40px;border-radius:50%;border:1px solid var(--line);background:#fff;display:grid;place-items:center;cursor:pointer;font-size:14px}
+  .mini:hover{border-color:var(--bordeaux)}
+  .mini.heart.on{color:var(--bordeaux);border-color:var(--bordeaux)}
+  .mini svg{width:15px;height:15px}
+
+  /* HOWTO — 3 mini propositions, l'action est là */
+  .howto{margin-top:70px}
+  .howto-h{text-align:center;margin-bottom:24px}
+  .howto-h h2{font-size:clamp(22px,2.8vw,26px);font-weight:500;color:var(--ink)}
+  .howto-h p{font-size:13.5px;color:var(--muted);margin-top:6px}
+  .props{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+  .prop{background:var(--card);border:1px solid var(--line);border-radius:18px;overflow:hidden;cursor:pointer;transition:.18s;text-decoration:none;color:var(--ink);display:block}
+  .prop:hover{transform:translateY(-3px);box-shadow:var(--shadow);border-color:#d6c7a8}
+  .prop-strip{display:flex;height:74px}
+  .prop-strip i{flex:1}
+  .prop-body{padding:16px 18px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .prop-left{display:flex;flex-direction:column;gap:3px;min-width:0}
+  .prop-tag{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:600}
+  .prop-name{font-family:'Fredoka';font-size:17px;font-weight:500}
+  .prop-arr{color:var(--muted);font-size:22px;flex:0 0 auto}
+  .prop:hover .prop-arr{color:var(--bordeaux)}
+
+  /* PREV/NEXT */
+  .pn{display:flex;justify-content:space-between;gap:14px;margin-top:54px;font-size:13.5px}
+  .pn a{display:flex;flex-direction:column;gap:2px;text-decoration:none;color:var(--muted);transition:.16s}
+  .pn a:hover{color:var(--bordeaux)}
+  .pn .k{font-size:11px;letter-spacing:.14em;text-transform:uppercase}
+  .pn .n{font-family:'Fredoka';font-size:16px;color:var(--ink)}
+  .pn a:hover .n{color:var(--bordeaux)}
+  .pn .next{text-align:right;align-items:flex-end}
+
+  /* tiny styliste link */
+  .styliste-link{display:block;text-align:center;margin-top:40px;font-size:13.5px;color:var(--muted)}
+  .styliste-link a{color:var(--bordeaux);text-decoration:none;border-bottom:1px dashed var(--bordeaux);padding-bottom:1px}
+
+  /* FOOTER */
+  footer{background:#16130f;color:#cfc6b6;margin-top:80px;padding:54px clamp(20px,5vw,56px) 26px}
+  .fgrid{display:grid;grid-template-columns:1.6fr 1fr 1fr 1fr;gap:30px;max-width:1100px;margin:0 auto}
+  footer .brand2{font-family:'Fredoka';color:#fff;font-size:24px;margin-bottom:12px}
+  footer p{font-size:14px;line-height:1.6;opacity:.7;max-width:300px}
+  footer h4{font-size:12px;letter-spacing:.16em;color:#fff;margin-bottom:14px;text-transform:uppercase}
+  footer ul{list-style:none}footer li{margin-bottom:10px}
+  footer a{color:#cfc6b6;text-decoration:none;font-size:14px;opacity:.8}footer a:hover{opacity:1}
+  .fbar{max-width:1100px;margin:34px auto 0;border-top:1px solid #2c2620;padding-top:18px;font-size:12.5px;opacity:.6;display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;align-items:center}
+  .socials{display:flex;gap:10px}
+  .socials a{display:grid;place-items:center;width:34px;height:34px;border-radius:50%;border:1px solid #2c2620;color:#cfc6b6}
+  .socials svg{width:16px;height:16px;fill:currentColor}
+
+  @media(max-width:880px){
+    .hero{grid-template-columns:1fr;gap:28px;margin-top:28px}
+    .props{grid-template-columns:1fr}
+    .pn{flex-direction:column}
+    .pn .next{text-align:left;align-items:flex-start}
+    .nav-left{display:none}
+    .brand{position:static;transform:none}
+    .fgrid{grid-template-columns:1fr 1fr}
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-left">
+    <a href="#" class="active">Palettes</a>
+    <a href="#">Scanner</a>
+    <a href="#">Styliste</a>
+    <a href="#">Favoris</a>
+  </div>
+  <div class="brand">WADA 和田</div>
+  <div class="nav-right">
+    <div class="icon-btn">&#128100;</div>
+    <div class="icon-btn">&#9790;</div>
+    <button class="cta">Abonnement</button>
+  </div>
+</nav>
+
+<div class="wrap">
+  <a class="back" href="#">&larr;&nbsp; Retour</a>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="palette-card">
+      <div class="swatch" style="background:#8A8472">
+        <div class="nm">Pierre</div>
+        <div class="hex">#8A8472</div>
+      </div>
+      <div class="swatch light" style="background:#D9C9A8">
+        <div class="nm">Sable</div>
+        <div class="hex">#D9C9A8</div>
+      </div>
+      <div class="swatch" style="background:#7B2D26">
+        <div class="nm">Vermillon</div>
+        <div class="hex">#7B2D26</div>
+      </div>
+    </div>
+
+    <div class="meta-block">
+      <span class="kicker">No. 162 · Japonaise</span>
+      <h1>Tweed &amp; Encre</h1>
+      <p class="lede">L'accord qui surprend par sa retenue.</p>
+      <div class="mini-actions">
+        <button class="mini heart on" title="Favori">&#9829;</button>
+        <button class="mini" title="Pinterest">
+          <svg viewBox="0 0 24 24" fill="#bd2c2c"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.08 3.16 9.42 7.62 11.17-.11-.95-.2-2.41.04-3.45.22-.94 1.4-5.98 1.4-5.98s-.36-.72-.36-1.78c0-1.67.97-2.91 2.17-2.91 1.02 0 1.52.77 1.52 1.69 0 1.03-.66 2.57-1 4-.28 1.2.6 2.18 1.79 2.18 2.15 0 3.8-2.27 3.8-5.54 0-2.9-2.08-4.93-5.05-4.93-3.44 0-5.46 2.58-5.46 5.25 0 1.04.4 2.16.9 2.76.1.12.11.23.08.35-.09.38-.29 1.2-.33 1.36-.05.22-.17.27-.4.16-1.49-.69-2.42-2.87-2.42-4.62 0-3.76 2.73-7.22 7.88-7.22 4.14 0 7.35 2.95 7.35 6.89 0 4.11-2.59 7.42-6.19 7.42-1.21 0-2.35-.63-2.74-1.37l-.74 2.84c-.27 1.04-1 2.34-1.49 3.13C9.57 23.82 10.76 24 12 24c6.63 0 12-5.37 12-12S18.63 0 12 0z"/></svg>
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- COMMENT PORTER : 3 propositions minimales, c'est l'action -->
+  <section class="howto">
+    <div class="howto-h">
+      <h2 class="chubby">Comment la porter&nbsp;?</h2>
+      <p>Choisissez une occasion.</p>
+    </div>
+    <div class="props">
+      <a class="prop" href="#">
+        <div class="prop-strip"><i style="background:#8A8472"></i><i style="background:#D9C9A8"></i><i style="background:#7B2D26"></i></div>
+        <div class="prop-body">
+          <div class="prop-left">
+            <span class="prop-tag">Bureau</span>
+            <span class="prop-name">Tailoring</span>
+          </div>
+          <span class="prop-arr">&rsaquo;</span>
+        </div>
+      </a>
+      <a class="prop" href="#">
+        <div class="prop-strip"><i style="background:#D9C9A8"></i><i style="background:#8A8472"></i><i style="background:#7B2D26"></i></div>
+        <div class="prop-body">
+          <div class="prop-left">
+            <span class="prop-tag">Quotidien</span>
+            <span class="prop-name">Casual chic</span>
+          </div>
+          <span class="prop-arr">&rsaquo;</span>
+        </div>
+      </a>
+      <a class="prop" href="#">
+        <div class="prop-strip"><i style="background:#7B2D26"></i><i style="background:#8A8472"></i><i style="background:#D9C9A8"></i></div>
+        <div class="prop-body">
+          <div class="prop-left">
+            <span class="prop-tag">Soirée</span>
+            <span class="prop-name">Tenue habillée</span>
+          </div>
+          <span class="prop-arr">&rsaquo;</span>
+        </div>
+      </a>
+    </div>
+  </section>
+
+  <!-- PREV / NEXT discrets -->
+  <nav class="pn">
+    <a href="#" class="prev">
+      <span class="k">&larr; Précédente</span>
+      <span class="n">Cachemire &amp; Vent</span>
+    </a>
+    <a href="#" class="next">
+      <span class="k">Suivante &rarr;</span>
+      <span class="n">Murmure d'Anvers</span>
+    </a>
+  </nav>
+
+  <p class="styliste-link">Une tenue sur-mesure ?  <a href="#">Parler au styliste</a></p>
+</div>
+
+<footer>
+  <div class="fgrid">
+    <div>
+      <div class="brand2">WADA 和田</div>
+      <p>Un dictionnaire de palettes pour composer la tenue parfaite. D'après Sanzo Wada (1933).</p>
+    </div>
+    <div><h4>Explorer</h4><ul><li><a href="#">Palettes</a></li><li><a href="#">Scanner</a></li><li><a href="#">Découverte</a></li><li><a href="#">Cultures</a></li></ul></div>
+    <div><h4>Compte</h4><ul><li><a href="#">Mes favoris</a></li><li><a href="#">Abonnement</a></li><li><a href="#">À propos</a></li><li><a href="#">FAQ</a></li></ul></div>
+    <div><h4>Contact</h4><ul><li><a href="#">hello@wada.style</a></li><li><a href="#">Pour les marques</a></li><li><a href="#">Mentions légales</a></li></ul></div>
+  </div>
+  <div class="fbar">
+    <span>© 2026 WADA · Genève</span>
+    <div class="socials">
+      <a href="#" aria-label="Instagram"><svg viewBox="0 0 24 24"><path d="M12 2.16c3.2 0 3.58.01 4.85.07 1.17.05 1.8.25 2.23.41.56.22.96.48 1.38.9.42.42.68.82.9 1.38.16.42.36 1.06.41 2.23.06 1.27.07 1.65.07 4.85s-.01 3.58-.07 4.85c-.05 1.17-.25 1.8-.41 2.23-.22.56-.48.96-.9 1.38-.42.42-.82.68-1.38.9-.42.16-1.06.36-2.23.41-1.27.06-1.65.07-4.85.07s-3.58-.01-4.85-.07c-1.17-.05-1.8-.25-2.23-.41a3.7 3.7 0 0 1-1.38-.9 3.7 3.7 0 0 1-.9-1.38c-.16-.42-.36-1.06-.41-2.23C2.17 15.58 2.16 15.2 2.16 12s.01-3.58.07-4.85c.05-1.17.25-1.8.41-2.23.22-.56.48-.96.9-1.38.42-.42.82-.68 1.38-.9.42-.16 1.06-.36 2.23-.41C8.42 2.17 8.8 2.16 12 2.16M12 0C8.74 0 8.33.01 7.05.07 5.78.13 4.9.34 4.14.63a5.86 5.86 0 0 0-2.13 1.38A5.86 5.86 0 0 0 .63 4.14C.34 4.9.13 5.78.07 7.05.01 8.33 0 8.74 0 12s.01 3.67.07 4.95c.06 1.27.27 2.15.56 2.91.31.78.72 1.45 1.38 2.13.68.66 1.35 1.07 2.13 1.38.76.29 1.64.5 2.91.56C8.33 23.99 8.74 24 12 24s3.67-.01 4.95-.07c1.27-.06 2.15-.27 2.91-.56.78-.31 1.45-.72 2.13-1.38.66-.68 1.07-1.35 1.38-2.13.29-.76.5-1.64.56-2.91.06-1.28.07-1.69.07-4.95s-.01-3.67-.07-4.95c-.06-1.27-.27-2.15-.56-2.91a5.86 5.86 0 0 0-1.38-2.13A5.86 5.86 0 0 0 19.86.63C19.1.34 18.22.13 16.95.07 15.67.01 15.26 0 12 0zm0 5.84A6.16 6.16 0 1 0 12 18.16 6.16 6.16 0 0 0 12 5.84zm0 10.16A4 4 0 1 1 12 8a4 4 0 0 1 0 8zm6.4-11.84a1.44 1.44 0 1 0 0 2.88 1.44 1.44 0 0 0 0-2.88z"/></svg></a>
+      <a href="#" aria-label="Pinterest"><svg viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.08 3.16 9.42 7.62 11.17-.11-.95-.2-2.41.04-3.45.22-.94 1.4-5.98 1.4-5.98s-.36-.72-.36-1.78c0-1.67.97-2.91 2.17-2.91 1.02 0 1.52.77 1.52 1.69 0 1.03-.66 2.57-1 4-.28 1.2.6 2.18 1.79 2.18 2.15 0 3.8-2.27 3.8-5.54 0-2.9-2.08-4.93-5.05-4.93-3.44 0-5.46 2.58-5.46 5.25 0 1.04.4 2.16.9 2.76.1.12.11.23.08.35-.09.38-.29 1.2-.33 1.36-.05.22-.17.27-.4.16-1.49-.69-2.42-2.87-2.42-4.62 0-3.76 2.73-7.22 7.88-7.22 4.14 0 7.35 2.95 7.35 6.89 0 4.11-2.59 7.42-6.19 7.42-1.21 0-2.35-.63-2.74-1.37l-.74 2.84c-.27 1.04-1 2.34-1.49 3.13C9.57 23.82 10.76 24 12 24c6.63 0 12-5.37 12-12S18.63 0 12 0z"/></svg></a>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

@@ -112,18 +112,11 @@ export default function PanierPage() {
     });
   };
 
-  const totalHint = useMemo(() => {
-    let total = 0;
-    for (const { best } of offers) {
-      const tier = best?.priceLevel || "mid";
-      const guess = tier === "budget" ? 30 : tier === "mid" ? 80 : tier === "premium" ? 180 : 400;
-      total += guess;
-    }
-    return total;
-  }, [offers]);
-
+  /* Bug critique 2026-05-31 : on n'affiche plus de « total estimé » fabriqué
+     (auparavant 30/80/180/400 € par tier, inventé). Le vrai prix s'affiche
+     par pièce (CartItemCard résout la fiche /api/products) et sur le site du
+     marchand. Pas de chiffre inventé au niveau du panier. */
   const isEmpty = mounted && cart.length === 0;
-  const distinctBrands = mounted ? new Set(offers.map((o) => o.best?.label).filter(Boolean)).size : 0;
 
   return (
     <main
@@ -230,10 +223,9 @@ export default function PanierPage() {
                 }}
               >
                 <p style={{ fontSize: 13, color: palette.inkSoft, maxWidth: "46ch", margin: 0 }}>
-                  {cart.length} {cart.length > 1 ? "pièces" : "pièce"} · ~{totalHint} € au total chez{" "}
-                  {distinctBrands} {distinctBrands > 1 ? "marques" : "marque"}. Les achats se font
-                  sur chaque site marchand ; les liens sont trackés (affiliation, sans surcoût pour
-                  vous).
+                  {cart.length} {cart.length > 1 ? "pièces" : "pièce"}. Le prix réel s'affiche sur
+                  chaque pièce et sur le site du marchand. Les liens partenaires sont trackés
+                  (affiliation, sans surcoût pour vous).
                 </p>
                 <button
                   onClick={openAll}

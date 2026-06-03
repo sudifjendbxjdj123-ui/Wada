@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WADA — Atelier avec moodboards</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{--beige:#F4EFE7;--cream:#FAF8F4;--olive:#A8B29A;--bordeaux:#6B3A32;--ink:#1E1E1E;--ink-soft:#6a6259;
+    --line:rgba(30,30,30,.10);--pill:999px;--soft:0 12px 48px rgba(30,30,30,.10);
+    --fd:"Fredoka","Inter",sans-serif;--sans:"Inter",Arial,sans-serif;--ease:cubic-bezier(.22,1,.36,1)}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:var(--sans);background:var(--beige);color:var(--ink);line-height:1.6;padding:40px 24px}
+  .head{text-align:center;margin-bottom:34px}
+  .kicker{font-size:11px;letter-spacing:.34em;text-transform:uppercase;color:var(--bordeaux);font-weight:500}
+  .head h1{font-family:var(--fd);font-weight:700;font-size:48px;margin-top:10px}
+  .grid{max-width:1000px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:22px}
+  .tile{background:var(--cream);border:1px solid var(--line);border-radius:24px;overflow:hidden;box-shadow:var(--soft);
+    transition:transform .4s var(--ease);cursor:pointer}
+  .tile:hover{transform:translateY(-4px)}
+  /* HEADER IMAGE — object-fit:cover => aucune bande noire */
+  .wash{position:relative;height:150px;overflow:hidden}
+  .wash img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+  .wash .ov{position:absolute;inset:0;background:linear-gradient(180deg,rgba(20,18,16,.18),rgba(20,18,16,.42))}
+  .wash .ic{position:absolute;left:18px;top:18px;width:46px;height:46px;border-radius:12px;background:rgba(255,255,255,.88);display:flex;align-items:center;justify-content:center;font-size:20px;color:var(--ink);z-index:2}
+  .wash .n{position:absolute;top:14px;right:20px;font-family:var(--fd);font-weight:600;font-size:15px;color:#fff;z-index:2;text-shadow:0 1px 6px rgba(0,0,0,.4)}
+  .wash .badge{position:absolute;top:14px;right:18px;background:var(--ink);color:#fff;font-size:10px;letter-spacing:.16em;padding:5px 10px;border-radius:var(--pill);z-index:2}
+  .body{padding:22px 24px 26px}
+  .body h3{font-family:var(--fd);font-weight:600;font-size:27px;margin-bottom:8px}
+  .body p{color:var(--ink-soft);font-size:15px;max-width:34ch}
+  .body .meta{font-size:12px;color:var(--olive);margin-top:16px}
+  .body .open{display:inline-flex;align-items:center;gap:8px;margin-top:10px;font-size:13px;color:var(--ink)}
+  @media(max-width:760px){.grid{grid-template-columns:1fr}.head h1{font-size:36px}}
+</style>
+</head>
+<body>
+  <div class="head"><div class="kicker">Sommaire</div><h1>L'atelier WADA</h1></div>
+  <div class="grid">
+
+    <div class="tile">
+      <div class="wash"><img src="./photo-mood-1.png" alt=""><div class="ov"></div><div class="ic">⬡</div><div class="n">01</div></div>
+      <div class="body"><h3>Scanner une couleur</h3><p>Photographiez une teinte — un mur, une fleur, un vêtement. WADA compose la tenue qui s'accorde.</p><div class="meta">348 palettes prêtes</div><span class="open">Ouvrir →</span></div>
+    </div>
+
+    <div class="tile">
+      <div class="wash"><img src="./photo-mood-2.png" alt=""><div class="ov"></div><div class="ic">⌂</div><div class="n">02</div></div>
+      <div class="body"><h3>Composer une tenue</h3><p>Une silhouette pour chaque accord. Choisissez une palette parmi les 348 et WADA compose autour.</p><div class="meta">348 accords</div><span class="open">Ouvrir →</span></div>
+    </div>
+
+    <div class="tile">
+      <div class="wash"><img src="./photo-mood-3.png" alt=""><div class="ov"></div><div class="ic">❝</div><div class="badge">IA</div></div>
+      <div class="body"><h3>Assistant</h3><p>Dites une pièce, une humeur, une occasion. Un styliste calme compose autour, jamais robotique.</p><div class="meta">Conversation</div><span class="open">Ouvrir →</span></div>
+    </div>
+
+    <div class="tile">
+      <div class="wash"><img src="./photo-mood-4.png" alt=""><div class="ov"></div><div class="ic">▦</div><div class="n">04</div></div>
+      <div class="body"><h3>Mon dressing</h3><p>Votre mémoire vestimentaire. WADA retient ce que vous aimez et devine ce qui vous ira demain.</p><div class="meta">Vos favoris</div><span class="open">Ouvrir →</span></div>
+    </div>
+
+  </div>
+</body>
+</html>

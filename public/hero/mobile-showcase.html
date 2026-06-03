@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WADA — Showcase mobile</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Fraunces:opsz,wght@9..144,500&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{--beige:#F4EFE7;--cream:#FBF9F5;--ink:#1E1E1E;--ink-soft:#6f685f;--olive:#A8B29A;--bordeaux:#6B3A32;
+    --line:rgba(30,30,30,.10);--pill:999px;--soft:0 6px 22px rgba(30,30,30,.06);
+    --fd:"Fredoka",sans-serif;--serif:"Fraunces",Georgia,serif;--sans:"Inter",Arial,sans-serif;--ease:cubic-bezier(.22,1,.36,1)}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:var(--sans);background:#c9c2b6;display:flex;justify-content:center;padding:24px 12px}
+  .phone{width:390px;max-width:100%;background:var(--beige);border-radius:34px;overflow:hidden;box-shadow:0 26px 70px rgba(0,0,0,.3);position:relative}
+  .scroll{height:780px;overflow-y:auto;scroll-behavior:smooth}
+  .scroll::-webkit-scrollbar{width:0}
+
+  /* header */
+  .hdr{position:sticky;top:0;z-index:10;display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:rgba(244,239,231,.0)}
+  .hdr.solid{background:rgba(244,239,231,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+  .hdr .abo{font-size:12px;font-weight:500;color:#FAF8F4;background:rgba(250,248,244,.16);border:1px solid rgba(250,248,244,.5);border-radius:999px;padding:8px 14px}
+  .hdr .logo{font-family:var(--fd);font-weight:700;font-size:16px;color:#FAF8F4}
+  .hdr .r{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#FAF8F4;opacity:.92}
+
+  /* hero */
+  .hero{position:relative;height:560px;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:0 22px;margin-top:-52px}
+  .hero img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+  .hero .veil{position:absolute;inset:0;background:linear-gradient(180deg,rgba(20,18,16,.14) 0%,rgba(20,18,16,.20) 45%,rgba(20,18,16,.34) 100%)}
+  .hero .fade{position:absolute;left:0;right:0;bottom:0;height:110px;background:linear-gradient(180deg,rgba(244,239,231,0),var(--beige))}
+  .hero .in{position:relative;z-index:2;color:#FAF8F4}
+  .hero .k{font-size:10px;letter-spacing:.28em;text-transform:uppercase;opacity:.9}
+  .hero h1{font-family:var(--fd);font-weight:700;font-size:36px;line-height:1.05;margin:12px 0 10px;text-shadow:0 2px 18px rgba(0,0,0,.3)}
+  .hero .sub{font-style:italic;font-size:14px;max-width:34ch;margin:0 auto 18px;color:rgba(250,248,244,.94)}
+  .gp{display:inline-flex;align-items:center;gap:3px;background:rgba(250,248,244,.16);border:1px solid rgba(250,248,244,.32);border-radius:999px;padding:4px;margin-bottom:14px}
+  .gp .gl{font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:rgba(250,248,244,.85);padding:0 8px}
+  .gp button{font-size:13px;padding:8px 14px;border:none;background:transparent;color:#FAF8F4;border-radius:999px;cursor:pointer}
+  .gp button.on{background:#FAF8F4;color:var(--ink)}
+  .heroBtn{font-size:14px;padding:14px 26px;border-radius:999px;background:#FAF8F4;color:var(--ink);border:none}
+
+  section{padding:30px 18px}
+  .lbl{font-size:10px;letter-spacing:.28em;text-transform:uppercase;color:var(--bordeaux);font-weight:500;text-align:center}
+  .h2{font-family:var(--fd);font-weight:700;font-size:28px;text-align:center;margin:8px 0 18px}
+
+  /* atelier cards */
+  .tile{background:var(--cream);border:1px solid var(--line);border-radius:18px;overflow:hidden;box-shadow:var(--soft);margin-bottom:14px}
+  .tile .ph{height:96px;position:relative}
+  .tile .ph img{width:100%;height:100%;object-fit:cover}
+  .tile .ph .ov{position:absolute;inset:0;background:linear-gradient(180deg,rgba(20,18,16,.15),rgba(20,18,16,.42))}
+  .tile .ph .n{position:absolute;top:10px;right:14px;font-family:var(--fd);font-weight:600;color:rgba(255,255,255,.9)}
+  .tile .b{padding:14px 16px}
+  .tile h3{font-family:var(--fd);font-weight:600;font-size:20px}
+  .tile p{font-size:13px;color:var(--ink-soft);margin-top:4px}
+  .tile .o{font-size:13px;color:var(--ink);margin-top:8px}
+
+  /* palettes 2-col */
+  .pgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .pc{background:var(--cream);border:1px solid var(--line);border-radius:14px;overflow:hidden;box-shadow:var(--soft)}
+  .pc .bands{display:flex;height:90px}.pc .bands span{flex:1}
+  .pc .b{padding:9px 11px}
+  .pc .nm{font-family:var(--serif);font-weight:500;font-size:14px}
+  .pc .geo{font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:#9a9388;margin-top:2px}
+
+  /* footer compact */
+  footer{background:var(--beige);padding:24px 18px 28px;border-top:1px solid var(--line)}
+  footer .logo{font-family:var(--fd);font-weight:700;font-size:18px}
+  footer .acc{border-top:1px solid var(--line);margin-top:12px}
+  footer .acc .h{display:flex;justify-content:space-between;padding:13px 2px;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink)}
+  footer .copy{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-soft);margin-top:14px}
+</style>
+</head>
+<body>
+  <div class="phone">
+    <div class="scroll" id="sc">
+      <div class="hdr" id="hdr"><span class="abo">Abonnement</span><span class="logo">WADA和田</span><span class="r">Panier</span></div>
+
+      <section class="hero" style="padding-top:0">
+        <img src="./hero-banner-photo.webp" alt="">
+        <div class="veil"></div>
+        <div class="in">
+          <div class="k">Inspiré de Sanzo Wada · 1933</div>
+          <h1>Trouvez la couleur.<br>Trouvez votre style.</h1>
+          <div class="sub">348 accords traduits en tenues à porter — et à acheter.</div>
+          <div class="gp"><span class="gl">Je m'habille</span><button>Femme</button><button class="on">Homme</button><button>Unisexe</button></div>
+          <div><button class="heroBtn">Entrer dans l'atelier →</button></div>
+        </div>
+        <div class="fade"></div>
+      </section>
+
+      <section>
+        <div class="lbl">Sommaire</div>
+        <div class="h2">L'atelier</div>
+        <div class="tile"><div class="ph"><img src="./photo-mood-1.png" alt=""><div class="ov"></div><div class="n">01</div></div><div class="b"><h3>Scanner une couleur</h3><p>Une photo → la tenue qui s'accorde.</p><div class="o">Ouvrir →</div></div></div>
+        <div class="tile"><div class="ph"><img src="./photo-mood-2.png" alt=""><div class="ov"></div><div class="n">02</div></div><div class="b"><h3>Composer une tenue</h3><p>Choisissez une palette, WADA compose.</p><div class="o">Ouvrir →</div></div></div>
+        <div class="tile"><div class="ph"><img src="./photo-mood-3.png" alt=""><div class="ov"></div><div class="n">IA</div></div><div class="b"><h3>Assistant</h3><p>Dites une pièce, une humeur. Il compose et explique.</p><div class="o">Ouvrir →</div></div></div>
+        <div class="tile"><div class="ph"><img src="./photo-mood-4.png" alt=""><div class="ov"></div><div class="n">04</div></div><div class="b"><h3>Mon dressing</h3><p>Votre mémoire vestimentaire.</p><div class="o">Ouvrir →</div></div></div>
+      </section>
+
+      <section style="padding-top:0">
+        <div class="lbl">Les 348 accords</div>
+        <div class="h2">Palettes</div>
+        <div class="pgrid">
+          <div class="pc"><div class="bands"><span style="background:#7D8A4A"></span><span style="background:#C9B79C"></span><span style="background:#6B4A33"></span><span style="background:#EFE7D6"></span></div><div class="b"><div class="nm">Béton & Lin</div><div class="geo">Scandinave</div></div></div>
+          <div class="pc"><div class="bands"><span style="background:#B98A5E"></span><span style="background:#B5603C"></span><span style="background:#C7A06A"></span><span style="background:#EFE2D2"></span></div><div class="b"><div class="nm">Aube sur Berlin</div><div class="geo">Africaine</div></div></div>
+          <div class="pc"><div class="bands"><span style="background:#3A3F44"></span><span style="background:#56657A"></span><span style="background:#C28A3E"></span><span style="background:#ECE6DC"></span></div><div class="b"><div class="nm">Pluie de Tokyo</div><div class="geo">Japonaise</div></div></div>
+          <div class="pc"><div class="bands"><span style="background:#E7D6CE"></span><span style="background:#6B2D2A"></span><span style="background:#EFE7D6"></span><span style="background:#cbb0a0"></span></div><div class="b"><div class="nm">Bal au Palais</div><div class="geo">Française</div></div></div>
+        </div>
+      </section>
+
+      <footer>
+        <div class="logo">WADA和田</div>
+        <div class="acc"><div class="h"><span>Explorer</span><span>▾</span></div></div>
+        <div class="acc"><div class="h"><span>Compte</span><span>▾</span></div></div>
+        <div class="acc"><div class="h"><span>Contact</span><span>▾</span></div></div>
+        <div class="copy">© 2026 WADA · D'après Sanzo Wada</div>
+      </footer>
+    </div>
+  </div>
+<script>
+  var sc=document.getElementById('sc'),hdr=document.getElementById('hdr');
+  sc.addEventListener('scroll',function(){ hdr.classList.toggle('solid', sc.scrollTop>40); });
+  document.querySelectorAll('.gp button').forEach(function(b){b.addEventListener('click',function(){document.querySelectorAll('.gp button').forEach(function(x){x.classList.remove('on')});b.classList.add('on');});});
+</script>
+</body>
+</html>

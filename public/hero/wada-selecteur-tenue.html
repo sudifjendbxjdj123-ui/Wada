@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WADA — Composer ma tenue</title>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --cream:#f4eee4;--cream-2:#efe7da;--card:#fbf7f0;--ink:#2a2521;--ink-soft:#3d3530;
+    --muted:#8c8377;--line:#e5dccc;--line-soft:#ece2cf;
+    --bordeaux:#6e3b32;--bordeaux-2:#82473c;--bordeaux-pale:#f7e9e3;
+    --shadow:0 18px 50px -28px rgba(60,40,25,.45);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Inter',system-ui,sans-serif;background:var(--cream);color:var(--ink);
+    -webkit-font-smoothing:antialiased;line-height:1.55;padding:30px 16px}
+  h1,h2,h3,h4,.fk{font-family:'Fredoka',sans-serif}
+
+  .container{max-width:780px;margin:0 auto}
+
+  /* CARTE PRINCIPALE qui contient le sélecteur */
+  .selector{background:var(--card);border:1px solid var(--line);border-radius:24px;
+    padding:34px clamp(20px,4vw,40px);box-shadow:var(--shadow)}
+
+  /* SECTION TITLE */
+  .sec-title{font-family:'Fredoka';font-size:12.5px;font-weight:600;letter-spacing:.22em;
+    text-transform:uppercase;color:var(--bordeaux);margin-bottom:14px}
+
+  /* DIVIDER entre sections */
+  .divider{height:1px;background:var(--line-soft);margin:30px 0 26px}
+
+  /* CARTES OCCASION (3 colonnes) */
+  .occ-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+  .occ-card{background:#fff;border:1.5px solid var(--line);border-radius:16px;
+    padding:22px 16px;text-align:center;cursor:pointer;transition:.18s;
+    position:relative;font-family:'Fredoka'}
+  .occ-card:hover{border-color:var(--bordeaux);transform:translateY(-2px)}
+  .occ-card.on{background:var(--bordeaux-pale);border-color:var(--bordeaux);border-width:1.5px}
+  .occ-card .ic{width:36px;height:36px;margin:0 auto 10px;display:grid;place-items:center;
+    color:var(--ink-soft)}
+  .occ-card.on .ic{color:var(--bordeaux)}
+  .occ-card .lbl{font-size:14px;font-weight:500;color:var(--ink)}
+  .occ-card.on .lbl{color:var(--bordeaux);font-weight:600}
+  .check{position:absolute;top:10px;right:10px;width:22px;height:22px;border-radius:50%;
+    background:var(--bordeaux);color:#fff;display:none;align-items:center;justify-content:center;font-size:11px}
+  .occ-card.on .check{display:flex}
+
+  /* CHIPS UNIVERS (4 chips horizontaux) */
+  .univ-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+  .univ-chip{background:#fff;border:1.5px solid var(--line);border-radius:14px;
+    padding:14px 10px;text-align:center;cursor:pointer;transition:.18s;
+    display:flex;align-items:center;justify-content:center;gap:8px;font-family:'Fredoka';
+    font-size:14px;font-weight:500;color:var(--ink)}
+  .univ-chip:hover{border-color:var(--bordeaux)}
+  .univ-chip.on{background:var(--bordeaux);color:#fff;border-color:var(--bordeaux)}
+  .univ-chip .ic{width:22px;height:22px;display:grid;place-items:center}
+  .univ-chip svg{width:18px;height:18px}
+
+  /* BUDGET SLIDER */
+  .budget-head{display:flex;align-items:center;gap:6px;margin-bottom:18px}
+  .budget-head .sec-title{margin-bottom:0}
+  .budget-head .nuance{font-family:'Inter';font-size:12px;color:var(--muted);font-weight:500;
+    text-transform:none;letter-spacing:0}
+  .budget-info{width:18px;height:18px;border-radius:50%;border:1px solid var(--muted);
+    color:var(--muted);font-size:11px;display:grid;place-items:center;cursor:help}
+  .slider-wrap{position:relative;padding:0 4px;margin-bottom:18px}
+  .slider-labels{display:flex;justify-content:space-between;font-family:'Inter';font-size:12px;
+    color:var(--muted);margin-bottom:8px}
+  .slider{-webkit-appearance:none;appearance:none;width:100%;height:8px;border-radius:999px;
+    background:linear-gradient(to right,var(--bordeaux) 0%,var(--bordeaux) var(--p,33%),
+    var(--cream-2) var(--p,33%),var(--cream-2) 100%);outline:none;cursor:pointer}
+  .slider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:22px;height:22px;
+    border-radius:50%;background:var(--bordeaux);cursor:pointer;border:none;
+    box-shadow:0 2px 8px rgba(110,59,50,.4);transition:transform .14s}
+  .slider::-webkit-slider-thumb:hover{transform:scale(1.1)}
+  .slider::-moz-range-thumb{width:22px;height:22px;border-radius:50%;background:var(--bordeaux);
+    cursor:pointer;border:none;box-shadow:0 2px 8px rgba(110,59,50,.4)}
+  .slider-value{text-align:center;margin-top:18px}
+  .slider-value .v{font-family:'Fredoka';font-size:30px;font-weight:500;color:var(--bordeaux);
+    line-height:1;letter-spacing:-.5px}
+  .slider-value .sub{font-family:'Inter';font-size:13px;color:var(--muted);margin-top:6px}
+
+  /* RÉSUMÉ PALETTE */
+  .summary{background:var(--cream);border:1.5px solid var(--line);border-radius:18px;
+    padding:22px 24px;margin-top:30px;display:grid;grid-template-columns:auto 1fr auto;gap:18px;align-items:center}
+  .sum-pal{display:flex;flex-direction:column;gap:6px}
+  .sum-pal i{width:38px;height:14px;border-radius:4px;display:block;border:1px solid rgba(0,0,0,.05)}
+  .sum-body{min-width:0}
+  .sum-kicker{font-family:'Fredoka';font-size:10.5px;font-weight:600;letter-spacing:.22em;
+    text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+  .sum-name{font-family:'Fredoka';font-size:26px;font-weight:500;letter-spacing:-.3px;margin-bottom:10px;line-height:1.1}
+  .sum-meta{display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--ink-soft);font-family:'Inter';margin-bottom:6px}
+  .sum-meta span{display:inline-flex;align-items:center;gap:5px}
+  .sum-meta svg{width:14px;height:14px;color:var(--muted)}
+  .sum-count{font-size:12px;color:var(--muted);margin-top:8px}
+  .modif{background:#fff;border:1px solid var(--line);border-radius:11px;padding:9px 14px;
+    font-family:'Fredoka';font-size:13px;font-weight:500;color:var(--ink);cursor:pointer;
+    display:inline-flex;align-items:center;gap:6px;text-decoration:none}
+  .modif:hover{border-color:var(--bordeaux);color:var(--bordeaux)}
+  .modif svg{width:13px;height:13px}
+
+  /* CTA PRINCIPAL */
+  .btn-cta{display:block;width:100%;background:var(--bordeaux);color:#fff;border:none;border-radius:16px;
+    padding:18px;font-family:'Fredoka';font-size:17px;font-weight:500;cursor:pointer;
+    margin-top:18px;text-align:center;text-decoration:none;
+    box-shadow:0 10px 30px -10px rgba(110,59,50,.5);transition:.18s}
+  .btn-cta:hover{background:var(--bordeaux-2);transform:translateY(-1px);
+    box-shadow:0 14px 36px -10px rgba(110,59,50,.55)}
+
+  /* FOOT MESSAGE */
+  .foot-msg{text-align:center;margin-top:22px;font-size:13.5px;color:var(--muted);
+    display:flex;align-items:center;justify-content:center;gap:6px}
+  .foot-msg b{font-family:'Fredoka';font-weight:500;color:var(--ink-soft)}
+  .foot-msg .star{color:var(--bordeaux);font-size:14px}
+
+  /* RESPONSIVE */
+  @media(max-width:680px){
+    .occ-grid{grid-template-columns:1fr;gap:8px}
+    .occ-card{padding:18px 16px;display:flex;align-items:center;gap:14px;text-align:left}
+    .occ-card .ic{margin:0;width:32px;height:32px}
+    .check{position:static;margin-left:auto}
+    .univ-grid{grid-template-columns:1fr 1fr;gap:8px}
+    .summary{grid-template-columns:auto 1fr;gap:14px}
+    .summary .modif{grid-column:1 / -1;justify-self:end;margin-top:6px}
+    .sum-pal{flex-direction:row}
+    .sum-pal i{width:24px;height:24px;border-radius:6px}
+    .selector{padding:24px 18px}
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+<div class="selector">
+
+  <!-- POUR QUELLE OCCASION -->
+  <div class="sec-title">Pour quelle occasion&nbsp;?</div>
+  <div class="occ-grid" data-key="occasion">
+    <button class="occ-card" data-v="Au bureau">
+      <div class="ic">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+      </div>
+      <div class="lbl">Au bureau</div>
+      <div class="check">✓</div>
+    </button>
+    <button class="occ-card on" data-v="Au quotidien">
+      <div class="ic">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
+      </div>
+      <div class="lbl">Au quotidien</div>
+      <div class="check">✓</div>
+    </button>
+    <button class="occ-card" data-v="En soirée">
+      <div class="ic">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 3h8M12 13v8M7 21h10M8 3l1.5 5h5L16 3M8 3a4 4 0 0 0 8 0"/></svg>
+      </div>
+      <div class="lbl">En soirée</div>
+      <div class="check">✓</div>
+    </button>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- QUEL UNIVERS -->
+  <div class="sec-title">Quel univers&nbsp;?</div>
+  <div class="univ-grid" data-key="univers">
+    <button class="univ-chip" data-v="Minimaliste">
+      <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/></svg></span>
+      Minimaliste
+    </button>
+    <button class="univ-chip on" data-v="Classique">
+      <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M7 4h10l-1 5-2 4h-4l-2-4-1-5z"/><path d="M9 13v8M15 13v8"/></svg></span>
+      Classique
+    </button>
+    <button class="univ-chip" data-v="Streetwear">
+      <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 16c0-5 4-9 8-9s8 4 8 9"/><path d="M4 16h16"/></svg></span>
+      Streetwear
+    </button>
+    <button class="univ-chip" data-v="Décontracté">
+      <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M8 5l-3 4 3 3v8h8v-8l3-3-3-4-2 2h-4l-2-2z"/></svg></span>
+      Décontracté
+    </button>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- BUDGET TENUE -->
+  <div class="budget-head">
+    <div class="sec-title">Budget tenue</div>
+    <span class="nuance">(total)</span>
+    <span class="budget-info" title="Budget total estimé pour les 5 pièces de la tenue">i</span>
+  </div>
+  <div class="slider-wrap">
+    <div class="slider-labels"><span>100€</span><span>1500€+</span></div>
+    <input type="range" min="100" max="1500" value="450" step="50" class="slider" id="budgetSlider">
+  </div>
+  <div class="slider-value">
+    <div class="v" id="budgetValue">450 €</div>
+    <div class="sub">Budget estimé pour la tenue complète</div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- POUR QUI -->
+  <div class="sec-title">Pour qui&nbsp;?</div>
+  <div class="occ-grid" data-key="genre">
+    <button class="occ-card" data-v="Femme">
+      <div class="ic">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="5"/><path d="M12 13v8M9 18h6"/></svg>
+      </div>
+      <div class="lbl">Femme</div>
+      <div class="check">✓</div>
+    </button>
+    <button class="occ-card on" data-v="Homme">
+      <div class="ic">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
+      </div>
+      <div class="lbl">Homme</div>
+      <div class="check">✓</div>
+    </button>
+    <button class="occ-card" data-v="Mixte">
+      <div class="ic">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="10" r="3.5"/><circle cx="15" cy="10" r="3.5"/><path d="M4 21c0-3 2.5-5.5 5-5.5M20 21c0-3-2.5-5.5-5-5.5"/></svg>
+      </div>
+      <div class="lbl">Mixte</div>
+      <div class="check">✓</div>
+    </button>
+  </div>
+
+  <!-- RÉSUMÉ -->
+  <div class="summary">
+    <div class="sum-pal">
+      <i style="background:#a13030"></i>
+      <i style="background:#c1853d"></i>
+      <i style="background:#2b4c66"></i>
+    </div>
+    <div class="sum-body">
+      <div class="sum-kicker">Votre sélection</div>
+      <div class="sum-name">Osaka au thé</div>
+      <div class="sum-meta">
+        <span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M7 4h10l-1 5-2 4h-4l-2-4-1-5z"/></svg>
+          Style <b id="sumStyle" style="margin-left:3px;color:var(--ink);font-weight:500">classique</b>
+        </span>
+        <span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
+          Usage <b id="sumOcc" style="margin-left:3px;color:var(--ink);font-weight:500">quotidien</b>
+        </span>
+        <span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7l9-4 9 4-9 4z"/><path d="M3 7v9l9 4 9-4V7"/></svg>
+          Budget&nbsp;: <b id="sumBudget" style="margin-left:3px;color:var(--ink);font-weight:500">450 €</b>
+        </span>
+      </div>
+      <div class="sum-count">5 pièces sélectionnées</div>
+    </div>
+    <button class="modif">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 20h9M16 4l4 4-11 11H5v-4z"/></svg>
+      Modifier
+    </button>
+  </div>
+
+  <!-- CTA -->
+  <button class="btn-cta">Voir ma tenue &nbsp;→</button>
+
+</div>
+
+<p class="foot-msg">
+  <span class="star">✦</span>
+  <span><b>WADA</b> compose pour vous une tenue harmonieuse et adaptée à votre style.</span>
+</p>
+
+</div>
+
+<script>
+  // Single-select pour cartes occasion / genre
+  document.querySelectorAll('.occ-grid').forEach(group=>{
+    group.querySelectorAll('.occ-card').forEach(b=>{
+      b.addEventListener('click',()=>{
+        group.querySelectorAll('.occ-card').forEach(x=>x.classList.remove('on'));
+        b.classList.add('on');
+        updateSummary();
+      });
+    });
+  });
+
+  // Single-select pour chips univers
+  document.querySelectorAll('.univ-grid').forEach(group=>{
+    group.querySelectorAll('.univ-chip').forEach(b=>{
+      b.addEventListener('click',()=>{
+        group.querySelectorAll('.univ-chip').forEach(x=>x.classList.remove('on'));
+        b.classList.add('on');
+        updateSummary();
+      });
+    });
+  });
+
+  // Slider budget
+  const slider = document.getElementById('budgetSlider');
+  const budgetValue = document.getElementById('budgetValue');
+  function updateSlider(){
+    const val = parseInt(slider.value);
+    const min = parseInt(slider.min);
+    const max = parseInt(slider.max);
+    const pct = ((val - min) / (max - min)) * 100;
+    slider.style.setProperty('--p', pct + '%');
+    budgetValue.textContent = (val >= 1500) ? '1500 €+' : val + ' €';
+    updateSummary();
+  }
+  slider.addEventListener('input', updateSlider);
+  updateSlider();
+
+  // Summary update
+  function updateSummary(){
+    const occ = document.querySelector('.occ-grid[data-key=occasion] .occ-card.on');
+    const univ = document.querySelector('.univ-grid[data-key=univers] .univ-chip.on');
+    const val = parseInt(slider.value);
+    document.getElementById('sumOcc').textContent = occ ? occ.dataset.v.toLowerCase().replace('au ','') : '—';
+    document.getElementById('sumStyle').textContent = univ ? univ.dataset.v.toLowerCase() : '—';
+    document.getElementById('sumBudget').textContent = (val >= 1500) ? '1500 €+' : val + ' €';
+  }
+  updateSummary();
+</script>
+
+</body>
+</html>

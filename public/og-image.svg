@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+  <!--
+    WADA — Open Graph image (1200×630 ratio recommandé par FB/Twitter/Google)
+    Affiché dans Google Search, partages sociaux, iMessage previews, etc.
+    Composition : logo + signature 3 bandes + tagline éditoriale.
+    ────────────────────────────────────────────────────────────────── -->
+  <defs>
+    <style>
+      .heading { font-family: 'Bagel Fat One', 'Abril Fatface', Georgia, serif; }
+      .body    { font-family: Georgia, 'EB Garamond', serif; }
+      .label   { font-family: Inter, sans-serif; }
+    </style>
+  </defs>
+
+  <!-- Fond crème WADA -->
+  <rect width="1200" height="630" fill="#F4EFE6"/>
+
+  <!-- 3 bandes verticales à gauche (signature WADA) -->
+  <rect x="0"   y="0" width="80" height="630" fill="#5C2018"/>
+  <rect x="80"  y="0" width="80" height="630" fill="#5C5A3C"/>
+  <rect x="160" y="0" width="80" height="630" fill="#1B4A6B"/>
+
+  <!-- Contenu texte centré -->
+  <g transform="translate(290, 0)">
+    <!-- Eyebrow caps -->
+    <text x="0" y="180" class="label"
+          font-size="22" font-weight="700"
+          letter-spacing="8" fill="#C44E3A">
+      INSPIRÉ DE SANZO WADA · 1933
+    </text>
+
+    <!-- Wordmark WADA (gros) -->
+    <text x="0" y="290" class="heading"
+          font-size="140" font-weight="400" fill="#1F1B16">
+      WADA
+    </text>
+
+    <!-- Sous-titre japonais -->
+    <text x="0" y="335" class="body"
+          font-size="20" fill="#1F1B16" opacity="0.55"
+          letter-spacing="6">
+      和田 · 色彩辞典
+    </text>
+
+    <!-- Tagline -->
+    <text x="0" y="430" class="body"
+          font-size="36" font-style="italic" fill="#1F1B16">
+      Le dictionnaire des couleurs
+    </text>
+    <text x="0" y="478" class="body"
+          font-size="36" font-style="italic" fill="#1F1B16">
+      et de la mode.
+    </text>
+
+    <!-- Footer ligne 348 palettes -->
+    <text x="0" y="560" class="label"
+          font-size="18" font-weight="600"
+          letter-spacing="4" fill="#1F1B16" opacity="0.7">
+      348 PALETTES · 348 TENUES
+    </text>
+  </g>
+
+  <!-- Petits chips couleurs à droite (Pantone-style décoratif) -->
+  <g transform="translate(960, 100)">
+    <rect width="160" height="50" fill="#5C2018"/>
+    <rect y="60"  width="160" height="50" fill="#5C5A3C"/>
+    <rect y="120" width="160" height="50" fill="#E8DFC8"/>
+    <rect y="180" width="160" height="50" fill="#1B4A6B"/>
+    <rect y="240" width="160" height="50" fill="#C44E3A"/>
+    <rect y="300" width="160" height="50" fill="#9CAF88"/>
+    <rect y="360" width="160" height="50" fill="#F0E2D8"/>
+    <rect y="420" width="160" height="50" fill="#1F1B16"/>
+  </g>
+</svg>

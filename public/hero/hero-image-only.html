@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WADA — Hero image (sans vidéo)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{--beige:#F4EFE7;--cream:#FAF8F4;--olive:#A8B29A;--bordeaux:#6B3A32;--ink:#1E1E1E;
+    --fd:"Fredoka","Inter",sans-serif;--sans:"Inter",Arial,sans-serif;--ease:cubic-bezier(.22,1,.36,1)}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:var(--sans);background:var(--beige);color:var(--ink)}
+  .lbl{max-width:1100px;margin:18px auto 0;padding:0 24px;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--bordeaux)}
+  .hero{position:relative;height:92vh;min-height:560px;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+  .hero img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+  .hero .veil{position:absolute;inset:0;background:linear-gradient(180deg,rgba(20,18,16,.34),rgba(20,18,16,.30) 55%,rgba(244,239,231,.0))}
+  .hero .fade{position:absolute;left:0;right:0;bottom:0;height:160px;background:linear-gradient(180deg,rgba(244,239,231,0),var(--beige))}
+  .hero .inner{position:relative;z-index:2;color:#FAF8F4;padding:0 24px}
+  .hero .k{font-size:11px;letter-spacing:.32em;text-transform:uppercase;opacity:.9}
+  .hero h1{font-family:var(--fd);font-weight:700;font-size:64px;line-height:1.04;margin:16px 0 12px;text-shadow:0 2px 24px rgba(0,0,0,.3)}
+  .hero p{font-size:18px;max-width:42ch;margin:0 auto;color:rgba(250,248,244,.94)}
+  .cta{margin-top:30px;display:inline-flex;gap:14px;flex-wrap:wrap;justify-content:center}
+  .btn{font-size:15px;padding:15px 30px;border-radius:999px;background:#FAF8F4;color:var(--ink);border:none;cursor:pointer}
+  .btn--ghost{background:transparent;color:#FAF8F4;border:1px solid rgba(250,248,244,.55)}
+  .gp{margin-top:18px;display:inline-flex;align-items:center;gap:4px;background:rgba(250,248,244,.14);border:1px solid rgba(250,248,244,.3);border-radius:999px;padding:5px}
+  .gp .gl{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:rgba(250,248,244,.85);padding:0 10px}
+  .gp button{font-size:13px;padding:8px 16px;border:none;background:transparent;color:#FAF8F4;border-radius:999px;cursor:pointer}
+  .gp button.on{background:#FAF8F4;color:var(--ink)}
+  @media(max-width:760px){.hero h1{font-size:42px}}
+</style>
+</head>
+<body>
+  <div class="lbl">Hero image seulement (image : moodboard-3) — change le src pour tester une autre</div>
+  <section class="hero">
+    <img src="./moodboard-3.webp" alt="">
+    <div class="veil"></div>
+    <div class="inner">
+      <div class="k">D'après Sanzo Wada · 1933</div>
+      <h1>Trouvez la couleur.<br>Trouvez votre style.</h1>
+      <p>Un dictionnaire de 348 accords, traduits en tenues à porter — et à acheter.</p>
+      <div class="cta"><button class="btn">Entrer dans l'atelier →</button><button class="btn btn--ghost">Notre histoire</button></div>
+      <div class="gp"><span class="gl">Je m'habille</span><button>Femme</button><button class="on">Homme</button><button>Unisexe</button></div>
+    </div>
+    <div class="fade"></div>
+  </section>
+</body>
+</html>

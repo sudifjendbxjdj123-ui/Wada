@@ -301,7 +301,7 @@ export default function Footer() {
               + brief Amazon Partenaires + Awin. Mention permanente visible
               partout sur le site. */}
           <span>
-            Liens partenaires (Muji via Awin · Amazon) — WADA peut toucher une commission, sans coût supplémentaire pour vous.{" "}
+            Liens partenaires (Muji, The Business Fashion, The Shirt Company — via Awin) — WADA peut toucher une commission, sans coût supplémentaire pour vous.{" "}
             <Link
               href="/affiliation"
               className="wada-footer-link"

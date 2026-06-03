@@ -34,7 +34,6 @@ import BackButton from "@/components/BackButton";
 import OutfitFeedback from "@/components/OutfitFeedback";
 import { useSavedOutfits, type SavedOutfit } from "@/hooks/useSavedOutfits";
 import { showToast } from "@/lib/toast";
-import { amazonSearch } from "@/lib/amazonAffiliate";
 import { dictionary, type DictionaryEntry } from "@/lib/data";
 import { analyzeColor } from "@/lib/colorEngine";
 
@@ -487,13 +486,6 @@ function emptyState(): State {
 /* ──────────────────────────────────────────────────────────────────────
    Helpers
    ────────────────────────────────────────────────────────────────────── */
-
-/** Génère un lien d'achat Amazon affilié pour une pièce + couleur + genre. */
-function buyLinkFor(p: OutfitPiece, genre: string | null): string {
-  if (p.ancre) return "#"; // pas de lien pour l'ancre client
-  const parts = [p.type, p.couleurNom?.toLowerCase(), genre?.toLowerCase()].filter(Boolean);
-  return amazonSearch(parts.join(" "));
-}
 
 /** Map role → slot canonique de STYLES (haut/bas/chauss/veste/accent). */
 function roleToSlotKey(role: Role): keyof StyleSet {
@@ -1946,7 +1938,6 @@ function OutfitBubble({ pieces, genre, style }: { pieces: OutfitPiece[]; genre: 
           <PieceCard
             key={i}
             piece={p}
-            amzUrl={p.ancre ? undefined : buyLinkFor(p, genre)}
             style={style}
             genre={genre}
           />
@@ -1980,10 +1971,9 @@ function OutfitBubble({ pieces, genre, style }: { pieces: OutfitPiece[]; genre: 
    PieceCard — pattern marque + Amazon "a" + prix + Acheter (idem /ma-tenue)
    ────────────────────────────────────────────────────────────────────── */
 function PieceCard({
-  piece, amzUrl, style, genre,
+  piece, style, genre,
 }: {
   piece: OutfitPiece;
-  amzUrl?: string;
   style?: string | null;
   genre?: string | null;
 }) {
@@ -2180,69 +2170,22 @@ function PieceCard({
                 Acheter sur {mujiProduct.marchand || "MUJI"} →
               </a>
             </div>
-          ) : amzUrl ? (
-            /* Fallback Amazon générique (placeholder honnête tant qu'il
-               n'y a pas de produit MUJI matchant). */
-            <div style={{
-              background: "rgba(255,255,255,0.65)",
-              border: `1px solid ${palette.line}`,
-              borderRadius: 12,
-              padding: "10px 12px",
+          ) : (
+            /* Bug critique 2026-05-31 — règle 3 : aucune fiche produit
+               affiliée (MUJI / TBF / Shirt Company) pour ce slot. On NE
+               propose PAS un faux lien Amazon non affilié à « ~55 € » (ni
+               commission, ni prix réel, et libellé trompeur). On reste
+               honnête : la pièce est conseillée, mais pas encore achetable
+               chez nos partenaires. */
+            <p style={{
+              fontSize: 11.5, color: palette.inkSoft,
+              fontStyle: "italic", fontFamily: fonts.sans,
+              margin: 0, lineHeight: 1.45,
             }}>
-              <p style={{
-                fontFamily: fonts.sans, fontSize: 15, fontWeight: 700,
-                color: palette.ink, margin: 0, lineHeight: 1.1,
-              }}>
-                Amazon
-              </p>
-              <div style={{
-                display: "flex", alignItems: "center", gap: 5,
-                marginTop: 4,
-              }}>
-                <span
-                  aria-label="via Amazon"
-                  style={{
-                    display: "inline-flex", alignItems: "center", justifyContent: "center",
-                    width: 14, height: 14, borderRadius: 3,
-                    background: "#FF9900", color: "#1E1E1E",
-                    fontFamily: fonts.sans, fontWeight: 800,
-                    fontSize: 9, letterSpacing: 0, lineHeight: 1,
-                  }}
-                >
-                  a
-                </span>
-                <span style={{
-                  fontSize: 11, color: palette.inkSoft,
-                  fontStyle: "italic", fontFamily: fonts.sans,
-                }}>
-                  Recherche multi-marques
-                </span>
-              </div>
-              <p style={{
-                fontFamily: fonts.sans, fontSize: 14, fontWeight: 700,
-                color: palette.bordeaux, margin: "8px 0 0",
-              }}>
-                ~55 €
-              </p>
-              <a
-                href={amzUrl}
-                target="_blank"
-                rel="noopener nofollow sponsored"
-                style={{
-                  display: "block", marginTop: 8,
-                  textAlign: "center",
-                  fontFamily: fonts.sans,
-                  fontSize: 12, fontWeight: 600,
-                  textDecoration: "none",
-                  background: palette.ink, color: palette.cream,
-                  borderRadius: 999,
-                  padding: "8px 12px",
-                }}
-              >
-                Acheter →
-              </a>
-            </div>
-          ) : null}
+              Pas encore chez nos marques partenaires — on enrichit le catalogue
+              chaque semaine.
+            </p>
+          )}
         </div>
       </div>
     </div>

@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1350" width="1080" height="1350">
+  <!-- Post 1 · Slide 5 (CTA finale) — "Trouve la tienne" -->
+  <rect width="1080" height="1350" fill="#1F1B16"/>
+
+  <!-- Petites palettes en haut décoratif -->
+  <g transform="translate(140, 220)">
+    <rect width="800" height="14" fill="#F4EFE6"/>
+    <rect x="0" y="22" width="800" height="14" fill="#C44E3A"/>
+    <rect x="0" y="44" width="800" height="14" fill="#5C5A3C"/>
+  </g>
+
+  <!-- Eyebrow CAPS -->
+  <text x="540" y="450"
+        font-family="Inter, Arial, sans-serif"
+        font-size="22" font-weight="700"
+        letter-spacing="10" fill="#C44E3A"
+        text-anchor="middle">
+    À TOI MAINTENANT
+  </text>
+
+  <!-- Titre principal -->
+  <text x="540" y="600"
+        font-family="'Bagel Fat One', 'Abril Fatface', Georgia, serif"
+        font-size="120" font-weight="400" fill="#F4EFE6"
+        text-anchor="middle">
+    Trouve
+  </text>
+  <text x="540" y="740"
+        font-family="'Bagel Fat One', 'Abril Fatface', Georgia, serif"
+        font-size="120" font-weight="400" fill="#F4EFE6"
+        text-anchor="middle">
+    la tienne.
+  </text>
+
+  <!-- Sous-texte -->
+  <text x="540" y="900"
+        font-family="Georgia, 'EB Garamond', serif"
+        font-size="34" font-style="italic" fill="#F4EFE6" opacity="0.85"
+        text-anchor="middle">
+    348 palettes Sanzo Wada
+  </text>
+  <text x="540" y="945"
+        font-family="Georgia, 'EB Garamond', serif"
+        font-size="34" font-style="italic" fill="#F4EFE6" opacity="0.85"
+        text-anchor="middle">
+    en attente d'être portées.
+  </text>
+
+  <!-- CTA pill orange -->
+  <rect x="380" y="1070" width="320" height="80" rx="40" fill="#C44E3A"/>
+  <text x="540" y="1122"
+        font-family="Inter, Arial, sans-serif"
+        font-size="22" font-weight="700"
+        letter-spacing="6" fill="#F4EFE6"
+        text-anchor="middle">
+    WADA.STYLE  →
+  </text>
+
+  <!-- Petite indication "lien en bio" -->
+  <text x="540" y="1250"
+        font-family="Inter, Arial, sans-serif"
+        font-size="16" font-weight="500"
+        letter-spacing="4" fill="#F4EFE6" opacity="0.5"
+        text-anchor="middle">
+    LIEN EN BIO ↑
+  </text>
+</svg>

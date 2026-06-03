@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WADA — Élégance décontractée (TBF intégré)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --cream:#f4eee4;--cream-2:#efe7da;--card:#fbf7f0;--ink:#2a2521;--muted:#8c8377;
+    --line:#e5dccc;--bordeaux:#6e3b32;--bordeaux-2:#82473c;--olive:#6f7a3f;
+    --shadow:0 18px 50px -28px rgba(60,40,25,.45);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Inter',system-ui,sans-serif;background:var(--cream);color:var(--ink);-webkit-font-smoothing:antialiased}
+  h1,h2,h3,h4,.brand,.chubby{font-family:'Fredoka',sans-serif}
+
+  nav{display:flex;align-items:center;justify-content:space-between;padding:18px clamp(20px,5vw,56px);border-bottom:1px solid var(--line);background:rgba(250,246,239,.85);backdrop-filter:blur(8px);position:sticky;top:0;z-index:20}
+  .nav-left{display:flex;gap:26px;font-weight:500;font-size:15px}
+  .nav-left a{color:var(--ink);text-decoration:none;opacity:.78}
+  .nav-left a.active{opacity:1}
+  .brand{font-size:26px;font-weight:600;letter-spacing:.5px;position:absolute;left:50%;transform:translateX(-50%)}
+  .nav-right{display:flex;align-items:center;gap:10px}
+  .profile-pill{display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:6px 14px 6px 6px;font-size:12.5px;cursor:pointer}
+  .profile-pill .av{width:24px;height:24px;border-radius:50%;background:var(--bordeaux);color:#fff;display:grid;place-items:center;font-family:'Fredoka';font-size:12px}
+  .cta{background:var(--bordeaux);color:#fff;border:none;padding:11px 22px;border-radius:999px;font-family:'Fredoka';font-size:15px;font-weight:500;cursor:pointer}
+
+  .wrap{max-width:1180px;margin:0 auto;padding:24px clamp(18px,5vw,40px) 60px}
+  .back{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--card);border-radius:999px;padding:9px 18px;font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink);text-decoration:none}
+
+  /* HERO of tenue */
+  .head{margin-top:30px;display:flex;justify-content:space-between;align-items:flex-end;gap:30px;flex-wrap:wrap}
+  .head .meta-l{max-width:640px}
+  .head .kicker{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:10px}
+  .head .kicker a{color:var(--bordeaux);text-decoration:none}
+  h1{font-size:clamp(40px,5.5vw,60px);letter-spacing:-.5px;line-height:1.04;margin-bottom:12px}
+  .head .lede{font-size:16px;color:var(--muted);line-height:1.55;max-width:54ch}
+  .perso{display:inline-flex;align-items:center;gap:8px;background:#f6efdc;border:1px solid #e5d8b8;border-radius:999px;padding:7px 14px;font-size:12.5px;color:#5b4d2c;margin-top:18px;cursor:pointer}
+  .perso .dot{width:6px;height:6px;border-radius:50%;background:var(--olive)}
+  .head .total{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:18px 22px;text-align:right;min-width:220px}
+  .head .total .l{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:4px}
+  .head .total .v{font-family:'Fredoka';font-size:30px;font-weight:500;color:var(--bordeaux)}
+  .head .total .s{font-size:12px;color:var(--muted);margin-top:4px}
+
+  /* mini palette */
+  .mini-pal{display:flex;gap:6px;margin-top:18px}
+  .mini-pal i{width:60px;height:34px;border-radius:8px;display:block;border:1px solid rgba(0,0,0,.05)}
+
+  /* GRID DE PRODUITS */
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:18px;margin-top:36px}
+  .item{background:var(--card);border:1px solid var(--line);border-radius:20px;overflow:hidden;display:flex;flex-direction:column;transition:.18s}
+  .item:hover{transform:translateY(-3px);box-shadow:var(--shadow);border-color:#d6c7a8}
+  .item-img{aspect-ratio:3/4;background:linear-gradient(160deg,#dccfb4,#a89272);position:relative;overflow:hidden}
+  .item-img.haut{background:linear-gradient(160deg,#c9a880,#937056)}
+  .item-img.bas{background:linear-gradient(160deg,#2c3a4f,#0f1a26)}
+  .item-img.veste{background:linear-gradient(160deg,#5e5145,#332a23)}
+  .item-img.chaus{background:linear-gradient(160deg,#9b3434,#4d1818)}
+  .item-img.accent{background:linear-gradient(160deg,#bf9a51,#7d5e23)}
+  .slot-tag{position:absolute;top:12px;left:12px;background:rgba(255,255,255,.94);color:var(--ink);font-family:'Fredoka';font-size:10.5px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;padding:5px 10px;border-radius:999px}
+  .col-tag{position:absolute;bottom:12px;left:12px;display:flex;align-items:center;gap:6px;background:rgba(0,0,0,.55);color:#fff;font-size:11px;padding:5px 10px;border-radius:999px;backdrop-filter:blur(6px)}
+  .col-tag i{width:10px;height:10px;border-radius:50%;display:inline-block;border:1px solid rgba(255,255,255,.6)}
+
+  .item-body{padding:16px 18px;display:flex;flex-direction:column;flex:1}
+  .b-name{font-family:'Fredoka';font-size:11.5px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--bordeaux);margin-bottom:4px}
+  .p-name{font-family:'Inter';font-size:14px;font-weight:500;color:var(--ink);margin-bottom:8px;line-height:1.35;min-height:38px}
+  .price{font-family:'Fredoka';font-size:18px;font-weight:500;margin-bottom:14px}
+  .price small{font-family:'Inter';font-size:11px;color:var(--muted);font-weight:500;display:block;margin-top:1px}
+  .buy{margin-top:auto;background:var(--ink);color:#fff;border:none;border-radius:11px;padding:11px;font-family:'Fredoka';font-size:13px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px}
+  .buy:hover{background:var(--bordeaux)}
+  .buy small{font-family:'Inter';font-size:10px;opacity:.7;font-weight:400}
+
+  /* FOOTER ACTIONS */
+  .actions{margin-top:32px;display:flex;gap:14px;align-items:center;flex-wrap:wrap;background:var(--card);border:1px solid var(--line);border-radius:18px;padding:18px 22px}
+  .actions .lab{font-family:'Fredoka';font-size:14.5px;color:var(--ink)}
+  .btn-soft{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 16px;font-family:'Fredoka';font-size:13.5px;cursor:pointer;color:var(--ink)}
+  .btn-fav{background:var(--cream-2);border:1px solid var(--line);border-radius:12px;padding:10px 16px;font-family:'Fredoka';font-size:13.5px;cursor:pointer;color:var(--ink)}
+
+  /* STYLISTE */
+  .stylo{margin-top:30px;background:var(--card);border:1px solid var(--line);border-radius:18px;padding:20px;display:flex;gap:16px;align-items:center}
+  .stylo-av{width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#caa479,#8a6f4a);color:#fff;display:grid;place-items:center;font-family:'Fredoka';font-size:22px;flex:0 0 auto}
+  .stylo h4{font-family:'Fredoka';font-size:15px;font-weight:500;margin-bottom:4px}
+  .stylo p{font-size:13.5px;color:var(--muted);line-height:1.5}
+  .stylo a{margin-left:auto;background:var(--bordeaux);color:#fff;text-decoration:none;border-radius:999px;padding:10px 18px;font-family:'Fredoka';font-size:13.5px;flex:0 0 auto}
+
+  /* INFO BAR */
+  .info{margin-top:20px;display:flex;gap:10px;justify-content:center;font-size:12.5px;color:var(--muted)}
+  .info b{color:var(--ink)}
+
+  footer{background:#16130f;color:#cfc6b6;margin-top:60px;padding:34px clamp(20px,5vw,56px) 24px;font-size:13px;text-align:center}
+
+  @media(max-width:680px){
+    .nav-left{display:none}.brand{position:static;transform:none}
+    .head{flex-direction:column;align-items:flex-start}
+    .head .total{width:100%;text-align:left}
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-left">
+    <a href="#" class="active">Palettes</a>
+    <a href="#">Scanner</a>
+    <a href="#">Styliste</a>
+    <a href="#">Favoris</a>
+  </div>
+  <div class="brand">WADA 和田</div>
+  <div class="nav-right">
+    <button class="profile-pill">
+      <span class="av">H</span>
+      <span>Homme · Premium · Classique</span>
+      <span style="font-size:10px;color:#999;margin-left:4px">&#9662;</span>
+    </button>
+  </div>
+</nav>
+
+<div class="wrap">
+  <a class="back" href="#">&larr;&nbsp; Retour</a>
+
+  <!-- HEAD -->
+  <section class="head">
+    <div class="meta-l">
+      <div class="kicker">Look — Inspirée de <a href="#">Osaka au thé</a> · No. 009</div>
+      <h1>Élégance décontractée</h1>
+      <p class="lede">Une silhouette raffinée pour un quotidien sans effort. Cachemire, laine et cuir — des matières nobles qui font tout le travail.</p>
+      <button class="perso"><span class="dot"></span>Composée pour vous · Homme · Premium · Classique<span style="font-size:10px;margin-left:4px;opacity:.6">&#9662;</span></button>
+      <div class="mini-pal" title="Palette Osaka au thé">
+        <i style="background:#7B2D26"></i>
+        <i style="background:#A8784A"></i>
+        <i style="background:#3E5A7C"></i>
+      </div>
+    </div>
+    <div class="total">
+      <div class="l">Total de la tenue</div>
+      <div class="v">2 287 €</div>
+      <div class="s">5 pièces · livraison incluse</div>
+    </div>
+  </section>
+
+  <!-- PIÈCES -->
+  <section class="grid">
+
+    <article class="item">
+      <div class="item-img haut">
+        <span class="slot-tag">Haut</span>
+        <span class="col-tag"><i style="background:#A8784A"></i> Cuir naturel</span>
+      </div>
+      <div class="item-body">
+        <div class="b-name">Brunello Cucinelli</div>
+        <div class="p-name">Pull en cachemire col rond, ton beige tabac</div>
+        <div class="price">890 €<small>£760 · converti en EUR</small></div>
+        <a class="buy" href="#">Acheter sur The Business Fashion &nbsp;&rarr;</a>
+      </div>
+    </article>
+
+    <article class="item">
+      <div class="item-img bas">
+        <span class="slot-tag">Bas</span>
+        <span class="col-tag"><i style="background:#3E5A7C"></i> Bleu pierre</span>
+      </div>
+      <div class="item-body">
+        <div class="b-name">Tom Ford</div>
+        <div class="p-name">Pantalon en laine, coupe droite</div>
+        <div class="price">620 €<small>£530 · converti en EUR</small></div>
+        <a class="buy" href="#">Acheter sur The Business Fashion &nbsp;&rarr;</a>
+      </div>
+    </article>
+
+    <article class="item">
+      <div class="item-img veste">
+        <span class="slot-tag">Veste</span>
+        <span class="col-tag"><i style="background:#A8784A"></i> Cuir naturel</span>
+      </div>
+      <div class="item-body">
+        <div class="b-name">Loro Piana</div>
+        <div class="p-name">Manteau en cachemire camel</div>
+        <div class="price">— €<small>Hors budget profil</small></div>
+        <button class="buy" style="background:#aaa;cursor:not-allowed">Indisponible pour ce profil</button>
+      </div>
+    </article>
+
+    <article class="item">
+      <div class="item-img chaus">
+        <span class="slot-tag">Chaussures</span>
+        <span class="col-tag"><i style="background:#7B2D26"></i> Vermillon</span>
+      </div>
+      <div class="item-body">
+        <div class="b-name">Canali</div>
+        <div class="p-name">Mocassins en cuir bordeaux</div>
+        <div class="price">480 €<small>£410 · converti en EUR</small></div>
+        <a class="buy" href="#">Acheter sur The Business Fashion &nbsp;&rarr;</a>
+      </div>
+    </article>
+
+    <article class="item">
+      <div class="item-img accent">
+        <span class="slot-tag">Accent</span>
+        <span class="col-tag"><i style="background:#A8784A"></i> Cuir naturel</span>
+      </div>
+      <div class="item-body">
+        <div class="b-name">Paul Smith</div>
+        <div class="p-name">Ceinture en cuir naturel grainé</div>
+        <div class="price">297 €<small>£254 · converti en EUR</small></div>
+        <a class="buy" href="#">Acheter sur The Business Fashion &nbsp;&rarr;</a>
+      </div>
+    </article>
+
+  </section>
+
+  <!-- ACTIONS -->
+  <section class="actions">
+    <span class="lab">Vous aimez ce look ?</span>
+    <button class="btn-fav">&#9829; Ajouter aux favoris</button>
+    <button class="btn-soft">&#8635; Composer un autre look avec cette palette</button>
+    <button class="btn-soft">&#128722; Voir une variante moins chère</button>
+  </section>
+
+  <!-- STYLISTE -->
+  <section class="stylo">
+    <div class="stylo-av">和</div>
+    <div>
+      <h4>Conseil du styliste</h4>
+      <p>Le Loro Piana sort un peu de votre budget. Je peux proposer un manteau Canali équivalent à 740 € pour rester dans le ton et finir la tenue.</p>
+    </div>
+    <a href="#">Dialoguer avec le styliste</a>
+  </section>
+
+  <p class="info">Liens partenaires via Awin — <b>WADA peut toucher une commission</b>, sans coût pour vous.</p>
+</div>
+
+<footer>© 2026 WADA · Genève — Liens partenaires (The Business Fashion via Awin)</footer>
+
+</body>
+</html>

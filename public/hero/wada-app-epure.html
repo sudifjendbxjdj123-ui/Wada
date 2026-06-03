@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WADA — App épurée</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --cream:#f4eee4;--card:#fbf7f0;--ink:#2a2521;--muted:#928979;
+    --line:#ebe2d2;--bordeaux:#6e3b32;--bordeaux-2:#82473c;--olive:#6f7a3f;--gold:#c79a3c;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Inter',system-ui,sans-serif;background:#e9e0d0;color:var(--ink);
+    min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:30px 16px 60px;-webkit-font-smoothing:antialiased}
+  h1,h2,h3,.fk{font-family:'Fredoka',sans-serif}
+
+  .intro{max-width:430px;text-align:center;margin-bottom:24px}
+  .intro h2{font-size:22px;margin-bottom:6px;color:#3a322b}
+  .intro p{font-size:14px;color:#6b6256}
+
+  /* PHONE */
+  .phone{width:390px;max-width:100%;background:var(--cream);border-radius:42px;
+    box-shadow:0 40px 80px -30px rgba(50,30,15,.5),0 0 0 10px #1c1814,0 0 0 11px #2c2620;
+    overflow:hidden;position:relative;height:840px;display:flex;flex-direction:column}
+  .notch{position:absolute;top:0;left:50%;transform:translateX(-50%);width:140px;height:26px;background:#1c1814;border-radius:0 0 18px 18px;z-index:30}
+
+  /* TOP BAR (light) */
+  .top{padding:34px 22px 14px;display:flex;align-items:center;justify-content:space-between}
+  .brand{font-family:'Fredoka';font-weight:600;font-size:22px;letter-spacing:.4px}
+  .top-actions{display:flex;gap:10px}
+  .ic{width:36px;height:36px;border-radius:50%;background:var(--card);border:1px solid var(--line);display:grid;place-items:center;font-size:15px}
+
+  /* SCROLL AREA */
+  .screen{flex:1;overflow-y:auto;padding:6px 18px 18px}
+  .screen::-webkit-scrollbar{display:none}
+
+  .hello{font-family:'Fredoka';font-size:27px;font-weight:500;margin:8px 2px 2px;line-height:1.15}
+  .hello span{color:var(--bordeaux)}
+  .sub{font-size:13.5px;color:var(--muted);margin:0 2px 18px}
+
+  /* PRIMARY ACTION — the one obvious thing */
+  .hero-act{background:linear-gradient(135deg,#6e3b32,#8a4a3d);color:#fff;border-radius:24px;
+    padding:22px;position:relative;overflow:hidden;cursor:pointer}
+  .hero-act .k{font-family:'Fredoka';font-size:21px;font-weight:500;margin-bottom:4px;position:relative;z-index:2}
+  .hero-act .d{font-size:13px;opacity:.85;position:relative;z-index:2;max-width:80%}
+  .hero-act .pill{margin-top:16px;display:inline-flex;align-items:center;gap:8px;background:#fff;color:var(--bordeaux);
+    font-family:'Fredoka';font-size:14px;font-weight:500;padding:10px 18px;border-radius:999px;position:relative;z-index:2}
+  .hero-act .deco{position:absolute;right:-30px;bottom:-30px;width:150px;height:150px;border-radius:50%;
+    background:radial-gradient(circle at 30% 30%,rgba(255,255,255,.22),transparent 70%)}
+  .hero-act .swz{position:absolute;top:18px;right:18px;display:flex;gap:6px;z-index:2}
+  .hero-act .swz i{width:18px;height:18px;border-radius:50%;border:2px solid rgba(255,255,255,.5)}
+
+  /* CONTINUE strip (practical: resume where you were) */
+  .resume{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);
+    border-radius:18px;padding:12px 14px;margin-top:14px;cursor:pointer}
+  .resume .tn{width:46px;height:46px;border-radius:12px;background:linear-gradient(135deg,#4f6128,#7d9168);flex:0 0 auto}
+  .resume .tx{flex:1;min-width:0}
+  .resume .t1{font-family:'Fredoka';font-size:14.5px;font-weight:500}
+  .resume .t2{font-size:12px;color:var(--muted)}
+  .resume .arr{color:var(--muted);font-size:18px}
+
+  /* QUICK TILES */
+  .tiles{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:18px}
+  .tile{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px;cursor:pointer}
+  .tile .e{font-size:22px;display:block;margin-bottom:10px}
+  .tile .n{font-family:'Fredoka';font-size:15px;font-weight:500}
+  .tile .s{font-size:11.5px;color:var(--muted);margin-top:2px}
+
+  .row-h{display:flex;align-items:center;justify-content:space-between;margin:24px 2px 12px}
+  .row-h .t{font-family:'Fredoka';font-size:16px;font-weight:500}
+  .row-h .a{font-size:12.5px;color:var(--bordeaux);font-weight:600}
+
+  .pal-row{display:flex;gap:12px;overflow-x:auto;padding-bottom:4px;margin:0 -18px;padding-left:18px;padding-right:18px}
+  .pal-row::-webkit-scrollbar{display:none}
+  .pal{flex:0 0 130px;cursor:pointer}
+  .pal .strip{height:84px;border-radius:16px;display:flex;overflow:hidden;border:1px solid rgba(0,0,0,.05)}
+  .pal .strip i{flex:1}
+  .pal .nm{font-family:'Fredoka';font-size:13px;margin-top:8px}
+  .pal .rf{font-size:11px;color:var(--muted)}
+
+  /* BOTTOM TAB BAR — app navigation */
+  .tabs{background:rgba(251,247,240,.92);backdrop-filter:blur(12px);border-top:1px solid var(--line);
+    display:flex;align-items:flex-end;justify-content:space-around;padding:10px 8px 22px;position:relative;z-index:20}
+  .tab{display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--muted);font-size:10.5px;cursor:pointer;flex:1}
+  .tab .gi{font-size:20px;line-height:1}
+  .tab.on{color:var(--bordeaux)}
+  .tab.scan{margin-top:-26px}
+  .tab.scan .gi{width:54px;height:54px;border-radius:50%;background:var(--bordeaux);color:#fff;display:grid;place-items:center;
+    box-shadow:0 10px 22px -8px rgba(110,59,50,.7);font-size:22px;border:4px solid var(--cream)}
+  .tab.scan.on .gi{background:var(--bordeaux)}
+
+  @media(max-width:430px){.intro{display:none}.phone{height:760px;border-radius:0;box-shadow:none}.notch{display:none}body{padding:0}.top{padding-top:18px}}
+</style>
+</head>
+<body>
+
+<div class="intro">
+  <h2>WADA, version « appli efficace »</h2>
+  <p>Une seule action évidente par écran, une barre d'onglets en bas comme une vraie appli, et le parcours scan → tenue toujours à portée de pouce.</p>
+</div>
+
+<div class="phone">
+  <div class="notch"></div>
+
+  <div class="top">
+    <div class="brand">WADA 和田</div>
+    <div class="top-actions">
+      <div class="ic">&#9790;</div>
+      <div class="ic">&#128100;</div>
+    </div>
+  </div>
+
+  <div class="screen">
+    <div class="hello">Bonjour 👋<br>Quelle <span>couleur</span> aujourd'hui ?</div>
+    <div class="sub">Trouve une teinte, on compose la tenue.</div>
+
+    <!-- ONE obvious primary action -->
+    <div class="hero-act">
+      <div class="swz"><i></i><i></i><i></i></div>
+      <div class="deco"></div>
+      <div class="k">Scanne une couleur</div>
+      <div class="d">Une photo d'un mur, d'un tissu, d'une fleur — ou une teinte essentielle.</div>
+      <div class="pill">Ouvrir le scanner &nbsp;&rarr;</div>
+    </div>
+
+    <!-- practical: resume -->
+    <div class="resume">
+      <div class="tn"></div>
+      <div class="tx">
+        <div class="t1">Reprends ta tenue</div>
+        <div class="t2">Pluie de Tokyo · 4 pièces en cours</div>
+      </div>
+      <div class="arr">&rsaquo;</div>
+    </div>
+
+    <div class="tiles">
+      <div class="tile"><span class="e">&#129509;</span><div class="n">J'ai une pièce</div><div class="s">Compose autour</div></div>
+      <div class="tile"><span class="e">&#128172;</span><div class="n">Styliste</div><div class="s">Demande conseil</div></div>
+    </div>
+
+    <div class="row-h"><span class="t">Reprends une palette</span><span class="a">Tout voir</span></div>
+    <div class="pal-row">
+      <div class="pal">
+        <div class="strip"><i style="background:#2b3a4a"></i><i style="background:#c9743b"></i><i style="background:#e3cda0"></i><i style="background:#7d9168"></i></div>
+        <div class="nm">Aube sur Berlin</div><div class="rf">WADA · 112</div>
+      </div>
+      <div class="pal">
+        <div class="strip"><i style="background:#6e3b32"></i><i style="background:#caa46a"></i><i style="background:#3f4a2c"></i><i style="background:#ece2cd"></i></div>
+        <div class="nm">Bal au Palais</div><div class="rf">WADA · 058</div>
+      </div>
+      <div class="pal">
+        <div class="strip"><i style="background:#1c2733"></i><i style="background:#8a4a3d"></i><i style="background:#b9a07a"></i><i style="background:#586b46"></i></div>
+        <div class="nm">Pluie de Tokyo</div><div class="rf">WADA · 203</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- APP TAB BAR -->
+  <div class="tabs">
+    <div class="tab on"><span class="gi">&#9750;</span>Accueil</div>
+    <div class="tab"><span class="gi">&#9682;</span>Palettes</div>
+    <div class="tab scan"><span class="gi">&#9673;</span>Scanner</div>
+    <div class="tab"><span class="gi">&#128172;</span>Styliste</div>
+    <div class="tab"><span class="gi">&#9825;</span>Favoris</div>
+  </div>
+</div>
+
+</body>
+</html>

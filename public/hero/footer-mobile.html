@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WADA — Footer mobile compact</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{--beige:#F4EFE7;--ink:#1E1E1E;--ink-soft:#6a6259;--olive:#A8B29A;--line:rgba(30,30,30,.12);
+    --fd:"Fredoka","Inter",sans-serif;--sans:"Inter",Arial,sans-serif;--ease:cubic-bezier(.22,1,.36,1)}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:var(--sans);background:#cfc8bd;padding:20px;display:flex;justify-content:center}
+  .phone{width:390px;max-width:100%;background:var(--beige);border-radius:28px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+  .lbl{font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-soft);padding:14px 20px 0}
+
+  footer{background:var(--beige);padding:22px 20px 26px}
+  .logo{font-family:var(--fd);font-weight:700;font-size:22px;color:var(--ink)}
+  .logo small{font-size:11px;color:var(--ink-soft);letter-spacing:.1em}
+  .tag{font-family:var(--sans);font-style:italic;font-size:13px;color:var(--ink-soft);margin:8px 0 18px;max-width:34ch}
+
+  .acc{border-top:1px solid var(--line)}
+  .acc .h{display:flex;justify-content:space-between;align-items:center;padding:15px 2px;cursor:pointer}
+  .acc .h span{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink)}
+  .acc .h .chev{color:var(--olive);font-size:14px;transition:transform .3s var(--ease)}
+  .acc.open .h .chev{transform:rotate(180deg)}
+  .acc .body{max-height:0;overflow:hidden;transition:max-height .35s var(--ease)}
+  .acc .body a{display:block;font-size:15px;color:var(--ink);text-decoration:none;padding:8px 2px}
+  .acc .body .pad{padding-bottom:8px}
+
+  .social{display:flex;gap:18px;border-top:1px solid var(--line);padding:16px 2px 0;margin-top:4px}
+  .social a{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft);text-decoration:none}
+  .copy{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-soft);margin-top:18px}
+</style>
+</head>
+<body>
+  <div class="phone">
+    <div class="lbl">Footer mobile — compact (sections repliables)</div>
+    <footer>
+      <div class="logo">WADA和田 <small>和田</small></div>
+      <div class="tag">Un dictionnaire de palettes pour composer la tenue parfaite. D'après Sanzo Wada (1933).</div>
+
+      <div class="acc"><div class="h"><span>Explorer</span><span class="chev">▾</span></div>
+        <div class="body"><a href="#">Tenues</a><a href="#">Scanner</a><a href="#">Découverte</a><a href="#">Cultures</a><a href="#" class="pad">Calendrier</a></div></div>
+      <div class="acc"><div class="h"><span>Compte</span><span class="chev">▾</span></div>
+        <div class="body"><a href="#">Mes favoris</a><a href="#">À propos</a><a href="#">FAQ</a><a href="#">Abonnement</a><a href="#" class="pad">Panier</a></div></div>
+      <div class="acc"><div class="h"><span>Contact</span><span class="chev">▾</span></div>
+        <div class="body"><a href="#">hello@wada.style</a><a href="#">Pour les marques</a><a href="#">Affiliation</a><a href="#">Mentions légales</a><a href="#">CGV</a><a href="#">Confidentialité</a><a href="#" class="pad">Genève</a></div></div>
+
+      <div class="social"><a href="#">Instagram</a><a href="#">Pinterest</a><a href="#">TikTok</a></div>
+      <div class="copy">© 2026 WADA · D'après Sanzo Wada · 1933</div>
+    </footer>
+  </div>
+<script>
+  document.querySelectorAll('.acc .h').forEach(function(h){
+    h.addEventListener('click',function(){
+      var a=h.parentElement,b=a.querySelector('.body');
+      var open=a.classList.toggle('open');
+      b.style.maxHeight=open?b.scrollHeight+'px':'0';
+    });
+  });
+</script>
+</body>
+</html>

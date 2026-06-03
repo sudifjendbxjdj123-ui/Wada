@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <!--
+    WADA — App icon SVG (256×256)
+    ────────────────────────────────────────────────────────────────
+    Composition :
+      • Fond crème WADA arrondi (rx=44)
+      • Cadre fin ink (signature "page de livre")
+      • 3 bandes verticales = signature WADA Sanzo (bordeaux/olive/indigo)
+      • Kanji 和 superposé en surimpression discrète au centre
+      • Petit "WADA" en label au pied (visible à 64px+, invisible à 16px)
+    ────────────────────────────────────────────────────────────── -->
+
+  <!-- Fond -->
+  <rect width="256" height="256" rx="44" fill="#F4EFE6"/>
+
+  <!-- Cadre fin -->
+  <rect x="12" y="12" width="232" height="232" rx="32" fill="none" stroke="#1F1B16" stroke-width="4"/>
+
+  <!-- 3 bandes verticales — signature chromatique WADA -->
+  <rect x="44"  y="36" width="48" height="160" fill="#5C2018"/>
+  <rect x="104" y="36" width="48" height="160" fill="#5C5A3C"/>
+  <rect x="164" y="36" width="48" height="160" fill="#1B4A6B"/>
+
+  <!-- Kanji 和 en surimpression centrale (Noto Serif JP fallback) -->
+  <text x="128" y="138"
+        font-family="'Noto Serif JP', serif"
+        font-size="92"
+        font-weight="500"
+        fill="#F4EFE6"
+        text-anchor="middle"
+        opacity="0.92"
+        style="paint-order: stroke; stroke: #1F1B16; stroke-width: 2.5;">和</text>
+
+  <!-- WADA wordmark — caché en petites tailles (favicon 16/32px),
+       visible en grande taille (apple-touch-icon 180/512px) -->
+  <text x="128" y="226"
+        font-family="Inter, sans-serif"
+        font-size="20"
+        font-weight="700"
+        fill="#1F1B16"
+        text-anchor="middle"
+        letter-spacing="3">WADA</text>
+</svg>

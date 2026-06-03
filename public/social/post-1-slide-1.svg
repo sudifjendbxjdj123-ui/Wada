@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1350" width="1080" height="1350">
+  <!-- Post 1 · Slide 1 — Hero intro WADA pour Instagram (format portrait 4:5) -->
+  <rect width="1080" height="1350" fill="#F4EFE6"/>
+
+  <!-- 3 bandes verticales signature WADA, en filigrane à gauche -->
+  <rect x="0" y="0" width="40" height="1350" fill="#5C2018" opacity="0.95"/>
+  <rect x="40" y="0" width="40" height="1350" fill="#5C5A3C" opacity="0.95"/>
+  <rect x="80" y="0" width="40" height="1350" fill="#1B4A6B" opacity="0.95"/>
+
+  <!-- Eyebrow caps -->
+  <text x="540" y="380"
+        font-family="Inter, Arial, sans-serif"
+        font-size="26" font-weight="700"
+        letter-spacing="10" fill="#C44E3A"
+        text-anchor="middle">
+    INSPIRÉ DE SANZO WADA · 1933
+  </text>
+
+  <!-- WADA wordmark gros -->
+  <text x="540" y="640"
+        font-family="'Bagel Fat One', 'Abril Fatface', Georgia, serif"
+        font-size="260" font-weight="400" fill="#1F1B16"
+        text-anchor="middle"
+        letter-spacing="-4">
+    WADA
+  </text>
+
+  <!-- Kanji 和田 sous le wordmark -->
+  <text x="540" y="710"
+        font-family="'Noto Serif JP', serif"
+        font-size="34" fill="#1F1B16" opacity="0.55"
+        text-anchor="middle"
+        letter-spacing="20">
+    和 田
+  </text>
+
+  <!-- Tagline -->
+  <text x="540" y="900"
+        font-family="Georgia, 'EB Garamond', serif"
+        font-size="48" font-style="italic" fill="#1F1B16"
+        text-anchor="middle">
+    Le dictionnaire
+  </text>
+  <text x="540" y="965"
+        font-family="Georgia, 'EB Garamond', serif"
+        font-size="48" font-style="italic" fill="#1F1B16"
+        text-anchor="middle">
+    des couleurs et de la mode.
+  </text>
+
+  <!-- Bottom line 348 palettes -->
+  <text x="540" y="1230"
+        font-family="Inter, Arial, sans-serif"
+        font-size="22" font-weight="600"
+        letter-spacing="8" fill="#1F1B16" opacity="0.7"
+        text-anchor="middle">
+    348 PALETTES · 348 TENUES
+  </text>
+
+  <!-- Site URL -->
+  <text x="540" y="1280"
+        font-family="Inter, Arial, sans-serif"
+        font-size="18" font-weight="500"
+        letter-spacing="3" fill="#C44E3A"
+        text-anchor="middle">
+    wada.style
+  </text>
+</svg>

@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1350" width="1080" height="1350">
+  <!-- Post 3 · Slide 1 — Citation Sanzo Wada -->
+  <rect width="1080" height="1350" fill="#F4EFE6"/>
+
+  <!-- Cadre intérieur fin (esthétique livre ouvert) -->
+  <rect x="60" y="60" width="960" height="1230" fill="none" stroke="#1F1B16" stroke-width="2"/>
+
+  <!-- Quote marks gros -->
+  <text x="540" y="380"
+        font-family="Georgia, serif"
+        font-size="240" font-weight="400" fill="#C44E3A"
+        text-anchor="middle">
+    "
+  </text>
+
+  <!-- Citation principale -->
+  <text x="540" y="600"
+        font-family="Georgia, 'EB Garamond', serif"
+        font-size="56" font-style="italic" fill="#1F1B16"
+        text-anchor="middle">
+    Three colors
+  </text>
+  <text x="540" y="678"
+        font-family="Georgia, 'EB Garamond', serif"
+        font-size="56" font-style="italic" fill="#1F1B16"
+        text-anchor="middle">
+    are always enough
+  </text>
+  <text x="540" y="756"
+        font-family="Georgia, 'EB Garamond', serif"
+        font-size="56" font-style="italic" fill="#1F1B16"
+        text-anchor="middle">
+    to dress a story.
+  </text>
+
+  <!-- Attribution -->
+  <text x="540" y="900"
+        font-family="Inter, Arial, sans-serif"
+        font-size="22" font-weight="600"
+        letter-spacing="8" fill="#1F1B16" opacity="0.6"
+        text-anchor="middle">
+    — SANZO WADA, 1933
+  </text>
+
+  <!-- Petite palette de 3 chips en bas -->
+  <g transform="translate(390, 1050)">
+    <rect width="80" height="80" fill="#5C2018"/>
+    <rect x="100" width="80" height="80" fill="#5C5A3C"/>
+    <rect x="200" width="80" height="80" fill="#1B4A6B"/>
+  </g>
+
+  <!-- WADA wordmark discret en bas -->
+  <text x="540" y="1230"
+        font-family="'Bagel Fat One', 'Abril Fatface', Georgia, serif"
+        font-size="36" font-weight="400" fill="#1F1B16"
+        text-anchor="middle"
+        letter-spacing="2">
+    WADA
+  </text>
+</svg>

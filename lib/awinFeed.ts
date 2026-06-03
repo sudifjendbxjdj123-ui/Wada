@@ -237,6 +237,15 @@ const EXCLUDED_CATEGORIES = new Set([
   "shorts de bain",
   "peignoirs de bain",
   "chaussettes",
+  /* Bug 2026-06-02 : "Noeuds papillon & ceintures de smoking" contient
+     le mot "smoking" qui match la règle partielle CATEGORY_MAPPING → catégorie
+     "veste" (smoking = tuxedo jacket). Le noeud papillon finissait dans le
+     slot veste au lieu d'accent. Fix : on exclut cette catégorie entièrement —
+     le slot accent retombera sur sac/chapeau/ceinture à la place. */
+  "noeuds papillon & ceintures de smoking",
+  "costumes de cérémonie & accessoires",
+  "costumes de mariage",
+  "smoking",
 ]);
 
 function isExcludedCategory(categoryName?: string): boolean {

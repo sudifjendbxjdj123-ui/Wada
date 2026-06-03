@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WADA — Nav épurée</title>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{--cream:#f4eee4;--card:#fbf7f0;--ink:#2a2521;--muted:#8c8377;--line:#e5dccc;--bordeaux:#6e3b32;--bordeaux-2:#82473c}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Inter',system-ui,sans-serif;background:#e9e0d0;color:var(--ink);min-height:100vh;padding:30px}
+  h1,h2,h3,.brand,.fk{font-family:'Fredoka',sans-serif}
+
+  .demo{max-width:1200px;margin:0 auto}
+  .demo h2{font-size:18px;font-weight:500;margin:30px 0 10px;color:#5a4d40}
+  .demo h2 span{font-size:13px;color:#928774;margin-left:8px;font-family:'Inter'}
+
+  /* ======= AVANT ======= */
+  .nav-old{background:var(--cream);border:1px solid var(--line);border-radius:12px;display:flex;align-items:center;justify-content:space-between;padding:16px 28px;gap:14px;position:relative}
+  .nav-old .left{display:flex;gap:24px;font-size:14.5px;color:var(--ink)}
+  .nav-old .brand{font-family:'Fredoka';font-size:23px;font-weight:600;position:absolute;left:50%;transform:translateX(-50%)}
+  .nav-old .right{display:flex;align-items:center;gap:10px;margin-left:auto}
+  .ic{width:36px;height:36px;border-radius:50%;border:1px solid var(--line);background:#fff;display:grid;place-items:center;font-size:14px}
+  .lang{padding:7px 13px;border:1px solid var(--line);border-radius:999px;background:#fff;font-size:12px;font-weight:600}
+  .pill-old{display:flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--line);border-radius:999px;padding:5px 12px 5px 5px;font-size:12.5px}
+  .pill-old .av{width:24px;height:24px;border-radius:50%;background:var(--bordeaux);color:#fff;display:grid;place-items:center;font-family:'Fredoka';font-size:12px}
+  .cta{background:var(--bordeaux);color:#fff;border:none;padding:10px 20px;border-radius:999px;font-family:'Fredoka';font-size:14px;font-weight:500}
+
+  .resume-old{position:absolute;top:60px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:10px;background:#fff;border:1px solid var(--line);border-radius:999px;padding:8px 16px;box-shadow:0 6px 18px -8px rgba(0,0,0,.1);font-size:13.5px}
+  .resume-old b{color:var(--ink);font-weight:600}
+  .resume-old .x{margin-left:6px;color:var(--muted);cursor:pointer}
+
+  /* ======= APRÈS ======= */
+  .nav-new{background:rgba(244,238,228,.85);backdrop-filter:blur(10px);border:1px solid var(--line);border-radius:12px;display:flex;align-items:center;justify-content:space-between;padding:14px 28px;gap:14px;position:relative}
+  .nav-new .left{display:flex;align-items:center;gap:28px}
+  .nav-new .brand{font-family:'Fredoka';font-size:23px;font-weight:600}
+  .nav-new .links{display:flex;gap:22px;font-size:14.5px;color:var(--ink);opacity:.85}
+  .nav-new .links a.on{color:var(--bordeaux);font-weight:600}
+  .nav-new .right{display:flex;align-items:center;gap:10px}
+  .nav-new .pill-new{width:38px;height:38px;border-radius:50%;background:var(--bordeaux);color:#fff;display:grid;place-items:center;font-family:'Fredoka';font-size:14px;cursor:pointer;border:none;position:relative}
+  .nav-new .pill-new::after{content:"";position:absolute;right:-2px;bottom:-2px;width:10px;height:10px;background:#84a060;border-radius:50%;border:2px solid var(--cream)}
+  .nav-new .pill-new .tip{position:absolute;top:100%;right:0;margin-top:8px;background:#222;color:#fff;padding:7px 12px;border-radius:8px;font-family:'Inter';font-size:12px;white-space:nowrap;opacity:0;pointer-events:none;transition:.14s;transform:translateY(-4px)}
+  .nav-new .pill-new:hover .tip{opacity:1;transform:translateY(0)}
+  .nav-new .cta-soft{background:transparent;color:var(--bordeaux);border:1px solid var(--bordeaux);padding:9px 18px;border-radius:999px;font-family:'Fredoka';font-size:13.5px;font-weight:500}
+
+  /* Toast Reprendre, discret, en bas */
+  .toast{position:fixed;bottom:24px;right:24px;background:#222;color:#f3eddf;border-radius:14px;padding:12px 16px;display:flex;align-items:center;gap:12px;font-size:13px;box-shadow:0 14px 40px -12px rgba(0,0,0,.4);max-width:320px;z-index:30}
+  .toast .ic{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#caa479,#8a6f4a);border:none;color:#fff;display:grid;place-items:center;font-family:'Fredoka';font-size:14px}
+  .toast .lab{font-family:'Inter';opacity:.8;font-size:11.5px;letter-spacing:.05em;text-transform:uppercase}
+  .toast .name{font-family:'Fredoka';font-size:14px;font-weight:500;color:#fff}
+  .toast .x{background:none;border:none;color:#f3eddf;opacity:.55;cursor:pointer;font-size:18px;line-height:1}
+
+  .note{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 18px;margin-top:18px;font-size:13.5px;color:#5a4d40;line-height:1.55}
+  .note b{color:var(--ink)}
+
+  .pic{width:100%;height:230px;background:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 200"><rect width="600" height="200" fill="%23a37a4e"/><circle cx="300" cy="160" r="55" fill="%233a1f17"/></svg>') center/cover;border-radius:12px;margin-top:14px;display:flex;align-items:center;justify-content:center;color:#fff;font-family:'Fredoka';font-size:18px;opacity:.85}
+</style>
+</head>
+<body>
+
+<div class="demo">
+
+  <h2>AVANT <span>— 10 éléments dans la barre, pilule « Reprendre » au milieu qui mange l'image</span></h2>
+  <div class="nav-old">
+    <div class="left">
+      <span>Palettes</span><span>Scanner</span><span>Styliste</span><span>Favoris</span>
+    </div>
+    <div class="brand">WADA 和田</div>
+    <div class="right">
+      <div class="ic">&#128100;</div>
+      <div class="ic">&#9790;</div>
+      <div class="lang">EN</div>
+      <div class="pill-old">
+        <span class="av">H</span>
+        <span>Homme · Premium · Streetwear</span>
+        <span style="font-size:10px;color:#999">&#9662;</span>
+      </div>
+      <button class="cta">Abonnement</button>
+    </div>
+    <div class="resume-old">
+      <b>REPRENDRE →</b> <span>Tweed &amp; Ombre</span> <span class="x">×</span>
+    </div>
+  </div>
+  <div class="pic">Image hero (cachée par la pilule centrale)</div>
+
+  <h2>APRÈS <span>— 6 éléments visibles, profil compact, toast discret en bas</span></h2>
+  <div class="nav-new">
+    <div class="left">
+      <div class="brand">WADA 和田</div>
+      <div class="links">
+        <a class="on">Palettes</a><a>Scanner</a><a>Styliste</a><a>Favoris</a>
+      </div>
+    </div>
+    <div class="right">
+      <button class="cta-soft">Abonnement</button>
+      <button class="pill-new" title="Mon profil">
+        H
+        <span class="tip">Homme · Premium · Streetwear</span>
+      </button>
+    </div>
+  </div>
+  <div class="pic">Image hero — entière, rien ne flotte au-dessus</div>
+
+  <div class="note">
+    <b>Ce qui a changé :</b><br>
+    • <b>Langue (EN)</b> et <b>mode sombre</b> déplacés dans le menu profil (clic sur l'avatar « H »).<br>
+    • <b>Profil compact</b> : juste l'avatar avec un petit point vert (= profil actif). Le texte « Homme · Premium · Streetwear » apparaît au survol ou au clic.<br>
+    • <b>Abonnement</b> en bouton soft (contour bordeaux), moins agressif que le plein.<br>
+    • Le <b>logo passe à gauche</b> avec les liens — la nav est plus claire à parcourir d'un coup d'œil.<br>
+    • La <b>pilule « Reprendre »</b> devient un toast discret en bas à droite — visible mais non envahissant. Disparaît au clic.
+  </div>
+
+</div>
+
+<!-- Toast Reprendre -->
+<div class="toast">
+  <button class="ic">和</button>
+  <div>
+    <div class="lab">Reprendre</div>
+    <div class="name">Tweed &amp; Ombre &nbsp;→</div>
+  </div>
+  <button class="x">×</button>
+</div>
+
+</body>
+</html>

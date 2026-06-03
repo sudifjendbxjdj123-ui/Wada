@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WADA — Fond propre</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{--beige:#F4EFE7;--cream:#FAF8F4;--olive:#A8B29A;--bordeaux:#6B3A32;--ink:#1E1E1E;--ink-soft:#6a6259;
+    --line:rgba(30,30,30,.12);--fd:"Fredoka","Inter",sans-serif;--sans:"Inter",Arial,sans-serif}
+  *{box-sizing:border-box;margin:0;padding:0}
+  /* PAGE = beige plein, AUCUNE image de fond globale */
+  body{font-family:var(--sans);background:var(--beige);color:var(--ink)}
+
+  /* HERO : l'image est CONFINÉE ici (overflow hidden), elle ne bave pas ailleurs */
+  .hero{position:relative;height:78vh;min-height:480px;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+  .hero img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+  .hero .veil{position:absolute;inset:0;background:linear-gradient(180deg,rgba(20,18,16,.34),rgba(20,18,16,.28))}
+  .hero .fade{position:absolute;left:0;right:0;bottom:0;height:150px;background:linear-gradient(180deg,rgba(244,239,231,0),var(--beige))}
+  .hero .in{position:relative;z-index:2;color:#FAF8F4;padding:0 24px}
+  .hero .k{font-size:11px;letter-spacing:.3em;text-transform:uppercase;opacity:.9}
+  .hero h1{font-family:var(--fd);font-weight:700;font-size:58px;line-height:1.04;margin:14px 0 10px;text-shadow:0 2px 22px rgba(0,0,0,.3)}
+  .hero p{max-width:42ch;margin:0 auto;color:rgba(250,248,244,.94)}
+  .hero .btn{margin-top:26px;font-size:15px;padding:15px 30px;border-radius:999px;background:#FAF8F4;color:var(--ink);border:none;cursor:pointer}
+
+  /* FOOTER : beige PLEIN et opaque, aucune image derrière */
+  .footer{background:var(--beige);color:var(--ink-soft);padding:54px 26px 40px;border-top:1px solid var(--line);position:relative;z-index:1}
+  .footer .inner{max-width:1100px;margin:0 auto;display:grid;grid-template-columns:1.6fr 1fr 1fr 1fr;gap:24px}
+  .footer .logo{font-family:var(--fd);font-weight:700;font-size:22px;color:var(--ink)}
+  .footer .d{font-style:italic;font-size:14px;color:var(--ink-soft);margin-top:10px;max-width:34ch}
+  .footer h4{font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--olive);margin-bottom:12px}
+  .footer a{display:block;color:var(--ink);text-decoration:none;font-size:14px;margin-bottom:9px}
+  .copy{max-width:1100px;margin:30px auto 0;border-top:1px solid var(--line);padding-top:18px;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-soft)}
+  @media(max-width:760px){.hero h1{font-size:40px}.footer .inner{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+  <section class="hero">
+    <img src="./hero-banner-photo.webp" alt="">
+    <div class="veil"></div>
+    <div class="in">
+      <div class="k">D'après Sanzo Wada · 1933</div>
+      <h1>Trouvez la couleur.<br>Trouvez votre style.</h1>
+      <p>Un dictionnaire de 348 accords, traduits en tenues à porter — et à acheter.</p>
+      <button class="btn">Entrer dans l'atelier →</button>
+    </div>
+    <div class="fade"></div>
+  </section>
+
+  <footer class="footer">
+    <div class="inner">
+      <div><div class="logo">WADA和田</div><div class="d">Un dictionnaire de palettes de couleurs pour composer la tenue parfaite. Inspiré du livre de Sanzo Wada (1933).</div></div>
+      <div><h4>Explorer</h4><a href="#">Tenues</a><a href="#">Scanner</a><a href="#">Découverte</a><a href="#">Cultures</a><a href="#">Calendrier</a></div>
+      <div><h4>Compte</h4><a href="#">Mes favoris</a><a href="#">À propos</a><a href="#">FAQ</a><a href="#">Abonnement</a><a href="#">Panier</a></div>
+      <div><h4>Contact</h4><a href="#">hello@wada.style</a><a href="#">Pour les marques</a><a href="#">Affiliation</a><a href="#">Mentions légales</a><a href="#">Genève</a></div>
+    </div>
+    <div class="copy">© 2026 WADA · D'après Sanzo Wada · 1933</div>
+  </footer>
+</body>
+</html>

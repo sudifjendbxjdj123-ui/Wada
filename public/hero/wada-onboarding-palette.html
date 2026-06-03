@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WADA — Onboarding + Palette personnalisée</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --cream:#f4eee4;--cream-2:#efe7da;--card:#fbf7f0;--ink:#2a2521;--muted:#8c8377;
+    --line:#e5dccc;--bordeaux:#6e3b32;--bordeaux-2:#82473c;--olive:#6f7a3f;
+    --shadow:0 18px 50px -28px rgba(60,40,25,.45);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Inter',system-ui,sans-serif;
+    background:radial-gradient(1000px 500px at 80% -10%,#fbf4e8 0%,transparent 60%),var(--cream);
+    color:var(--ink);-webkit-font-smoothing:antialiased;}
+  h1,h2,h3,.brand,.chubby{font-family:'Fredoka',sans-serif}
+
+  /* ============== ONBOARDING ============== */
+  .onboarding{position:fixed;inset:0;background:var(--cream);z-index:100;display:grid;place-items:center;padding:24px}
+  .onb-card{max-width:520px;width:100%;background:var(--card);border:1px solid var(--line);border-radius:28px;padding:36px 30px;box-shadow:0 30px 80px -30px rgba(60,40,25,.4)}
+  .onb-brand{font-family:'Fredoka';font-size:28px;font-weight:600;text-align:center;margin-bottom:6px}
+  .onb-welcome{text-align:center;color:var(--muted);font-size:14.5px;margin-bottom:28px}
+  .onb-welcome b{color:var(--ink);font-weight:600}
+  .q{margin-bottom:22px}
+  .q-label{font-family:'Fredoka';font-size:15.5px;font-weight:500;margin-bottom:10px;color:var(--ink)}
+  .q-opts{display:flex;flex-wrap:wrap;gap:8px}
+  .q-opts button{flex:1;min-width:max-content;background:#fff;border:1px solid var(--line);border-radius:14px;padding:13px 18px;font-family:'Fredoka';font-size:14.5px;color:var(--ink);cursor:pointer;transition:.14s}
+  .q-opts button:hover{border-color:var(--bordeaux)}
+  .q-opts button.on{background:var(--bordeaux);color:#fff;border-color:var(--bordeaux)}
+  .onb-go{display:block;width:100%;margin-top:8px;background:var(--bordeaux);color:#fff;border:none;border-radius:14px;padding:16px;font-family:'Fredoka';font-size:16px;font-weight:500;cursor:pointer;opacity:.5;pointer-events:none;transition:.18s}
+  .onb-go.ready{opacity:1;pointer-events:auto}
+  .onb-go:hover{background:var(--bordeaux-2)}
+  .onb-skip{display:block;text-align:center;margin-top:12px;color:var(--muted);font-size:13px;background:none;border:none;cursor:pointer;text-decoration:underline;width:100%}
+
+  /* ============== MAIN PAGE ============== */
+  .app{display:none}.app.show{display:block}
+
+  nav{display:flex;align-items:center;justify-content:space-between;padding:18px clamp(20px,5vw,56px);
+    border-bottom:1px solid var(--line);background:rgba(250,246,239,.7);backdrop-filter:blur(8px);position:sticky;top:0;z-index:20;}
+  .nav-left{display:flex;gap:26px;font-weight:500;font-size:15px}
+  .nav-left a{color:var(--ink);text-decoration:none;opacity:.78}
+  .nav-left a:hover,.nav-left a.active{opacity:1}
+  .brand{font-size:26px;font-weight:600;letter-spacing:.5px;position:absolute;left:50%;transform:translateX(-50%)}
+  .nav-right{display:flex;align-items:center;gap:10px;position:relative}
+  .profile-pill{display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:6px 14px 6px 6px;font-size:12.5px;color:var(--ink);cursor:pointer;font-family:'Inter';transition:.14s}
+  .profile-pill:hover{border-color:var(--bordeaux)}
+  .profile-pill .av{width:24px;height:24px;border-radius:50%;background:var(--bordeaux);color:#fff;display:grid;place-items:center;font-family:'Fredoka';font-size:12px}
+  .profile-pill .ch{margin-left:4px;font-size:10px;color:var(--muted)}
+
+  .wrap{max-width:980px;margin:0 auto;padding:28px clamp(18px,5vw,40px) 80px}
+  .back{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--card);border-radius:999px;padding:9px 18px;font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink);cursor:pointer;text-decoration:none}
+  .back:hover{background:#fff}
+
+  /* HERO */
+  .hero{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:50px;align-items:center;margin-top:44px}
+  .palette-card{background:var(--card);border:1px solid var(--line);border-radius:24px;overflow:hidden;box-shadow:var(--shadow)}
+  .swatch{padding:26px;color:#fff;position:relative;min-height:118px;display:flex;flex-direction:column;justify-content:center}
+  .swatch .nm{font-family:'Fredoka';font-size:21px;font-weight:500;text-shadow:0 1px 2px rgba(0,0,0,.25)}
+  .swatch .hex{position:absolute;right:24px;bottom:22px;font-size:13px;opacity:.82;font-feature-settings:'tnum'}
+  .swatch.light{color:#2a2521}.swatch.light .nm{text-shadow:none}.swatch.light .hex{opacity:.6}
+
+  .meta-block .kicker{display:inline-block;font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:14px}
+  h1{font-size:clamp(42px,5.2vw,60px);line-height:1.04;letter-spacing:-.5px;margin-bottom:12px}
+  .lede{font-size:16.5px;color:var(--muted);margin-bottom:18px;max-width:42ch;line-height:1.5}
+
+  /* perso badge — clickable to switch */
+  .perso{display:inline-flex;align-items:center;gap:8px;background:#f6efdc;border:1px solid #e5d8b8;border-radius:999px;padding:7px 14px;font-size:12.5px;color:#5b4d2c;margin-bottom:24px;cursor:pointer;transition:.14s;font-family:'Inter'}
+  .perso:hover{background:#f1e6c8;border-color:#d9c79b}
+  .perso .dot{width:6px;height:6px;border-radius:50%;background:var(--olive)}
+  .perso .ch{margin-left:4px;font-size:11px;opacity:.65}
+
+  .primary{display:inline-flex;align-items:center;gap:10px;background:var(--bordeaux);color:#fff;border:none;border-radius:14px;padding:16px 26px;font-family:'Fredoka';font-size:16px;font-weight:500;cursor:pointer}
+  .primary:hover{background:var(--bordeaux-2)}
+
+  .mini-actions{display:flex;gap:10px;margin-top:14px}
+  .mini{width:40px;height:40px;border-radius:50%;border:1px solid var(--line);background:#fff;display:grid;place-items:center;cursor:pointer;font-size:14px}
+  .mini:hover{border-color:var(--bordeaux)}
+  .mini.heart.on{color:var(--bordeaux);border-color:var(--bordeaux)}
+  .mini svg{width:15px;height:15px}
+
+  /* PREV/NEXT */
+  .pn{display:flex;justify-content:space-between;gap:14px;margin-top:54px;font-size:13.5px}
+  .pn a{display:flex;flex-direction:column;gap:2px;text-decoration:none;color:var(--muted);transition:.16s}
+  .pn a:hover{color:var(--bordeaux)}
+  .pn .k{font-size:11px;letter-spacing:.14em;text-transform:uppercase}
+  .pn .n{font-family:'Fredoka';font-size:16px;color:var(--ink)}
+  .pn a:hover .n{color:var(--bordeaux)}
+  .pn .next{text-align:right;align-items:flex-end}
+
+  .styliste-link{display:block;text-align:center;margin-top:40px;font-size:13.5px;color:var(--muted)}
+  .styliste-link a{color:var(--bordeaux);text-decoration:none;border-bottom:1px dashed var(--bordeaux);padding-bottom:1px}
+
+  /* footer */
+  footer{background:#16130f;color:#cfc6b6;margin-top:70px;padding:40px clamp(20px,5vw,56px) 24px}
+  footer .row{max-width:1100px;margin:0 auto;display:flex;justify-content:space-between;font-size:13px;opacity:.7;flex-wrap:wrap;gap:10px}
+
+  /* ============== QUICK SWITCHER ============== */
+  .switcher-bg{position:fixed;inset:0;background:rgba(20,15,10,.35);z-index:90;display:none;animation:fade .15s}
+  .switcher-bg.show{display:block}
+  @keyframes fade{from{opacity:0}to{opacity:1}}
+  .switcher{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:var(--card);
+    border:1px solid var(--line);border-radius:24px;padding:24px;width:min(440px,calc(100vw - 32px));
+    box-shadow:0 30px 80px -30px rgba(60,40,25,.5);z-index:91;display:none}
+  .switcher.show{display:block;animation:pop .18s}
+  @keyframes pop{from{transform:translate(-50%,-50%) scale(.96);opacity:0}to{transform:translate(-50%,-50%) scale(1);opacity:1}}
+  .sw-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:14px}
+  .sw-head h3{font-family:'Fredoka';font-size:17px;font-weight:500}
+  .sw-close{background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer;line-height:1}
+  .sw-hint{font-size:12.5px;color:var(--muted);margin-bottom:18px}
+  .sw-q{margin-bottom:14px}
+  .sw-q label{display:block;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:7px;font-weight:600}
+  .sw-segs{display:inline-flex;background:var(--cream-2);border-radius:999px;padding:4px;gap:2px;max-width:100%;flex-wrap:wrap}
+  .sw-segs button{border:none;background:transparent;padding:9px 16px;border-radius:999px;font-family:'Fredoka';font-size:13.5px;color:var(--muted);cursor:pointer;font-weight:500;transition:.14s}
+  .sw-segs button.on{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.08)}
+  .sw-done{display:block;width:100%;margin-top:8px;background:var(--bordeaux);color:#fff;border:none;border-radius:14px;padding:14px;font-family:'Fredoka';font-size:15px;font-weight:500;cursor:pointer}
+  .sw-done:hover{background:var(--bordeaux-2)}
+
+  @media(max-width:880px){
+    .hero{grid-template-columns:1fr;gap:28px;margin-top:28px}
+    .pn{flex-direction:column}.pn .next{text-align:left;align-items:flex-start}
+    .nav-left{display:none}.brand{position:static;transform:none}
+    .q-opts button{flex:none;width:100%}
+    .profile-pill .lbl{display:none}
+  }
+</style>
+</head>
+<body>
+
+<!-- ================= ONBOARDING ================= -->
+<div class="onboarding" id="onb">
+  <div class="onb-card">
+    <div class="onb-brand">WADA 和田</div>
+    <p class="onb-welcome"><b>3 questions</b> pour personnaliser tes tenues. WADA s'en souvient — tu pourras changer à tout moment.</p>
+
+    <div class="q" data-key="genre">
+      <div class="q-label">Pour qui&nbsp;?</div>
+      <div class="q-opts">
+        <button data-v="Femme">Femme</button>
+        <button data-v="Homme">Homme</button>
+      </div>
+    </div>
+
+    <div class="q" data-key="budget">
+      <div class="q-label">Budget par tenue&nbsp;?</div>
+      <div class="q-opts">
+        <button data-v="< 150€">moins de 150 €</button>
+        <button data-v="150–400€">150 – 400 €</button>
+        <button data-v="Premium">Premium</button>
+      </div>
+    </div>
+
+    <div class="q" data-key="style">
+      <div class="q-label">Ton style&nbsp;?</div>
+      <div class="q-opts">
+        <button data-v="Minimaliste">Minimaliste</button>
+        <button data-v="Classique">Classique</button>
+        <button data-v="Streetwear">Streetwear</button>
+        <button data-v="Décontracté">Décontracté</button>
+      </div>
+    </div>
+
+    <button class="onb-go" id="onbGo">Commencer &nbsp;&rarr;</button>
+    <button class="onb-skip" onclick="finish(true)">Passer pour cette fois</button>
+  </div>
+</div>
+
+<!-- ================= QUICK SWITCHER ================= -->
+<div class="switcher-bg" id="swBg" onclick="closeSwitcher()"></div>
+<div class="switcher" id="sw">
+  <div class="sw-head">
+    <h3>Changer pour qui&nbsp;?</h3>
+    <button class="sw-close" onclick="closeSwitcher()">&times;</button>
+  </div>
+  <p class="sw-hint">Modifie n'importe quelle dimension — la tenue s'adapte instantanément.</p>
+
+  <div class="sw-q" data-key="genre">
+    <label>Pour qui</label>
+    <div class="sw-segs">
+      <button data-v="Femme">Femme</button>
+      <button data-v="Homme">Homme</button>
+    </div>
+  </div>
+  <div class="sw-q" data-key="budget">
+    <label>Budget</label>
+    <div class="sw-segs">
+      <button data-v="< 150€">&lt; 150€</button>
+      <button data-v="150–400€">150–400€</button>
+      <button data-v="Premium">Premium</button>
+    </div>
+  </div>
+  <div class="sw-q" data-key="style">
+    <label>Style</label>
+    <div class="sw-segs">
+      <button data-v="Minimaliste">Minimaliste</button>
+      <button data-v="Classique">Classique</button>
+      <button data-v="Streetwear">Streetwear</button>
+      <button data-v="Décontracté">Décontracté</button>
+    </div>
+  </div>
+
+  <button class="sw-done" onclick="closeSwitcher()">Voir la nouvelle tenue &nbsp;&rarr;</button>
+</div>
+
+<!-- ================= PAGE ================= -->
+<div class="app" id="app">
+  <nav>
+    <div class="nav-left">
+      <a href="#" class="active">Palettes</a>
+      <a href="#">Scanner</a>
+      <a href="#">Styliste</a>
+      <a href="#">Favoris</a>
+    </div>
+    <div class="brand">WADA 和田</div>
+    <div class="nav-right">
+      <button class="profile-pill" title="Changer pour qui" onclick="openSwitcher()">
+        <span class="av" id="avInit">F</span>
+        <span class="lbl" id="profLbl">Femme · 150–400€ · Minimaliste</span>
+        <span class="ch">&#9662;</span>
+      </button>
+    </div>
+  </nav>
+
+  <div class="wrap">
+    <a class="back" href="#">&larr;&nbsp; Retour</a>
+
+    <section class="hero">
+      <div class="palette-card">
+        <div class="swatch" style="background:#8A8472"><div class="nm">Pierre</div><div class="hex">#8A8472</div></div>
+        <div class="swatch light" style="background:#D9C9A8"><div class="nm">Sable</div><div class="hex">#D9C9A8</div></div>
+        <div class="swatch" style="background:#7B2D26"><div class="nm">Vermillon</div><div class="hex">#7B2D26</div></div>
+      </div>
+
+      <div class="meta-block">
+        <span class="kicker">No. 162 · Japonaise</span>
+        <h1>Tweed &amp; Encre</h1>
+        <p class="lede">L'accord qui surprend par sa retenue.</p>
+
+        <button class="perso" onclick="openSwitcher()">
+          <span class="dot"></span><span id="persoTxt">Composée pour vous · Femme · 150–400€ · Minimaliste</span><span class="ch">&#9662;</span>
+        </button>
+
+        <div style="display:block;margin-top:4px"><button class="primary">Voir ma tenue &nbsp;&rarr;</button></div>
+
+        <div class="mini-actions">
+          <button class="mini heart on" title="Favori">&#9829;</button>
+          <button class="mini" title="Pinterest">
+            <svg viewBox="0 0 24 24" fill="#bd2c2c"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.08 3.16 9.42 7.62 11.17-.11-.95-.2-2.41.04-3.45.22-.94 1.4-5.98 1.4-5.98s-.36-.72-.36-1.78c0-1.67.97-2.91 2.17-2.91 1.02 0 1.52.77 1.52 1.69 0 1.03-.66 2.57-1 4-.28 1.2.6 2.18 1.79 2.18 2.15 0 3.8-2.27 3.8-5.54 0-2.9-2.08-4.93-5.05-4.93-3.44 0-5.46 2.58-5.46 5.25 0 1.04.4 2.16.9 2.76.1.12.11.23.08.35-.09.38-.29 1.2-.33 1.36-.05.22-.17.27-.4.16-1.49-.69-2.42-2.87-2.42-4.62 0-3.76 2.73-7.22 7.88-7.22 4.14 0 7.35 2.95 7.35 6.89 0 4.11-2.59 7.42-6.19 7.42-1.21 0-2.35-.63-2.74-1.37l-.74 2.84c-.27 1.04-1 2.34-1.49 3.13C9.57 23.82 10.76 24 12 24c6.63 0 12-5.37 12-12S18.63 0 12 0z"/></svg>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <nav class="pn">
+      <a href="#"><span class="k">&larr; Précédente</span><span class="n">Cachemire &amp; Vent</span></a>
+      <a href="#" class="next"><span class="k">Suivante &rarr;</span><span class="n">Murmure d'Anvers</span></a>
+    </nav>
+
+    <p class="styliste-link">Une tenue sur-mesure&nbsp;?  <a href="#">Parler au styliste</a></p>
+  </div>
+
+  <footer><div class="row"><span>© 2026 WADA · Genève</span><span>Liens partenaires (MUJI via Awin · Amazon)</span></div></footer>
+</div>
+
+<script>
+  const profile={genre:null,budget:null,style:null};
+
+  // ONBOARDING
+  document.querySelectorAll('.onboarding .q').forEach(q=>{
+    const key=q.dataset.key;
+    q.querySelectorAll('button').forEach(b=>{
+      b.addEventListener('click',()=>{
+        q.querySelectorAll('button').forEach(x=>x.classList.remove('on'));
+        b.classList.add('on');
+        profile[key]=b.dataset.v;
+        if(profile.genre&&profile.budget&&profile.style){
+          document.getElementById('onbGo').classList.add('ready');
+        }
+      });
+    });
+  });
+
+  document.getElementById('onbGo').addEventListener('click',()=>finish(false));
+
+  function finish(skipped){
+    document.getElementById('onb').style.display='none';
+    document.getElementById('app').classList.add('show');
+    if(skipped){
+      profile.genre='Femme';profile.budget='150–400€';profile.style='Minimaliste';
+    }
+    updateLabels();
+    syncSwitcher();
+  }
+
+  // SWITCHER
+  function openSwitcher(){
+    syncSwitcher();
+    document.getElementById('swBg').classList.add('show');
+    document.getElementById('sw').classList.add('show');
+  }
+  function closeSwitcher(){
+    document.getElementById('swBg').classList.remove('show');
+    document.getElementById('sw').classList.remove('show');
+    updateLabels();
+  }
+
+  // wire switcher segments
+  document.querySelectorAll('.switcher .sw-q').forEach(q=>{
+    const key=q.dataset.key;
+    q.querySelectorAll('button').forEach(b=>{
+      b.addEventListener('click',()=>{
+        q.querySelectorAll('button').forEach(x=>x.classList.remove('on'));
+        b.classList.add('on');
+        profile[key]=b.dataset.v;
+        updateLabels();
+      });
+    });
+  });
+
+  function syncSwitcher(){
+    document.querySelectorAll('.switcher .sw-q').forEach(q=>{
+      const key=q.dataset.key;
+      q.querySelectorAll('button').forEach(b=>{
+        b.classList.toggle('on',b.dataset.v===profile[key]);
+      });
+    });
+  }
+
+  function updateLabels(){
+    if(!profile.genre) return;
+    document.getElementById('avInit').textContent=profile.genre.charAt(0);
+    document.getElementById('profLbl').textContent=`${profile.genre} · ${profile.budget} · ${profile.style}`;
+    document.getElementById('persoTxt').textContent=`Composée pour vous · ${profile.genre} · ${profile.budget} · ${profile.style}`;
+  }
+</script>
+</body>
+</html>
