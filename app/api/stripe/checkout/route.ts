@@ -2,9 +2,11 @@ import Stripe from "stripe";
 
 export const runtime = "nodejs";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2024-12-18.acacia" as any,
-});
+/* Init lazy — évite crash build quand STRIPE_SECRET_KEY absent en CI. */
+function getStripe(): Stripe {
+  if (!process.env.STRIPE_SECRET_KEY) throw new Error("STRIPE_SECRET_KEY manquante");
+  return new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: "2024-12-18.acacia" as any });
+}
 
 export async function POST(req: Request) {
   try {
@@ -34,6 +36,7 @@ export async function POST(req: Request) {
       `https://${req.headers.get("host")}` ||
       "https://wada.style";
 
+    const stripe = getStripe();
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
       payment_method_types: ["card"],

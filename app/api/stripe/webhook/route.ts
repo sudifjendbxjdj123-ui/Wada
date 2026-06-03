@@ -90,10 +90,12 @@ export async function GET() {
  * que Stripe pense qu'on a bien reçu sans avoir vérifié.
  */
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "", {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  apiVersion: "2024-12-18.acacia" as any,
-});
+function getStripe() {
+  return new Stripe(process.env.STRIPE_SECRET_KEY || "sk_test_placeholder", {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    apiVersion: "2024-12-18.acacia" as any,
+  });
+}
 
 export async function POST(req: Request) {
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
@@ -112,7 +114,7 @@ export async function POST(req: Request) {
 
   let event: Stripe.Event;
   try {
-    event = stripe.webhooks.constructEvent(rawBody, signature, webhookSecret);
+    event = getStripe().webhooks.constructEvent(rawBody, signature, webhookSecret);
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Unknown signature error";
     console.error("[stripe/webhook] Signature invalide :", msg);

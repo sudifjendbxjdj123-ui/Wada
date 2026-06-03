@@ -103,18 +103,6 @@ export default async function MarquesPage() {
         ))}
       </main>
 
-      <style jsx>{`
-        @media (min-width: 768px) {
-          .wada-brand-grid {
-            grid-template-columns: repeat(3, 1fr) !important;
-          }
-        }
-        @media (min-width: 1024px) {
-          .wada-brand-grid {
-            grid-template-columns: repeat(4, 1fr) !important;
-          }
-        }
-      `}</style>
     </main>
   );
 }
