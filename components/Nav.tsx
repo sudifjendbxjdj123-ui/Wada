@@ -61,7 +61,7 @@ const DRAWER_SECTIONS: Array<{
     title: "Outils",
     links: [
       { href: "/scanner", label: "Scanner une couleur" },
-      { href: "/composer", label: "Composer une tenue" },
+      { href: "/boutique", label: "Boutique" },
       { href: "/stylist", label: "Assistant styliste" },
       { href: "/palettes", label: "Les 348 palettes" },
     ],
