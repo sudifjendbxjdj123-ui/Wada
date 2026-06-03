@@ -49,7 +49,7 @@ const NAV_LINKS: Array<{ href: string; label: string }> = [
   { href: "/palettes", label: "Palettes" },
   { href: "/scanner", label: "Scanner" },
   { href: "/styliste", label: "Styliste" },
-  { href: "/vetements", label: "Boutique" },
+  { href: "/boutique", label: "Boutique" },
 ];
 
 /* Drawer mobile : toutes les destinations, hiérarchisées en sections. */
