@@ -431,7 +431,7 @@ function extractFromAwinProxy(proxyUrl: string | undefined): string | null {
   try {
     const urlMatch = /[?&]url=([^&]+)/.exec(proxyUrl);
     if (!urlMatch) return null;
-    const extracted = decodeURIComponent(urlMatch[1]).replace(/^ssl:/, "https:");
+    const extracted = decodeURIComponent(urlMatch[1]).replace(/^ssl:/, "https://");
     return extracted.startsWith("https://") ? extracted : null;
   } catch {
     return null;
