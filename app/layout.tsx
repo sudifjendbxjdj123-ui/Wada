@@ -5,6 +5,8 @@ import "./globals.css";
    caméra sur /scanner et /composer. Wrappers conditionnels qui rendent
    null sur ces routes — vrai mode app native style Snapchat/Google Lens. */
 import ConditionalNav from "@/components/ConditionalNav";
+/* Brief 2026-06-02 « Navigation par catégories » — Bar 2 style Lyst. */
+import { ConditionalCategoryNav } from "@/components/ConditionalCategoryNav";
 /* Brief client 2026-05-26 : footer retiré de la home (et UNIQUEMENT
    de la home). ConditionalFooter lit usePathname() et rend null sur
    "/" pour libérer toute la hauteur pour la vidéo mannequin plein
@@ -318,6 +320,7 @@ export default function RootLayout({
             et garantit qu'une refonte future ne soit pas oubliée sur une
             page. Nav reste sticky (body est l'ancêtre scrollant). */}
         <ConditionalNav />
+        <ConditionalCategoryNav />
         {children}
         <ConditionalFooter />
         {/* Audit mobile (24/05) §1 : barre d'onglets bottom-nav fixée,

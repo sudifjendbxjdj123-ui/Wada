@@ -759,7 +759,22 @@ function MaTenueContent() {
                 │BAS │ CHSS  │ ACCENT  │ ← pièces basses
                 └────┴───────┴─────────┘ */}
           {Object.keys(collageImages).length >= 3 && (
-            <FlatLayCollage images={collageImages} />
+            <FlatLayCollage
+              images={collageImages}
+              pieces={composition.map((c) => {
+                const rp = resolvedPieces[c.piece];
+                const slot = pieceToSlot(c.piece) || c.piece;
+                return {
+                  slot,
+                  id: `${slot}-${c.piece}`,
+                  nom: rp?.type || c.item,
+                  marque: rp?.marque || "",
+                  prix: rp?.prix_eur || realPrices[c.piece] || 0,
+                  url: "",  // lien acheter non disponible ici sans refetch
+                  name: rp?.type || c.item,
+                };
+              })}
+            />
           )}
 
           {/* Brief 2026-06-01 v3 (user) : la dégradation gracieuse
@@ -1578,14 +1593,87 @@ function MaTenueContent() {
      └────┴───────┴─────────┘
 ────────────────────────────────────────────────────── */
 
-function FlatLayCollage({ images }: { images: Record<string, string> }) {
+function FlatLayCollage({
+  images,
+  pieces,
+}: {
+  images: Record<string, string>;
+  pieces: Array<{ slot: string; id: string; nom: string; marque: string; prix: number; url: string; name?: string; type?: string }>;
+}) {
   const slots = ["haut", "veste", "bas", "chaussures", "accent"];
   const has = (s: string) => !!images[s];
   const count = slots.filter(has).length;
+
+  /* État : null = chargement, string = URL générée, "fallback" = CSS */
+  const [generatedUrl, setGeneratedUrl] = useState<string | null | "fallback">(null);
+  const [positions, setPositions] = useState<Array<{ slot: string; cx: number; cy: number }>>([]);
+  const [activeHotspot, setActiveHotspot] = useState<string | null>(null);
+  const [liked, setLiked] = useState(false);
+  const [buyModal, setBuyModal] = useState(false);
+
+  /* Charge l'état liked depuis localStorage */
+  useEffect(() => {
+    try {
+      const key = `wada.liked.${Object.values(images).join(",").slice(0, 40)}`;
+      setLiked(!!localStorage.getItem(key));
+    } catch {}
+  }, [images]);
+
+  /* Appelle /api/flatlay quand 4+ images disponibles */
+  useEffect(() => {
+    if (count < 4 || !process.env.NEXT_PUBLIC_SITE_URL) {
+      /* Fallback CSS si pas assez d'images ou env non configuré */
+      if (count >= 3) setGeneratedUrl("fallback");
+      return;
+    }
+
+    const flatPieces = pieces
+      .filter((p) => images[p.slot])
+      .map((p) => ({
+        id: p.id,
+        slot: p.slot as "veste" | "haut" | "bas" | "chaussures" | "accent",
+        name: p.nom,
+        image_url: images[p.slot],
+        marque: p.marque,
+        nom: p.nom,
+        prix: p.prix,
+        url_buy: p.url,
+      }));
+
+    fetch("/api/flatlay", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ pieces: flatPieces }),
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data?.url) {
+          setGeneratedUrl(data.url);
+          setPositions(data.positions || []);
+        } else {
+          setGeneratedUrl("fallback");
+        }
+      })
+      .catch(() => setGeneratedUrl("fallback"));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [count]);
+
   if (count < 3) return null;
 
+  const toggleLike = () => {
+    try {
+      const key = `wada.liked.${Object.values(images).join(",").slice(0, 40)}`;
+      if (liked) localStorage.removeItem(key);
+      else localStorage.setItem(key, "1");
+      setLiked(!liked);
+    } catch {}
+  };
+
+  const total = pieces.reduce((s, p) => s + (p.prix || 0), 0);
+  const activePiece = activeHotspot ? pieces.find((p) => p.slot === activeHotspot) : null;
+
   /* Style partagé : fond blanc, ombre légère, objectFit contain. */
-  const cell = (extra: React.CSSProperties = {}): React.CSSProperties => ({
+  const cellStyle = (extra: React.CSSProperties = {}): React.CSSProperties => ({
     background: "#fff",
     borderRadius: 12,
     overflow: "hidden",
@@ -1593,7 +1681,7 @@ function FlatLayCollage({ images }: { images: Record<string, string> }) {
     display: "flex", alignItems: "center", justifyContent: "center",
     ...extra,
   });
-  const img = (slot: string): React.ReactNode => (
+  const imgEl2 = (slot: string): React.ReactNode => (
     <img
       src={images[slot]} alt={slot}
       loading="lazy"
@@ -1601,86 +1689,159 @@ function FlatLayCollage({ images }: { images: Record<string, string> }) {
     />
   );
 
+  const cellStyle2 = (extra: React.CSSProperties = {}): React.CSSProperties => ({
+    background: "#fff", borderRadius: 12, overflow: "hidden",
+    boxShadow: "0 1px 6px rgba(30,30,30,0.08)",
+    display: "flex", alignItems: "center", justifyContent: "center", ...extra,
+  });
+  const imgEl3 = (slot: string): React.ReactNode => (
+    <img src={images[slot]} alt={slot} loading="lazy"
+      style={{ width: "100%", height: "100%", objectFit: "contain", padding: 6 }} />
+  );
+
   return (
-    <div style={{
-      marginBottom: 32,
-      borderRadius: 18,
-      overflow: "hidden",
-      background: "#F2EDE4",
-      border: "1px solid rgba(30,30,30,0.07)",
-      padding: "14px 10px 10px",
-    }}>
-      {/* Titre */}
-      <p style={{
-        textAlign: "center", fontSize: 9.5, fontWeight: 700,
-        letterSpacing: "0.32em", textTransform: "uppercase",
-        color: "#A89880", margin: "0 0 10px",
-        fontFamily: "'Inter', sans-serif",
-      }}>
-        La tenue · composition complète
-      </p>
+    <div style={{ marginBottom: 32 }}>
+      {/* ── Image générée Replicate + hotspots ── */}
+      {generatedUrl && generatedUrl !== "fallback" ? (
+        <div style={{ position: "relative", borderRadius: 18, overflow: "hidden", background: "#F2EDE4", border: "1px solid rgba(30,30,30,0.07)" }}>
+          <img src={generatedUrl} alt="Tenue complète flat lay"
+            style={{ width: "100%", display: "block" }} />
 
-      {/* Layout éditorial :
-            HAUT (grand, 2 cellules de haut) | VESTE
-            ─────────────────────────────────────────
-            BAS                | CHAUSSURES | ACCENT (petits)
-      */}
-      <div style={{
-        display: "grid",
-        gridTemplateColumns: "2fr 1fr",
-        gridTemplateRows: "auto auto",
-        gap: 6,
-      }}>
-        {/* HAUT — featured, prend 2 rangées à gauche */}
-        <div style={cell({ gridColumn: "1/2", gridRow: "1/3", aspectRatio: "4/5", minHeight: 200 })}>
-          {has("haut") ? img("haut") : (
-            <span style={{ color: "#D0C8BC", fontSize: 28 }}>◻</span>
-          )}
-        </div>
+          {/* Hotspots SVG overlay */}
+          <svg style={{ position: "absolute", inset: 0, width: "100%", height: "100%", overflow: "visible" }}
+            viewBox="0 0 1200 1200" preserveAspectRatio="xMidYMid meet">
+            {positions.map((pos) => (
+              <g key={pos.slot}
+                onClick={() => setActiveHotspot(activeHotspot === pos.slot ? null : pos.slot)}
+                style={{ cursor: "pointer" }}>
+                <circle cx={pos.cx} cy={pos.cy} r={28} fill="white" opacity={0.9} />
+                <text x={pos.cx} y={pos.cy + 7} textAnchor="middle"
+                  fontSize={32} fontWeight={300} fill="#6B3A32">+</text>
+              </g>
+            ))}
+          </svg>
 
-        {/* VESTE — en haut à droite */}
-        <div style={cell({ gridColumn: "2/3", gridRow: "1/2", aspectRatio: "3/4" })}>
-          {has("veste") ? img("veste") : (
-            <span style={{ color: "#D0C8BC", fontSize: 22 }}>◻</span>
-          )}
-        </div>
-
-        {/* BAS + CHAUSSURES + ACCENT — ligne du bas à droite, empilés */}
-        <div style={{
-          gridColumn: "2/3", gridRow: "2/3",
-          display: "grid",
-          gridTemplateRows: has("accent") ? "1fr 1fr" : "1fr",
-          gap: 6,
-        }}>
-          <div style={cell({ aspectRatio: "3/2" })}>
-            {has("chaussures") ? img("chaussures") : (
-              has("bas") ? img("bas") : <span style={{ color: "#D0C8BC" }}>◻</span>
-            )}
-          </div>
-          {has("accent") && (
-            <div style={cell({ aspectRatio: "3/2" })}>
-              {img("accent")}
+          {/* Barre info hotspot actif */}
+          {activePiece && (
+            <div style={{
+              position: "absolute", bottom: 0, left: 0, right: 0,
+              background: "rgba(255,255,255,0.97)", backdropFilter: "blur(8px)",
+              padding: "12px 16px", display: "flex", alignItems: "center", gap: 12,
+              borderTop: "1px solid rgba(30,30,30,0.08)",
+            }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ margin: 0, fontSize: 11, fontWeight: 600, color: "#6B3A32", textTransform: "uppercase", letterSpacing: "0.08em" }}>{activePiece.marque}</p>
+                <p style={{ margin: "2px 0 0", fontSize: 13, color: "#1E1E1E", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{activePiece.nom}</p>
+              </div>
+              <span style={{ fontFamily: "'Fredoka'", fontSize: 17, fontWeight: 500, color: "#6B3A32", flexShrink: 0 }}>{activePiece.prix?.toFixed(2)} €</span>
+              <a href={activePiece.url} target="_blank" rel="noopener sponsored"
+                style={{ flexShrink: 0, background: "#1E1E1E", color: "#FAF8F4", borderRadius: 8, padding: "8px 14px", fontSize: 12, fontFamily: "'Fredoka'", textDecoration: "none" }}>
+                Acheter ↗
+              </a>
             </div>
           )}
         </div>
-      </div>
-
-      {/* BAS — sous le HAUT, si disponible et si pas déjà affiché */}
-      {has("bas") && has("chaussures") && (
-        <div style={{ marginTop: 6 }}>
-          <div style={cell({ aspectRatio: "4/2" })}>
-            {img("bas")}
+      ) : generatedUrl === null ? (
+        /* Chargement */
+        <div style={{ background: "#F2EDE4", borderRadius: 18, height: 220, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <p style={{ color: "#A89880", fontSize: 13, fontFamily: "'Inter'", fontStyle: "italic" }}>
+            Composition de la tenue en cours…
+          </p>
+        </div>
+      ) : (
+        /* Fallback CSS (si pas assez d'images ou erreur) */
+        <div style={{ marginBottom: 0, borderRadius: 18, overflow: "hidden", background: "#F2EDE4", border: "1px solid rgba(30,30,30,0.07)", padding: "14px 10px 10px" }}>
+          <p style={{ textAlign: "center", fontSize: 9.5, fontWeight: 700, letterSpacing: "0.32em", textTransform: "uppercase", color: "#A89880", margin: "0 0 10px", fontFamily: "'Inter'" }}>
+            La tenue · composition
+          </p>
+          <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 6 }}>
+            <div style={cellStyle2({ gridColumn: "1/2", gridRow: "1/3", aspectRatio: "4/5", minHeight: 180 })}>{has("haut") ? imgEl3("haut") : <span style={{ color: "#D0C8BC" }}>◻</span>}</div>
+            <div style={cellStyle2({ aspectRatio: "3/4" })}>{has("veste") ? imgEl3("veste") : null}</div>
+            <div style={{ display: "grid", gridTemplateRows: "1fr 1fr", gap: 6 }}>
+              <div style={cellStyle2({ aspectRatio: "3/2" })}>{has("chaussures") ? imgEl3("chaussures") : null}</div>
+              {has("accent") && <div style={cellStyle2({ aspectRatio: "3/2" })}>{imgEl3("accent")}</div>}
+            </div>
           </div>
+          {has("bas") && <div style={{ ...cellStyle2({}), marginTop: 6, aspectRatio: "4/2" }}>{imgEl3("bas")}</div>}
         </div>
       )}
 
-      <p style={{
-        textAlign: "center", fontSize: 10, color: "#C0B4A4",
-        margin: "8px 0 0", fontStyle: "italic",
-        fontFamily: "'Inter', sans-serif",
-      }}>
-        Sélectionnée pour vous · cliquez sur chaque pièce pour acheter
-      </p>
+      {/* ── Boutons Aimer + Acheter tout ── */}
+      <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
+        {/* Cœur */}
+        <button type="button" onClick={toggleLike}
+          style={{
+            width: 52, height: 52, borderRadius: 14, flexShrink: 0,
+            background: liked ? "#FEE2E2" : "#F2EDE4",
+            border: `1px solid ${liked ? "#F87171" : "rgba(30,30,30,0.12)"}`,
+            fontSize: 22, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+          }}
+          aria-label={liked ? "Retirer des favoris" : "Aimer cette tenue"}>
+          {liked ? "❤️" : "🤍"}
+        </button>
+
+        {/* Acheter tout */}
+        <button type="button" onClick={() => setBuyModal(true)}
+          style={{
+            flex: 1, background: "#1E1E1E", color: "#FAF8F4", border: "none",
+            borderRadius: 14, fontFamily: "'Fredoka'", fontSize: 16, fontWeight: 500,
+            cursor: "pointer", padding: "0 16px",
+          }}>
+          Acheter cette tenue · {total > 0 ? `${Math.round(total)} €` : "…"}
+        </button>
+      </div>
+
+      {/* ── Modal Buy All ── */}
+      {buyModal && (
+        <div style={{
+          position: "fixed", inset: 0, zIndex: 9999,
+          background: "rgba(0,0,0,0.55)", backdropFilter: "blur(4px)",
+          display: "flex", alignItems: "flex-end", justifyContent: "center",
+        }} onClick={() => setBuyModal(false)}>
+          <div style={{
+            background: "#FAF8F4", borderRadius: "20px 20px 0 0",
+            width: "100%", maxWidth: 600, padding: "24px 20px 36px",
+            maxHeight: "80vh", overflowY: "auto",
+          }} onClick={(e) => e.stopPropagation()}>
+            <p style={{ fontFamily: "'Fredoka'", fontSize: 20, fontWeight: 500, margin: "0 0 18px", textAlign: "center" }}>
+              Acheter la tenue complète
+            </p>
+
+            {pieces.map((p) => p.url && (
+              <div key={p.slot} style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12, padding: "10px 14px", background: "#fff", borderRadius: 12, border: "1px solid rgba(30,30,30,0.07)" }}>
+                {images[p.slot] && <img src={images[p.slot]} alt={p.slot} style={{ width: 44, height: 44, objectFit: "contain", borderRadius: 8 }} />}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ margin: 0, fontSize: 11, fontWeight: 600, color: "#6B3A32", textTransform: "uppercase", letterSpacing: "0.06em" }}>{p.marque}</p>
+                  <p style={{ margin: "2px 0 0", fontSize: 13, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.nom}</p>
+                </div>
+                <span style={{ fontFamily: "'Fredoka'", fontSize: 15, color: "#6B3A32", flexShrink: 0 }}>{p.prix?.toFixed(2)} €</span>
+                <a href={p.url} target="_blank" rel="noopener sponsored"
+                  style={{ background: "#6B3A32", color: "#FAF8F4", borderRadius: 8, padding: "6px 12px", fontSize: 12, fontFamily: "'Fredoka'", textDecoration: "none", flexShrink: 0 }}>
+                  ↗
+                </a>
+              </div>
+            ))}
+
+            <button type="button"
+              onClick={() => {
+                pieces.forEach((p) => { if (p.url) window.open(p.url, "_blank"); });
+                setBuyModal(false);
+              }}
+              style={{
+                width: "100%", background: "#1E1E1E", color: "#FAF8F4", border: "none",
+                borderRadius: 14, fontFamily: "'Fredoka'", fontSize: 16, fontWeight: 500,
+                cursor: "pointer", padding: "16px", marginTop: 8,
+              }}>
+              Ouvrir les {pieces.filter((p) => p.url).length} liens marchands →
+            </button>
+
+            <button type="button" onClick={() => setBuyModal(false)}
+              style={{ width: "100%", background: "transparent", border: "none", color: "#9B8B78", fontFamily: "'Inter'", fontSize: 13, cursor: "pointer", padding: "12px", marginTop: 4 }}>
+              Fermer
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
