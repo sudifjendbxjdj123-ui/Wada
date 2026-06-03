@@ -1580,119 +1580,106 @@ function MaTenueContent() {
 
 function FlatLayCollage({ images }: { images: Record<string, string> }) {
   const slots = ["haut", "veste", "bas", "chaussures", "accent"];
-  const has = (slot: string) => !!images[slot];
-
-  /* Si moins de 3 images → on n'affiche pas. */
+  const has = (s: string) => !!images[s];
   const count = slots.filter(has).length;
   if (count < 3) return null;
 
-  const bg = "#F4F0EA"; // même beige que la page
-  const radius = 14;
+  /* Style partagé : fond blanc, ombre légère, objectFit contain. */
+  const cell = (extra: React.CSSProperties = {}): React.CSSProperties => ({
+    background: "#fff",
+    borderRadius: 12,
+    overflow: "hidden",
+    boxShadow: "0 1px 6px rgba(30,30,30,0.08)",
+    display: "flex", alignItems: "center", justifyContent: "center",
+    ...extra,
+  });
+  const img = (slot: string): React.ReactNode => (
+    <img
+      src={images[slot]} alt={slot}
+      loading="lazy"
+      style={{ width: "100%", height: "100%", objectFit: "contain", padding: 6 }}
+    />
+  );
 
   return (
     <div style={{
       marginBottom: 32,
-      borderRadius: radius,
+      borderRadius: 18,
       overflow: "hidden",
-      background: bg,
+      background: "#F2EDE4",
       border: "1px solid rgba(30,30,30,0.07)",
+      padding: "14px 10px 10px",
     }}>
-      {/* Label éditorial */}
+      {/* Titre */}
       <p style={{
-        textAlign: "center",
-        fontSize: 10, fontWeight: 700, letterSpacing: "0.30em",
-        textTransform: "uppercase", color: "#9B8B78",
-        margin: "16px 0 12px",
+        textAlign: "center", fontSize: 9.5, fontWeight: 700,
+        letterSpacing: "0.32em", textTransform: "uppercase",
+        color: "#A89880", margin: "0 0 10px",
+        fontFamily: "'Inter', sans-serif",
       }}>
         La tenue · composition complète
       </p>
 
-      {/* Grille de photos */}
-      <div className="wada-flatlay-grid" style={{
+      {/* Layout éditorial :
+            HAUT (grand, 2 cellules de haut) | VESTE
+            ─────────────────────────────────────────
+            BAS                | CHAUSSURES | ACCENT (petits)
+      */}
+      <div style={{
         display: "grid",
-        gridTemplateColumns: "1fr 1fr",
+        gridTemplateColumns: "2fr 1fr",
         gridTemplateRows: "auto auto",
-        gap: 3,
-        padding: "0 3px 3px",
+        gap: 6,
       }}>
-        {/* HAUT — large, en haut à gauche */}
-        {has("haut") && (
-          <div style={{
-            gridColumn: "1 / 2", gridRow: "1 / 2",
-            background: "#fff", borderRadius: 10, overflow: "hidden",
-            aspectRatio: "3/4",
-          }}>
-            <img
-              src={images["haut"]} alt="Haut"
-              style={{ width: "100%", height: "100%", objectFit: "contain" }}
-            />
-          </div>
-        )}
+        {/* HAUT — featured, prend 2 rangées à gauche */}
+        <div style={cell({ gridColumn: "1/2", gridRow: "1/3", aspectRatio: "4/5", minHeight: 200 })}>
+          {has("haut") ? img("haut") : (
+            <span style={{ color: "#D0C8BC", fontSize: 28 }}>◻</span>
+          )}
+        </div>
 
-        {/* VESTE — à droite du haut */}
-        {has("veste") && (
-          <div style={{
-            gridColumn: "2 / 3", gridRow: "1 / 2",
-            background: "#fff", borderRadius: 10, overflow: "hidden",
-            aspectRatio: "3/4",
-          }}>
-            <img
-              src={images["veste"]} alt="Veste"
-              style={{ width: "100%", height: "100%", objectFit: "contain" }}
-            />
-          </div>
-        )}
+        {/* VESTE — en haut à droite */}
+        <div style={cell({ gridColumn: "2/3", gridRow: "1/2", aspectRatio: "3/4" })}>
+          {has("veste") ? img("veste") : (
+            <span style={{ color: "#D0C8BC", fontSize: 22 }}>◻</span>
+          )}
+        </div>
 
-        {/* 2e rangée : BAS + CHAUSSURES + ACCENT */}
+        {/* BAS + CHAUSSURES + ACCENT — ligne du bas à droite, empilés */}
         <div style={{
-          gridColumn: "1 / 3", gridRow: "2 / 3",
+          gridColumn: "2/3", gridRow: "2/3",
           display: "grid",
-          gridTemplateColumns: `${has("bas") ? "1fr" : ""} ${has("chaussures") ? "1fr" : ""} ${has("accent") ? "1fr" : ""}`.trim() || "1fr",
-          gap: 3,
+          gridTemplateRows: has("accent") ? "1fr 1fr" : "1fr",
+          gap: 6,
         }}>
-          {has("bas") && (
-            <div style={{
-              background: "#fff", borderRadius: 10, overflow: "hidden",
-              aspectRatio: "2/3",
-            }}>
-              <img
-                src={images["bas"]} alt="Bas"
-                style={{ width: "100%", height: "100%", objectFit: "contain" }}
-              />
-            </div>
-          )}
-          {has("chaussures") && (
-            <div style={{
-              background: "#fff", borderRadius: 10, overflow: "hidden",
-              aspectRatio: "2/3",
-            }}>
-              <img
-                src={images["chaussures"]} alt="Chaussures"
-                style={{ width: "100%", height: "100%", objectFit: "contain" }}
-              />
-            </div>
-          )}
+          <div style={cell({ aspectRatio: "3/2" })}>
+            {has("chaussures") ? img("chaussures") : (
+              has("bas") ? img("bas") : <span style={{ color: "#D0C8BC" }}>◻</span>
+            )}
+          </div>
           {has("accent") && (
-            <div style={{
-              background: "#fff", borderRadius: 10, overflow: "hidden",
-              aspectRatio: "2/3",
-            }}>
-              <img
-                src={images["accent"]} alt="Accent"
-                style={{ width: "100%", height: "100%", objectFit: "contain" }}
-              />
+            <div style={cell({ aspectRatio: "3/2" })}>
+              {img("accent")}
             </div>
           )}
         </div>
       </div>
 
+      {/* BAS — sous le HAUT, si disponible et si pas déjà affiché */}
+      {has("bas") && has("chaussures") && (
+        <div style={{ marginTop: 6 }}>
+          <div style={cell({ aspectRatio: "4/2" })}>
+            {img("bas")}
+          </div>
+        </div>
+      )}
+
       <p style={{
-        textAlign: "center",
-        fontSize: 10, color: "#C5B9A8",
-        margin: "8px 0 12px",
-        fontStyle: "italic",
+        textAlign: "center", fontSize: 10, color: "#C0B4A4",
+        margin: "8px 0 0", fontStyle: "italic",
+        fontFamily: "'Inter', sans-serif",
       }}>
-        Cliquez sur chaque pièce pour l'acheter ↓
+        Sélectionnée pour vous · cliquez sur chaque pièce pour acheter
       </p>
     </div>
   );
