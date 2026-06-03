@@ -60,7 +60,7 @@ const EXCLUDE_SHOES_SUBTYPES = /\b(pantoufle|mule|chausson|slipper|sandales?\s+d
 
 /** Le slot « haut » ne doit pas renvoyer de robes ni de combinaisons
  *  (on n'a pas de slot dédié robe pour l'instant). */
-const EXCLUDE_HAUT_SUBTYPES = /\b(robe[\s-]*chemise|robe[\s-]*top|robe\s+en|robe\s+à|combinaison|jumpsuit|salopette)/i;
+const EXCLUDE_HAUT_SUBTYPES = /\b(robe[\s-]*chemise|robe[\s-]*top|robe\s+en|robe\s+à|combinaison|jumpsuit|salopette|brassière|brassiere|crop[\s-]?top|bustier|bikini\s+top|soutien[\s-]?gorge)/i;
 
 /** Brief 2026-05-30 — le slot « veste » ne doit pas renvoyer une simple
  *  chemise/overshirt/shirt-jacket. Cas client : tenue avec haut chemise
@@ -96,7 +96,7 @@ const EXCLUDE_ACCENT = /\b(parapluie|umbrella|serviette|towel|gant(s)?\s+(de\s+s
 const EXCLUDE_ACCENT_PATTERN = /\b(check[\s-]?pattern|checked|tartan|plaid|stripe[ds]?|striped|printed|graphic|paisley|floral|camouflage|leopard|zebra)\b/i;
 
 /** Pyjama/lingerie/maillot de bain — exclus partout. */
-const EXCLUDE_ALWAYS = /\b(pyjama|peignoir|short\s+de\s+bain|maillot\s+de\s+bain|sous[\s-]?v.tement|bain)/i;
+const EXCLUDE_ALWAYS = /\b(pyjama|peignoir|short\s+de\s+bain|maillot\s+de\s+bain|sous[\s-]?v[eê]tement|bain|satin\s+lyocell|lyocell\s+satin|string\b|tanga\b|boxer\s+slip|caleçon|culotte\s+de\s+sport|slip\b)/i;
 
 /** Pour les registres « habillés » (tailoring, classique, old money) :
  *  exclut les pièces casual qui jurent visuellement.
@@ -876,7 +876,26 @@ export async function GET(req: Request) {
     return url;
   }
 
-  const products: ProduitAwin[] = finalList.slice(0, limit).map((p) => ({
+  /* Dédup par nom de base — supprime les doublons de même produit en
+     couleurs/tailles différentes (même marque + nom de base similaire).
+     Évite d'afficher 4× la "Chemise en chanvre MUJI" avec des variantes. */
+  const dedupSeen = new Set<string>();
+  const deduped: typeof finalList = [];
+  for (const p of finalList) {
+    // Normalise : retire taille/couleur/variant en fin de nom
+    const baseName = (p.nom || "")
+      .replace(/\s+(taille|size)\s+\S+$/i, "")
+      .replace(/\s+(XS|S|M|L|XL|XXL|XXXL|W\d+|H\d+|\d{2,3}\s*cm)$/i, "")
+      .replace(/\s+(noir|blanc|beige|marine|gris|rouge|bleu|vert|kaki|anthracite|écru|ivoire|olive|bordeaux|camel|sable|crème)$/i, "")
+      .toLowerCase().trim();
+    const key = `${(p.marque || "").toLowerCase().slice(0, 20)}-${baseName.slice(0, 40)}`;
+    if (!dedupSeen.has(key)) {
+      dedupSeen.add(key);
+      deduped.push(p);
+    }
+  }
+
+  const products: ProduitAwin[] = deduped.slice(0, limit).map((p) => ({
     ...p,
     image: p.imageLocal ? p.imageLocal : proxyImageUrl(p.image),
     largeImage: p.imageLocal ? p.imageLocal : proxyImageUrl(p.largeImage || p.image),
