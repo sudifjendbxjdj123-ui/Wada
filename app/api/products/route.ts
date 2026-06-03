@@ -810,8 +810,10 @@ export async function GET(req: Request) {
      (contrôle du header Referer). Solution : on passe les URLs d'image par
      /api/img qui fetche côté serveur sans Referer. imageLocal (Vercel Blob)
      n'a pas ce problème → on garde l'URL directe. */
+  /* Test 2026-06-02 : cdn.suitableshop.net répond 200 sans Referer (curl).
+     On retire le proxy pour Suitable FR → images chargées directement.
+     Si ça casse (hotlink), on le remet. images2.productserve.com → 403 → toujours proxifié. */
   const IMG_PROXY_HOSTS = new Set([
-    "cdn.suitableshop.net",
     "images2.productserve.com",
   ]);
   function proxyImageUrl(url: string | undefined): string {
