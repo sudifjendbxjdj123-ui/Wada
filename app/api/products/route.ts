@@ -819,7 +819,7 @@ export async function GET(req: Request) {
     try {
       const host = new URL(url).hostname;
       if (IMG_PROXY_HOSTS.has(host)) {
-        return `/api/img?url=${encodeURIComponent(url)}`;
+        return `/api/img?u=${encodeURIComponent(url)}`;
       }
     } catch {}
     return url;

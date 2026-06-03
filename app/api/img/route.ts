@@ -56,6 +56,8 @@ const ALLOWED_HOSTS = [
   "cloudinary.com",               // CDN très courant en e-commerce
   "akamaized.net",                // Akamai (gros marchands)
   "scene7.com",                   // Adobe Scene7 (utilisé par certaines marques)
+  // Suitable FR CDN — cdn.suitableshop.net (ajout 2026-06-02)
+  "suitableshop.net",
 ];
 
 function isAllowedHost(u: URL): boolean {
