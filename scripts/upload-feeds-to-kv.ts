@@ -153,9 +153,13 @@ async function main() {
       const csv = buf.toString("utf-8");
       const { products, stats } = ingestAwinCsv(csv);
       console.log(`  Parsés: ${products.length} produits (${JSON.stringify(stats)})`);
-      /* Filtre packshot : supprime les images avec mannequin.
-         Règle absolue : jamais de mannequin sur WADA. */
-      const clean = await filterPackshots(products, feed.label);
+      /* Filtre packshot : actif pour MUJI et Suitable FR.
+         DÉSACTIVÉ pour TBF : leur catalogue n'a que des photos éditoriales
+         (pas de packshot disponible dans le feed). Le filtre supprimait
+         401 images TBF → leur catalogue devenait invisible.
+         On préfère afficher les images éditoriales TBF que rien du tout. */
+      const skipPackshot = feed.slug === "the-business-fashion";
+      const clean = skipPackshot ? products : await filterPackshots(products, feed.label);
       allNew.push(...clean);
     } catch (e) {
       console.error(`  ❌ Erreur: ${e}`);

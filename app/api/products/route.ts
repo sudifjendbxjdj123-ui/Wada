@@ -510,11 +510,14 @@ export async function GET(req: Request) {
      de 800€ à 300€ pour éviter Y-3/Off-White à 800€+ sur une tenue courante.
      Le catalogue TBF streetwear a aussi des marques à 50-200€ (Carhartt,
      Adidas, neighborhood) qui passeront ce filtre. */
+  /* Caps budget par registre. Valeurs restaurées (2026-06-03) :
+     le cap à 300€ excluait trop de TBF pour Classique/Décontracté.
+     On revient à des caps plus larges qui laissent passer la vraie sélection. */
   const REGISTRE_CAP: Record<string, number> = {
-    minimaliste: 600,
-    streetwear: 300,
-    decontracte: 300,
-    classique: 800,
+    minimaliste: 1000,
+    streetwear: 500,
+    decontracte: 600,
+    classique: 2000,
     avant_garde: 500,
     heritage_country: 400,
     outdoor: 400,
