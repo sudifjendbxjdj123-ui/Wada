@@ -3391,3 +3391,12 @@ body:has(div[role="dialog"][aria-modal="true"]) {
   }
 }
 
+
+/* /styliste — layout 2 colonnes desktop */
+@media (min-width: 1024px) {
+  .wada-styliste-grid {
+    grid-template-columns: 1fr 1fr !important;
+    padding: 0 48px !important;
+    gap: 0;
+  }
+}

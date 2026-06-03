@@ -1,13 +1,7 @@
 /**
  * /styliste — Page landing du Styliste IA WADA.
  * Brief 2026-06-02 « Page Styliste IA (inspirée maquette éditoriale) ».
- *
- * Layout 2 colonnes desktop :
- *   Gauche : formulaire éditorial (titre + intro + chips + input)
- *   Droite : flat lay hero éditorial (sticky au scroll)
- *
- * Adapté au stack WADA (pas de DB) :
- *   L'action "Envoyer" redirige vers /stylist?q=prompt (chat existant).
+ * Server Component — les sous-composants sont "use client".
  */
 import type { Metadata } from "next";
 import { StylisteContent } from "@/components/styliste/StylisteContent";
@@ -21,6 +15,7 @@ export const metadata: Metadata = {
 export default function StylistePage() {
   return (
     <div style={{ background: "#f5efe2", minHeight: "100vh" }}>
+      {/* grid responsive via className + global CSS */}
       <div
         className="wada-styliste-grid"
         style={{
@@ -34,16 +29,6 @@ export default function StylistePage() {
         <StylisteContent />
         <StylisteHero />
       </div>
-
-      <style jsx>{`
-        @media (min-width: 1024px) {
-          .wada-styliste-grid {
-            grid-template-columns: 1fr 1fr !important;
-            padding: 0 48px !important;
-            gap: 0;
-          }
-        }
-      `}</style>
     </div>
   );
 }
