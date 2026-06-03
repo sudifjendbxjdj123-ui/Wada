@@ -48,7 +48,7 @@ const PLUM_DARK = "#5a3029";  // hover plus sombre
 const NAV_LINKS: Array<{ href: string; label: string }> = [
   { href: "/palettes", label: "Palettes" },
   { href: "/scanner", label: "Scanner" },
-  { href: "/stylist", label: "Styliste" },
+  { href: "/styliste", label: "Styliste" },
   { href: "/vetements", label: "Boutique" },
 ];
 
