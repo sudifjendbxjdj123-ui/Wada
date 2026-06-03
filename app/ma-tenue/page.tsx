@@ -208,6 +208,12 @@ function MaTenueContent() {
     prix_eur: number;
   };
   const [resolvedPieces, setResolvedPieces] = useState<Record<string, ResolvedPiece>>({});
+  /** Collage flat lay : images résolues par slot (haut/bas/veste/chaussures/accent). */
+  const [collageImages, setCollageImages] = useState<Record<string, string>>({});
+  const handleImageResolved = useCallback((slot: string, imageUrl: string) => {
+    if (!imageUrl) return;
+    setCollageImages((prev) => prev[slot] === imageUrl ? prev : { ...prev, [slot]: imageUrl });
+  }, []);
   /* Brief 2026-06-01 v3 (user) : « propose TOUJOURS une tenue ».
      L'état `incoherent` qui masquait la grille est supprimé — la tenue
      s'affiche dans tous les cas. La validation LLM continue de tourner
@@ -743,6 +749,19 @@ function MaTenueContent() {
             La tenue complète en détail
           </p>
 
+          {/* FLAT LAY COLLAGE CSS — brief 2026-06-02 (user option A).
+              Montre les 5 photos produit arrangées en composition éditoriale
+              AVANT les cartes individuelles. S'affiche quand au moins 3 images
+              sont résolues. Layout :
+                ┌──────────┬───────────┐
+                │  HAUT    │  VESTE    │ ← pièces hautes
+                ├────┬─────┴─┬─────────┤
+                │BAS │ CHSS  │ ACCENT  │ ← pièces basses
+                └────┴───────┴─────────┘ */}
+          {Object.keys(collageImages).length >= 3 && (
+            <FlatLayCollage images={collageImages} />
+          )}
+
           {/* Brief 2026-06-01 v3 (user) : la dégradation gracieuse
               « Pour cette palette précise et votre profil, je n'ai pas
               trouvé de tenue à la hauteur » a été RETIRÉE. La tenue doit
@@ -1070,6 +1089,7 @@ function MaTenueContent() {
                   featured={featured}
                   onPriceResolved={handlePriceResolved}
                   onPieceMetaResolved={handlePieceResolved}
+                  onImageResolved={handleImageResolved}
                   /* Brief URGENT 2026-06-01 MICRO_TYPES : noms des pièces
                      déjà résolues dans la tenue → filtre de cohérence
                      intra-tenue côté API (short + cardigan NO, etc.). */
@@ -1548,6 +1568,136 @@ function MaTenueContent() {
   );
 }
 
+/* ─────────────────── FlatLayCollage ───────────────────
+   Composition CSS des 5 photos produit en style éditorial.
+   Layout (sur mobile : colonne simple) :
+     ┌──────────┬───────────┐
+     │   HAUT   │  VESTE    │
+     ├────┬─────┴─┬─────────┤
+     │BAS │ CHSS  │ ACCENT  │
+     └────┴───────┴─────────┘
+────────────────────────────────────────────────────── */
+
+function FlatLayCollage({ images }: { images: Record<string, string> }) {
+  const slots = ["haut", "veste", "bas", "chaussures", "accent"];
+  const has = (slot: string) => !!images[slot];
+
+  /* Si moins de 3 images → on n'affiche pas. */
+  const count = slots.filter(has).length;
+  if (count < 3) return null;
+
+  const bg = "#F4F0EA"; // même beige que la page
+  const radius = 14;
+
+  return (
+    <div style={{
+      marginBottom: 32,
+      borderRadius: radius,
+      overflow: "hidden",
+      background: bg,
+      border: "1px solid rgba(30,30,30,0.07)",
+    }}>
+      {/* Label éditorial */}
+      <p style={{
+        textAlign: "center",
+        fontSize: 10, fontWeight: 700, letterSpacing: "0.30em",
+        textTransform: "uppercase", color: "#9B8B78",
+        margin: "16px 0 12px",
+      }}>
+        La tenue · composition complète
+      </p>
+
+      {/* Grille de photos */}
+      <div className="wada-flatlay-grid" style={{
+        display: "grid",
+        gridTemplateColumns: "1fr 1fr",
+        gridTemplateRows: "auto auto",
+        gap: 3,
+        padding: "0 3px 3px",
+      }}>
+        {/* HAUT — large, en haut à gauche */}
+        {has("haut") && (
+          <div style={{
+            gridColumn: "1 / 2", gridRow: "1 / 2",
+            background: "#fff", borderRadius: 10, overflow: "hidden",
+            aspectRatio: "3/4",
+          }}>
+            <img
+              src={images["haut"]} alt="Haut"
+              style={{ width: "100%", height: "100%", objectFit: "contain" }}
+            />
+          </div>
+        )}
+
+        {/* VESTE — à droite du haut */}
+        {has("veste") && (
+          <div style={{
+            gridColumn: "2 / 3", gridRow: "1 / 2",
+            background: "#fff", borderRadius: 10, overflow: "hidden",
+            aspectRatio: "3/4",
+          }}>
+            <img
+              src={images["veste"]} alt="Veste"
+              style={{ width: "100%", height: "100%", objectFit: "contain" }}
+            />
+          </div>
+        )}
+
+        {/* 2e rangée : BAS + CHAUSSURES + ACCENT */}
+        <div style={{
+          gridColumn: "1 / 3", gridRow: "2 / 3",
+          display: "grid",
+          gridTemplateColumns: `${has("bas") ? "1fr" : ""} ${has("chaussures") ? "1fr" : ""} ${has("accent") ? "1fr" : ""}`.trim() || "1fr",
+          gap: 3,
+        }}>
+          {has("bas") && (
+            <div style={{
+              background: "#fff", borderRadius: 10, overflow: "hidden",
+              aspectRatio: "2/3",
+            }}>
+              <img
+                src={images["bas"]} alt="Bas"
+                style={{ width: "100%", height: "100%", objectFit: "contain" }}
+              />
+            </div>
+          )}
+          {has("chaussures") && (
+            <div style={{
+              background: "#fff", borderRadius: 10, overflow: "hidden",
+              aspectRatio: "2/3",
+            }}>
+              <img
+                src={images["chaussures"]} alt="Chaussures"
+                style={{ width: "100%", height: "100%", objectFit: "contain" }}
+              />
+            </div>
+          )}
+          {has("accent") && (
+            <div style={{
+              background: "#fff", borderRadius: 10, overflow: "hidden",
+              aspectRatio: "2/3",
+            }}>
+              <img
+                src={images["accent"]} alt="Accent"
+                style={{ width: "100%", height: "100%", objectFit: "contain" }}
+              />
+            </div>
+          )}
+        </div>
+      </div>
+
+      <p style={{
+        textAlign: "center",
+        fontSize: 10, color: "#C5B9A8",
+        margin: "8px 0 12px",
+        fontStyle: "italic",
+      }}>
+        Cliquez sur chaque pièce pour l'acheter ↓
+      </p>
+    </div>
+  );
+}
+
 /* ─────────────────── PieceCard ───────────────────
    Une carte = 1 pièce de la tenue.
    Structure : photo (fond colored palette + mix-blend-multiply) +
@@ -2004,7 +2154,7 @@ function useMujiProduct(
 function PieceCard({
   piece, itemName, color, merchants, paletteRef, genre, style,
   seed, excludeIds, onPicked, featured, onPriceResolved, onPieceMetaResolved,
-  selectedNamesStr,
+  selectedNamesStr, onImageResolved,
 }: {
   piece: string;
   itemName: string;
@@ -2019,6 +2169,8 @@ function PieceCard({
   /** Brief URGENT 2026-06-01 MICRO_TYPES : noms des pièces déjà sélectionnées
    *  "|"-séparés. Transmis à useMujiProduct puis à /api/products. */
   selectedNamesStr?: string;
+  /** Brief 2026-06-02 flat lay : remonte l'URL image résolue au parent pour le collage. */
+  onImageResolved?: (slot: string, imageUrl: string) => void;
   /** Brief 2026-05-28 (vedette) : carte 1ère pièce pleine largeur,
    *  ratio image 16/10 plus paysage que portrait pour bien remplir.
    *  Les autres restent en 4/5 portrait. */
@@ -2057,6 +2209,16 @@ function PieceCard({
       onPriceResolved(piece, mujiProduct.prix);
     }
   }, [mujiProduct?.prix, piece, onPriceResolved]);
+
+  /* Brief 2026-06-02 flat lay : remonte l'URL image au parent pour le collage CSS. */
+  useEffect(() => {
+    const slot = pieceToSlot(piece);
+    const img = mujiProduct?.image;
+    if (slot && img && onImageResolved) {
+      onImageResolved(slot, img);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mujiProduct?.image, piece]);
 
   /* Brief 2026-05-31 v8 (Couche 6 validation LLM) : remonte les
      métadonnées complètes du produit (marque, type, couleur) pour que
