@@ -235,12 +235,6 @@ export function CategoryNav() {
               {cat.label}
             </Link>
           ))}
-          <Link href="/lettres-du-dimanche" style={{ fontSize: 13, color: "#4a3d2a", textDecoration: "none", whiteSpace: "nowrap" }}>
-            Lettres du dimanche
-          </Link>
-          <Link href="/index-wada" style={{ fontSize: 13, color: "#6e3b32", textDecoration: "none", fontStyle: "italic", whiteSpace: "nowrap" }}>
-            Index WADA
-          </Link>
         </nav>
 
         {/* ── Méga menu ── */}
