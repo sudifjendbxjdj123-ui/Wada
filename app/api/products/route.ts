@@ -69,7 +69,7 @@ const EXCLUDE_HAUT_SUBTYPES = /\b(robe[\s-]*chemise|robe[\s-]*top|robe\s+en|robe
  *  les sous-vêtements (camisole, débardeur, undershirt, sans manches).
  *  En anglais « vest » = gilet/débardeur (≠ « veste » FR = jacket).
  *  Une veste WADA doit avoir des manches longues, point. */
-const EXCLUDE_VESTE_SUBTYPES = /\b(shirt[\s-]?jacket|overshirt|chemise[\s-]?veste|chemise\s+\w+\s+manche|sleeveless|sans\s+manches?|cotton\s+vest|tank[\s-]?(top|vest)|cami(sole)?|d[ée]bardeur|undershirt|under[\s-]?vest|sous[\s-]?v[êe]tement|gilet\s+sans\s+manches?|waistcoat)/i;
+const EXCLUDE_VESTE_SUBTYPES = /\b(shirt[\s-]?jacket|overshirt|chemise[\s-]?veste|chemise\s+\w+\s+manche|sleeveless|sans\s+manches?|cotton\s+vest|tank[\s-]?(top|vest)|cami(sole)?|d[ée]bardeur|undershirt|under[\s-]?vest|sous[\s-]?v[êe]tement|gilet\s+sans\s+manches?|waistcoat|noeud\s+papillon|bow[\s-]?tie|cravate|necktie|pocket\s+square|pochette\s+de\s+costume|bouton\s+de\s+manchette|cufflink|bretelles|braces?)/i;
 
 /** Sacs volumineux/sport — pour l'accent on dé-priorise sans exclure. */
 const DEPRIORITIZE_ACCENT = /\b(sac\s+(boston|de\s+sport|de\s+voyage|polochon)|sac\s+banane|sac\s+à\s+dos)/i;
