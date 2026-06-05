@@ -1,18 +1,21 @@
 "use client";
 /**
- * BoutiqueHero — Hero de /boutique, même traitement que la home (app/page.tsx) :
- * photo plein cadre + dégradé bas + contenu superposé (kicker + titre Fredoka
- * + 2 boutons). Brief 2026-06-06 « rends bien comme la home ».
+ * BoutiqueHero — Hero de /boutique.
+ * Brief 2026-06-06 : fond = MUR de vêtements des marques affiliées qui défile
+ * verticalement (entrée par le haut → sortie en bas, boucle infinie), voile
+ * sombre + titre Fredoka « Boutique » + pills catégories par-dessus.
  *
- * Photo : boutique-hero-photo.png (sandales sur tissu, propre, sans texte cuit).
+ * Images : vrais produits du flux affilié via /api/products (même source que
+ * la grille catégorie). Colonnes en marquee CSS (translateY, contenu dupliqué
+ * pour une boucle sans couture).
  */
+import { useEffect, useState } from "react";
 import Link from "next/link";
 
 const CREAM = "#FAF8F4";
 const BORDEAUX = "#6B3A32";
 const BORDEAUX_DARK = "#52261f";
 
-/* Catégories affichées en pills dans le hero. */
 const CATEGORIES: Array<{ label: string; href: string }> = [
   { label: "Nouveautés",  href: "/vetements" },
   { label: "Chaussures",  href: "/chaussures" },
@@ -21,25 +24,65 @@ const CATEGORIES: Array<{ label: string; href: string }> = [
   { label: "Marques",     href: "/marques" },
 ];
 
+const COLS = 4;
+
 export function BoutiqueHero() {
+  const [images, setImages] = useState<string[]>([]);
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      const slots = ["haut", "bas", "veste"];
+      const results = await Promise.all(
+        slots.map((s) =>
+          fetch(`/api/products?slot=${s}&limit=24`)
+            .then((r) => r.json())
+            .catch(() => ({ products: [] })),
+        ),
+      );
+      const imgs: string[] = results.flatMap((r) =>
+        (r.products ?? [])
+          .map((p: { image?: string; largeImage?: string }) => p.image || p.largeImage)
+          .filter(Boolean),
+      );
+      const uniq = Array.from(new Set(imgs)).slice(0, 32);
+      if (alive) setImages(uniq);
+    })();
+    return () => { alive = false; };
+  }, []);
+
+  const columns = Array.from({ length: COLS }, (_, c) =>
+    images.filter((_, i) => i % COLS === c),
+  );
+
   return (
     <section className="wada-bh-section" aria-label="Boutique">
       <div className="wada-bh-hero">
-        <img
-          src="/hero/boutique-hero-photo.png"
-          alt=""
-          aria-hidden="true"
-          className="wada-bh-img"
-        />
+        {/* Mur de vêtements défilant (décoratif) */}
+        <div className="wada-bh-wall" aria-hidden="true">
+          {columns.map((col, ci) => (
+            <div
+              key={ci}
+              className="wada-bh-col"
+              style={{ animationDuration: `${30 + ci * 7}s`, animationDelay: `-${ci * 6}s` }}
+            >
+              {col.length > 0 &&
+                [...col, ...col].map((src, i) => (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img key={i} src={src} alt="" loading="lazy" decoding="async" />
+                ))}
+            </div>
+          ))}
+        </div>
 
-        {/* Dégradé bas pour la lisibilité du texte (comme la home) */}
-        <div className="wada-bh-scrim" aria-hidden />
+        {/* Voile sombre pour la lisibilité */}
+        <div className="wada-bh-scrim" aria-hidden="true" />
 
         {/* Contenu superposé */}
         <div className="wada-bh-content">
           <p className="wada-bh-kicker">Inspiré de Sanzō Wada · 1933</p>
           <h1 className="wada-bh-title">Boutique</h1>
-          <p className="wada-bh-sub">Chaque pièce, sa couleur.</p>
+          <p className="wada-bh-sub">Les pièces de tes marques, par palette.</p>
 
           <nav className="wada-bh-cats" aria-label="Catégories">
             {CATEGORIES.map((c) => (
@@ -52,7 +95,6 @@ export function BoutiqueHero() {
       </div>
 
       <style>{`
-        /* Double-classe : bat les paddings globaux !important → full-bleed. */
         .wada-bh-section.wada-bh-section {
           display: flex;
           flex: 1 1 auto;
@@ -67,49 +109,79 @@ export function BoutiqueHero() {
           flex: 1 1 auto;
           min-height: 460px;
           overflow: hidden;
+          background: #2a2420;
         }
-        .wada-bh-img {
+        /* ── Mur défilant ── */
+        .wada-bh-wall {
           position: absolute;
-          inset: 0;
+          inset: -8px 0;
+          display: grid;
+          grid-template-columns: repeat(${COLS}, 1fr);
+          gap: 8px;
+          padding: 0 8px;
+        }
+        .wada-bh-col {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+          height: max-content;
+          animation-name: wada-bh-scroll;
+          animation-timing-function: linear;
+          animation-iteration-count: infinite;
+          will-change: transform;
+        }
+        .wada-bh-col img {
           width: 100%;
-          height: 100%;
+          aspect-ratio: 3 / 4;
           object-fit: cover;
-          object-position: center 32%;
+          border-radius: 10px;
+          background: #efeae2;
+          display: block;
         }
+        /* contenu dupliqué → boucle sans couture, sens HAUT → BAS */
+        @keyframes wada-bh-scroll {
+          from { transform: translateY(-50%); }
+          to   { transform: translateY(0); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .wada-bh-col { animation: none; }
+        }
+        @media (min-width: 760px) {
+          .wada-bh-wall { grid-template-columns: repeat(6, 1fr); }
+        }
+
+        /* ── Voile ── */
         .wada-bh-scrim {
-          position: absolute;
-          inset: 0;
-          pointer-events: none;
+          position: absolute; inset: 0; pointer-events: none;
           background: linear-gradient(180deg,
-            rgba(0,0,0,0) 0%, rgba(0,0,0,0) 38%,
-            rgba(0,0,0,0.34) 70%, rgba(0,0,0,0.6) 100%);
+            rgba(28,22,18,0.50) 0%, rgba(28,22,18,0.36) 42%,
+            rgba(20,14,11,0.72) 100%);
         }
+
+        /* ── Contenu ── */
         .wada-bh-content {
-          position: absolute;
-          left: 0; right: 0;
+          position: absolute; left: 0; right: 0;
           bottom: calc(40px + env(safe-area-inset-bottom, 0px));
           padding: 0 22px;
-          display: flex; flex-direction: column; align-items: center;
-          text-align: center;
+          display: flex; flex-direction: column; align-items: center; text-align: center;
         }
         .wada-bh-kicker {
           margin: 0 0 14px;
-          font-family: 'Inter', sans-serif;
-          font-size: 11px; font-weight: 600;
+          font-family: 'Inter', sans-serif; font-size: 11px; font-weight: 600;
           letter-spacing: 0.32em; text-transform: uppercase;
-          color: #F4EFE7; text-shadow: 0 1px 6px rgba(0,0,0,0.6);
+          color: #F4EFE7; text-shadow: 0 1px 8px rgba(0,0,0,0.7);
         }
         .wada-bh-title {
           margin: 0;
           font-family: 'Fredoka', sans-serif; font-weight: 600;
           font-size: clamp(44px, 12vw, 72px); line-height: 1;
           color: #fff; letter-spacing: -0.01em;
-          text-shadow: 0 2px 16px rgba(0,0,0,0.5);
+          text-shadow: 0 2px 20px rgba(0,0,0,0.6);
         }
         .wada-bh-sub {
           margin: 12px 0 0;
           font-family: 'Inter', sans-serif; font-size: 15px;
-          color: #f4efe2; text-shadow: 0 1px 8px rgba(0,0,0,0.55);
+          color: #f4efe2; text-shadow: 0 1px 10px rgba(0,0,0,0.65);
         }
         .wada-bh-cats {
           margin-top: 24px;
@@ -120,19 +192,17 @@ export function BoutiqueHero() {
           display: inline-flex; align-items: center; justify-content: center;
           padding: 13px 24px; border-radius: 999px;
           font-family: 'Inter', sans-serif; font-size: 15px; font-weight: 700;
-          letter-spacing: 0.01em;
-          text-decoration: none;
-          background: ${BORDEAUX};
-          color: ${CREAM};
+          letter-spacing: 0.01em; text-decoration: none;
+          background: ${BORDEAUX}; color: ${CREAM};
           border: 1.5px solid rgba(255,255,255,0.45);
-          box-shadow: 0 8px 22px rgba(0,0,0,0.34);
+          box-shadow: 0 8px 22px rgba(0,0,0,0.4);
           transition: transform 0.22s ease, background 0.22s ease, box-shadow 0.22s ease;
         }
         @media (hover: hover) and (pointer: fine) {
           .wada-bh-cat:hover {
             transform: translateY(-2px);
             background: ${BORDEAUX_DARK};
-            box-shadow: 0 12px 28px rgba(0,0,0,0.42);
+            box-shadow: 0 12px 28px rgba(0,0,0,0.5);
           }
         }
       `}</style>
