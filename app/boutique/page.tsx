@@ -9,7 +9,6 @@
 import type { Metadata } from "next";
 import BackButton from "@/components/BackButton";
 import { BoutiqueHero } from "@/components/BoutiqueHero";
-import { HomeFeatures } from "@/components/HomeFeatures";
 
 export default function BoutiquePage() {
   return (
@@ -22,7 +21,6 @@ export default function BoutiquePage() {
     >
       <BackButton fallback="/" />
       <BoutiqueHero />
-      <HomeFeatures />
     </main>
   );
 }
