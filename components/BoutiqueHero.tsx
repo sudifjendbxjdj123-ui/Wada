@@ -8,8 +8,16 @@
  */
 import Link from "next/link";
 
-const BORDEAUX = "#6B3A32";
 const CREAM = "#FAF8F4";
+
+/* Catégories affichées en pills dans le hero. */
+const CATEGORIES: Array<{ label: string; href: string }> = [
+  { label: "Nouveautés",  href: "/vetements" },
+  { label: "Chaussures",  href: "/chaussures" },
+  { label: "Sacs",        href: "/sacs" },
+  { label: "Accessoires", href: "/accessoires" },
+  { label: "Marques",     href: "/marques" },
+];
 
 export function BoutiqueHero() {
   return (
@@ -31,15 +39,13 @@ export function BoutiqueHero() {
           <h1 className="wada-bh-title">Boutique</h1>
           <p className="wada-bh-sub">Chaque pièce, sa couleur.</p>
 
-          <div className="wada-bh-cta">
-            <Link href="/vetements" className="wada-bh-btn wada-bh-btn-primary">
-              <span>Découvrir les pièces</span>
-              <span aria-hidden style={{ fontSize: 17 }}>→</span>
-            </Link>
-            <Link href="/scanner" className="wada-bh-btn wada-bh-btn-ghost">
-              Scanner une couleur
-            </Link>
-          </div>
+          <nav className="wada-bh-cats" aria-label="Catégories">
+            {CATEGORIES.map((c) => (
+              <Link key={c.label} href={c.href} className="wada-bh-cat">
+                {c.label}
+              </Link>
+            ))}
+          </nav>
         </div>
       </div>
 
@@ -103,30 +109,26 @@ export function BoutiqueHero() {
           font-family: 'Inter', sans-serif; font-size: 15px;
           color: #f4efe2; text-shadow: 0 1px 8px rgba(0,0,0,0.55);
         }
-        .wada-bh-cta {
-          margin-top: 26px;
-          display: flex; flex-direction: column; gap: 12px;
-          align-items: center; width: 100%; max-width: 330px;
+        .wada-bh-cats {
+          margin-top: 24px;
+          display: flex; flex-wrap: wrap; justify-content: center;
+          gap: 10px; max-width: 430px;
         }
-        .wada-bh-btn {
+        .wada-bh-cat {
           display: inline-flex; align-items: center; justify-content: center;
-          gap: 10px; width: 100%;
-          padding: 15px 30px; border-radius: 999px;
-          font-family: 'Inter', sans-serif; font-size: 15px; font-weight: 600;
-          text-decoration: none; transition: transform 0.3s ease, box-shadow 0.3s ease, background 0.3s ease, color 0.3s ease;
-        }
-        .wada-bh-btn-primary {
-          background: ${BORDEAUX}; color: ${CREAM};
-          box-shadow: 0 14px 40px rgba(0,0,0,0.35);
-        }
-        .wada-bh-btn-ghost {
-          background: rgba(250,248,244,0.18);
+          padding: 11px 20px; border-radius: 999px;
+          font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 600;
+          text-decoration: none;
+          background: rgba(250,248,244,0.16);
           -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
-          color: #fff; border: 1.5px solid rgba(255,255,255,0.55);
+          color: #fff; border: 1.5px solid rgba(255,255,255,0.5);
+          transition: transform 0.25s ease, background 0.25s ease, color 0.25s ease, border-color 0.25s ease;
         }
         @media (hover: hover) and (pointer: fine) {
-          .wada-bh-btn-primary:hover { transform: translateY(-2px); box-shadow: 0 18px 48px rgba(0,0,0,0.42); }
-          .wada-bh-btn-ghost:hover { background: rgba(250,248,244,0.92); color: #1a1a1a; border-color: ${CREAM}; }
+          .wada-bh-cat:hover {
+            transform: translateY(-1px);
+            background: rgba(250,248,244,0.92); color: #1a1a1a; border-color: ${CREAM};
+          }
         }
         /* Desktop : un peu moins haut, photo bien cadrée */
         @media (min-width: 760px) {
