@@ -223,16 +223,17 @@ function ProductCard({ p, onClick }: { p: ProduitAwin; onClick: () => void }) {
     <article style={{ position: "relative", cursor: "pointer" }}>
       <div onClick={onClick} style={{ display: "block" }}>
         <div style={{
-          background: "#f5f1eb", borderRadius: 12, overflow: "hidden",
+          background: "#fff", borderRadius: 14, overflow: "hidden",
           aspectRatio: "3/4", position: "relative", marginBottom: 10,
+          boxShadow: "0 2px 10px rgba(0,0,0,0.05)",
           transition: "box-shadow 0.2s, transform 0.2s",
         }}
-          onMouseOver={(e) => { e.currentTarget.style.boxShadow = "0 6px 18px rgba(0,0,0,0.12)"; e.currentTarget.style.transform = "translateY(-2px)"; }}
-          onMouseOut={(e) => { e.currentTarget.style.boxShadow = "none"; e.currentTarget.style.transform = "translateY(0)"; }}
+          onMouseOver={(e) => { e.currentTarget.style.boxShadow = "0 8px 22px rgba(0,0,0,0.13)"; e.currentTarget.style.transform = "translateY(-2px)"; }}
+          onMouseOut={(e) => { e.currentTarget.style.boxShadow = "0 2px 10px rgba(0,0,0,0.05)"; e.currentTarget.style.transform = "translateY(0)"; }}
         >
           {(p.image || p.largeImage) ? (
             <img src={p.image || p.largeImage} alt={p.nom} loading="lazy"
-              style={{ width: "100%", height: "100%", objectFit: "contain", padding: 8 }} />
+              style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center" }} />
           ) : (
             <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#c5b9a8", fontSize: 28 }}>◻</div>
           )}
