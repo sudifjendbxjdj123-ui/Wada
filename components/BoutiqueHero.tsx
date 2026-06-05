@@ -1,11 +1,17 @@
 "use client";
 /**
  * BoutiqueHero — Hero affiche de la page /boutique.
- * Brief 2026-06-05 : remplace le HomeHero éditorial par le visuel « Boutique »
- * (sac sur fond ciel + labels manuscrits). L'image porte le texte ; on pose
- * par-dessus des zones cliquables transparentes (positionnées en %) pour que
- * chaque catégorie navigue réellement. L'image garde son ratio 3/4, donc les
- * hotspots restent alignés à toutes les tailles.
+ * Brief 2026-06-05 : visuel « Boutique » (sac sur fond ciel + labels
+ * manuscrits). L'image porte le texte ; on pose par-dessus des zones
+ * cliquables transparentes (positionnées en %) pour que chaque catégorie
+ * navigue réellement. L'image garde son ratio 3/4 → hotspots alignés à
+ * toutes les tailles.
+ *
+ * Amélioration 2026-06-05 (présentation, image inchangée) :
+ *   - full-bleed : l'image prend TOUTE la largeur (bord à bord), plus de
+ *     poster centré ni de marges
+ *   - ratio 3/4 conservé (aucun label coupé)
+ *   - survol révélant les zones cliquables
  */
 import Link from "next/link";
 
@@ -21,17 +27,8 @@ const HOTSPOTS: Array<{ label: string; href: string; x: number; y: number; w: nu
 
 export function BoutiqueHero() {
   return (
-    <section style={{ margin: "16px 16px 0", display: "flex", justifyContent: "center" }}>
-      <div
-        style={{
-          position: "relative",
-          width: "100%",
-          maxWidth: 520,
-          aspectRatio: "3 / 4",
-          borderRadius: 20,
-          overflow: "hidden",
-        }}
-      >
+    <section className="wada-bh-section">
+      <div className="wada-bh-poster">
         {/* H1 accessible / SEO — le titre visuel est dans l'image */}
         <h1 style={{
           position: "absolute", width: 1, height: 1, padding: 0, margin: -1,
@@ -53,6 +50,7 @@ export function BoutiqueHero() {
             href={h.href}
             aria-label={h.label}
             title={h.label}
+            className="wada-bh-hot"
             style={{
               position: "absolute",
               left: `${h.x}%`,
@@ -60,12 +58,39 @@ export function BoutiqueHero() {
               width: `${h.w}%`,
               height: `${h.h}%`,
               transform: "translate(-50%, -50%)",
-              borderRadius: 999,
-              display: "block",
             }}
           />
         ))}
       </div>
+
+      <style>{`
+        /* Double-classe pour battre les paddings globaux !important de
+           globals.css (section{padding:5%}, main>section{padding:48px 4vw},
+           :first-of-type{padding-top:64px}) → full-bleed réel. */
+        .wada-bh-section.wada-bh-section {
+          width: 100%;
+          padding: 0 !important;
+          margin: 0 !important;
+        }
+        /* Full-bleed : l'image occupe toute la largeur, bord à bord */
+        .wada-bh-poster {
+          position: relative;
+          width: 100%;
+          aspect-ratio: 3 / 4;
+          overflow: hidden;
+        }
+        .wada-bh-hot {
+          display: block;
+          border-radius: 999px;
+          transition: background 0.18s ease, box-shadow 0.18s ease;
+        }
+        .wada-bh-hot:hover,
+        .wada-bh-hot:focus-visible {
+          background: rgba(255, 255, 255, 0.16);
+          box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.6);
+          outline: none;
+        }
+      `}</style>
     </section>
   );
 }
