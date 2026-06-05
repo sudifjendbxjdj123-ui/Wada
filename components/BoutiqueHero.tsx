@@ -82,13 +82,21 @@ export function BoutiqueHero() {
         .wada-bh-hot {
           display: block;
           border-radius: 999px;
+          -webkit-tap-highlight-color: transparent;
+          -webkit-touch-callout: none;
+          user-select: none;
           transition: background 0.18s ease, box-shadow 0.18s ease;
         }
-        .wada-bh-hot:hover,
-        .wada-bh-hot:focus-visible {
-          background: rgba(255, 255, 255, 0.16);
-          box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.6);
-          outline: none;
+        /* Halo UNIQUEMENT sur appareils à vrai pointeur (souris). Au toucher,
+           le :hover « colle » après un tap et affiche un cadre blanc sur le
+           label — donc on l'exclut du tactile. */
+        @media (hover: hover) and (pointer: fine) {
+          .wada-bh-hot:hover,
+          .wada-bh-hot:focus-visible {
+            background: rgba(255, 255, 255, 0.16);
+            box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.6);
+            outline: none;
+          }
         }
       `}</style>
     </section>
