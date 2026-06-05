@@ -9,6 +9,8 @@
 import Link from "next/link";
 
 const CREAM = "#FAF8F4";
+const BORDEAUX = "#6B3A32";
+const BORDEAUX_DARK = "#52261f";
 
 /* Catégories affichées en pills dans le hero. */
 const CATEGORIES: Array<{ label: string; href: string }> = [
@@ -116,18 +118,21 @@ export function BoutiqueHero() {
         }
         .wada-bh-cat {
           display: inline-flex; align-items: center; justify-content: center;
-          padding: 11px 20px; border-radius: 999px;
-          font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 600;
+          padding: 13px 24px; border-radius: 999px;
+          font-family: 'Inter', sans-serif; font-size: 15px; font-weight: 700;
+          letter-spacing: 0.01em;
           text-decoration: none;
-          background: rgba(250,248,244,0.16);
-          -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
-          color: #fff; border: 1.5px solid rgba(255,255,255,0.5);
-          transition: transform 0.25s ease, background 0.25s ease, color 0.25s ease, border-color 0.25s ease;
+          background: ${BORDEAUX};
+          color: ${CREAM};
+          border: 1.5px solid rgba(255,255,255,0.45);
+          box-shadow: 0 8px 22px rgba(0,0,0,0.34);
+          transition: transform 0.22s ease, background 0.22s ease, box-shadow 0.22s ease;
         }
         @media (hover: hover) and (pointer: fine) {
           .wada-bh-cat:hover {
-            transform: translateY(-1px);
-            background: rgba(250,248,244,0.92); color: #1a1a1a; border-color: ${CREAM};
+            transform: translateY(-2px);
+            background: ${BORDEAUX_DARK};
+            box-shadow: 0 12px 28px rgba(0,0,0,0.42);
           }
         }
         /* Desktop : un peu moins haut, photo bien cadrée */
