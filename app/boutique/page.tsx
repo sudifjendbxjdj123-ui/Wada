@@ -7,6 +7,7 @@
  * La home (/) garde sa vidéo hero éditoriale Sanzō Wada.
  */
 import type { Metadata } from "next";
+import BackButton from "@/components/BackButton";
 import { BoutiqueHero } from "@/components/BoutiqueHero";
 import { HomeFeatures } from "@/components/HomeFeatures";
 
@@ -19,6 +20,7 @@ export default function BoutiquePage() {
         paddingBottom: 80,
       }}
     >
+      <BackButton fallback="/" />
       <BoutiqueHero />
       <HomeFeatures />
     </main>
