@@ -5,9 +5,10 @@
  * verticalement (entrée par le haut → sortie en bas, boucle infinie), voile
  * sombre + titre Fredoka « Boutique » + pills catégories par-dessus.
  *
- * Images : vrais produits du flux affilié via /api/products (même source que
- * la grille catégorie). Colonnes en marquee CSS (translateY, contenu dupliqué
- * pour une boucle sans couture).
+ * Le nombre de colonnes est DYNAMIQUE (selon la largeur d'écran) pour que le
+ * mur remplisse toujours toute la largeur — autant de <div.col> que de
+ * colonnes de grille. Marquee CSS (translateY, contenu dupliqué = boucle
+ * sans couture). Images = vrais produits du flux affilié via /api/products.
  */
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -24,10 +25,17 @@ const CATEGORIES: Array<{ label: string; href: string }> = [
   { label: "Marques",     href: "/marques" },
 ];
 
-const COLS = 4;
-
 export function BoutiqueHero() {
   const [images, setImages] = useState<string[]>([]);
+  const [cols, setCols] = useState(4);
+
+  /* Nombre de colonnes adapté à la largeur (≈1 colonne / 260px). */
+  useEffect(() => {
+    const update = () => setCols(Math.max(3, Math.round(window.innerWidth / 260)));
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, []);
 
   useEffect(() => {
     let alive = true;
@@ -35,7 +43,7 @@ export function BoutiqueHero() {
       const slots = ["haut", "bas", "veste"];
       const results = await Promise.all(
         slots.map((s) =>
-          fetch(`/api/products?slot=${s}&limit=24`)
+          fetch(`/api/products?slot=${s}&limit=32`)
             .then((r) => r.json())
             .catch(() => ({ products: [] })),
         ),
@@ -45,26 +53,30 @@ export function BoutiqueHero() {
           .map((p: { image?: string; largeImage?: string }) => p.image || p.largeImage)
           .filter(Boolean),
       );
-      const uniq = Array.from(new Set(imgs)).slice(0, 32);
+      const uniq = Array.from(new Set(imgs)).slice(0, 60);
       if (alive) setImages(uniq);
     })();
     return () => { alive = false; };
   }, []);
 
-  const columns = Array.from({ length: COLS }, (_, c) =>
-    images.filter((_, i) => i % COLS === c),
+  const columns = Array.from({ length: cols }, (_, c) =>
+    images.filter((_, i) => i % cols === c),
   );
 
   return (
     <section className="wada-bh-section" aria-label="Boutique">
       <div className="wada-bh-hero">
         {/* Mur de vêtements défilant (décoratif) */}
-        <div className="wada-bh-wall" aria-hidden="true">
+        <div
+          className="wada-bh-wall"
+          aria-hidden="true"
+          style={{ gridTemplateColumns: `repeat(${cols}, 1fr)` }}
+        >
           {columns.map((col, ci) => (
             <div
               key={ci}
               className="wada-bh-col"
-              style={{ animationDuration: `${30 + ci * 7}s`, animationDelay: `-${ci * 6}s` }}
+              style={{ animationDuration: `${30 + (ci % 4) * 7}s`, animationDelay: `-${(ci % 5) * 6}s` }}
             >
               {col.length > 0 &&
                 [...col, ...col].map((src, i) => (
@@ -116,7 +128,6 @@ export function BoutiqueHero() {
           position: absolute;
           inset: -8px 0;
           display: grid;
-          grid-template-columns: repeat(${COLS}, 1fr);
           gap: 8px;
           padding: 0 8px;
         }
@@ -145,9 +156,6 @@ export function BoutiqueHero() {
         }
         @media (prefers-reduced-motion: reduce) {
           .wada-bh-col { animation: none; }
-        }
-        @media (min-width: 760px) {
-          .wada-bh-wall { grid-template-columns: repeat(6, 1fr); }
         }
 
         /* ── Voile ── */
