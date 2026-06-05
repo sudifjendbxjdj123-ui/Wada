@@ -29,7 +29,7 @@ import { usePathname } from "next/navigation";
  * CSS pour que le contenu ne passe pas sous la barre.
  */
 
-type IconKind = "home" | "grid" | "scan" | "stylist" | "heart";
+type IconKind = "home" | "bag" | "grid" | "scan" | "stylist" | "heart";
 
 function Icon({ kind, size = 22 }: { kind: IconKind; size?: number }) {
   const props = {
@@ -48,6 +48,14 @@ function Icon({ kind, size = 22 }: { kind: IconKind; size?: number }) {
       return (
         <svg {...props}>
           <path d="M3 11l9-7 9 7v9a2 2 0 0 1-2 2h-4v-7h-6v7H5a2 2 0 0 1-2-2v-9z" />
+        </svg>
+      );
+    case "bag":
+      /* Sac shopping : signal boutique. */
+      return (
+        <svg {...props}>
+          <path d="M6 8h12l-1 12a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L6 8z" />
+          <path d="M9 8V6a3 3 0 0 1 6 0v2" />
         </svg>
       );
     case "grid":
@@ -93,7 +101,7 @@ const TABS: Array<{
   icon: IconKind;
   hero?: boolean;
 }> = [
-  { href: "/", label: "Accueil", icon: "home" },
+  { href: "/boutique", label: "Boutique", icon: "bag" },
   { href: "/palettes", label: "Palettes", icon: "grid" },
   /* User feedback 2026-05-31 « mets en première option vêtement et pas
      couleur » : le bouton central « Scanner » de la tabbar route maintenant
