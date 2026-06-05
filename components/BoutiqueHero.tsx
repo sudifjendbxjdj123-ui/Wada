@@ -169,7 +169,7 @@ export function BoutiqueHero() {
         /* ── Contenu ── */
         .wada-bh-content {
           position: absolute; left: 0; right: 0;
-          bottom: calc(40px + env(safe-area-inset-bottom, 0px));
+          bottom: calc(92px + env(safe-area-inset-bottom, 0px));
           padding: 0 22px;
           display: flex; flex-direction: column; align-items: center; text-align: center;
         }
