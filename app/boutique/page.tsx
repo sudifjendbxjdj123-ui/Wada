@@ -15,11 +15,16 @@ export default function BoutiquePage() {
     <main
       style={{
         background: "#FAF8F4",
-        minHeight: "100vh",
-        paddingBottom: 80,
+        minHeight: "100svh",
+        display: "flex",
+        flexDirection: "column",
+        position: "relative",
       }}
     >
-      <BackButton fallback="/" />
+      {/* Bouton Retour superposé sur l'image (pas de bande crème au-dessus) */}
+      <div style={{ position: "absolute", top: 0, left: 0, right: 0, zIndex: 10 }}>
+        <BackButton fallback="/" />
+      </div>
       <BoutiqueHero />
     </main>
   );

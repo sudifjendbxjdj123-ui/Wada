@@ -54,7 +54,8 @@ export function BoutiqueHero() {
       <style>{`
         /* Double-classe : bat les paddings globaux !important → full-bleed. */
         .wada-bh-section.wada-bh-section {
-          display: block;
+          display: flex;
+          flex: 1 1 auto;
           width: 100%;
           padding: 0 !important;
           margin: 0 !important;
@@ -63,9 +64,8 @@ export function BoutiqueHero() {
         .wada-bh-hero {
           position: relative;
           width: 100%;
-          height: 82vh;
-          max-height: 760px;
-          min-height: 440px;
+          flex: 1 1 auto;
+          min-height: 460px;
           overflow: hidden;
         }
         .wada-bh-img {
@@ -134,10 +134,6 @@ export function BoutiqueHero() {
             background: ${BORDEAUX_DARK};
             box-shadow: 0 12px 28px rgba(0,0,0,0.42);
           }
-        }
-        /* Desktop : un peu moins haut, photo bien cadrée */
-        @media (min-width: 760px) {
-          .wada-bh-hero { height: 78vh; }
         }
       `}</style>
     </section>
