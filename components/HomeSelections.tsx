@@ -7,7 +7,7 @@ import Link from "next/link";
 
 const SELECTIONS = [
   { label: "Nouveautés", href: "/vetements", color: "#d4c9b8", emoji: "✨" },
-  { label: "Vêtements", href: "/vetements", color: "#c8d4c0", emoji: "👔" },
+  { label: "Boutique", href: "/boutique", color: "#c8d4c0", emoji: "👔" },
   { label: "Chaussures", href: "/chaussures", color: "#c8c0d4", emoji: "👟" },
   { label: "Sacs", href: "/sacs", color: "#d4c0c0", emoji: "👜" },
   { label: "Accessoires", href: "/accessoires", color: "#c0d4d4", emoji: "🕶" },

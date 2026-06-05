@@ -7,9 +7,7 @@
  * La home (/) garde sa vidéo hero éditoriale Sanzō Wada.
  */
 import type { Metadata } from "next";
-import { HomeHero } from "@/components/HomeHero";
-import { HomeSelections } from "@/components/HomeSelections";
-import { HomeNouveautes } from "@/components/HomeNouveautes";
+import { BoutiqueHero } from "@/components/BoutiqueHero";
 import { HomeFeatures } from "@/components/HomeFeatures";
 
 export default function BoutiquePage() {
@@ -21,9 +19,7 @@ export default function BoutiquePage() {
         paddingBottom: 80,
       }}
     >
-      <HomeHero />
-      <HomeSelections />
-      <HomeNouveautes />
+      <BoutiqueHero />
       <HomeFeatures />
     </main>
   );

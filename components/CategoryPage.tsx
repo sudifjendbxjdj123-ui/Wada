@@ -24,6 +24,19 @@ const SOURCE_LABEL: Record<string, string> = {
   "suitable-fr": "Suitable FR",
 };
 
+/* Cœur favoris — SVG (contour fin → rempli brun de marque) */
+function HeartIcon({ filled }: { filled: boolean }) {
+  return (
+    <svg width="17" height="17" viewBox="0 0 24 24" aria-hidden
+      fill={filled ? "#6e3b32" : "none"}
+      stroke={filled ? "#6e3b32" : "#5a5a5a"} strokeWidth={1.8}
+      strokeLinecap="round" strokeLinejoin="round"
+      style={{ transition: "transform 0.2s cubic-bezier(.22,1.4,.36,1), fill 0.2s, stroke 0.2s", transform: filled ? "scale(1.12)" : "scale(1)" }}>
+      <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z" />
+    </svg>
+  );
+}
+
 /* ── Quick View Modal ── */
 function ProductModal({ product: p, onClose }: { product: ProduitAwin; onClose: () => void }) {
   const source = SOURCE_LABEL[p.marchandSlug || ""] || p.marchand;
@@ -212,10 +225,10 @@ function ProductCard({ p, onClick }: { p: ProduitAwin; onClick: () => void }) {
         <div style={{
           background: "#f5f1eb", borderRadius: 12, overflow: "hidden",
           aspectRatio: "3/4", position: "relative", marginBottom: 10,
-          transition: "box-shadow 0.2s",
+          transition: "box-shadow 0.2s, transform 0.2s",
         }}
-          onMouseOver={(e) => (e.currentTarget.style.boxShadow = "0 4px 16px rgba(0,0,0,0.12)")}
-          onMouseOut={(e) => (e.currentTarget.style.boxShadow = "none")}
+          onMouseOver={(e) => { e.currentTarget.style.boxShadow = "0 6px 18px rgba(0,0,0,0.12)"; e.currentTarget.style.transform = "translateY(-2px)"; }}
+          onMouseOut={(e) => { e.currentTarget.style.boxShadow = "none"; e.currentTarget.style.transform = "translateY(0)"; }}
         >
           {(p.image || p.largeImage) ? (
             <img src={p.image || p.largeImage} alt={p.nom} loading="lazy"
@@ -245,15 +258,17 @@ function ProductCard({ p, onClick }: { p: ProduitAwin; onClick: () => void }) {
       </div>
 
       <button onClick={(e) => { e.stopPropagation(); setLiked(!liked); }}
-        aria-label="Favoris"
+        aria-label={liked ? "Retirer des favoris" : "Ajouter aux favoris"}
+        aria-pressed={liked}
         style={{
           position: "absolute", top: 10, right: 10,
-          width: 32, height: 32, background: "rgba(255,255,255,0.9)",
+          width: 34, height: 34, background: "rgba(255,255,255,0.92)",
+          backdropFilter: "blur(4px)",
           border: "none", borderRadius: "50%", cursor: "pointer",
-          fontSize: 15, display: "flex", alignItems: "center", justifyContent: "center",
-          boxShadow: "0 1px 4px rgba(0,0,0,0.1)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          boxShadow: "0 1px 5px rgba(0,0,0,0.12)",
         }}>
-        {liked ? "❤️" : "🤍"}
+        <HeartIcon filled={liked} />
       </button>
     </article>
   );
@@ -344,15 +359,27 @@ export default function CategoryPage({ title, breadcrumb, slot, q, genre: initGe
           </button>
         ))}
         <span style={{ width: 1, height: 20, background: "#e8dfd0", margin: "0 4px" }} />
-        <select value={style} onChange={(e) => setStyle(e.target.value)}
-          style={{
-            padding: "7px 12px", borderRadius: 999, fontSize: 13,
-            background: "transparent", color: "#1a1a1a",
-            border: "1px solid rgba(26,26,26,0.18)",
-            cursor: "pointer", fontFamily: "'Inter'", outline: "none",
-          }}>
-          {STYLES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
-        </select>
+        <div style={{ position: "relative", display: "inline-flex" }}>
+          <select value={style} onChange={(e) => setStyle(e.target.value)}
+            style={{
+              padding: "7px 34px 7px 16px", borderRadius: 999, fontSize: 13,
+              fontWeight: 500, lineHeight: "18px",
+              background: style ? "#1a1a1a" : "transparent",
+              color: style ? "#fff" : "#1a1a1a",
+              border: `1px solid ${style ? "#1a1a1a" : "rgba(26,26,26,0.18)"}`,
+              cursor: "pointer", fontFamily: "'Inter'", outline: "none",
+              WebkitAppearance: "none", MozAppearance: "none", appearance: "none",
+              transition: "all 0.15s",
+            }}>
+            {STYLES.map((s) => <option key={s.value} value={s.value} style={{ color: "#1a1a1a", background: "#fff" }}>{s.label}</option>)}
+          </select>
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none"
+            stroke={style ? "#fff" : "#1a1a1a"} strokeWidth={2.4}
+            strokeLinecap="round" strokeLinejoin="round" aria-hidden
+            style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }}>
+            <path d="M6 9l6 6 6-6" />
+          </svg>
+        </div>
       </div>
 
       {/* Grille */}
