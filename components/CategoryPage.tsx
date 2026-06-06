@@ -258,16 +258,21 @@ export default function CategoryPage({ title, breadcrumb, slot, q, genre: initGe
 
   useEffect(() => { fetchProducts(page); }, [fetchProducts, page]);
 
-  /* ── Couleurs disponibles dans les produits chargés ── */
-  const availableColors = useMemo(() => {
-    const map = new Map<string, string>(); // couleurNom → hex
-    for (const p of products) {
-      if (p.couleurNom && !map.has(p.couleurNom)) map.set(p.couleurNom, p.hex || "#9B9B96");
-    }
-    return Array.from(map.entries())
-      .map(([label, hex]) => ({ value: label, label, extra: hex }))
-      .slice(0, 16);
-  }, [products]);
+  /* ── Familles de couleurs fixes (comme Zalando) ── */
+  const COLOR_FAMILIES: Array<{ value: string; label: string; hex: string; keywords: string[] }> = [
+    { value: "noir",    label: "Noir",          hex: "#1c1c1c", keywords: ["noir","black","anthracite","charbon","ébène","onyx","graphite"] },
+    { value: "blanc",   label: "Blanc / Crème", hex: "#f0ebe0", keywords: ["blanc","white","crème","cream","ivoire","ivory","écru","ecru","off-white","nacre","lait","cassé"] },
+    { value: "gris",    label: "Gris",          hex: "#8e8e8e", keywords: ["gris","grey","gray","argent","silver","acier","perle","ciment","ardoise","souris"] },
+    { value: "beige",   label: "Beige / Camel", hex: "#c4a882", keywords: ["beige","camel","sable","nude","grège","taupe","nougat","naturel","lin","chanvre","paille","blé","champagne","dune"] },
+    { value: "marron",  label: "Marron",        hex: "#7d4f35", keywords: ["marron","brun","brown","tabac","cognac","noisette","chocolat","caramel","tan","havane","moka","café","châtaigne","ocre"] },
+    { value: "bleu",    label: "Bleu",          hex: "#2c5282", keywords: ["bleu","blue","marine","navy","indigo","cobalt","saphir","cyan","ciel","azur","denim","électrique","nuit"] },
+    { value: "vert",    label: "Vert / Kaki",   hex: "#4a6741", keywords: ["vert","green","kaki","khaki","olive","sauge","sage","forêt","forest","émeraude","menthe","militaire","bouteille","chasseur","pistache","mousse"] },
+    { value: "rouge",   label: "Rouge",         hex: "#8b1a1a", keywords: ["rouge","red","bordeaux","burgundy","carmin","cramoisi","vermeil","grenat","cerise","fraise","rubis","brique"] },
+    { value: "rose",    label: "Rose",          hex: "#e8a4a4", keywords: ["rose","pink","blush","poudré","framboise","corail","coral","saumon","salmon","pêche","layette","nude rose","fushia","fuchsia","lilas rose"] },
+    { value: "jaune",   label: "Jaune / Moutarde", hex: "#c8951a", keywords: ["jaune","yellow","moutarde","mustard","doré","or","gold","citron","curry","safran","ambre","miel","sable doré"] },
+    { value: "orange",  label: "Orange",        hex: "#d4642a", keywords: ["orange","rouille","rust","terre cuite","brique","cannelle","roux","cuivre","paprika","brûlé"] },
+    { value: "violet",  label: "Violet",        hex: "#6b3a8b", keywords: ["violet","purple","mauve","lilas","aubergine","lavande","prune","parme","améthyste","myrtille"] },
+  ];
 
   /* ── Filtrage + tri client-side ── */
   const filtered = useMemo(() => {
@@ -278,13 +283,23 @@ export default function CategoryPage({ title, breadcrumb, slot, q, genre: initGe
         if (priceRange === "0-50")    return px < 50;
         if (priceRange === "50-100")  return px >= 50 && px < 100;
         if (priceRange === "100-200") return px >= 100 && px < 200;
-        if (priceRange === "200+")    return px >= 200;
+        if (priceRange === "200-500") return px >= 200 && px < 500;
+        if (priceRange === "500+")    return px >= 500;
         return true;
       });
     }
-    if (couleur) list = list.filter(p => p.couleurNom === couleur);
+    if (couleur) {
+      const family = COLOR_FAMILIES.find(f => f.value === couleur);
+      if (family) {
+        list = list.filter(p => {
+          const cn = (p.couleurNom || "").toLowerCase();
+          return family.keywords.some(k => cn.includes(k));
+        });
+      }
+    }
     if (sortBy === "price-asc")  list.sort((a, b) => (a.prix ?? 0) - (b.prix ?? 0));
     if (sortBy === "price-desc") list.sort((a, b) => (b.prix ?? 0) - (a.prix ?? 0));
+    if (sortBy === "az")         list.sort((a, b) => (a.marque || "").localeCompare(b.marque || "", "fr"));
     return list;
   }, [products, priceRange, couleur, sortBy]);
 
@@ -294,24 +309,30 @@ export default function CategoryPage({ title, breadcrumb, slot, q, genre: initGe
 
   /* ── Options des dropdowns ── */
   const PRICE_OPTIONS = [
-    { value: "", label: "Tous les prix" },
-    { value: "0-50",    label: "Moins de 50 €" },
-    { value: "50-100",  label: "50 € – 100 €" },
-    { value: "100-200", label: "100 € – 200 €" },
-    { value: "200+",    label: "Plus de 200 €" },
+    { value: "",        label: "Tous les prix",    extra: "" },
+    { value: "0-50",    label: "Moins de 50 €",    extra: "" },
+    { value: "50-100",  label: "50 € – 100 €",     extra: "" },
+    { value: "100-200", label: "100 € – 200 €",    extra: "" },
+    { value: "200-500", label: "200 € – 500 €",    extra: "" },
+    { value: "500+",    label: "Plus de 500 €",    extra: "" },
+  ];
+  const COLOR_OPTIONS = [
+    { value: "", label: "Toutes couleurs", extra: "" },
+    ...COLOR_FAMILIES.map(f => ({ value: f.value, label: f.label, extra: f.hex })),
   ];
   const STYLE_OPTIONS = [
-    { value: "", label: "Tous les styles" },
-    { value: "Classique",    label: "Classique" },
-    { value: "Minimaliste",  label: "Minimaliste" },
-    { value: "Décontracté",  label: "Décontracté" },
-    { value: "Streetwear",   label: "Streetwear" },
-    { value: "Premium",      label: "Premium" },
+    { value: "",              label: "Tous les styles",  extra: "" },
+    { value: "Classique",     label: "Classique",        extra: "Chemises, costumes, tenues soignées" },
+    { value: "Minimaliste",   label: "Minimaliste",      extra: "Coupes épurées, matières nobles" },
+    { value: "Décontracté",   label: "Décontracté",      extra: "Casual, confortable, quotidien" },
+    { value: "Streetwear",    label: "Streetwear",       extra: "Sneakers, hoodies, looks urbains" },
+    { value: "Premium",       label: "Premium / Luxe",   extra: "Maisons haut de gamme" },
   ];
   const SORT_OPTIONS = [
-    { value: "", label: "Pertinence" },
-    { value: "price-asc",  label: "Prix croissant" },
-    { value: "price-desc", label: "Prix décroissant" },
+    { value: "",            label: "Pertinence",        extra: "" },
+    { value: "price-asc",   label: "Prix croissant ↑",  extra: "" },
+    { value: "price-desc",  label: "Prix décroissant ↓", extra: "" },
+    { value: "az",          label: "Marque A → Z",      extra: "" },
   ];
   const GENRES = [
     { value: "", label: "Tous" },
@@ -413,15 +434,17 @@ export default function CategoryPage({ title, breadcrumb, slot, q, genre: initGe
 
           {/* Couleur */}
           <FilterDropdown
-            label={couleur || "Couleur"}
+            label={couleur ? COLOR_OPTIONS.find(o => o.value === couleur)?.label ?? "Couleur" : "Couleur"}
             active={!!couleur}
-            options={[{ value: "", label: "Toutes les couleurs" }, ...availableColors]}
+            options={COLOR_OPTIONS}
             value={couleur}
             onChange={setCouleur}
             renderOption={(opt) => (
-              <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                {opt.extra && (
-                  <span style={{ width: 14, height: 14, borderRadius: "50%", background: opt.extra, border: "1px solid rgba(0,0,0,0.12)", flexShrink: 0 }} />
+              <span style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                {opt.extra ? (
+                  <span style={{ width: 16, height: 16, borderRadius: "50%", background: opt.extra, border: "1px solid rgba(0,0,0,0.15)", flexShrink: 0, boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.3)" }} />
+                ) : (
+                  <span style={{ width: 16, height: 16, borderRadius: "50%", background: "conic-gradient(red,yellow,green,blue,violet,red)", flexShrink: 0, border: "1px solid rgba(0,0,0,0.1)" }} />
                 )}
                 {opt.label}
               </span>
@@ -435,6 +458,12 @@ export default function CategoryPage({ title, breadcrumb, slot, q, genre: initGe
             options={STYLE_OPTIONS}
             value={style}
             onChange={changeStyle}
+            renderOption={(opt) => (
+              <span style={{ display: "flex", flexDirection: "column", gap: 1 }}>
+                <span>{opt.label}</span>
+                {opt.extra && <span style={{ fontSize: 11, color: "#8a7a68", fontWeight: 400 }}>{opt.extra}</span>}
+              </span>
+            )}
           />
 
           <span style={{ width: 1, height: 20, background: "#e8dfd0", flexShrink: 0 }} />
@@ -446,6 +475,7 @@ export default function CategoryPage({ title, breadcrumb, slot, q, genre: initGe
             options={SORT_OPTIONS}
             value={sortBy}
             onChange={setSortBy}
+            renderOption={(opt) => <span>{opt.label}</span>}
           />
 
           {/* Reset si filtres actifs */}
