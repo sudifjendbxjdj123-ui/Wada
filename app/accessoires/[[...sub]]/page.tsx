@@ -1,19 +1,19 @@
 import CategoryPage from "@/components/CategoryPage";
 
 const SUB_MAP: Record<string, { q?: string }> = {
-  foulards:    { q: "foulard écharpe scarf" },
-  chapeaux:    { q: "chapeau bonnet hat" },
-  lunettes:    { q: "lunettes soleil sunglasses" },
-  gants:       { q: "gants gloves" },
-  ceintures:   { q: "ceinture belt" },
-  montres:     { q: "montre watch" },
+  foulards:      { q: "foulard écharpe scarf" },
+  chapeaux:      { q: "chapeau bonnet hat" },
+  lunettes:      { q: "lunettes soleil sunglasses" },
+  gants:         { q: "gants gloves" },
+  ceintures:     { q: "ceinture belt" },
+  montres:       { q: "montre watch" },
   portefeuilles: { q: "portefeuille wallet" },
-  "porte-cartes": { q: "porte-cartes cardholder" },
+  "porte-cartes":{ q: "porte-cartes cardholder" },
 };
 
 interface Props {
   params: Promise<{ sub?: string[] }>;
-  searchParams: Promise<{ genre?: string }>;
+  searchParams: Promise<{ genre?: string; style?: string; page?: string }>;
 }
 
 export default async function AccessoiresPage({ params, searchParams }: Props) {
@@ -33,6 +33,8 @@ export default async function AccessoiresPage({ params, searchParams }: Props) {
       slot="accent"
       q={mapping?.q}
       genre={sp.genre}
+      style={sp.style}
+      page={parseInt(sp.page ?? "1")}
     />
   );
 }

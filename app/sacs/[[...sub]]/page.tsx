@@ -13,7 +13,7 @@ const SUB_MAP: Record<string, { q?: string }> = {
 
 interface Props {
   params: Promise<{ sub?: string[] }>;
-  searchParams: Promise<{ genre?: string }>;
+  searchParams: Promise<{ genre?: string; style?: string; page?: string }>;
 }
 
 export default async function SacsPage({ params, searchParams }: Props) {
@@ -33,6 +33,8 @@ export default async function SacsPage({ params, searchParams }: Props) {
       slot="accent"
       q={mapping?.q ?? "sac bag"}
       genre={sp.genre}
+      style={sp.style}
+      page={parseInt(sp.page ?? "1")}
     />
   );
 }
