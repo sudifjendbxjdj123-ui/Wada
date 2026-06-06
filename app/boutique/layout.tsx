@@ -7,7 +7,13 @@ import { pageMetadata } from "@/lib/pageMetadata";
  * Sans cette layout, /boutique/page.tsx (use client) ne pouvait pas
  * exporter metadata directement → Google voyait juste la metadata root
  * générique, pas le titre/description spécifique à la boutique.
+ *
+ * ISR — revalidate every 6 hours.
+ * Boutique index page: shorter TTL than static pages since products
+ * (inventory, pricing) can change throughout the day.
  */
+export const revalidate = 21600; // 6 hours in seconds
+
 export const metadata = pageMetadata({
   path: "/boutique",
   title: "La boutique WADA — Découvrez 64 marques partenaires",

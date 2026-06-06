@@ -3,6 +3,13 @@ import { dictionary } from "@/lib/data";
 import { pageMetadata } from "@/lib/pageMetadata";
 
 /**
+ * ISR — revalidate every 24 hours (1 day).
+ * Individual palette pages are perfect for ISR since they're based on static dictionary data.
+ * Each of 348 pages is pre-rendered at build time and cached for 1 day.
+ */
+export const revalidate = 86400; // 24 hours in seconds
+
+/**
  * generateMetadata dynamique pour /palette/[number] — utilise le nom de la
  * palette et ses couleurs pour produire un title + description uniques par
  * page, ce qui est critique pour le SEO (348 pages = 348 fiches indexables).
