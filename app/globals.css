@@ -200,6 +200,33 @@
   --shadow-lift:   0 12px 48px rgba(30, 30, 30, 0.08);  /* shadow hover */
 }
 
+/* ═════════════════════════════════════════════════════════════════
+   SCROLL PERFORMANCE OPTIMIZATION (2026-06-06)
+   ═════════════════════════════════════════════════════════════════
+   Improve scrolling UX and reduce jank on all devices. */
+
+html {
+  /* Account for fixed navbar height when anchor scrolling */
+  scroll-padding-top: 72px;
+  /* Enable scroll anchoring to reduce layout shift during load */
+  overflow-anchor: auto;
+}
+
+/* Optimize scrollable containers for better paint performance */
+main,
+[role="main"],
+.wada-scroll-container {
+  /* Prevent paint thrashing during scroll */
+  contain: layout style paint;
+}
+
+/* Mobile momentum scrolling (iOS Safari optimization) */
+@supports (padding: max(0px)) {
+  body {
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
 /* Override des tokens officiels en dark theme — garde le sentiment chaud
    éditorial mais inversé. */
 [data-theme="dark"] {
