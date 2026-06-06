@@ -7,7 +7,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef, useTransition } from "react";
 import Link from "next/link";
 import type { ProduitAwin } from "@/lib/schema";
-import { dictionary } from "@/lib/data";
+import { dictionaryMinimal } from "@/lib/data-client";
 import { deltaEHex, DELTA_E_LOOSE } from "@/lib/colorDistance";
 
 /* ── Palettes WADA correspondant à un produit (marqueur unique WADA) ──
@@ -23,7 +23,7 @@ function getMatchingPalettes(hex?: string): MatchPalette[] {
   const cached = _paletteMatchCache.get(hex);
   if (cached) return cached;
   const matches: Array<MatchPalette & { dE: number }> = [];
-  for (const pal of dictionary) {
+  for (const pal of dictionaryMinimal) {
     let best = Infinity;
     let bestHex = pal.colors[0]?.hex || "#999";
     for (const c of pal.colors) {

@@ -588,3 +588,4 @@ https://react.dev/link/hydration-mismatch
  GET /boutique 200 in 713ms (next.js: 412ms, application-code: 301ms)
  GET /chaussures?genre=homme 200 in 527ms (next.js: 354ms, application-code: 173ms)
 ✓ Compiled in 23ms
+✓ Compiled in 868ms
