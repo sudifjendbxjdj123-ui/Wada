@@ -631,17 +631,9 @@ function MaTenueContent() {
                 }}>
                   {registreOutfit?.description || fashionOutput.description}
                 </p>
-                {registreOutfit && (
-                  <div style={{
-                    display: "flex", justifyContent: "center", gap: 8, flexWrap: "wrap",
-                    marginTop: 22,
-                  }}>
-                    <span style={dnaChipStyle}>Registre : {registreOutfit.registre}</span>
-                    <span style={dnaChipStyle}>Coupe : {registreOutfit.fit}</span>
-                    <span style={dnaChipStyle}>Matières : {registreOutfit.slots[0].materials.join(" + ")}</span>
-                    <span style={dnaChipStyle}>Réf : {registreOutfit.reference}</span>
-                  </div>
-                )}
+                {/* Tags techniques (Registre · Coupe · Matières · Réf)
+                    retirés — brief « Page tenue V2 » : on supprime le jargon
+                    technique au profit d'une lecture éditoriale épurée. */}
               </div>
             </Reveal>
           </div>
@@ -708,38 +700,10 @@ function MaTenueContent() {
               Mini résumé : nom de la tenue + nombre de pièces + score
               cohérence du LLM validateur (si dispo). Total prix rendu
               séparément plus bas (somme realPrices). */}
-          {validation.state === "coherent" && composition.length > 0 && (
-            <div style={{
-              background: "#fbf7f0",
-              border: "1px solid #e5dccc",
-              borderRadius: 18,
-              padding: "16px 22px",
-              marginBottom: 22,
-              display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14,
-              flexWrap: "wrap",
-            }}>
-              <div style={{ flex: 1, minWidth: 200 }}>
-                <p style={{
-                  fontFamily: "'Fredoka', sans-serif",
-                  fontSize: 16, fontWeight: 500,
-                  margin: 0, color: "#1E1E1E",
-                  lineHeight: 1.25,
-                }}>
-                  Tenue {anchor ? "autour de ta pièce" : "Safe"} — la composition centrée
-                </p>
-                <p style={{
-                  fontSize: 11.5, color: "#8c8377",
-                  margin: "3px 0 0",
-                }}>
-                  {composition.length} pièce{composition.length > 1 ? "s" : ""}
-                  {" "}· cohérence{" "}
-                  <span style={{ fontFamily: "'Fredoka', sans-serif", fontWeight: 600, color: "#6f7a3f" }}>
-                    validée par le styliste
-                  </span>
-                </p>
-              </div>
-            </div>
-          )}
+          {/* Carte d'en-tête « Tenue Safe — la composition centrée » retirée
+              (brief Page tenue V2 : doublon avec le titre éditorial et les
+              tabs ci-dessus). Le statut « validée par le styliste » reste
+              porté par le badge plus bas. */}
 
           {/* En-tête éditorial discret au-dessus de la grille */}
           <p style={{
@@ -749,33 +713,10 @@ function MaTenueContent() {
             La tenue complète en détail
           </p>
 
-          {/* FLAT LAY COLLAGE CSS — brief 2026-06-02 (user option A).
-              Montre les 5 photos produit arrangées en composition éditoriale
-              AVANT les cartes individuelles. S'affiche quand au moins 3 images
-              sont résolues. Layout :
-                ┌──────────┬───────────┐
-                │  HAUT    │  VESTE    │ ← pièces hautes
-                ├────┬─────┴─┬─────────┤
-                │BAS │ CHSS  │ ACCENT  │ ← pièces basses
-                └────┴───────┴─────────┘ */}
-          {Object.keys(collageImages).length >= 3 && (
-            <FlatLayCollage
-              images={collageImages}
-              pieces={composition.map((c) => {
-                const rp = resolvedPieces[c.piece];
-                const slot = pieceToSlot(c.piece) || c.piece;
-                return {
-                  slot,
-                  id: `${slot}-${c.piece}`,
-                  nom: rp?.type || c.item,
-                  marque: rp?.marque || "",
-                  prix: rp?.prix_eur || realPrices[c.piece] || 0,
-                  url: "",  // lien acheter non disponible ici sans refetch
-                  name: rp?.type || c.item,
-                };
-              })}
-            />
-          )}
+          {/* Flat lay collage RETIRÉ (brief Page tenue V2) : le collage CSS
+              rendait mal (cases blanches, images mal cadrées). Les vraies
+              cartes pièces ci-dessous portent désormais toute la composition,
+              avec fond dégradé par couleur dominante. */}
 
           {/* Brief 2026-06-01 v3 (user) : la dégradation gracieuse
               « Pour cette palette précise et votre profil, je n'ai pas
@@ -2439,6 +2380,7 @@ function PieceCard({
     <article
       className="wada-piece-card"
       style={{
+        position: "relative",
         background: "#FBF9F5",
         border: `1px solid ${border}`,
         borderRadius: 16,
@@ -2449,6 +2391,19 @@ function PieceCard({
         transition: "transform 0.3s cubic-bezier(.22,1,.36,1), box-shadow 0.3s ease",
       }}
     >
+      {/* Tag « Pièce centrale » sur la vedette (brief Page tenue V2 §7). */}
+      {featured && (
+        <span style={{
+          position: "absolute", top: 14, left: 14, zIndex: 6,
+          background: "#6B3A32", color: "#fff",
+          fontFamily: "'Inter', sans-serif", fontSize: 10, fontWeight: 700,
+          letterSpacing: "0.1em", textTransform: "uppercase",
+          padding: "5px 11px", borderRadius: 999,
+          boxShadow: "0 2px 8px -2px rgba(30,30,30,0.3)",
+        }}>
+          Pièce centrale
+        </span>
+      )}
       {/* JSON-LD Product schema — brief maître 2026-05-28 P4.19 :
           Google Shopping enriche les résultats avec image + prix + dispo.
           On émet un Product par card quand un vrai produit MUJI est posé. */}
@@ -2491,7 +2446,9 @@ function PieceCard({
             // Vedette : 16/10 paysage (large bande au-dessus du contenu).
             // Card normale : 4/5 portrait (mannequin/produit en pied).
             aspectRatio: featured ? "16 / 10" : "4 / 5",
-            background: "#FBF9F5",
+            // Fond dégradé blanc → couleur dominante de la pièce
+            // (brief Page tenue V2 §7) : le fond « raconte » le produit.
+            background: `linear-gradient(180deg, #fff 0%, ${(mujiProduct?.couleurHex || color.hex)}26 100%)`,
             overflow: "hidden",
             borderRadius: "16px 16px 0 0",
           }}
