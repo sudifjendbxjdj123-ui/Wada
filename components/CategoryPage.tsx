@@ -467,7 +467,25 @@ export default function CategoryPage({ title, breadcrumb, slot, q, genre: initGe
     setProducts(all);
     setTotal(results.reduce((s, r) => s + (r.total ?? 0), 0));
     setLoading(false);
-  }, [slot, q, genre, style, couleur, priceParams, PER_PAGE]);
+  }, [slot, PER_PAGE]);
+
+  /* ── Debounce filter changes (300ms) — batch rapid filter updates into single fetch ── */
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    /* Clear previous timer on every filter change */
+    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+
+    /* Set new timer: fetch after 300ms of inactivity */
+    debounceTimerRef.current = setTimeout(() => {
+      setPage(1); /* Reset to page 1 when filters change */
+      fetchProducts(1);
+    }, 300);
+
+    return () => {
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    };
+  }, [q, genre, style, couleur, priceParams, fetchProducts]);
 
   useEffect(() => { fetchProducts(page); }, [fetchProducts, page]);
 
@@ -547,6 +565,14 @@ export default function CategoryPage({ title, breadcrumb, slot, q, genre: initGe
 
   /* Nombre total de pages */
   const totalPages = Math.max(1, Math.ceil(total / PER_PAGE));
+
+  /* ── Pré-calculation des matchs de palettes pour optimiser le rendu grille ──
+     Batch-populate cache pour tous les produits (évite recalcul pendant render) */
+  useMemo(() => {
+    filtered.forEach((p) => {
+      if (p.hex) getMatchingPalettes(p.hex);
+    });
+  }, [filtered]);
 
   /* Pages à afficher dans le paginator */
   const pageNumbers = useMemo(() => {
