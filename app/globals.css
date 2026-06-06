@@ -1301,6 +1301,25 @@ input[type="range"]:hover::-moz-range-thumb { background: #1B4A6B; box-shadow: 0
     grid-template-columns: repeat(3, 1fr) !important;
   }
 }
+/* Pages catégorie V2 « premium » : densité réduite (Net-a-Porter).
+   3 colonnes sur desktop pour donner de la présence à chaque produit,
+   2 colonnes sur mobile. Le titre éditorial rétrécit sur petit écran. */
+@media (min-width: 1025px) {
+  .wada-shop-grid {
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 28px !important;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+}
+@media (max-width: 768px) {
+  .wada-cat-title {
+    font-size: 36px !important;
+  }
+  .wada-cat-hero {
+    padding: 24px 18px 18px !important;
+  }
+}
 @media (max-width: 480px) {
   .wada-piece-header h3 {
     font-size: 18px !important;

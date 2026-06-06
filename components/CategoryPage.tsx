@@ -7,6 +7,38 @@
 import { useState, useEffect, useCallback, useMemo, useRef, useTransition } from "react";
 import Link from "next/link";
 import type { ProduitAwin } from "@/lib/schema";
+import { dictionary } from "@/lib/data";
+import { deltaEHex, DELTA_E_LOOSE } from "@/lib/colorDistance";
+
+/* ── Palettes WADA correspondant à un produit (marqueur unique WADA) ──
+   Brief « Pages catégorie V2 premium » §3-5 : sous chaque produit, des
+   pastilles indiquent dans quelles palettes Sanzō Wada la pièce s'intègre.
+   Calculé CÔTÉ CLIENT depuis le hex dominant du produit vs les couleurs
+   du dictionnaire (deltaE2000) — pas de champ backend ni de ré-ingestion.
+   Résultat mémoïsé par hex (un produit = un hex → calcul une seule fois). */
+interface MatchPalette { number: string; name: string; swatch: string }
+const _paletteMatchCache = new Map<string, MatchPalette[]>();
+function getMatchingPalettes(hex?: string): MatchPalette[] {
+  if (!hex || !/^#[0-9a-f]{6}$/i.test(hex)) return [];
+  const cached = _paletteMatchCache.get(hex);
+  if (cached) return cached;
+  const matches: Array<MatchPalette & { dE: number }> = [];
+  for (const pal of dictionary) {
+    let best = Infinity;
+    let bestHex = pal.colors[0]?.hex || "#999";
+    for (const c of pal.colors) {
+      const dE = deltaEHex(hex, c.hex);
+      if (dE < best) { best = dE; bestHex = c.hex; }
+    }
+    if (best < DELTA_E_LOOSE) {
+      matches.push({ number: pal.number, name: pal.name, swatch: bestHex, dE: best });
+    }
+  }
+  matches.sort((a, b) => a.dE - b.dE);
+  const result = matches.map(({ number, name, swatch }) => ({ number, name, swatch }));
+  _paletteMatchCache.set(hex, result);
+  return result;
+}
 
 interface BreadcrumbItem { label: string; href: string; }
 interface Props {
@@ -202,26 +234,49 @@ function ProductModal({ product: p, onClose }: { product: ProduitAwin; onClose: 
   );
 }
 
-/* ── Carte produit ── */
+/* ── Carte produit PREMIUM (brief Pages catégorie V2) ──
+   - Fond dégradé subtil tiré de la couleur dominante du produit
+   - Pastilles des palettes WADA correspondantes (haut gauche)
+   - Compteur « X palettes » en bordeaux (polyvalence)
+   - Hover : soulèvement + léger zoom image */
 function ProductCard({ p, onClick }: { p: ProduitAwin; onClick: () => void }) {
   const [liked, setLiked] = useState(false);
   const source = SOURCE_LABEL[p.marchandSlug || ""] || p.marchand;
+  const matches = useMemo(() => getMatchingPalettes(p.hex), [p.hex]);
+  const dom = /^#[0-9a-f]{6}$/i.test(p.hex || "") ? p.hex : "#ede4d4";
+  // Dégradé blanc → teinte dominante à ~19% (hex + "30").
+  const bgGradient = `linear-gradient(180deg, #fff 0%, ${dom}30 100%)`;
   return (
     <article style={{ position: "relative", cursor: "pointer" }}>
       <div onClick={onClick}>
-        <div style={{ background: "#fff", borderRadius: 14, overflow: "hidden", aspectRatio: "3/4", position: "relative", marginBottom: 10, boxShadow: "0 2px 10px rgba(0,0,0,0.05)", transition: "box-shadow 0.2s, transform 0.2s" }}
-          onMouseOver={(e) => { e.currentTarget.style.boxShadow = "0 8px 22px rgba(0,0,0,0.13)"; e.currentTarget.style.transform = "translateY(-2px)"; }}
-          onMouseOut={(e) => { e.currentTarget.style.boxShadow = "0 2px 10px rgba(0,0,0,0.05)"; e.currentTarget.style.transform = "translateY(0)"; }}>
+        <div style={{ background: bgGradient, borderRadius: 14, overflow: "hidden", aspectRatio: "3/4", position: "relative", marginBottom: 10, boxShadow: "0 2px 10px rgba(0,0,0,0.05)", transition: "box-shadow 0.25s, transform 0.25s" }}
+          onMouseOver={(e) => { e.currentTarget.style.boxShadow = "0 10px 26px rgba(0,0,0,0.14)"; e.currentTarget.style.transform = "translateY(-3px)"; const img = e.currentTarget.querySelector("img"); if (img) (img as HTMLImageElement).style.transform = "scale(1.05)"; }}
+          onMouseOut={(e) => { e.currentTarget.style.boxShadow = "0 2px 10px rgba(0,0,0,0.05)"; e.currentTarget.style.transform = "translateY(0)"; const img = e.currentTarget.querySelector("img"); if (img) (img as HTMLImageElement).style.transform = "scale(1)"; }}>
           {(p.image || p.largeImage) ? (
-            <img src={p.image || p.largeImage} alt={p.nom} loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center" }} />
+            <img src={p.image || p.largeImage} alt={p.nom || p.marque || "Produit"} loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center", transition: "transform 0.4s cubic-bezier(.22,1,.36,1)" }} />
           ) : (
             <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#c5b9a8", fontSize: 28 }}>◻</div>
           )}
-          <span style={{ position: "absolute", top: 10, left: 10, width: 8, height: 8, borderRadius: "50%", background: p.hex || "#9B9B96", border: "1px solid rgba(0,0,0,0.1)" }} />
+          {/* Pastilles palettes WADA — haut gauche */}
+          {matches.length > 0 && (
+            <div style={{ position: "absolute", top: 10, left: 10, display: "flex", gap: 4 }}>
+              {matches.slice(0, 3).map((m) => (
+                <span key={m.number} title={`Palette n°${m.number} · ${m.name}`}
+                  style={{ width: 9, height: 9, borderRadius: "50%", background: m.swatch, border: "1px solid rgba(0,0,0,0.18)", boxShadow: "0 0 0 1.5px rgba(255,255,255,0.7)" }} />
+              ))}
+            </div>
+          )}
         </div>
         <p style={{ margin: "0 0 1px", fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#8a7a68", fontFamily: "'Inter'" }}>{p.marque}</p>
         <p style={{ margin: "0 0 4px", fontSize: 13, lineHeight: 1.35, color: "#1a1a1a", fontFamily: "'Inter'", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{p.nom}</p>
-        <p style={{ margin: "0 0 2px", fontSize: 14, fontWeight: 600, color: "#1a1a1a", fontFamily: "'Inter'" }}>{p.prix?.toLocaleString("fr-FR")} €</p>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6 }}>
+          <p style={{ margin: "0 0 2px", fontSize: 14, fontWeight: 600, color: "#1a1a1a", fontFamily: "'Inter'" }}>{p.prix?.toLocaleString("fr-FR")} €</p>
+          {matches.length > 0 && (
+            <span style={{ fontSize: 10, color: BORDEAUX, fontFamily: "'Inter'", fontWeight: 500, whiteSpace: "nowrap" }}>
+              {matches.length} palette{matches.length > 1 ? "s" : ""}
+            </span>
+          )}
+        </div>
         <p style={{ margin: 0, fontSize: 11, color: "#a89880", fontFamily: "'Inter'", display: "flex", alignItems: "center", gap: 3 }}><span style={{ fontSize: 9 }}>↗</span> {source}</p>
       </div>
       <button onClick={(e) => { e.stopPropagation(); setLiked(!liked); }}
@@ -394,21 +449,24 @@ export default function CategoryPage({ title, breadcrumb, slot, q, genre: initGe
         ))}
       </div>
 
-      {/* Header titre + compteur */}
-      <div style={{ padding: "18px 20px 14px", borderBottom: "0.5px solid #e8dfd0" }}>
-        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between" }}>
-          <h1 style={{ fontFamily: "'Fredoka'", fontSize: 28, fontWeight: 500, margin: 0, color: "#1a1a1a", textTransform: "capitalize" }}>
-            {title}
-            {initGenre && (
-              <span style={{ fontSize: 14, fontFamily: "'Inter'", fontWeight: 500, color: "#8a7a68", marginLeft: 10, textTransform: "none" }}>
-                · {initGenre === "homme" ? "Hommes" : "Femmes"}
-              </span>
-            )}
-          </h1>
-          <span style={{ fontSize: 13, color: "#8a7a68", fontStyle: "italic" }}>
-            {loading ? "" : `${filtered.length.toLocaleString("fr-FR")} pièces`}
-          </span>
-        </div>
+      {/* Header éditorial (brief Pages catégorie V2 §2.1) */}
+      <div className="wada-cat-hero" style={{ padding: "34px 20px 24px", borderBottom: "0.5px solid #e8dfd0", maxWidth: 1200, margin: "0 auto", width: "100%", boxSizing: "border-box" }}>
+        <p style={{ fontSize: 9, letterSpacing: "0.3em", textTransform: "uppercase", color: "#8a7a68", margin: "0 0 8px", fontFamily: "'Inter'", fontWeight: 600 }}>
+          Catégorie
+        </p>
+        <h1 className="wada-cat-title" style={{ fontFamily: "'Fredoka'", fontSize: 48, fontWeight: 500, margin: "0 0 8px", color: "#1a1a1a", lineHeight: 1, textTransform: "capitalize" }}>
+          {title}
+          {initGenre && (
+            <span style={{ fontSize: 18, fontFamily: "'Inter'", fontWeight: 500, color: "#8a7a68", marginLeft: 12, textTransform: "none" }}>
+              · {initGenre === "homme" ? "Hommes" : "Femmes"}
+            </span>
+          )}
+        </h1>
+        <p style={{ fontSize: 14, color: "#5a5a5a", fontStyle: "italic", margin: 0, maxWidth: 480, lineHeight: 1.5 }}>
+          {loading
+            ? "Sélection WADA, filtrable par palette Sanzō Wada, marque et style."
+            : `${total.toLocaleString("fr-FR")} pièces sélectionnées par WADA, filtrables par palette Sanzō Wada, marque et style.`}
+        </p>
       </div>
 
       {/* ── Barre de filtres sticky ── */}
