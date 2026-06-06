@@ -47,7 +47,7 @@ import { getPaletteStyleProfile } from "@/lib/composer/paletteStyleMap";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const MAX_LIMIT = 50;
+const MAX_LIMIT = 100;
 const DEFAULT_LIMIT = 8;
 
 /* ──────────────────────────────────────────────────────────────────────
@@ -200,6 +200,8 @@ export async function GET(req: Request) {
     Math.max(Number.isFinite(limitRaw) ? limitRaw : DEFAULT_LIMIT, 1),
     MAX_LIMIT,
   );
+  const offsetRaw = parseInt(url.searchParams.get("offset") || "0", 10);
+  const offset = Math.max(Number.isFinite(offsetRaw) ? offsetRaw : 0, 0);
 
   const catalog = await readAllProducts();
   if (catalog.length === 0) {
@@ -895,7 +897,7 @@ export async function GET(req: Request) {
     }
   }
 
-  const products: ProduitAwin[] = deduped.slice(0, limit).map((p) => ({
+  const products: ProduitAwin[] = deduped.slice(offset, offset + limit).map((p) => ({
     ...p,
     image: p.imageLocal ? p.imageLocal : proxyImageUrl(p.image),
     largeImage: p.imageLocal ? p.imageLocal : proxyImageUrl(p.largeImage || p.image),
@@ -904,7 +906,7 @@ export async function GET(req: Request) {
   return Response.json(
     {
       products,
-      total: finalList.length,
+      total: deduped.length,
       source: "kv",
       filters_applied: {
         slot, palette, genre, style, merchant,

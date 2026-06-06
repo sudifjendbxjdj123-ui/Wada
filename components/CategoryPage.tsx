@@ -4,7 +4,7 @@
  * Filtres : Genre (si non préselectionné), Prix, Couleur, Style, Tri.
  * Quick View modal sur clic carte.
  */
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef, useTransition } from "react";
 import Link from "next/link";
 import type { ProduitAwin } from "@/lib/schema";
 
@@ -221,6 +221,8 @@ export default function CategoryPage({ title, breadcrumb, slot, q, genre: initGe
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
 
+  const PER_PAGE = 48;
+
   /* Filtres API */
   const [genre, setGenre] = useState(initGenre ?? "");
   const [style, setStyle] = useState(initStyle ?? "");
@@ -230,26 +232,31 @@ export default function CategoryPage({ title, breadcrumb, slot, q, genre: initGe
   const [couleur, setCouleur] = useState("");
   const [sortBy, setSortBy] = useState("");
 
+  /* Pagination */
+  const [page, setPage] = useState(1);
+
   const [selected, setSelected] = useState<ProduitAwin | null>(null);
+  const [, startTransition] = useTransition();
 
   /* ── Fetch produits ── */
-  const fetchProducts = useCallback(async () => {
+  const fetchProducts = useCallback(async (currentPage: number) => {
     setLoading(true);
     const slots = slot.split(",");
+    const offset = (currentPage - 1) * PER_PAGE;
     const results = await Promise.all(slots.map(async (s) => {
-      const par = new URLSearchParams({ slot: s.trim(), limit: "96" });
+      const par = new URLSearchParams({ slot: s.trim(), limit: String(PER_PAGE), offset: String(offset) });
       if (q) par.set("q", q);
       if (genre) par.set("genre", genre);
       if (style) par.set("style", style);
-      return fetch(`/api/products?${par}`).then(r => r.json()).catch(() => ({ products: [] }));
+      return fetch(`/api/products?${par}`).then(r => r.json()).catch(() => ({ products: [], total: 0 }));
     }));
     const all: ProduitAwin[] = results.flatMap(r => r.products ?? []);
     setProducts(all);
     setTotal(results.reduce((s, r) => s + (r.total ?? 0), 0));
     setLoading(false);
-  }, [slot, q, genre, style]);
+  }, [slot, q, genre, style, PER_PAGE]);
 
-  useEffect(() => { fetchProducts(); }, [fetchProducts]);
+  useEffect(() => { fetchProducts(page); }, [fetchProducts, page]);
 
   /* ── Couleurs disponibles dans les produits chargés ── */
   const availableColors = useMemo(() => {
@@ -312,10 +319,29 @@ export default function CategoryPage({ title, breadcrumb, slot, q, genre: initGe
     { value: "femme",  label: "Femmes" },
   ];
 
+  /* Remettre à page 1 quand un filtre API change */
+  const changeGenre = (v: string) => { setGenre(v); setPage(1); };
+  const changeStyle = (v: string) => { setStyle(v); setPage(1); };
+
   const resetAll = () => {
-    if (!initGenre) setGenre("");
-    setStyle(""); setPriceRange(""); setCouleur(""); setSortBy("");
+    if (!initGenre) changeGenre("");
+    changeStyle(""); setPriceRange(""); setCouleur(""); setSortBy(""); setPage(1);
   };
+
+  /* Nombre total de pages */
+  const totalPages = Math.max(1, Math.ceil(total / PER_PAGE));
+
+  /* Pages à afficher dans le paginator */
+  const pageNumbers = useMemo(() => {
+    const delta = 2;
+    const range: (number | "…")[] = [];
+    for (let i = Math.max(2, page - delta); i <= Math.min(totalPages - 1, page + delta); i++) range.push(i);
+    if (page - delta > 2) range.unshift("…");
+    if (page + delta < totalPages - 1) range.push("…");
+    if (totalPages > 1) range.unshift(1);
+    if (totalPages > 1) range.push(totalPages);
+    return range;
+  }, [page, totalPages]);
 
   return (
     <main style={{ minHeight: "100vh", background: "#FAF8F4", fontFamily: "'Inter', sans-serif" }}>
@@ -360,7 +386,7 @@ export default function CategoryPage({ title, breadcrumb, slot, q, genre: initGe
           {!initGenre && (
             <>
               {GENRES.map((g) => (
-                <button key={g.value} onClick={() => setGenre(g.value)}
+                <button key={g.value} onClick={() => changeGenre(g.value)}
                   style={{
                     padding: "8px 16px", borderRadius: 999, fontSize: 13,
                     cursor: "pointer", fontFamily: "'Inter'", fontWeight: 500,
@@ -408,7 +434,7 @@ export default function CategoryPage({ title, breadcrumb, slot, q, genre: initGe
             active={!!style}
             options={STYLE_OPTIONS}
             value={style}
-            onChange={setStyle}
+            onChange={changeStyle}
           />
 
           <span style={{ width: 1, height: 20, background: "#e8dfd0", flexShrink: 0 }} />
@@ -461,6 +487,56 @@ export default function CategoryPage({ title, breadcrumb, slot, q, genre: initGe
           </div>
         )}
       </div>
+
+      {/* ── Pagination ── */}
+      {!loading && totalPages > 1 && (
+        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 6, padding: "8px 16px 32px", flexWrap: "wrap" }}>
+          {/* Précédent */}
+          <button
+            onClick={() => { startTransition(() => setPage(p => Math.max(1, p - 1))); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+            disabled={page === 1}
+            style={{ padding: "9px 16px", borderRadius: 999, fontSize: 13, fontFamily: "'Inter'", fontWeight: 500, cursor: page === 1 ? "default" : "pointer", background: "transparent", color: page === 1 ? "#ccc" : "#1a1a1a", border: `1px solid ${page === 1 ? "#eee" : "rgba(26,26,26,0.2)"}`, transition: "all 0.15s" }}
+            aria-label="Page précédente"
+          >
+            ← Précédent
+          </button>
+
+          {/* Numéros de pages */}
+          {pageNumbers.map((n, i) =>
+            n === "…" ? (
+              <span key={`dots-${i}`} style={{ padding: "9px 4px", color: "#aaa", fontSize: 13 }}>…</span>
+            ) : (
+              <button
+                key={n}
+                onClick={() => { startTransition(() => setPage(n as number)); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+                style={{
+                  width: 38, height: 38, borderRadius: "50%", fontSize: 13,
+                  fontFamily: "'Inter'", fontWeight: page === n ? 700 : 500,
+                  cursor: "pointer",
+                  background: page === n ? "#1a1a1a" : "transparent",
+                  color: page === n ? "#fff" : "#1a1a1a",
+                  border: `1px solid ${page === n ? "#1a1a1a" : "rgba(26,26,26,0.2)"}`,
+                  transition: "all 0.15s",
+                }}
+                aria-label={`Page ${n}`}
+                aria-current={page === n ? "page" : undefined}
+              >
+                {n}
+              </button>
+            )
+          )}
+
+          {/* Suivant */}
+          <button
+            onClick={() => { startTransition(() => setPage(p => Math.min(totalPages, p + 1))); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+            disabled={page === totalPages}
+            style={{ padding: "9px 16px", borderRadius: 999, fontSize: 13, fontFamily: "'Inter'", fontWeight: 500, cursor: page === totalPages ? "default" : "pointer", background: page === totalPages ? "transparent" : "#1a1a1a", color: page === totalPages ? "#ccc" : "#fff", border: `1px solid ${page === totalPages ? "#eee" : "#1a1a1a"}`, transition: "all 0.15s" }}
+            aria-label="Page suivante"
+          >
+            Suivant →
+          </button>
+        </div>
+      )}
 
       {/* CTA palette */}
       <div style={{ margin: "0 16px 40px", padding: "18px 20px", background: "#f2ede4", borderRadius: 14, textAlign: "center" }}>
