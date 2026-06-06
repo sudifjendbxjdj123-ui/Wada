@@ -3,12 +3,7 @@
  * BoutiqueHero — Hero de /boutique.
  * Brief 2026-06-06 : fond = MUR de vêtements des marques affiliées qui défile
  * verticalement (entrée par le haut → sortie en bas, boucle infinie), voile
- * sombre + titre Fredoka « Boutique » + pills catégories par-dessus.
- *
- * Le nombre de colonnes est DYNAMIQUE (selon la largeur d'écran) pour que le
- * mur remplisse toujours toute la largeur — autant de <div.col> que de
- * colonnes de grille. Marquee CSS (translateY, contenu dupliqué = boucle
- * sans couture). Images = vrais produits du flux affilié via /api/products.
+ * sombre + titre Fredoka « Boutique » + toggle Femme/Homme + 6 pills catégories.
  */
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -18,16 +13,18 @@ const BORDEAUX = "#6B3A32";
 const BORDEAUX_DARK = "#52261f";
 
 const CATEGORIES: Array<{ label: string; href: string }> = [
-  { label: "Nouveautés",  href: "/vetements" },
-  { label: "Chaussures",  href: "/chaussures" },
-  { label: "Sacs",        href: "/sacs" },
-  { label: "Accessoires", href: "/accessoires" },
-  { label: "Marques",     href: "/marques" },
+  { label: "Vêtements",  href: "/vetements" },
+  { label: "Chaussures", href: "/chaussures" },
+  { label: "Accessoires",href: "/accessoires" },
+  { label: "Sacs",       href: "/sacs" },
+  { label: "Bijoux",     href: "/bijoux" },
+  { label: "Marques",    href: "/marques" },
 ];
 
 export function BoutiqueHero() {
   const [images, setImages] = useState<string[]>([]);
   const [cols, setCols] = useState(4);
+  const [genre, setGenre] = useState<"femme" | "homme">("femme"); // Femme actif par défaut
 
   /* Nombre de colonnes adapté à la largeur (≈1 colonne / 260px). */
   useEffect(() => {
@@ -96,9 +93,40 @@ export function BoutiqueHero() {
           <h1 className="wada-bh-title">Boutique</h1>
           <p className="wada-bh-sub">Les pièces de tes marques, par palette.</p>
 
+          {/* Toggle Femme / Homme */}
+          <div className="wada-bh-toggle" role="group" aria-label="Genre">
+            <button
+              className="wada-bh-tog"
+              style={genre === "femme"
+                ? { background: BORDEAUX, color: "#fff", boxShadow: "0 2px 10px rgba(0,0,0,0.35)" }
+                : { background: "transparent", color: "rgba(255,255,255,0.72)" }
+              }
+              onClick={() => setGenre("femme")}
+              aria-pressed={genre === "femme"}
+            >
+              Femme
+            </button>
+            <button
+              className="wada-bh-tog"
+              style={genre === "homme"
+                ? { background: BORDEAUX, color: "#fff", boxShadow: "0 2px 10px rgba(0,0,0,0.35)" }
+                : { background: "transparent", color: "rgba(255,255,255,0.72)" }
+              }
+              onClick={() => setGenre("homme")}
+              aria-pressed={genre === "homme"}
+            >
+              Homme
+            </button>
+          </div>
+
+          {/* 6 catégories */}
           <nav className="wada-bh-cats" aria-label="Catégories">
             {CATEGORIES.map((c) => (
-              <Link key={c.label} href={c.href} className="wada-bh-cat">
+              <Link
+                key={c.label}
+                href={`${c.href}?genre=${genre}`}
+                className="wada-bh-cat"
+              >
                 {c.label}
               </Link>
             ))}
@@ -119,7 +147,7 @@ export function BoutiqueHero() {
           position: relative;
           width: 100%;
           flex: 1 1 auto;
-          min-height: 460px;
+          min-height: 500px;
           overflow: hidden;
           background: #2a2420;
         }
@@ -169,7 +197,7 @@ export function BoutiqueHero() {
         /* ── Contenu ── */
         .wada-bh-content {
           position: absolute; left: 0; right: 0;
-          bottom: calc(92px + env(safe-area-inset-bottom, 0px));
+          bottom: calc(140px + env(safe-area-inset-bottom, 0px));
           padding: 0 22px;
           display: flex; flex-direction: column; align-items: center; text-align: center;
         }
@@ -191,26 +219,66 @@ export function BoutiqueHero() {
           font-family: 'Inter', sans-serif; font-size: 15px;
           color: #f4efe2; text-shadow: 0 1px 10px rgba(0,0,0,0.65);
         }
+
+        /* ── Toggle Femme / Homme ── */
+        .wada-bh-toggle {
+          margin-top: 22px;
+          display: flex;
+          background: rgba(255,255,255,0.12);
+          border: 1.5px solid rgba(255,255,255,0.28);
+          border-radius: 999px;
+          padding: 4px;
+          gap: 4px;
+          backdrop-filter: blur(8px);
+          -webkit-backdrop-filter: blur(8px);
+        }
+        .wada-bh-tog {
+          font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 700;
+          letter-spacing: 0.04em;
+          padding: 9px 28px;
+          border-radius: 999px;
+          border: none; cursor: pointer;
+          background: transparent;
+          color: rgba(255,255,255,0.72);
+          transition: background 0.22s ease, color 0.22s ease;
+        }
+        .wada-bh-tog--active {
+          background: ${BORDEAUX};
+          color: #fff;
+          box-shadow: 0 2px 10px rgba(0,0,0,0.35);
+        }
+        @media (hover: hover) and (pointer: fine) {
+          .wada-bh-tog:not(.wada-bh-tog--active):hover {
+            background: rgba(255,255,255,0.18);
+            color: #fff;
+          }
+        }
+
+        /* ── 6 catégories ── */
         .wada-bh-cats {
-          margin-top: 24px;
+          margin-top: 18px;
           display: flex; flex-wrap: wrap; justify-content: center;
-          gap: 10px; max-width: 430px;
+          gap: 8px; max-width: 460px;
         }
         .wada-bh-cat {
           display: inline-flex; align-items: center; justify-content: center;
-          padding: 13px 24px; border-radius: 999px;
-          font-family: 'Inter', sans-serif; font-size: 15px; font-weight: 700;
+          padding: 11px 20px; border-radius: 999px;
+          font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 600;
           letter-spacing: 0.01em; text-decoration: none;
-          background: ${BORDEAUX}; color: ${CREAM};
-          border: 1.5px solid rgba(255,255,255,0.45);
-          box-shadow: 0 8px 22px rgba(0,0,0,0.4);
-          transition: transform 0.22s ease, background 0.22s ease, box-shadow 0.22s ease;
+          background: rgba(255,255,255,0.13);
+          color: #fff;
+          border: 1.5px solid rgba(255,255,255,0.32);
+          backdrop-filter: blur(6px);
+          -webkit-backdrop-filter: blur(6px);
+          box-shadow: 0 4px 14px rgba(0,0,0,0.25);
+          transition: transform 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
         }
         @media (hover: hover) and (pointer: fine) {
           .wada-bh-cat:hover {
             transform: translateY(-2px);
-            background: ${BORDEAUX_DARK};
-            box-shadow: 0 12px 28px rgba(0,0,0,0.5);
+            background: ${BORDEAUX};
+            border-color: ${BORDEAUX};
+            box-shadow: 0 8px 22px rgba(0,0,0,0.4);
           }
         }
       `}</style>
