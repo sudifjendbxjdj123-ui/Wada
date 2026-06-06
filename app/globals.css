@@ -3400,3 +3400,17 @@ body:has(div[role="dialog"][aria-modal="true"]) {
     gap: 0;
   }
 }
+
+/* ───────────────────────────────────────────────────────────
+   BACKGROUND AESTHETIC — clothing rack inspired design
+   Subtle radial gradients suggesting fabric textures & depth
+   Reference: "IA stylist decor.png" — elegant hanging clothes
+───────────────────────────────────────────────────────────── */
+html, body {
+  background:
+    linear-gradient(180deg, rgba(0,0,0,0.01) 0%, transparent 50%, rgba(0,0,0,0.005) 100%),
+    radial-gradient(ellipse at 0% 20%, rgba(107, 58, 50, 0.04) 0%, transparent 40%),
+    radial-gradient(ellipse at 100% 80%, rgba(107, 58, 50, 0.03) 0%, transparent 40%),
+    #fbf7f0;
+  background-attachment: fixed;
+}
