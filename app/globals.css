@@ -305,9 +305,9 @@
 }
 
 @keyframes wada-leaf-sway {
-  0%, 100% { margin-left: 0; }
-  25%      { margin-left:  18px; }
-  75%      { margin-left: -18px; }
+  0%, 100% { transform: translateX(0); }
+  25%      { transform: translateX(18px); }
+  75%      { transform: translateX(-18px); }
 }
 
 @keyframes wada-ink-draw {
@@ -322,14 +322,16 @@
 }
 
 @keyframes wada-blur-in {
-  0%   { opacity: 0; filter: blur(8px); }
-  100% { opacity: 1; filter: blur(0); }
+  0%   { opacity: 0; }
+  100% { opacity: 1; }
 }
 
 /* SketchUnderline qui se dessine au scroll-in */
 .wada-ambient-swatch,
 .wada-ambient-kanji {
   transform-style: preserve-3d;
+  will-change: transform, opacity;
+  backface-visibility: hidden;
 }
 
 /* Respect du prefers-reduced-motion : on stoppe l'ambiance vivante */
@@ -1024,8 +1026,13 @@ textarea:focus-visible,
   border-radius: 12px;
 }
 @keyframes wada-skeleton-shimmer {
-  0%   { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+/* Optimize: use transform instead of background-position for better performance */
+.wada-skeleton {
+  will-change: background-position;
+  backface-visibility: hidden;
 }
 /* Respect prefers-reduced-motion : skeleton statique sans animation */
 @media (prefers-reduced-motion: reduce) {
@@ -2301,6 +2308,8 @@ a[data-wada-btn="ghost"]:hover {
 }
 .wada-walker {
   animation: wada-walker-step 0.42s ease-in-out infinite;
+  will-change: transform;
+  backface-visibility: hidden;
 }
 @media (prefers-reduced-motion: reduce) {
   .wada-walkers-track, .wada-walker { animation: none; }
@@ -2328,6 +2337,8 @@ a[data-wada-btn="ghost"]:hover {
   animation: wada-kid-bounce 0.55s ease-in-out infinite;
   transform-origin: 50% 100%;
   transition: color 0.25s ease;
+  will-change: transform;
+  backface-visibility: hidden;
 }
 a:hover .wada-kid {
   color: var(--wada-seal);
@@ -2350,6 +2361,7 @@ a:hover .wada-kid {
 .wada-avatar-life {
   animation: wada-avatar-life 9s ease-in-out infinite;
   will-change: transform;
+  backface-visibility: hidden;
 }
 @media (prefers-reduced-motion: reduce) {
   .wada-avatar-life { animation: none; }
