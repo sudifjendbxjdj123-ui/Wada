@@ -230,22 +230,6 @@ export default function Nav() {
           className="wada-nav-right"
           style={{ display: "flex", alignItems: "center", gap: 12 }}
         >
-          {/* Favoris — déplacé à droite, à côté d'Abonnement */}
-          <Link
-            href="/favoris"
-            className="wada-nav-favoris"
-            style={{
-              fontFamily: "'Inter', sans-serif",
-              fontSize: "0.875rem",
-              fontWeight: 500,
-              color: "#1E1E1E",
-              textDecoration: "none",
-              whiteSpace: "nowrap",
-            }}
-          >
-            Favoris
-          </Link>
-
           <Link
             href="/tarifs"
             className="wada-nav-tarifs"
