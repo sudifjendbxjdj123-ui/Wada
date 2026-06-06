@@ -224,13 +224,13 @@ export function BoutiqueHero() {
         .wada-bh-toggle {
           margin-top: 22px;
           display: flex;
-          background: rgba(255,255,255,0.12);
-          border: 1.5px solid rgba(255,255,255,0.28);
-          border-radius: 999px;
-          padding: 4px;
-          gap: 4px;
-          backdrop-filter: blur(8px);
-          -webkit-backdrop-filter: blur(8px);
+          /* Ring/halo enveloppant retiré (demande user) : plus de fond
+             translucide ni de bordure autour de Femme/Homme. Seul le pill
+             bordeaux du genre actif reste visible. */
+          background: transparent;
+          border: none;
+          padding: 0;
+          gap: 8px;
         }
         .wada-bh-tog {
           font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 700;
