@@ -16,7 +16,7 @@ import { deltaEHex, DELTA_E_LOOSE } from "@/lib/colorDistance";
    Calculé CÔTÉ CLIENT depuis le hex dominant du produit vs les couleurs
    du dictionnaire (deltaE2000) — pas de champ backend ni de ré-ingestion.
    Résultat mémoïsé par hex (un produit = un hex → calcul une seule fois). */
-interface MatchPalette { number: string; name: string; swatch: string }
+interface MatchPalette { number: string; name: string; swatch: string; colors: string[]; culture?: string }
 const _paletteMatchCache = new Map<string, MatchPalette[]>();
 function getMatchingPalettes(hex?: string): MatchPalette[] {
   if (!hex || !/^#[0-9a-f]{6}$/i.test(hex)) return [];
@@ -31,11 +31,18 @@ function getMatchingPalettes(hex?: string): MatchPalette[] {
       if (dE < best) { best = dE; bestHex = c.hex; }
     }
     if (best < DELTA_E_LOOSE) {
-      matches.push({ number: pal.number, name: pal.name, swatch: bestHex, dE: best });
+      matches.push({
+        number: pal.number,
+        name: pal.name,
+        swatch: bestHex,
+        colors: pal.colors.map((c) => c.hex),
+        culture: pal.culture,
+        dE: best,
+      });
     }
   }
   matches.sort((a, b) => a.dE - b.dE);
-  const result = matches.map(({ number, name, swatch }) => ({ number, name, swatch }));
+  const result = matches.map(({ number, name, swatch, colors, culture }) => ({ number, name, swatch, colors, culture }));
   _paletteMatchCache.set(hex, result);
   return result;
 }
@@ -173,9 +180,31 @@ function FilterDropdown({
   );
 }
 
-/* ── Modal Quick View ── */
+/* ── Quick View Modal V2 « premium » (brief WADA-quickview-produit-V2) ──
+   Adaptée au stack réel : inline styles + SVG inline (pas de lucide), données
+   live du produit déjà chargé (pas d'endpoint /full), palettes & tenues
+   calculées CÔTÉ CLIENT depuis le hex (deltaE) — aucune donnée fabriquée.
+   Les 2 features uniques WADA : « palettes compatibles » et « composer une
+   tenue autour de cette pièce » (liens réels vers /palette/N et /stylist). */
+function CheckIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={BORDEAUX} strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" aria-hidden style={{ flexShrink: 0 }}>
+      <polyline points="20 6 9 17 4 12" />
+    </svg>
+  );
+}
+
 function ProductModal({ product: p, onClose }: { product: ProduitAwin; onClose: () => void }) {
   const source = SOURCE_LABEL[p.marchandSlug || ""] || p.marchand;
+  const [liked, setLiked] = useState(false);
+  const [selectedSize, setSelectedSize] = useState<string | null>(null);
+
+  const matches = useMemo(() => getMatchingPalettes(p.hex), [p.hex]);
+  const sizes = (p.tailles || []).filter(Boolean);
+  const sizeLabel = p.categorie === "chaussures" ? "Pointure" : "Taille";
+  const dom = /^#[0-9a-f]{6}$/i.test(p.hex || "") ? p.hex : "#ede4d4";
+  const gradient = `linear-gradient(180deg, #fff 0%, ${dom}25 100%)`;
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     document.addEventListener("keydown", onKey);
@@ -184,51 +213,146 @@ function ProductModal({ product: p, onClose }: { product: ProduitAwin; onClose: 
   }, [onClose]);
 
   return (
-    <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,0.55)", backdropFilter: "blur(3px)", display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
-      <div onClick={(e) => e.stopPropagation()} style={{ background: "#fff", width: "100%", maxWidth: 900, maxHeight: "90vh", borderRadius: "20px 20px 0 0", overflow: "hidden", display: "grid", gridTemplateColumns: "1fr 1fr", position: "relative", animation: "slideUp 0.3s cubic-bezier(.22,1,.36,1)" }} className="wada-modal-grid">
-        <button onClick={onClose} style={{ position: "absolute", top: 16, right: 16, zIndex: 10, width: 36, height: 36, borderRadius: "50%", background: "#f5f1eb", border: "none", cursor: "pointer", fontSize: 18, fontWeight: 300, display: "flex", alignItems: "center", justifyContent: "center" }} aria-label="Fermer">✕</button>
-        <div style={{ padding: "32px 32px 40px", overflowY: "auto" }}>
-          <p style={{ fontSize: 10, letterSpacing: "0.2em", textTransform: "uppercase", color: "#8a7a68", margin: "0 0 6px", fontFamily: "'Inter'", fontWeight: 600 }}>{p.marque}</p>
-          <h2 style={{ fontFamily: "'Fredoka'", fontSize: 22, fontWeight: 500, color: "#1a1a1a", margin: "0 0 16px", lineHeight: 1.2 }}>{p.nom}</h2>
-          <p style={{ fontFamily: "'Inter'", fontSize: 26, fontWeight: 600, color: "#1a1a1a", margin: "0 0 24px" }}>{p.prix?.toLocaleString("fr-FR")} €</p>
-          {/* Fix 2026-06-06 « lien URL qui crash » : on ne rend le lien
-              d'achat QUE si urlProduit est une vraie URL http(s). Avant,
-              un urlProduit null/vide produisait href="undefined" → clic
-              vers une route cassée (404) ou rechargement de la page. */}
-          {isValidHttpUrl(p.urlProduit) ? (
-            <a href={p.urlProduit} target="_blank" rel="noopener sponsored" style={{ display: "block", width: "100%", background: "#1a1a1a", color: "#fff", borderRadius: 12, padding: "16px 0", fontSize: 14, fontWeight: 600, textAlign: "center", textDecoration: "none", fontFamily: "'Inter'", marginBottom: 12 }}>Acheter maintenant →</a>
-          ) : (
-            <div aria-disabled="true" style={{ display: "block", width: "100%", background: "#d8cfc0", color: "#fff", borderRadius: 12, padding: "16px 0", fontSize: 14, fontWeight: 600, textAlign: "center", fontFamily: "'Inter'", marginBottom: 12, cursor: "not-allowed" }}>Bientôt disponible</div>
-          )}
-          <div style={{ border: "1px solid #e8dfd0", borderRadius: 10, padding: "14px 16px", marginBottom: 20 }}>
-            <p style={{ margin: "0 0 6px", fontSize: 12, color: "#8a7a68", fontFamily: "'Inter'" }}>Extrait de <strong style={{ color: "#1a1a1a" }}>{source}</strong></p>
-            <p style={{ margin: "0 0 3px", fontSize: 12, color: "#5a5a5a", fontFamily: "'Inter'" }}>✓ Lien partenaire Awin · prix identique chez le marchand</p>
-            <p style={{ margin: 0, fontSize: 12, color: "#5a5a5a", fontFamily: "'Inter'" }}>✓ Paiement sécurisé sur {source}</p>
+    <div onClick={onClose} className="wada-qv-backdrop" style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,0.45)", backdropFilter: "blur(3px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+      <div onClick={(e) => e.stopPropagation()} className="wada-qv-modal wada-modal-grid" style={{ background: "#fff", width: "100%", maxWidth: 940, maxHeight: "88vh", borderRadius: 24, overflow: "hidden", display: "grid", gridTemplateColumns: "1.1fr 1fr", position: "relative" }}>
+        <button onClick={onClose} style={{ position: "absolute", top: 14, right: 14, zIndex: 10, width: 34, height: 34, borderRadius: "50%", background: "rgba(255,255,255,0.92)", boxShadow: "0 1px 6px rgba(0,0,0,0.12)", border: "none", cursor: "pointer", fontSize: 16, fontWeight: 300, display: "flex", alignItems: "center", justifyContent: "center" }} aria-label="Fermer">✕</button>
+
+        {/* ── CÔTÉ IMAGE (gauche) ── */}
+        <div className="wada-qv-imgside" style={{ background: gradient, display: "flex", alignItems: "center", justifyContent: "center", padding: 32, minHeight: 380 }}>
+          <div style={{ width: "82%", aspectRatio: "1/1", background: "#fff", borderRadius: 14, boxShadow: "0 8px 30px rgba(0,0,0,0.10)", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+            {(p.largeImage || p.image) ? (
+              <img src={p.largeImage || p.image} alt={p.nom || p.marque || "Produit"} style={{ width: "100%", height: "100%", objectFit: "contain", padding: 18 }} />
+            ) : (
+              <span style={{ fontSize: 48, opacity: 0.3 }}>◻</span>
+            )}
           </div>
-          {p.couleurNom && (
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
-              <span style={{ width: 16, height: 16, borderRadius: "50%", background: p.hex || "#9B9B96", border: "1px solid rgba(0,0,0,0.12)", flexShrink: 0 }} />
-              <span style={{ fontSize: 13, color: "#5a5a5a", fontFamily: "'Inter'" }}>Couleur : {p.couleurNom}</span>
-            </div>
-          )}
-          {p.paletteRef && (
-            <div style={{ background: "#faf6ee", borderRadius: 10, padding: "12px 14px", borderLeft: `2px solid ${BORDEAUX}` }}>
-              <p style={{ margin: "0 0 3px", fontSize: 11, color: BORDEAUX, fontFamily: "'Inter'", fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase" }}>Palette Sanzō Wada</p>
-              <Link href={`/palette/${p.paletteRef}`} style={{ fontSize: 13, color: "#1a1a1a", fontFamily: "'Inter'", textDecoration: "underline" }}>Voir la palette n°{p.paletteRef} →</Link>
-            </div>
-          )}
         </div>
-        <div style={{ background: "#f5f1eb", display: "flex", alignItems: "center", justifyContent: "center", minHeight: 400 }}>
-          {(p.largeImage || p.image) ? (
-            <img src={p.largeImage || p.image} alt={p.nom} style={{ maxWidth: "90%", maxHeight: "85%", objectFit: "contain" }} />
-          ) : (
-            <span style={{ fontSize: 48, opacity: 0.3 }}>◻</span>
+
+        {/* ── CÔTÉ MÉTA (droite) ── */}
+        <div className="wada-qv-meta" style={{ padding: "30px 28px 32px", overflowY: "auto", maxHeight: "88vh" }}>
+          <p style={{ fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", color: "#8a7a68", margin: "0 0 8px", fontFamily: "'Inter'", fontWeight: 500 }}>
+            {p.categorie}{p.couleurNom ? ` · ${p.couleurNom}` : ""}
+          </p>
+          <p style={{ fontSize: 10, letterSpacing: "0.2em", textTransform: "uppercase", color: BORDEAUX, margin: "0 0 4px", fontFamily: "'Inter'", fontWeight: 600 }}>{p.marque}</p>
+          <h2 style={{ fontFamily: "'Fredoka'", fontSize: 24, fontWeight: 500, color: "#1a1a1a", margin: "0 0 14px", lineHeight: 1.2 }}>{p.nom}</h2>
+
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", paddingBottom: 14, marginBottom: 16, borderBottom: "1px solid #e8dfd0" }}>
+            <p style={{ fontFamily: "'Inter'", fontSize: 24, fontWeight: 600, color: "#1a1a1a", margin: 0 }}>{p.prix?.toLocaleString("fr-FR")} €</p>
+            <span style={{ fontSize: 10, color: "#5a5a5a", fontFamily: "'Inter'" }}>Livraison directe par {source}</span>
+          </div>
+
+          {/* ── Palettes WADA compatibles — FEATURE UNIQUE ── */}
+          {matches.length > 0 && (
+            <div style={{ marginBottom: 18 }}>
+              <p style={{ fontSize: 9, letterSpacing: "0.18em", textTransform: "uppercase", color: "#8a7a68", fontWeight: 600, margin: "0 0 8px", fontFamily: "'Inter'" }}>
+                Compatible avec ces palettes WADA
+              </p>
+              <div style={{ display: "flex", gap: 8 }}>
+                {matches.slice(0, 3).map((m) => (
+                  <Link key={m.number} href={`/palette/${m.number}`} style={{ flex: 1, padding: 8, background: "#faf6ee", borderRadius: 10, textDecoration: "none", transition: "background 0.15s" }}
+                    onMouseOver={(e) => { e.currentTarget.style.background = "#f0e9d8"; }}
+                    onMouseOut={(e) => { e.currentTarget.style.background = "#faf6ee"; }}>
+                    <div style={{ display: "flex", height: 16, borderRadius: 4, overflow: "hidden", marginBottom: 6 }}>
+                      {m.colors.slice(0, 5).map((c, i) => (
+                        <span key={i} style={{ flex: 1, background: c }} />
+                      ))}
+                    </div>
+                    <p style={{ fontSize: 10, fontWeight: 600, color: "#1a1a1a", margin: 0, lineHeight: 1.2, fontFamily: "'Inter'", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.name}</p>
+                    {m.culture && <p style={{ fontSize: 8, letterSpacing: "0.06em", textTransform: "uppercase", color: "#8a7a68", margin: "2px 0 0", fontFamily: "'Inter'" }}>{m.culture}</p>}
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ── Tailles / Pointures ── */}
+          {sizes.length > 0 && (
+            <div style={{ marginBottom: 18 }}>
+              <p style={{ fontSize: 9, letterSpacing: "0.18em", textTransform: "uppercase", color: "#8a7a68", fontWeight: 600, margin: "0 0 8px", fontFamily: "'Inter'" }}>{sizeLabel}</p>
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                {sizes.map((s) => (
+                  <button key={s} onClick={() => setSelectedSize(s === selectedSize ? null : s)}
+                    style={{ minWidth: 38, height: 34, padding: "0 8px", borderRadius: 7, fontSize: 12, fontFamily: "'Inter'", cursor: "pointer",
+                      background: selectedSize === s ? "#1a1a1a" : "#fff",
+                      color: selectedSize === s ? "#fff" : "#1a1a1a",
+                      border: `1px solid ${selectedSize === s ? "#1a1a1a" : "#d4ccc0"}`, transition: "all 0.12s" }}>
+                    {s}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ── Actions principales : cœur + acheter ── */}
+          <div style={{ display: "grid", gridTemplateColumns: "48px 1fr", gap: 8, marginBottom: 10 }}>
+            <button onClick={() => setLiked(!liked)} aria-label={liked ? "Retirer des favoris" : "Ajouter aux favoris"} aria-pressed={liked}
+              style={{ borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer",
+                background: liked ? BORDEAUX : "#fff", border: `1px solid ${liked ? BORDEAUX : "#d4ccc0"}` }}>
+              <HeartIcon filled={liked} />
+            </button>
+            {isValidHttpUrl(p.urlProduit) ? (
+              <a href={p.urlProduit} target="_blank" rel="noopener sponsored" style={{ background: "#1a1a1a", color: "#fff", borderRadius: 999, padding: "14px 0", fontSize: 14, fontWeight: 600, textAlign: "center", textDecoration: "none", fontFamily: "'Inter'", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                Acheter sur {source} <span style={{ fontSize: 12 }}>↗</span>
+              </a>
+            ) : (
+              <div aria-disabled="true" style={{ background: "#d8cfc0", color: "#fff", borderRadius: 999, padding: "14px 0", fontSize: 14, fontWeight: 600, textAlign: "center", fontFamily: "'Inter'", cursor: "not-allowed" }}>Bientôt disponible</div>
+            )}
+          </div>
+
+          {/* ── Actions secondaires ── */}
+          <div style={{ display: "flex", gap: 8, marginBottom: 18 }}>
+            <Link href="/stylist" style={{ flex: 1, padding: "10px 0", border: "1px solid #d4ccc0", borderRadius: 999, fontSize: 11, background: "#fff", color: "#1a1a1a", textAlign: "center", textDecoration: "none", fontFamily: "'Inter'", fontWeight: 500 }}>
+              ✦ Composer une tenue
+            </Link>
+            {p.paletteRef && (
+              <Link href={`/palette/${p.paletteRef}`} style={{ flex: 1, padding: "10px 0", border: "1px solid #d4ccc0", borderRadius: 999, fontSize: 11, background: "#fff", color: "#1a1a1a", textAlign: "center", textDecoration: "none", fontFamily: "'Inter'", fontWeight: 500 }}>
+                ◫ Voir similaires
+              </Link>
+            )}
+          </div>
+
+          {/* ── Réassurance Awin ── */}
+          <div style={{ background: "#faf6ee", padding: 12, borderRadius: 10, marginBottom: 18, display: "flex", flexDirection: "column", gap: 6 }}>
+            <p style={{ margin: 0, fontSize: 11, color: "#1a1a1a", fontFamily: "'Inter'", display: "flex", alignItems: "center", gap: 6 }}><CheckIcon /> Lien partenaire Awin · prix identique chez le marchand</p>
+            <p style={{ margin: 0, fontSize: 11, color: "#1a1a1a", fontFamily: "'Inter'", display: "flex", alignItems: "center", gap: 6 }}><CheckIcon /> Paiement sécurisé sur {source}</p>
+            <p style={{ margin: 0, fontSize: 11, color: "#1a1a1a", fontFamily: "'Inter'", display: "flex", alignItems: "center", gap: 6 }}><CheckIcon /> Livraison 2-5 jours · retours selon le marchand</p>
+          </div>
+
+          {/* ── Composer une tenue autour de cette pièce (funnel WADA) ── */}
+          {matches.length > 0 && (
+            <div style={{ background: "#fefaf2", padding: 14, borderRadius: 14 }}>
+              <p style={{ fontSize: 9, letterSpacing: "0.18em", textTransform: "uppercase", color: "#8a7a68", fontWeight: 600, margin: "0 0 10px", fontFamily: "'Inter'" }}>
+                Composez une tenue autour de cette pièce
+              </p>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                {matches.slice(0, 4).map((m) => (
+                  <Link key={m.number} href={`/palette/${m.number}`} style={{ background: "#fff", borderRadius: 10, padding: 8, textDecoration: "none", boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
+                    <div style={{ display: "flex", height: 12, borderRadius: 3, overflow: "hidden", marginBottom: 6 }}>
+                      {m.colors.slice(0, 5).map((c, i) => (
+                        <span key={i} style={{ flex: 1, background: c }} />
+                      ))}
+                    </div>
+                    <p style={{ fontSize: 10, fontWeight: 600, color: "#1a1a1a", margin: 0, fontFamily: "'Inter'", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.name}</p>
+                    <p style={{ fontSize: 8, color: "#8a7a68", margin: "2px 0 0", fontFamily: "'Inter'" }}>Palette n°{m.number} →</p>
+                  </Link>
+                ))}
+              </div>
+            </div>
           )}
         </div>
       </div>
+
       <style>{`
-        @keyframes slideUp { from { transform: translateY(40px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-        @media (max-width: 640px) { .wada-modal-grid { grid-template-columns: 1fr !important; } }
+        .wada-qv-backdrop { animation: wadaQvFade 0.2s ease-out; }
+        .wada-qv-modal { animation: wadaQvScale 0.25s cubic-bezier(0.16, 1, 0.3, 1); }
+        @keyframes wadaQvFade { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes wadaQvScale { from { opacity: 0; transform: scale(0.94); } to { opacity: 1; transform: scale(1); } }
+        @media (max-width: 768px) {
+          .wada-qv-backdrop { padding: 0 !important; align-items: stretch !important; }
+          .wada-modal-grid { grid-template-columns: 1fr !important; max-width: 100% !important; max-height: 100% !important; height: 100%; border-radius: 0 !important; }
+          .wada-qv-imgside { min-height: 44vh !important; }
+          .wada-qv-meta { max-height: none !important; }
+        }
       `}</style>
     </div>
   );
