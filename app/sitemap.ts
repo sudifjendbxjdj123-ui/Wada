@@ -28,6 +28,16 @@ export default function sitemap(): MetadataRoute.Sitemap {
     // Pages pro pour les Account Managers + transparence affiliation
     { url: `${base}/partenaires`, priority: 0.5, changeFrequency: "monthly" as const },
     { url: `${base}/affiliation`, priority: 0.5, changeFrequency: "monthly" as const },
+    /* Fix 2026-06-06 « SEO » : la boutique et ses catégories n'étaient PAS
+       dans le sitemap → Google ne les découvrait pas. On les ajoute avec
+       une priorité élevée (pages commerciales). */
+    { url: `${base}/boutique`, priority: 0.85, changeFrequency: "daily" as const },
+    { url: `${base}/vetements`, priority: 0.8, changeFrequency: "daily" as const },
+    { url: `${base}/chaussures`, priority: 0.8, changeFrequency: "daily" as const },
+    { url: `${base}/accessoires`, priority: 0.8, changeFrequency: "daily" as const },
+    { url: `${base}/sacs`, priority: 0.75, changeFrequency: "daily" as const },
+    { url: `${base}/bijoux`, priority: 0.75, changeFrequency: "daily" as const },
+    { url: `${base}/marques`, priority: 0.7, changeFrequency: "weekly" as const },
     // Pages légales (priorité basse mais indexées pour conformité)
     { url: `${base}/mentions`, priority: 0.2, changeFrequency: "yearly" as const },
     { url: `${base}/cgv`, priority: 0.2, changeFrequency: "yearly" as const },

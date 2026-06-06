@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import CategoryPage from "@/components/CategoryPage";
 
 const SUB_MAP: Record<string, { q?: string }> = {
@@ -16,6 +17,19 @@ const SUB_MAP: Record<string, { q?: string }> = {
 interface Props {
   params: Promise<{ sub?: string[] }>;
   searchParams: Promise<{ genre?: string }>;
+}
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { sub } = await params;
+  const subSlug = sub?.[0];
+  const label = subSlug
+    ? subSlug.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
+    : "Chaussures";
+  return {
+    title: `${label} — WADA`,
+    description: `Découvrez notre sélection de ${subSlug ?? "chaussures"} filtrables par palette Sanzō Wada.`,
+    alternates: { canonical: subSlug ? `/chaussures/${subSlug}` : "/chaussures" },
+  };
 }
 
 export default async function ChaussuresPage({ params, searchParams }: Props) {

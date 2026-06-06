@@ -190,6 +190,14 @@ const CATEGORY_MAPPING: Record<string, ProductCategorie> = {
   // Accent
   "accessories": "accent", "bags": "accent", "belts": "accent", "hats": "accent",
   "scarves": "accent", "sunglasses": "accent",
+  /* Fix 2026-06-06 : avec le match à frontière de mot, les libellés
+     composés en un seul mot (« handbags ») ne matchent plus la clé
+     « bags ». On ajoute les compounds courants en EN pour qu'ils
+     résolvent par match exact/mot-entier au lieu d'être droppés. */
+  "handbags": "accent", "shoulder bags": "accent", "crossbody bags": "accent",
+  "tote bags": "accent", "backpacks": "accent", "wallets": "accent",
+  "cardholders": "accent", "watches": "accent", "jewellery": "accent",
+  "jewelry": "accent", "ties": "accent", "caps": "accent", "beanies": "accent",
 
   // ─── Suitable FR (merchant_category en FRANÇAIS) ─── Brief 2026-06-01
   // Le flux Suitable FR a `category_name` VIDE pour les 19 591 produits.
@@ -331,10 +339,42 @@ function colorNameToHex(colour?: string): string {
 
 function parseFloatSafe(s?: string): number | null {
   if (!s) return null;
-  // Awin renvoie "29.99" ou "29,99" selon le marchand
-  const cleaned = s.replace(/[^\d.,-]/g, "").replace(",", ".");
-  const n = parseFloat(cleaned);
-  return isNaN(n) ? null : n;
+  /* Bug 2026-06-06 « erreur de prix » : l'ancienne version
+     `replace(/[^\d.,-]/g,"").replace(",",".")` cassait sur deux cas :
+       1. Séparateur de milliers US « 1,299.00 » → ne remplaçait QUE la
+          première virgule → « 1.299.00 » → parseFloat = 1.299 (un article
+          à 1 299 € s'affichait 1,30 €).
+       2. Fourchettes « 29.99-30.50 » → parseFloat s'arrête au tiret = 29.99
+          (acceptable) mais le tiret pouvait aussi venir d'un signe négatif.
+     Nouveau parseur : détecte le séparateur décimal réel (le dernier entre
+     « . » et « , »), retire l'autre comme séparateur de milliers. */
+  // Fourchette de prix « 49.99-59.99 » → on garde la première valeur.
+  const firstSegment = s.split(/[-–—]/)[0];
+  // Ne garder que chiffres, point, virgule.
+  let t = firstSegment.replace(/[^\d.,]/g, "");
+  if (!t) return null;
+
+  const lastDot = t.lastIndexOf(".");
+  const lastComma = t.lastIndexOf(",");
+
+  if (lastDot !== -1 && lastComma !== -1) {
+    // Les deux présents → le dernier est le séparateur décimal.
+    if (lastComma > lastDot) {
+      // Format EU « 1.299,00 » : point = milliers, virgule = décimale.
+      t = t.replace(/\./g, "").replace(",", ".");
+    } else {
+      // Format US « 1,299.00 » : virgule = milliers, point = décimale.
+      t = t.replace(/,/g, "");
+    }
+  } else if (lastComma !== -1) {
+    // Virgule seule : décimale si 1-2 chiffres après, sinon milliers.
+    const decimals = t.length - lastComma - 1;
+    t = decimals <= 2 ? t.replace(",", ".") : t.replace(/,/g, "");
+  }
+  // (point seul → déjà au bon format, rien à faire)
+
+  const n = parseFloat(t);
+  return isNaN(n) || n < 0 ? null : n;
 }
 
 function parseGender(...candidates: (string | undefined)[]): ProductGenre {
@@ -357,15 +397,33 @@ function parseGender(...candidates: (string | undefined)[]): ProductGenre {
   return "inconnu";
 }
 
+/* Clés de CATEGORY_MAPPING triées de la plus longue à la plus courte :
+   le match partiel doit privilégier la clé la PLUS spécifique. Sinon
+   « vestes & blazers » pouvait matcher « blazers » avant « vestes »
+   (même résultat ici, mais le tri évite les surprises pour les futurs
+   ajouts type « robes » vs « robes de soirée »). Calculé une seule fois. */
+const CATEGORY_KEYS_BY_LENGTH = Object.entries(CATEGORY_MAPPING).sort(
+  (a, b) => b[0].length - a[0].length,
+);
+
 function parseCategory(categoryName?: string): ProductCategorie | null {
   if (!categoryName) return null;
   const norm = categoryName.toLowerCase().trim();
   // Match exact en kebab-case
   const key = norm.replace(/\s+/g, "-");
   if (CATEGORY_MAPPING[key]) return CATEGORY_MAPPING[key];
-  // Match partiel — « Women's T-Shirts » contient « t-shirts »
-  for (const [k, v] of Object.entries(CATEGORY_MAPPING)) {
-    if (norm.includes(k)) return v;
+  /* Match partiel à FRONTIÈRES DE MOT — Bug 2026-06-06 « habits dans la
+     mauvaise catégorie ». L'ancien `norm.includes(k)` matchait n'importe
+     quelle sous-chaîne : la clé « tops » matchait « laptops », « shoes »
+     matchait « shoe care » (cirage → chaussures), « hats » dans un libellé
+     non vestimentaire, etc. On exige désormais que la clé apparaisse comme
+     un mot entier (bordée par début/fin ou non-lettre). On teste les clés
+     les plus longues d'abord pour préférer la catégorie la plus précise. */
+  for (const [k, v] of CATEGORY_KEYS_BY_LENGTH) {
+    // Échappe les métacaractères regex de la clé (« & », « . »…).
+    const escaped = k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const wordRe = new RegExp(`(^|[^a-zà-ÿ])${escaped}([^a-zà-ÿ]|$)`, "i");
+    if (wordRe.test(norm)) return v;
   }
   return null;
 }

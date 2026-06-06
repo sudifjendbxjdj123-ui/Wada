@@ -26,6 +26,18 @@ const SOURCE_LABEL: Record<string, string> = {
   "suitable-fr": "Suitable FR",
 };
 
+/* Garde anti-crash : vrai uniquement pour une URL http(s) bien formée.
+   Empêche href="undefined"/"" de produire un clic vers une route cassée. */
+function isValidHttpUrl(u?: string | null): u is string {
+  if (!u || typeof u !== "string") return false;
+  try {
+    const parsed = new URL(u);
+    return parsed.protocol === "http:" || parsed.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
 /* ── Icône cœur ── */
 function HeartIcon({ filled }: { filled: boolean }) {
   return (
@@ -147,7 +159,15 @@ function ProductModal({ product: p, onClose }: { product: ProduitAwin; onClose: 
           <p style={{ fontSize: 10, letterSpacing: "0.2em", textTransform: "uppercase", color: "#8a7a68", margin: "0 0 6px", fontFamily: "'Inter'", fontWeight: 600 }}>{p.marque}</p>
           <h2 style={{ fontFamily: "'Fredoka'", fontSize: 22, fontWeight: 500, color: "#1a1a1a", margin: "0 0 16px", lineHeight: 1.2 }}>{p.nom}</h2>
           <p style={{ fontFamily: "'Inter'", fontSize: 26, fontWeight: 600, color: "#1a1a1a", margin: "0 0 24px" }}>{p.prix?.toLocaleString("fr-FR")} €</p>
-          <a href={p.urlProduit} target="_blank" rel="noopener sponsored" style={{ display: "block", width: "100%", background: "#1a1a1a", color: "#fff", borderRadius: 12, padding: "16px 0", fontSize: 14, fontWeight: 600, textAlign: "center", textDecoration: "none", fontFamily: "'Inter'", marginBottom: 12 }}>Acheter maintenant →</a>
+          {/* Fix 2026-06-06 « lien URL qui crash » : on ne rend le lien
+              d'achat QUE si urlProduit est une vraie URL http(s). Avant,
+              un urlProduit null/vide produisait href="undefined" → clic
+              vers une route cassée (404) ou rechargement de la page. */}
+          {isValidHttpUrl(p.urlProduit) ? (
+            <a href={p.urlProduit} target="_blank" rel="noopener sponsored" style={{ display: "block", width: "100%", background: "#1a1a1a", color: "#fff", borderRadius: 12, padding: "16px 0", fontSize: 14, fontWeight: 600, textAlign: "center", textDecoration: "none", fontFamily: "'Inter'", marginBottom: 12 }}>Acheter maintenant →</a>
+          ) : (
+            <div aria-disabled="true" style={{ display: "block", width: "100%", background: "#d8cfc0", color: "#fff", borderRadius: 12, padding: "16px 0", fontSize: 14, fontWeight: 600, textAlign: "center", fontFamily: "'Inter'", marginBottom: 12, cursor: "not-allowed" }}>Bientôt disponible</div>
+          )}
           <div style={{ border: "1px solid #e8dfd0", borderRadius: 10, padding: "14px 16px", marginBottom: 20 }}>
             <p style={{ margin: "0 0 6px", fontSize: 12, color: "#8a7a68", fontFamily: "'Inter'" }}>Extrait de <strong style={{ color: "#1a1a1a" }}>{source}</strong></p>
             <p style={{ margin: "0 0 3px", fontSize: 12, color: "#5a5a5a", fontFamily: "'Inter'" }}>✓ Lien partenaire Awin · prix identique chez le marchand</p>
