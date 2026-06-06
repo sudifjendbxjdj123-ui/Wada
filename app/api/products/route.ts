@@ -43,6 +43,9 @@ import { isCompatibleWithOutfit } from "@/lib/composer/microTypes";
 import { inferMacroStyle } from "@/lib/composer/bridgeStyle";
 import { checkForbiddenStyles } from "@/lib/composer/compatibility";
 import { getPaletteStyleProfile } from "@/lib/composer/paletteStyleMap";
+/* Brief 2026-06-07 « pas de mannequin, pas de photos de dos » : score d'image
+   ajouté au ΔE couleur dans le tri pour préférer les packshots propres. */
+import { imageQualityPenalty, isLikelyBackView } from "@/lib/imageQuality";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -688,6 +691,12 @@ export async function GET(req: Request) {
   }
 
   // ─── ÉTAPE 2 : scoring + tri ──────────────────────────────────────
+  /* Brief 2026-06-07 « pas de mannequin, pas de photos de dos » :
+     distance EFFECTIVE = ΔE couleur + pénalité d'image (ΔE-équivalent).
+     Une vue de dos (+45) coule au fond du pool ; un shoot mannequin (+12)
+     passe derrière un packshot de couleur comparable. La couleur reste le
+     critère dominant — un packshot à mauvaise couleur ne remonte pas pour
+     autant (+12 << écart couleur d'un vrai mismatch). */
   filtered.sort((a, b) => {
     // 1. Dépriorisation des accent encombrants
     if (slot === "accent") {
@@ -696,12 +705,14 @@ export async function GET(req: Request) {
       if (aDeprio !== bDeprio) return aDeprio - bDeprio;
     }
 
-    // 2. ΔE2000 — soit vs couleur précise demandée (?color=<hex>,
-    //    cas /stylist), soit vs min(couleurs de la palette demandée),
-    //    soit vs paletteDistance du produit (cas sans palette).
+    // 2. ΔE2000 + pénalité image — soit vs couleur précise demandée
+    //    (?color=<hex>, cas /stylist), soit vs couleur assignée au slot
+    //    (palette), soit vs paletteDistance du produit (cas sans palette).
+    const aImg = imageQualityPenalty(a);
+    const bImg = imageQualityPenalty(b);
     if (isValidHex && colorHex) {
-      const aDist = deltaEHex(a.hex, colorHex);
-      const bDist = deltaEHex(b.hex, colorHex);
+      const aDist = deltaEHex(a.hex, colorHex) + aImg;
+      const bDist = deltaEHex(b.hex, colorHex) + bImg;
       return aDist - bDist;
     }
     if (palette && slotTargetColor) {
@@ -709,12 +720,12 @@ export async function GET(req: Request) {
          toutes les couleurs de la palette). Force la diversité
          chromatique : haut prend la dominante, bas la secondaire,
          veste la signature, etc. */
-      const aDist = distanceToSlotTarget(a.hex);
-      const bDist = distanceToSlotTarget(b.hex);
+      const aDist = distanceToSlotTarget(a.hex) + aImg;
+      const bDist = distanceToSlotTarget(b.hex) + bImg;
       return aDist - bDist;
     }
-    const aDist = a.paletteDistance ?? Infinity;
-    const bDist = b.paletteDistance ?? Infinity;
+    const aDist = (a.paletteDistance ?? Infinity) + aImg;
+    const bDist = (b.paletteDistance ?? Infinity) + bImg;
     return aDist - bDist;
   });
 
@@ -874,9 +885,14 @@ export async function GET(req: Request) {
     if (head && isMuji(head) !== wantsMuji) {
       /* Recherche AGGRESSIVE : 1ère occurrence dans TOUT le pool
          (plus de cap top-12, plus de tolérance ΔE). Si y'a un
-         non-MUJI dispo, on le sort. */
+         non-MUJI dispo, on le sort.
+         Brief 2026-06-07 : on NE swap PAS vers une vue de dos. Si le
+         seul candidat du bon marchand est une photo de dos, mieux vaut
+         garder la tête de liste (déjà triée packshot-first) que d'imposer
+         une photo de dos juste pour la diversité marchand. */
       const swapIndex = finalList.findIndex((p, i) => {
         if (i === 0) return false;
+        if (isLikelyBackView(p)) return false;
         return isMuji(p) === wantsMuji;
       });
       if (swapIndex > 0) {
