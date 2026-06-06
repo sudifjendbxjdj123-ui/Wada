@@ -203,6 +203,29 @@ export async function GET(req: Request) {
   const offsetRaw = parseInt(url.searchParams.get("offset") || "0", 10);
   const offset = Math.max(Number.isFinite(offsetRaw) ? offsetRaw : 0, 0);
 
+  /* Filtres boutique : famille couleur + fourchette prix */
+  const couleurFamille = url.searchParams.get("couleurFamille")?.toLowerCase().trim() || null;
+  const prixMinRaw = parseFloat(url.searchParams.get("prixMin") || "");
+  const prixMaxRaw = parseFloat(url.searchParams.get("prixMax") || "");
+  const prixMin = Number.isFinite(prixMinRaw) && prixMinRaw >= 0 ? prixMinRaw : null;
+  const prixMax = Number.isFinite(prixMaxRaw) && prixMaxRaw > 0 ? prixMaxRaw : null;
+
+  /* Mapping famille couleur → mots-clés (doit rester en sync avec CategoryPage) */
+  const COULEUR_KEYWORDS: Record<string, string[]> = {
+    noir:   ["noir","black","anthracite","charbon","ébène","onyx","graphite"],
+    blanc:  ["blanc","white","crème","cream","ivoire","ivory","écru","ecru","off-white","nacre","lait","cassé"],
+    gris:   ["gris","grey","gray","argent","silver","acier","perle","ciment","ardoise","souris"],
+    beige:  ["beige","camel","sable","nude","grège","taupe","nougat","naturel","lin","chanvre","paille","blé","champagne","dune"],
+    marron: ["marron","brun","brown","tabac","cognac","noisette","chocolat","caramel","tan","havane","moka","café","châtaigne","ocre"],
+    bleu:   ["bleu","blue","marine","navy","indigo","cobalt","saphir","cyan","ciel","azur","denim","électrique","nuit"],
+    vert:   ["vert","green","kaki","khaki","olive","sauge","sage","forêt","forest","émeraude","menthe","militaire","bouteille","chasseur","pistache","mousse"],
+    rouge:  ["rouge","red","bordeaux","burgundy","carmin","cramoisi","vermeil","grenat","cerise","fraise","rubis","brique"],
+    rose:   ["rose","pink","blush","poudré","framboise","corail","coral","saumon","salmon","pêche","layette","fushia","fuchsia"],
+    jaune:  ["jaune","yellow","moutarde","mustard","doré","or","gold","citron","curry","safran","ambre","miel"],
+    orange: ["orange","rouille","rust","terre cuite","brique","cannelle","roux","cuivre","paprika"],
+    violet: ["violet","purple","mauve","lilas","aubergine","lavande","prune","parme","améthyste","myrtille"],
+  };
+
   const catalog = await readAllProducts();
   if (catalog.length === 0) {
     return Response.json({ products: [], total: 0, source: "empty" });
@@ -546,6 +569,20 @@ export async function GET(req: Request) {
   if (effectiveMaxPrice !== null) {
     filtered = filtered.filter((p) => p.prix <= effectiveMaxPrice!);
   }
+
+  /* Filtre couleur famille (boutique) */
+  if (couleurFamille && COULEUR_KEYWORDS[couleurFamille]) {
+    const kws = COULEUR_KEYWORDS[couleurFamille];
+    filtered = filtered.filter((p) => {
+      const cn = (p.couleurNom || "").toLowerCase();
+      const nm = (p.nom || "").toLowerCase();
+      return kws.some((k) => cn.includes(k) || nm.includes(k));
+    });
+  }
+
+  /* Filtre fourchette prix (boutique) */
+  if (prixMin !== null) filtered = filtered.filter((p) => (p.prix ?? 0) >= prixMin!);
+  if (prixMax !== null) filtered = filtered.filter((p) => (p.prix ?? 0) <= prixMax!);
 
   // Recherche full-text (AND sur tokens)
   if (q && q.trim()) {

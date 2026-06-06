@@ -223,13 +223,13 @@ export default function CategoryPage({ title, breadcrumb, slot, q, genre: initGe
 
   const PER_PAGE = 48;
 
-  /* Filtres API */
+  /* Filtres API (server-side → refetch) */
   const [genre, setGenre] = useState(initGenre ?? "");
   const [style, setStyle] = useState(initStyle ?? "");
-
-  /* Filtres client-side */
   const [priceRange, setPriceRange] = useState("");
   const [couleur, setCouleur] = useState("");
+
+  /* Tri client-side (instantané, pas de refetch) */
   const [sortBy, setSortBy] = useState("");
 
   /* Pagination */
@@ -238,6 +238,17 @@ export default function CategoryPage({ title, breadcrumb, slot, q, genre: initGe
   const [selected, setSelected] = useState<ProduitAwin | null>(null);
   const [, startTransition] = useTransition();
 
+  /* ── Mapping priceRange → prixMin/prixMax ── */
+  const priceParams = useMemo(() => {
+    if (!priceRange) return {};
+    if (priceRange === "0-50")    return { prixMin: "0",   prixMax: "50" };
+    if (priceRange === "50-100")  return { prixMin: "50",  prixMax: "100" };
+    if (priceRange === "100-200") return { prixMin: "100", prixMax: "200" };
+    if (priceRange === "200-500") return { prixMin: "200", prixMax: "500" };
+    if (priceRange === "500+")    return { prixMin: "500", prixMax: "" };
+    return {};
+  }, [priceRange]);
+
   /* ── Fetch produits ── */
   const fetchProducts = useCallback(async (currentPage: number) => {
     setLoading(true);
@@ -245,16 +256,19 @@ export default function CategoryPage({ title, breadcrumb, slot, q, genre: initGe
     const offset = (currentPage - 1) * PER_PAGE;
     const results = await Promise.all(slots.map(async (s) => {
       const par = new URLSearchParams({ slot: s.trim(), limit: String(PER_PAGE), offset: String(offset) });
-      if (q) par.set("q", q);
-      if (genre) par.set("genre", genre);
-      if (style) par.set("style", style);
+      if (q)      par.set("q", q);
+      if (genre)  par.set("genre", genre);
+      if (style)  par.set("style", style);
+      if (couleur) par.set("couleurFamille", couleur);
+      if (priceParams.prixMin) par.set("prixMin", priceParams.prixMin);
+      if (priceParams.prixMax) par.set("prixMax", priceParams.prixMax);
       return fetch(`/api/products?${par}`).then(r => r.json()).catch(() => ({ products: [], total: 0 }));
     }));
     const all: ProduitAwin[] = results.flatMap(r => r.products ?? []);
     setProducts(all);
     setTotal(results.reduce((s, r) => s + (r.total ?? 0), 0));
     setLoading(false);
-  }, [slot, q, genre, style, PER_PAGE]);
+  }, [slot, q, genre, style, couleur, priceParams, PER_PAGE]);
 
   useEffect(() => { fetchProducts(page); }, [fetchProducts, page]);
 
@@ -274,34 +288,15 @@ export default function CategoryPage({ title, breadcrumb, slot, q, genre: initGe
     { value: "violet",  label: "Violet",        hex: "#6b3a8b", keywords: ["violet","purple","mauve","lilas","aubergine","lavande","prune","parme","améthyste","myrtille"] },
   ];
 
-  /* ── Filtrage + tri client-side ── */
+  /* ── Tri client-side uniquement (prix/couleur = serveur) ── */
   const filtered = useMemo(() => {
-    let list = [...products];
-    if (priceRange) {
-      list = list.filter(p => {
-        const px = p.prix ?? 0;
-        if (priceRange === "0-50")    return px < 50;
-        if (priceRange === "50-100")  return px >= 50 && px < 100;
-        if (priceRange === "100-200") return px >= 100 && px < 200;
-        if (priceRange === "200-500") return px >= 200 && px < 500;
-        if (priceRange === "500+")    return px >= 500;
-        return true;
-      });
-    }
-    if (couleur) {
-      const family = COLOR_FAMILIES.find(f => f.value === couleur);
-      if (family) {
-        list = list.filter(p => {
-          const cn = (p.couleurNom || "").toLowerCase();
-          return family.keywords.some(k => cn.includes(k));
-        });
-      }
-    }
+    if (!sortBy) return products;
+    const list = [...products];
     if (sortBy === "price-asc")  list.sort((a, b) => (a.prix ?? 0) - (b.prix ?? 0));
     if (sortBy === "price-desc") list.sort((a, b) => (b.prix ?? 0) - (a.prix ?? 0));
     if (sortBy === "az")         list.sort((a, b) => (a.marque || "").localeCompare(b.marque || "", "fr"));
     return list;
-  }, [products, priceRange, couleur, sortBy]);
+  }, [products, sortBy]);
 
   /* ── Nombre de filtres actifs ── */
   const activeCount = [priceRange, couleur, style, sortBy].filter(Boolean).length
@@ -340,13 +335,15 @@ export default function CategoryPage({ title, breadcrumb, slot, q, genre: initGe
     { value: "femme",  label: "Femmes" },
   ];
 
-  /* Remettre à page 1 quand un filtre API change */
-  const changeGenre = (v: string) => { setGenre(v); setPage(1); };
-  const changeStyle = (v: string) => { setStyle(v); setPage(1); };
+  /* Remettre à page 1 quand un filtre serveur change */
+  const changeGenre  = (v: string) => { setGenre(v);      setPage(1); };
+  const changeStyle  = (v: string) => { setStyle(v);      setPage(1); };
+  const changePrice  = (v: string) => { setPriceRange(v); setPage(1); };
+  const changeCouleur = (v: string) => { setCouleur(v);   setPage(1); };
 
   const resetAll = () => {
     if (!initGenre) changeGenre("");
-    changeStyle(""); setPriceRange(""); setCouleur(""); setSortBy(""); setPage(1);
+    changeStyle(""); changePrice(""); changeCouleur(""); setSortBy(""); setPage(1);
   };
 
   /* Nombre total de pages */
@@ -429,7 +426,7 @@ export default function CategoryPage({ title, breadcrumb, slot, q, genre: initGe
             active={!!priceRange}
             options={PRICE_OPTIONS}
             value={priceRange}
-            onChange={setPriceRange}
+            onChange={changePrice}
           />
 
           {/* Couleur */}
@@ -438,7 +435,7 @@ export default function CategoryPage({ title, breadcrumb, slot, q, genre: initGe
             active={!!couleur}
             options={COLOR_OPTIONS}
             value={couleur}
-            onChange={setCouleur}
+            onChange={changeCouleur}
             renderOption={(opt) => (
               <span style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 {opt.extra ? (
