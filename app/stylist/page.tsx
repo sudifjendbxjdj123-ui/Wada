@@ -1600,9 +1600,9 @@ export default function StylistPage() {
 
       <div
         style={{
-          maxWidth: 620,
+          maxWidth: 920,
           margin: "40px auto",
-          padding: "34px 28px 60px",
+          padding: "34px 48px 60px",
           background: "rgba(251, 247, 240, 0.92)",
           backdropFilter: "blur(8px)",
           WebkitBackdropFilter: "blur(8px)",
