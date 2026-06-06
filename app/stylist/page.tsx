@@ -1586,10 +1586,11 @@ export default function StylistPage() {
       style={{
         minHeight: "100vh",
         backgroundImage: "url('/stylist-bg.webp')",
-        backgroundSize: "cover",
-        backgroundPosition: "center",
+        backgroundSize: "contain",
+        backgroundPosition: "center top",
         backgroundAttachment: "fixed",
         backgroundRepeat: "no-repeat",
+        backgroundColor: palette.beige,
         color: palette.ink,
         fontFamily: fonts.sans,
         lineHeight: 1.55,
