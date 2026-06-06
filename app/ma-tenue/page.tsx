@@ -2089,6 +2089,16 @@ function priceEstimate(_m: ShopLink): string {
   return "Prix sur le site";
 }
 
+/** Brief 2026-06-07 (design cartes) — format prix épuré : on masque les
+ *  décimales « .00 » (80.00 € → 80 €) tout en gardant les centimes réels
+ *  quand ils existent (248.85 € → 248,85 €). Virgule décimale FR. Le prix
+ *  exact reste celui du marchand (mention « prix identique » sous le CTA). */
+function formatPrice(prix: number): string {
+  const rounded = Math.round(prix * 100) / 100;
+  if (Number.isInteger(rounded)) return String(rounded);
+  return rounded.toFixed(2).replace(".", ",");
+}
+
 /** Mention discrète « via Amazon / via Awin » pour signaler la couche
  *  d'affiliation sans la rendre criante. Renvoie null si la marque est
  *  affichée en direct (Amazon brut ou marchand direct). */
@@ -2721,7 +2731,7 @@ function PieceCard({
               letterSpacing: "-0.005em",
             }}>
               {mujiProduct
-                ? `${mujiProduct.prix.toFixed(2)} ${mujiProduct.devise === "EUR" ? "€" : mujiProduct.devise}`
+                ? `${formatPrice(mujiProduct.prix)} ${mujiProduct.devise === "EUR" ? "€" : mujiProduct.devise}`
                 : price}
             </p>
             {/* Ligne 4 : bouton Acheter — deep-link MUJI (rel sponsored) ou
