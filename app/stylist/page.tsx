@@ -1585,13 +1585,11 @@ export default function StylistPage() {
     <main
       style={{
         minHeight: "100vh",
-        background: `
-          linear-gradient(180deg, rgba(0,0,0,0.01) 0%, transparent 50%, rgba(0,0,0,0.005) 100%),
-          radial-gradient(ellipse at 0% 20%, rgba(107, 58, 50, 0.04) 0%, transparent 40%),
-          radial-gradient(ellipse at 100% 80%, rgba(107, 58, 50, 0.03) 0%, transparent 40%),
-          ${palette.beige}
-        `,
+        backgroundImage: "url('/stylist-bg.png')",
+        backgroundSize: "cover",
+        backgroundPosition: "center",
         backgroundAttachment: "fixed",
+        backgroundRepeat: "no-repeat",
         color: palette.ink,
         fontFamily: fonts.sans,
         lineHeight: 1.55,
@@ -1599,7 +1597,18 @@ export default function StylistPage() {
     >
             <BackButton fallback="/atelier" />
 
-      <div style={{ maxWidth: 620, margin: "0 auto", padding: "34px 20px 60px" }}>
+      <div
+        style={{
+          maxWidth: 620,
+          margin: "40px auto",
+          padding: "34px 28px 60px",
+          background: "rgba(251, 247, 240, 0.92)",
+          backdropFilter: "blur(8px)",
+          WebkitBackdropFilter: "blur(8px)",
+          borderRadius: 24,
+          boxShadow: "0 20px 60px rgba(107, 58, 50, 0.15)",
+        }}
+      >
         {/* HEADER */}
         <div style={{ textAlign: "center", marginBottom: 18 }}>
           <p style={{
