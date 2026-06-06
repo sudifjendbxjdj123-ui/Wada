@@ -347,7 +347,7 @@ function CartItemCard({ item, fallback, onRemove }: {
   const buyLabel = resolved
     ? `Acheter sur ${resolved.marchand || resolved.marque} →`
     : fallback
-      ? `Acheter chez ${fallback.label.replace(/^Amazon\s*[·•:-]\s*/i, "")} →`
+      ? `Acheter chez ${(fallback.label || "Marchand").replace(/^Amazon\s*[·•:-]\s*/i, "")} →`
       : null;
 
   return (
@@ -415,7 +415,7 @@ function CartItemCard({ item, fallback, onRemove }: {
               <strong style={{ color: palette.ink, fontWeight: 600 }}>{resolved.marque}</strong>
               {" · "}
               <span style={{ color: palette.bordeaux, fontWeight: 600 }}>
-                {resolved.prix.toFixed(2)} {resolved.devise === "EUR" ? "€" : resolved.devise}
+                {typeof resolved.prix === "number" ? resolved.prix.toFixed(2) : "—"} {resolved.devise === "EUR" ? "€" : resolved.devise}
               </span>
             </>
           ) : !loaded ? "Recherche du produit…" : `No. ${item.fromEntry}`}

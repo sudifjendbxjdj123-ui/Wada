@@ -237,7 +237,7 @@ function ProductModal({ product: p, onClose }: { product: ProduitAwin; onClose: 
           <h2 style={{ fontFamily: "'Fredoka'", fontSize: 24, fontWeight: 500, color: "#1a1a1a", margin: "0 0 14px", lineHeight: 1.2 }}>{p.nom}</h2>
 
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", paddingBottom: 14, marginBottom: 16, borderBottom: "1px solid #e8dfd0" }}>
-            <p style={{ fontFamily: "'Inter'", fontSize: 24, fontWeight: 600, color: "#1a1a1a", margin: 0 }}>{p.prix?.toLocaleString("fr-FR")} €</p>
+            <p style={{ fontFamily: "'Inter'", fontSize: 24, fontWeight: 600, color: "#1a1a1a", margin: 0 }}>{typeof p.prix === "number" ? `${p.prix.toLocaleString("fr-FR")} €` : "Prix sur le site"}</p>
             <span style={{ fontSize: 10, color: "#5a5a5a", fontFamily: "'Inter'" }}>Livraison directe par {source}</span>
           </div>
 
@@ -394,7 +394,7 @@ function ProductCard({ p, onClick }: { p: ProduitAwin; onClick: () => void }) {
         <p style={{ margin: "0 0 1px", fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#8a7a68", fontFamily: "'Inter'" }}>{p.marque}</p>
         <p style={{ margin: "0 0 4px", fontSize: 13, lineHeight: 1.35, color: "#1a1a1a", fontFamily: "'Inter'", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{p.nom}</p>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6 }}>
-          <p style={{ margin: "0 0 2px", fontSize: 14, fontWeight: 600, color: "#1a1a1a", fontFamily: "'Inter'" }}>{p.prix?.toLocaleString("fr-FR")} €</p>
+          <p style={{ margin: "0 0 2px", fontSize: 14, fontWeight: 600, color: "#1a1a1a", fontFamily: "'Inter'" }}>{typeof p.prix === "number" ? `${p.prix.toLocaleString("fr-FR")} €` : "Prix sur le site"}</p>
           {matches.length > 0 && (
             <span style={{ fontSize: 10, color: BORDEAUX, fontFamily: "'Inter'", fontWeight: 500, whiteSpace: "nowrap" }}>
               {matches.length} palette{matches.length > 1 ? "s" : ""}

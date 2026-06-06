@@ -62,7 +62,8 @@ export function HomeNouveautes() {
             const source = SOURCE_LABEL[p.marchandSlug || ""] || p.marchand;
             return (
               <article key={p.id} style={{ position: "relative" }}>
-                <a href={p.urlProduit} target="_blank" rel="noopener sponsored" style={{ textDecoration: "none", color: "inherit", display: "block" }}>
+                {p.urlProduit ? (
+                  <a href={p.urlProduit} target="_blank" rel="noopener sponsored" style={{ textDecoration: "none", color: "inherit", display: "block" }}>
 
                   {/* Image */}
                   <div style={{
@@ -86,12 +87,23 @@ export function HomeNouveautes() {
                     {p.nom}
                   </p>
                   <p style={{ margin: "0 0 2px", fontSize: 14, fontWeight: 600, color: "#1a1a1a", fontFamily: "'Inter'" }}>
-                    {p.prix?.toLocaleString("fr-FR")} €
+                    {typeof p.prix === "number" ? `${p.prix.toLocaleString("fr-FR")} €` : "Prix sur le site"}
                   </p>
                   <p style={{ margin: 0, fontSize: 11, color: "#a89880", fontFamily: "'Inter'", display: "flex", alignItems: "center", gap: 3 }}>
                     <span style={{ fontSize: 9 }}>↗</span> {source}
                   </p>
-                </a>
+                  </a>
+                ) : (
+                  <div style={{ textDecoration: "none", color: "inherit", display: "block", opacity: 0.5 }}>
+                    <div style={{ background: "#f5f1eb", borderRadius: 12, overflow: "hidden", aspectRatio: "3/4", position: "relative", marginBottom: 9 }} />
+                    <p style={{ margin: "0 0 1px", fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#8a7a68", fontFamily: "'Inter'" }}>
+                      {p.marque}
+                    </p>
+                    <p style={{ margin: "0 0 4px", fontSize: 12, lineHeight: 1.3, color: "#1a1a1a", fontFamily: "'Inter'" }}>
+                      {p.nom}
+                    </p>
+                  </div>
+                )}
 
                 {/* Cœur */}
                 <button onClick={() => toggleLike(p.id)} aria-label="Favoris"

@@ -1674,11 +1674,13 @@ function FlatLayCollage({
                 <p style={{ margin: 0, fontSize: 11, fontWeight: 600, color: "#6B3A32", textTransform: "uppercase", letterSpacing: "0.08em" }}>{activePiece.marque}</p>
                 <p style={{ margin: "2px 0 0", fontSize: 13, color: "#1E1E1E", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{activePiece.nom}</p>
               </div>
-              <span style={{ fontFamily: "'Fredoka'", fontSize: 17, fontWeight: 500, color: "#6B3A32", flexShrink: 0 }}>{activePiece.prix?.toFixed(2)} €</span>
-              <a href={activePiece.url} target="_blank" rel="noopener sponsored"
+              <span style={{ fontFamily: "'Fredoka'", fontSize: 17, fontWeight: 500, color: "#6B3A32", flexShrink: 0 }}>{typeof activePiece.prix === "number" ? `${activePiece.prix.toFixed(2)} €` : "Prix sur le site"}</span>
+              {activePiece.url ? (
+                <a href={activePiece.url} target="_blank" rel="noopener sponsored"
                 style={{ flexShrink: 0, background: "#1E1E1E", color: "#FAF8F4", borderRadius: 8, padding: "8px 14px", fontSize: 12, fontFamily: "'Fredoka'", textDecoration: "none" }}>
                 Acheter ↗
               </a>
+              ) : null}
             </div>
           )}
         </div>
@@ -1755,7 +1757,7 @@ function FlatLayCollage({
                   <p style={{ margin: 0, fontSize: 11, fontWeight: 600, color: "#6B3A32", textTransform: "uppercase", letterSpacing: "0.06em" }}>{p.marque}</p>
                   <p style={{ margin: "2px 0 0", fontSize: 13, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.nom}</p>
                 </div>
-                <span style={{ fontFamily: "'Fredoka'", fontSize: 15, color: "#6B3A32", flexShrink: 0 }}>{p.prix?.toFixed(2)} €</span>
+                <span style={{ fontFamily: "'Fredoka'", fontSize: 15, color: "#6B3A32", flexShrink: 0 }}>{typeof p.prix === "number" ? `${p.prix.toFixed(2)} €` : "—"}</span>
                 <a href={p.url} target="_blank" rel="noopener sponsored"
                   style={{ background: "#6B3A32", color: "#FAF8F4", borderRadius: 8, padding: "6px 12px", fontSize: 12, fontFamily: "'Fredoka'", textDecoration: "none", flexShrink: 0 }}>
                   ↗
