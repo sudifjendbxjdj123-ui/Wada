@@ -226,17 +226,32 @@ export default function RootLayout({
             Fraunces, EB Garamond, DM Serif Text, Bagel Fat One et Abril
             Fatface ne sont plus chargées (serif retiré, brief client).
             Bagel Fat One gardé en fallback inline (au cas où Fredoka tarde)
-            mais pas téléchargé. */}
+            mais pas téléchargé.
+
+            Font Loading Optimization (2026-06-07):
+            - Split Fredoka + Inter (critical, display=swap) from Noto JP (optional)
+            - Preload critical fonts to reduce FCP/LCP
+            - Non-critical fonts use display=optional (no render blocking) */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+
+        {/* Preload critical fonts (Fredoka + Inter) to reduce First Contentful Paint */}
         <link
           rel="preload"
           as="style"
-          href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap"
         />
+
+        {/* Load critical fonts (Fredoka + Inter) with swap strategy */}
         <link
           rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Noto+Serif+JP:wght@400;500;700&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap"
+        />
+
+        {/* Load non-critical font (Noto Serif JP) with optional strategy - no render blocking */}
+        <link
+          rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;500;700&display=optional"
         />
         {/* Awin publisher domain verification — wada.style claim.
             Token fourni par Awin (2026-05-20). Le format exact du tag Awin
