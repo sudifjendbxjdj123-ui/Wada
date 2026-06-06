@@ -1585,7 +1585,13 @@ export default function StylistPage() {
     <main
       style={{
         minHeight: "100vh",
-        background: palette.beige,
+        background: `
+          linear-gradient(180deg, rgba(0,0,0,0.01) 0%, transparent 50%, rgba(0,0,0,0.005) 100%),
+          radial-gradient(ellipse at 0% 20%, rgba(107, 58, 50, 0.04) 0%, transparent 40%),
+          radial-gradient(ellipse at 100% 80%, rgba(107, 58, 50, 0.03) 0%, transparent 40%),
+          ${palette.beige}
+        `,
+        backgroundAttachment: "fixed",
         color: palette.ink,
         fontFamily: fonts.sans,
         lineHeight: 1.55,
