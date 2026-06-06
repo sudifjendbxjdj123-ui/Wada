@@ -187,6 +187,14 @@ export async function GET(req: Request) {
   const maxPriceRaw = parseFloat(url.searchParams.get("maxPrice") || "");
   const maxPrice = Number.isFinite(maxPriceRaw) && maxPriceRaw > 0 ? maxPriceRaw : null;
 
+  /* Brief 2026-06-07 COHÉRENCE DE TIER — ?tierCap=<euros> : plafond DUR
+     imposé par /ma-tenue quand une pièce est un outlier de prix dans la
+     tenue (> 5× la médiane des autres). Distinct de maxPrice : il n'est PAS
+     soumis à la majoration +50% du soft-cap budget des slots non-MUJI, car
+     c'est une contrainte de cohérence d'ensemble, pas de budget profil. */
+  const tierCapRaw = parseFloat(url.searchParams.get("tierCap") || "");
+  const tierCap = Number.isFinite(tierCapRaw) && tierCapRaw > 0 ? tierCapRaw : null;
+
   /* Brief 2026-06-01 « Logique IA dimensions UI » §1 — chip ENVIE.
      6 valeurs : confortable | elegant | discret | affirme | creatif | intemporel
      Chacune applique des règles précises sur matières / coupes / marques.
@@ -571,6 +579,15 @@ export async function GET(req: Request) {
   }
   if (effectiveMaxPrice !== null) {
     filtered = filtered.filter((p) => p.prix <= effectiveMaxPrice!);
+  }
+
+  /* Brief 2026-06-07 COHÉRENCE DE TIER — plafond DUR final (jamais majoré).
+     Appliqué après effectiveMaxPrice pour ramener une pièce outlier dans le
+     tier de la tenue. Fail-open : si le plafond vide le pool, on garde le
+     pool pré-tierCap (mieux une pièce un peu chère qu'un slot vide). */
+  if (tierCap !== null) {
+    const underTier = filtered.filter((p) => p.prix <= tierCap);
+    if (underTier.length > 0) filtered = underTier;
   }
 
   /* Filtre couleur famille (boutique) */

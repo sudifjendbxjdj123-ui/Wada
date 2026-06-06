@@ -14,7 +14,7 @@
  * Si le client n'aime pas la tenue proposée → bouton "Voir une autre
  * tenue" qui cycle vers la palette suivante du score.
  */
-import { useState, useEffect, useMemo, useCallback, Suspense } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
@@ -192,6 +192,19 @@ function MaTenueContent() {
   const handlePriceResolved = useCallback((pieceId: string, price: number) => {
     setRealPrices((prev) => prev[pieceId] === price ? prev : { ...prev, [pieceId]: price });
   }, []);
+
+  /* Brief 2026-06-07 COHÉRENCE DE TIER (user) — empêcher qu'une pièce écrase
+     la tenue par son prix (ex. blazer 1855€ à côté d'un chino 103€ et d'une
+     ceinture 60€). On NE baisse PAS les caps marchands (les marques premium
+     restent dispo) : on impose une contrainte RELATIVE. Une fois tous les
+     prix « idéaux » résolus, toute pièce > 5× la médiane des AUTRES pièces
+     est considérée outlier ; on lui fixe un plafond = 5× cette médiane et la
+     PieceCard re-pioche une alternative du même slot/couleur sous ce plafond.
+     Si toute la tenue est premium (médiane haute), aucun plafond ne tombe →
+     les tenues luxe restent intactes. Calculé UNE fois (ref garde) pour
+     éviter l'oscillation prix↔plafond. */
+  const [tierCeilings, setTierCeilings] = useState<Record<string, number>>({});
+  const tierComputedRef = useRef(false);
 
   /* Brief 2026-05-31 v8 (Logique IA composer renforcée — Couche 6) :
      état de validation LLM. Filet de sécurité ultime contre les tenues
@@ -476,6 +489,57 @@ function MaTenueContent() {
     Object.keys(resolvedPieces).sort().join("|"),
     composition.length,
   ]);
+
+  /* ─── COHÉRENCE DE TIER (Brief 2026-06-07) ───
+     Quand tous les prix « idéaux » sont résolus, on repère les pièces dont
+     le prix dépasse 5× la médiane des AUTRES pièces et on leur fixe un
+     plafond. La PieceCard re-pioche alors une alternative sous ce plafond.
+     Calcul UNE seule fois (ref garde) pour éviter l'oscillation prix↔plafond
+     après le re-fetch. */
+  useEffect(() => {
+    if (tierComputedRef.current) return;
+    if (composition.length < 3) return; // pas pertinent sous 3 pièces
+    const entries = composition
+      .map((c) => ({ piece: c.piece, prix: realPrices[c.piece] || 0 }))
+      .filter((e) => e.prix > 0);
+    if (entries.length < composition.length) return; // attendre tous les prix
+
+    const median = (vals: number[]): number => {
+      if (vals.length === 0) return 0;
+      const s = [...vals].sort((a, b) => a - b);
+      const mid = Math.floor(s.length / 2);
+      return s.length % 2 ? s[mid] : (s[mid - 1] + s[mid]) / 2;
+    };
+
+    const TIER_FACTOR = 5;     // une pièce ne doit pas dépasser 5× la médiane des autres
+    const CEILING_FLOOR = 200; // ne jamais plafonner sous 200€ (évite de tout réduire à MUJI)
+    const ceilings: Record<string, number> = {};
+    for (const e of entries) {
+      const others = entries.filter((o) => o.piece !== e.piece).map((o) => o.prix);
+      const med = median(others);
+      if (med <= 0) continue;
+      const ceiling = Math.max(CEILING_FLOOR, Math.round(med * TIER_FACTOR));
+      if (e.prix > ceiling) {
+        ceilings[e.piece] = ceiling;
+      }
+    }
+
+    tierComputedRef.current = true; // figé : une seule passe
+    if (Object.keys(ceilings).length > 0) {
+      setTierCeilings(ceilings);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    composition.length,
+    composition.map((c) => realPrices[c.piece] || 0).join("|"),
+  ]);
+
+  /* Reset de la garde tier quand la palette/composition change (nouvelle
+     tenue → nouveau calcul de cohérence de tier). */
+  useEffect(() => {
+    tierComputedRef.current = false;
+    setTierCeilings({});
+  }, [entry?.number, composition.length, userGender, prefs.style]);
 
   /* ─── WADA × CLAUDE — Fashion DNA + prompt éditorial ───
      Memoise pour ne recalculer que si l'entry ou les prefs changent. */
@@ -1055,6 +1119,9 @@ function MaTenueContent() {
                       .map((rp) => encodeURIComponent(rp.type))
                       .join("|") || undefined
                   }
+                  /* Brief 2026-06-07 COHÉRENCE DE TIER : plafond imposé si
+                     cette pièce est un outlier de prix dans la tenue. */
+                  tierMaxPrice={tierCeilings[piece.piece] ?? null}
                 />
               </div>
             );
@@ -2081,6 +2148,12 @@ function useMujiProduct(
    *  dans la tenue, encodés "|" séparés. Transmis à /api/products pour le
    *  filtre de cohérence intra-tenue (short + cardigan NO, etc.). */
   selectedNamesStr?: string,
+  /** Brief 2026-06-07 COHÉRENCE DE TIER — plafond prix imposé a posteriori
+   *  quand cette pièce est un outlier de prix dans la tenue (> 5× la médiane
+   *  des autres pièces). null = pas de contrainte (pick idéal). Quand fourni,
+   *  l'API re-sélectionne une pièce ≤ ce plafond dans le même slot/couleur,
+   *  ramenant la tenue dans un tier de prix homogène. */
+  tierMaxPrice?: number | null,
 ) {
   const [product, setProduct] = useState<{
     id: string;
@@ -2153,6 +2226,15 @@ function useMujiProduct(
     if (style) params.set("style", style);
     if (seed) params.set("seed", seed);
     if (excludeKey) params.set("excludeIds", excludeKey);
+
+    /* Brief 2026-06-07 COHÉRENCE DE TIER : plafond prix appliqué uniquement
+       aux pièces outlier (cf. parent). On passe `tierCap` (et NON `maxPrice`)
+       pour que l'API l'applique en filtre DUR final, sans la majoration +50%
+       du soft-cap budget réservée aux slots non-MUJI. Force une re-sélection
+       du même slot/couleur sous ce plafond → tenue homogène en tier. */
+    if (tierMaxPrice != null && tierMaxPrice > 0) {
+      params.set("tierCap", String(Math.round(tierMaxPrice)));
+    }
 
     /* Brief URGENT 2026-06-01 Nemanja — Règle 3 : propager `occasion` à
        l'API pour activer les FORBIDDEN_TYPES (short_bain interdit en
@@ -2237,7 +2319,7 @@ function useMujiProduct(
       .catch(() => { /* silencieux — fallback Amazon */ });
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [slot, colorHex, paletteRef, genre, style, seed, excludeKey, selectedNamesStr]);
+  }, [slot, colorHex, paletteRef, genre, style, seed, excludeKey, selectedNamesStr, tierMaxPrice]);
 
   return product;
 }
@@ -2245,7 +2327,7 @@ function useMujiProduct(
 function PieceCard({
   piece, itemName, color, merchants, paletteRef, genre, style,
   seed, excludeIds, onPicked, featured, onPriceResolved, onPieceMetaResolved,
-  selectedNamesStr, onImageResolved,
+  selectedNamesStr, onImageResolved, tierMaxPrice,
 }: {
   piece: string;
   itemName: string;
@@ -2280,6 +2362,9 @@ function PieceCard({
     couleur: string;
     prix_eur: number;
   }) => void;
+  /** Brief 2026-06-07 COHÉRENCE DE TIER — plafond prix imposé par le parent
+   *  quand cette pièce est un outlier (> 5× la médiane des autres). null sinon. */
+  tierMaxPrice?: number | null;
 }) {
   // Tentative MUJI réel — brief variété : on passe la VRAIE couleur de la
   // palette assignée à ce slot (color.hex) + un seed unique par slot.
@@ -2293,6 +2378,7 @@ function PieceCard({
     excludeIds || [],
     onPicked,
     selectedNamesStr,
+    tierMaxPrice,
   );
   /* Quand le produit est résolu (prix réel arrivé), on remonte au parent. */
   useEffect(() => {
