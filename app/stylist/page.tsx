@@ -1584,34 +1584,57 @@ export default function StylistPage() {
   return (
     <main
       style={{
+        position: "relative",
         minHeight: "100vh",
-        backgroundImage: "url('/stylist-bg.webp')",
-        backgroundSize: "100% auto",
-        backgroundPosition: "center top",
-        backgroundAttachment: "fixed",
-        backgroundRepeat: "no-repeat",
         backgroundColor: palette.beige,
         color: palette.ink,
         fontFamily: fonts.sans,
         lineHeight: 1.55,
       }}
     >
-            <BackButton fallback="/atelier" />
-
+      {/* Fixed background layer — separate div avoids the iOS
+          `background-attachment: fixed` jank bug. */}
       <div
+        aria-hidden="true"
         style={{
-          maxWidth: 920,
-          width: "calc(100% - 40px)",
-          margin: "40px auto",
-          padding: "34px 28px 60px",
-          boxSizing: "border-box",
-          background: "rgba(251, 247, 240, 0.92)",
-          backdropFilter: "blur(8px)",
-          WebkitBackdropFilter: "blur(8px)",
-          borderRadius: 24,
-          boxShadow: "0 20px 60px rgba(107, 58, 50, 0.15)",
+          position: "fixed",
+          inset: 0,
+          backgroundImage: "url('/stylist-bg.webp')",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          backgroundRepeat: "no-repeat",
+          zIndex: 0,
+          pointerEvents: "none",
         }}
-      >
+      />
+
+      <div style={{ position: "relative", zIndex: 1 }}>
+        <BackButton fallback="/atelier" />
+
+        <div className="stylist-card">
+          <style jsx>{`
+            .stylist-card {
+              max-width: 920px;
+              width: calc(100% - 40px);
+              margin: 40px auto 120px;
+              padding: 34px 28px 60px;
+              box-sizing: border-box;
+              background: rgba(251, 247, 240, 0.92);
+              backdrop-filter: blur(8px);
+              -webkit-backdrop-filter: blur(8px);
+              border-radius: 24px;
+              box-shadow: 0 20px 60px rgba(107, 58, 50, 0.15);
+            }
+            @media (max-width: 880px) {
+              .stylist-card {
+                width: calc(100% - 28px);
+                margin: 20px auto 140px;
+                padding: 24px 18px 40px;
+                background: rgba(251, 247, 240, 0.86);
+                border-radius: 20px;
+              }
+            }
+          `}</style>
         {/* HEADER */}
         <div style={{ textAlign: "center", marginBottom: 18 }}>
           <p style={{
@@ -1810,9 +1833,9 @@ export default function StylistPage() {
             ↺ Recommencer
           </button>
         )}
+        </div>
       </div>
-
-          </main>
+    </main>
   );
 }
 
