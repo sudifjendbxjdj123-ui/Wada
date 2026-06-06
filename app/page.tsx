@@ -234,10 +234,10 @@ export default function Home() {
           position: "absolute",
           left: 0,
           right: 0,
-          // Distance depuis le bas : 96px de marge + safe-area-inset-bottom
-          // + 64px pour laisser respirer au-dessus de la MobileTabBar (qui
-          // fait ~64px de hauteur sur mobile ≤880px).
-          bottom: "calc(96px + env(safe-area-inset-bottom, 0px))",
+          // Distance depuis le bas : on remonte légèrement le bloc texte
+          // (demande user « monte un petit ce texte ») : 140px de marge +
+          // safe-area-inset-bottom pour rester au-dessus de la MobileTabBar.
+          bottom: "calc(140px + env(safe-area-inset-bottom, 0px))",
           zIndex: 3,
           padding: "0 22px",
           display: "flex",
