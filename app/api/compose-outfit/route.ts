@@ -100,7 +100,9 @@ export async function POST(req: NextRequest) {
 
   if (allVariations) {
     const variations = await generateVariations(pool, palette, fullProfile, baseUrl);
-    return NextResponse.json({ variations });
+    return NextResponse.json({ variations }, {
+      headers: { "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=86400" },
+    });
   }
 
   const outfit = await composeOutfit(pool, palette, fullProfile, {
@@ -113,5 +115,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "compose_failed" }, { status: 500 });
   }
 
-  return NextResponse.json({ outfit });
+  return NextResponse.json({ outfit }, {
+    headers: { "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=86400" },
+  });
 }

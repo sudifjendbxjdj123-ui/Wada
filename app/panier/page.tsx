@@ -381,6 +381,7 @@ function CartItemCard({ item, fallback, onRemove }: {
             src={resolved.image}
             alt={resolved.nom}
             loading="lazy"
+            decoding="async"
             style={{ width: "100%", height: "100%", objectFit: "contain", padding: 4 }}
           />
         ) : !loaded ? (

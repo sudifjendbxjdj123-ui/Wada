@@ -183,10 +183,14 @@ export async function POST(req: Request) {
       verdict,
       raison: parsed.raison || "",
       piece_la_plus_problematique: parsed.piece_la_plus_problematique || null,
+    }, {
+      headers: { "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=86400" },
     });
   } catch (err) {
     console.error("[/api/validate-outfit] unexpected error:", err);
     /* Fail-open. */
-    return NextResponse.json({ verdict: "COHERENT", raison: "", piece_la_plus_problematique: null, _fallback: "server_error" });
+    return NextResponse.json({ verdict: "COHERENT", raison: "", piece_la_plus_problematique: null, _fallback: "server_error" }, {
+      headers: { "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=86400" },
+    });
   }
 }

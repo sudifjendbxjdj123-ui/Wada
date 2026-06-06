@@ -1752,7 +1752,7 @@ function FlatLayCollage({
 
             {pieces.map((p) => p.url && (
               <div key={p.slot} style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12, padding: "10px 14px", background: "#fff", borderRadius: 12, border: "1px solid rgba(30,30,30,0.07)" }}>
-                {images[p.slot] && <img src={images[p.slot]} alt={p.slot} style={{ width: 44, height: 44, objectFit: "contain", borderRadius: 8 }} />}
+                {images[p.slot] && <img src={images[p.slot]} alt={p.slot} loading="lazy" decoding="async" style={{ width: 44, height: 44, objectFit: "contain", borderRadius: 8 }} />}
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <p style={{ margin: 0, fontSize: 11, fontWeight: 600, color: "#6B3A32", textTransform: "uppercase", letterSpacing: "0.06em" }}>{p.marque}</p>
                   <p style={{ margin: "2px 0 0", fontSize: 13, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.nom}</p>

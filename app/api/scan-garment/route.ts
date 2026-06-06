@@ -165,7 +165,9 @@ export async function POST(req: Request) {
     /* Si la Vision a flagué non_reconnu, on remonte tel quel avec un 200
        (pas une erreur HTTP — c'est un résultat sémantique, pas un bug). */
     if (parsed.error) {
-      return NextResponse.json(parsed);
+      return NextResponse.json(parsed, {
+      headers: { "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=86400" },
+    });
     }
 
     /* Validation minimale : le slot DOIT être présent et valide pour que
@@ -185,7 +187,9 @@ export async function POST(req: Request) {
       `[/api/scan-garment] ok ${Date.now() - t0}ms slot=${parsed.slot} type=${parsed.type} marque=${parsed.marque || "—"} registre=${parsed.registre || "—"}`,
     );
 
-    return NextResponse.json(parsed);
+    return NextResponse.json(parsed, {
+      headers: { "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=86400" },
+    });
   } catch (err) {
     console.error("[/api/scan-garment] unexpected error:", err);
     return NextResponse.json(

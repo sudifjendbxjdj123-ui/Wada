@@ -221,7 +221,7 @@ function ProductModal({ product: p, onClose }: { product: ProduitAwin; onClose: 
         <div className="wada-qv-imgside" style={{ background: gradient, display: "flex", alignItems: "center", justifyContent: "center", padding: 32, minHeight: 380 }}>
           <div style={{ width: "82%", aspectRatio: "1/1", background: "#fff", borderRadius: 14, boxShadow: "0 8px 30px rgba(0,0,0,0.10)", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
             {(p.largeImage || p.image) ? (
-              <img src={p.largeImage || p.image} alt={p.nom || p.marque || "Produit"} style={{ width: "100%", height: "100%", objectFit: "contain", padding: 18 }} />
+              <img src={p.largeImage || p.image} alt={p.nom || p.marque || "Produit"} loading="lazy" decoding="async" style={{ width: "100%", height: "100%", objectFit: "contain", padding: 18 }} />
             ) : (
               <span style={{ fontSize: 48, opacity: 0.3 }}>◻</span>
             )}
