@@ -1585,7 +1585,7 @@ export default function StylistPage() {
     <main
       style={{
         minHeight: "100vh",
-        backgroundImage: "url('/stylist-bg.png')",
+        backgroundImage: "url('/stylist-bg.webp')",
         backgroundSize: "cover",
         backgroundPosition: "center",
         backgroundAttachment: "fixed",
