@@ -138,7 +138,16 @@ export default function FavorisPage() {
                     <div style={{ flex: 1, height: 1, background: border }} />
                     <span style={{ fontSize: 11, color: subtle, fontStyle: "italic" }}>{favPalettes.length}</span>
                   </div>
-                  <div className="wada-palettes-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 32 }}>
+                  {/* Brief 2026-06-07 (cohérence) — même grille fluide que
+                      /palettes (auto-fill minmax 220px) au lieu de l'ancienne
+                      classe .wada-palettes-grid figée à 2 colonnes < 1024px.
+                      Les cartes favoris s'alignent désormais sur le dictionnaire
+                      (≈3 colonnes desktop, 1 sur mobile, sans saut brusque). */}
+                  <div style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
+                    gap: 20,
+                  }}>
                     {favPalettes.map((p) => (
                       <PaletteCard key={p.number} entry={p} />
                     ))}
