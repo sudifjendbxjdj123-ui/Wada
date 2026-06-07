@@ -126,10 +126,14 @@ const HOUSE_REF: Record<Registre, string> = {
 };
 
 /* Mots-clés FR pour la direction artistique par registre — brief §7. */
+/* Fix 2026-06-07 (design/contenu) — les descripteurs ne doivent PAS répéter
+   le mot d'accroche du lead (cf. buildFrenchDescription). Avant : Classique
+   donnait « Tailoring net … : tailoring net, … » et Old money « Quiet luxury
+   … : quiet luxury, … » (doublon visible). Premiers tokens reformulés. */
 const VOCAB_FR: Record<Registre, string> = {
   "Minimal":     "épuré, lignes nettes, sans excès",
-  "Classique":   "tailoring net, intemporel, lignes propres",
-  "Old money":   "quiet luxury, discret, matières nobles",
+  "Classique":   "intemporel, sobre, lignes propres",
+  "Old money":   "discret, matières nobles, tomber impeccable",
   "Décontracté": "casual, facile, intentionnel",
   "Streetwear":  "volumes amples, sneakers nettes, urbain",
 };

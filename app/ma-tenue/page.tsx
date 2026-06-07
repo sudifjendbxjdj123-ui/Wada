@@ -1126,7 +1126,7 @@ function MaTenueContent() {
                     textTransform: "uppercase", color: textSecondary,
                     margin: 0, fontFamily: "'Inter', sans-serif", fontWeight: 600,
                   }}>
-                    {anchor ? "Les 4 pièces à acheter" : "La tenue complète"}
+                    {anchor ? "Les 4 pièces à acheter" : "Total de la tenue"}
                   </p>
                   <p style={{
                     fontSize: 13, color: textSecondary,
@@ -2527,8 +2527,14 @@ function PieceCard({
         </p>
 
         {/* ─── Bloc marchand primaire — brique structurée ─── */}
+        {/* Brief 2026-06-07 (design héro) : sur la vedette (layout row,
+            corps centré verticalement), on NE pousse PAS le bloc marchand
+            en bas (marginTop auto) — sinon un grand vide se crée entre le
+            nom et le bouton. On le garde groupé avec le titre, le tout
+            centré. Sur les cards normales, marginTop auto aligne les
+            boutons en bas de carte. */}
         <div style={{
-          marginTop: "auto",
+          marginTop: featured ? 16 : "auto",
           paddingTop: 12,
         }}>
           <div style={{
