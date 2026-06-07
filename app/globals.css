@@ -1442,12 +1442,16 @@ input[type="range"]:hover::-moz-range-thumb { background: #1B4A6B; box-shadow: 0
    ═════════════════════════════════════════════════════════════════
    Au survol d'une card palette, la 1ère bande de couleur s'élargit
    (flex:1.6) et les autres rétrécissent (flex:.85) → effet "respiration"
-   qui met en valeur la couleur dominante. Désactivé sur reduced-motion. */
+   qui met en valeur la couleur dominante. Désactivé sur reduced-motion.
+
+   Fix 2026-06-07 : !important requis car PaletteCard pose `flex:1` en style
+   INLINE sur chaque bande (specificity inline > sélecteur de classe), ce qui
+   neutralisait silencieusement ces règles → l'effet ne se déclenchait jamais. */
 .wada-palette-card:hover .wada-palette-bands > span {
-  flex: 0.85;
+  flex: 0.85 !important;
 }
 .wada-palette-card:hover .wada-palette-bands > span:first-child {
-  flex: 1.6;
+  flex: 1.6 !important;
 }
 @media (prefers-reduced-motion: reduce) {
   .wada-palette-card:hover .wada-palette-bands > span,
