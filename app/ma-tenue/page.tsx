@@ -111,14 +111,28 @@ export default function MaTenuePage() {
   );
 }
 
-/** Loader minimal pendant l'hydratation de useSearchParams (~10ms). */
-function MaTenueLoader() {
+/* Couleurs de repli pour le loader quand la palette n'est pas encore connue
+   (cas du fallback Suspense de useSearchParams). Gamme chaude WADA. */
+const LOADER_FALLBACK_COLORS = ["#E8C8A0", "#A8B29A", "#C9A06A", "#6B3A32", "#7A8B5A"];
+
+/**
+ * Écran de chargement /ma-tenue — refonte 2026-06-07 (design).
+ * Avant : un simple « On vous prépare ça… » centré, plat. Maintenant :
+ * un loader éditorial WADA — rangée de swatches couleur qui « respirent »
+ * en vague décalée (la signature de la marque, c'est la couleur). Si la
+ * palette est déjà connue (entry), on anime SES couleurs ; sinon une gamme
+ * chaude de repli. Respecte prefers-reduced-motion.
+ */
+function OutfitLoadingState({ colors }: { colors?: string[] }) {
+  const swatches = (colors && colors.length ? colors : LOADER_FALLBACK_COLORS).slice(0, 5);
   return (
-    <main style={{ minHeight: "100vh", background: paper, color: ink, fontFamily: fontBody }}>
-            {/* Brief audit 2026-05-28 §5 : le shell (HTML initial avant
-          hydratation) doit AUSSI rendre un bouton retour, sinon l'utilisateur
-          voit « On vous prépare ça… » sans moyen de revenir. */}
-      <div style={{ maxWidth: 1280, margin: "0 auto", padding: "24px 5% 0" }}>
+    <main style={{
+      minHeight: "100vh", background: paper, color: ink,
+      fontFamily: fontBody, display: "flex", flexDirection: "column",
+    }}>
+      {/* Bouton retour (brief audit 2026-05-28 §5 : toujours un retour
+          visible même pendant le chargement). */}
+      <div style={{ maxWidth: 1280, margin: "0 auto", width: "100%", padding: "24px 5% 0" }}>
         <Link
           href="/palettes"
           style={{
@@ -135,14 +149,61 @@ function MaTenueLoader() {
           <span>Retour</span>
         </Link>
       </div>
-      <div style={{ maxWidth: 720, margin: "0 auto", padding: "80px 5%" }}>
-        <p style={{ ...sectionLabel, color: mojo, marginBottom: 14 }}>Composition de votre tenue</p>
-        <h1 style={{ fontFamily: fontHeading, fontSize: 48, margin: 0 }}>
+
+      <div style={{
+        flex: 1, display: "flex", flexDirection: "column",
+        alignItems: "center", justifyContent: "center", textAlign: "center",
+        padding: "40px 5% 120px",
+      }}>
+        <p style={{ ...sectionLabel, color: mojo, marginBottom: 18 }}>
+          Composition de votre tenue
+        </p>
+        <h1 style={{
+          fontFamily: fontHeading, fontStyle: "italic", fontWeight: 500,
+          fontSize: "clamp(30px, 5vw, 48px)", margin: 0, letterSpacing: "-0.01em",
+        }}>
           On vous prépare ça…
         </h1>
+        <p style={{ marginTop: 14, color: textSecondary, maxWidth: "42ch", lineHeight: 1.6 }}>
+          WADA croise vos préférences avec les 348 palettes du dictionnaire.
+        </p>
+
+        {/* Swatches animés — la couleur qui « respire ». */}
+        <div style={{ display: "flex", gap: 12, marginTop: 34 }} aria-hidden>
+          {swatches.map((hex, i) => (
+            <span
+              key={`${hex}-${i}`}
+              className="wada-loader-swatch"
+              style={{
+                width: 44, height: 56, borderRadius: 12, background: hex,
+                boxShadow: "inset 0 0 0 1px rgba(30,30,30,.08), 0 8px 20px -12px rgba(30,30,30,.5)",
+                animationDelay: `${i * 0.13}s`,
+              }}
+            />
+          ))}
+        </div>
       </div>
-          </main>
+
+      <style>{`
+        @keyframes wada-loader-pulse {
+          0%, 100% { opacity: 0.4; transform: translateY(0); }
+          50%      { opacity: 1;   transform: translateY(-8px); }
+        }
+        .wada-loader-swatch {
+          animation: wada-loader-pulse 1.4s ease-in-out infinite;
+          will-change: opacity, transform;
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .wada-loader-swatch { animation: none; opacity: 0.85; }
+        }
+      `}</style>
+    </main>
   );
+}
+
+/** Loader minimal pendant l'hydratation de useSearchParams (~10ms). */
+function MaTenueLoader() {
+  return <OutfitLoadingState />;
 }
 
 function MaTenueContent() {
@@ -540,21 +601,10 @@ function MaTenueContent() {
      n'était plus cohérent (le flat-lay ne montrait pas les vraies pièces
      achetables). On économise aussi un appel Replicate par vue. */
 
-  /* Page de chargement avant hydratation */
+  /* Page de chargement avant hydratation — loader éditorial WADA.
+     Si la palette est déjà résolue, on anime SES couleurs. */
   if (!hydrated || !entry) {
-    return (
-      <main style={{ minHeight: "100vh", background: paper, color: ink, fontFamily: fontBody }}>
-                <div style={{ maxWidth: 720, margin: "0 auto", padding: "120px 5%" }}>
-          <p style={{ ...sectionLabel, color: mojo, marginBottom: 14 }}>Composition de votre tenue</p>
-          <h1 style={{ fontFamily: fontHeading, fontSize: 48, margin: 0 }}>
-            On vous prépare ça…
-          </h1>
-          <p style={{ marginTop: 18, color: textSecondary }}>
-            WADA croise vos préférences avec les 348 palettes du dictionnaire.
-          </p>
-        </div>
-              </main>
-    );
+    return <OutfitLoadingState colors={entry?.colors.map((c) => c.hex)} />;
   }
 
   return (
