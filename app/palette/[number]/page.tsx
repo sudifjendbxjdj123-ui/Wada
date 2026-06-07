@@ -289,7 +289,12 @@ export default function PalettePage({ params }: { params: Promise<{ number: stri
               bas. Maintenant : kicker + nom + 1 phrase italique + ♡ + P
               dans une rangée discrète. L'action principale (voir une
               tenue) est entièrement portée par les 3 cards de look. */}
-          <div>
+          {/* Brief 2026-06-07 (design) — colonne droite centrée verticalement
+              pour équilibrer la grande carte nuancier de gauche (avant :
+              contenu collé en haut → grand vide sous les boutons). */}
+          <div style={{
+            display: "flex", flexDirection: "column", justifyContent: "center",
+          }}>
             <p style={{
               fontFamily: fonts.display, fontWeight: 600,
               fontSize: 13, color: palette.bordeaux,
