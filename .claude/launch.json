@@ -4,9 +4,9 @@
     {
       "name": "wada-dev",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev", "--", "--port", "3210"],
-      "port": 3210,
-      "autoPort": false
+      "runtimeArgs": ["run", "dev"],
+      "port": 3000,
+      "autoPort": true
     }
   ]
 }

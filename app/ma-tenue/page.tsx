@@ -1513,6 +1513,20 @@ function MaTenueContent() {
                 text-align: left !important;
               }
             }
+            /* Brief 2026-06-07 (design héro) — la pièce centrale est un
+               héro 2 colonnes (image | détails) sur desktop. Sous 720px,
+               on repasse en colonne pour garder une image lisible. */
+            @media (max-width: 720px) {
+              :global(.wada-piece-card--featured) {
+                flex-direction: column !important;
+              }
+              :global(.wada-piece-card--featured .wada-piece-photo),
+              :global(.wada-piece-card--featured .wada-skeleton) {
+                flex: none !important;
+                width: 100% !important;
+                border-radius: 16px 16px 0 0 !important;
+              }
+            }
             :global(.wada-piece-card:hover) {
               transform: translateY(-3px);
               box-shadow: 0 14px 40px rgba(30, 30, 30, .10) !important;
@@ -2440,26 +2454,51 @@ function PieceCard({
      (COS / Amazon / ~55 €). On affiche un état honnête : « pas encore chez nos
      partenaires », ce qui est vrai et pousse le client à revenir. */
   if (!mujiProduct && !primary) {
+    /* Brief 2026-06-07 (design) — état vide adouci : avant, un aplat de
+       couleur pleine saturation (110px) faisait « card cassée ». Maintenant
+       un fond crème dégradé très léger teinté de la couleur cible + une
+       pastille discrète + un libellé « Bientôt », pour signaler un
+       placeholder honnête plutôt qu'un produit raté. */
     return (
       <article style={{
-        background: "var(--wada-cream, #FAF8F4)",
-        border: `1px solid ${border}`,
-        borderRadius: 18,
+        background: "#FBF9F5",
+        border: `1px dashed ${color.hex}55`,
+        borderRadius: 16,
         overflow: "hidden",
-        boxShadow: "0 8px 32px rgba(30,30,30,.06)",
+        boxShadow: "0 8px 30px rgba(30,30,30,.05)",
         display: "flex", flexDirection: "column",
+        aspectRatio: featured ? undefined : "4 / 5",
       }}>
-        <div aria-hidden style={{ height: 110, background: color.hex }} />
-        <div style={{ padding: "14px 16px", flex: 1 }}>
+        <div aria-hidden style={{
+          flex: 1,
+          minHeight: 120,
+          display: "flex", flexDirection: "column",
+          alignItems: "center", justifyContent: "center", gap: 10,
+          background: `linear-gradient(180deg, #fff 0%, ${color.hex}14 100%)`,
+        }}>
+          <span style={{
+            width: 40, height: 40, borderRadius: "50%",
+            background: color.hex, opacity: 0.85,
+            boxShadow: "0 0 0 4px #ffffffcc, 0 2px 10px -2px rgba(30,30,30,.25)",
+          }} />
+          <span style={{
+            fontFamily: "'Inter', sans-serif", fontSize: 9.5,
+            letterSpacing: "0.18em", textTransform: "uppercase",
+            color: textSecondary, fontWeight: 600,
+          }}>
+            Bientôt
+          </span>
+        </div>
+        <div style={{ padding: "14px 16px" }}>
           <p style={{ fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", color: "#A8B29A", margin: 0, fontWeight: 700 }}>
             {PIECE_LABELS[piece] || piece}
           </p>
           <p style={{ fontFamily: "'Fredoka', sans-serif", fontSize: 17, margin: "4px 0 0", lineHeight: 1.25, color: ink }}>
             {itemName}
           </p>
-          <p style={{ marginTop: 10, fontSize: 12, color: textSecondary, fontStyle: "italic", lineHeight: 1.45 }}>
-            Aucune de nos marques partenaires n'a encore cette pièce — on enrichit
-            le catalogue chaque semaine.
+          <p style={{ marginTop: 8, fontSize: 12, color: textSecondary, fontStyle: "italic", lineHeight: 1.45 }}>
+            Pas encore chez nos partenaires — on enrichit le catalogue chaque
+            semaine.
           </p>
         </div>
       </article>
@@ -2476,7 +2515,7 @@ function PieceCard({
 
   return (
     <article
-      className="wada-piece-card"
+      className={featured ? "wada-piece-card wada-piece-card--featured" : "wada-piece-card"}
       style={{
         position: "relative",
         background: "#FBF9F5",
@@ -2485,7 +2524,11 @@ function PieceCard({
         overflow: "hidden",
         boxShadow: "0 8px 30px rgba(30,30,30,.06)",
         display: "flex",
-        flexDirection: "column",
+        /* Brief 2026-06-07 (design) — la pièce centrale passe en HÉRO
+           2 colonnes (image | détails) sur desktop au lieu d'une image
+           16/10 pleine largeur qui laissait le packshot flotter dans un
+           grand vide. Sur mobile, on retombe en colonne (cf. media query). */
+        flexDirection: featured ? "row" : "column",
         transition: "transform 0.3s cubic-bezier(.22,1,.36,1), box-shadow 0.3s ease",
       }}
     >
@@ -2541,14 +2584,16 @@ function PieceCard({
           className="wada-piece-photo"
           aria-hidden
           style={{
-            // Vedette : 16/10 paysage (large bande au-dessus du contenu).
-            // Card normale : 4/5 portrait (mannequin/produit en pied).
-            aspectRatio: featured ? "16 / 10" : "4 / 5",
+            // Brief 2026-06-07 (design héro) — Vedette : colonne image à
+            // largeur fixe (~46%) et ratio portrait 4/5, à côté des détails.
+            // Card normale : 4/5 portrait pleine largeur.
+            ...(featured
+              ? { flex: "0 0 46%", aspectRatio: "4 / 5", borderRadius: "16px 0 0 16px" }
+              : { aspectRatio: "4 / 5", borderRadius: "16px 16px 0 0" }),
             // Fond dégradé blanc → couleur dominante de la pièce
             // (brief Page tenue V2 §7) : le fond « raconte » le produit.
             background: `linear-gradient(180deg, #fff 0%, ${(mujiProduct?.couleurHex || color.hex)}26 100%)`,
             overflow: "hidden",
-            borderRadius: "16px 16px 0 0",
           }}
         >
           <img
@@ -2584,8 +2629,11 @@ function PieceCard({
           aria-hidden
           className="wada-skeleton"
           style={{
-            aspectRatio: featured ? "16 / 10" : "4 / 5",
-            borderRadius: "16px 16px 0 0",
+            /* Brief 2026-06-07 (design héro) — skeleton aligné sur le
+               nouveau layout : colonne 46% ratio 4/5 pour la vedette. */
+            ...(featured
+              ? { flex: "0 0 46%", aspectRatio: "4 / 5", borderRadius: "16px 0 0 16px" }
+              : { aspectRatio: "4 / 5", borderRadius: "16px 16px 0 0" }),
             position: "relative",
             overflow: "hidden",
           }}
@@ -2603,8 +2651,17 @@ function PieceCard({
         </div>
       )}
 
-      {/* Body */}
-      <div style={{ padding: "14px 16px", flex: 1, display: "flex", flexDirection: "column" }}>
+      {/* Body — Brief 2026-06-07 (design héro) : sur la vedette, le bloc
+          détails occupe la colonne droite et se centre verticalement avec
+          plus d'air. Sur les cards normales, comportement inchangé. */}
+      <div style={{
+        padding: featured ? "28px clamp(20px, 3vw, 36px)" : "14px 16px",
+        flex: 1,
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: featured ? "center" : "flex-start",
+        minWidth: 0,
+      }}>
         {/* Brief Muji §9 : si on a un vrai produit MUJI, on affiche son
             NOM RÉEL en headline (« T-shirt à manches courtes col rond »)
             plutôt que le libellé générique du moteur (« Chemise oxford »).
