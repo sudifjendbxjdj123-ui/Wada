@@ -143,6 +143,15 @@ function roleToApiSlot(role: string): string | null {
   return map[role] || null;
 }
 
+/** Brief 2026-06-07 (design) — format prix épuré, aligné sur /ma-tenue :
+ *  masque les décimales « .00 » (80.00 → 80) et garde les centimes réels
+ *  avec une virgule FR (248.85 → 248,85). */
+function formatPrice(prix: number): string {
+  const rounded = Math.round(prix * 100) / 100;
+  if (Number.isInteger(rounded)) return String(rounded);
+  return rounded.toFixed(2).replace(".", ",");
+}
+
 /* ──────────────────────────────────────────────────────────────────────
    Design tokens — alignés sur le mockup
    ────────────────────────────────────────────────────────────────────── */
@@ -2096,7 +2105,9 @@ function PieceCard({
           aria-hidden
           style={{
             aspectRatio: "4 / 5",
-            background: "#FBF9F5",
+            /* Brief 2026-06-07 : fond dégradé blanc → teinte de la pièce,
+               aligné sur /ma-tenue. Le packshot détouré s'y fond. */
+            background: `linear-gradient(180deg, #fff 0%, ${piece.hex}22 100%)`,
             overflow: "hidden",
             borderBottom: `1px solid ${palette.line}`,
           }}
@@ -2107,7 +2118,14 @@ function PieceCard({
             loading="lazy"
             style={{
               width: "100%", height: "100%",
-              objectFit: "cover", objectPosition: "center 20%",
+              /* Brief 2026-06-07 (cohérence packshot) : passé de
+                 `cover` + `center 20%` (pensé pour des photos mannequin,
+                 qui ROGNAIT les packshots détourés) à `contain` + padding,
+                 comme /ma-tenue → la pièce entière est visible, jamais
+                 coupée. Le scoring d'image préfère désormais les packshots,
+                 donc `contain` est le bon choix. */
+              objectFit: "contain", objectPosition: "center",
+              padding: "8px",
               display: "block",
             }}
           />
@@ -2189,7 +2207,7 @@ function PieceCard({
                 fontFamily: fonts.sans, fontSize: 14, fontWeight: 700,
                 color: palette.bordeaux, margin: "6px 0 0",
               }}>
-                {mujiProduct.prix.toFixed(2)} {mujiProduct.devise === "EUR" ? "€" : mujiProduct.devise}
+                {formatPrice(mujiProduct.prix)} {mujiProduct.devise === "EUR" ? "€" : mujiProduct.devise}
               </p>
               <a
                 href={mujiProduct.url}
