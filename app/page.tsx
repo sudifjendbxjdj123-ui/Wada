@@ -172,7 +172,12 @@ export default function Home() {
           width: "100%",
           height: "100%",
           objectFit: "cover",
-          objectPosition: "center",
+          /* Brief 2026-06-07 (média hero) — cadrage desktop : l'image est
+             un portrait (1600×3034) dans un cadre paysage large → `cover`
+             montrait le milieu vertical, laissant un grand vide de shoji
+             au-dessus du sujet. `center 60%` remonte le sujet (le visage
+             révélé + le masque Hannya) en point focal et réduit le vide. */
+          objectPosition: "center 60%",
           zIndex: 0,
           pointerEvents: "none",
         }}
@@ -198,7 +203,9 @@ export default function Home() {
           width: "100%",
           height: "100%",
           objectFit: "cover",
-          objectPosition: "center",
+          /* Brief 2026-06-07 (média hero) : même cadrage que l'image de
+             fond pour une transition image→vidéo sans saut. */
+          objectPosition: "center 60%",
           zIndex: 1,
           pointerEvents: "none",
           opacity: videoReady ? 1 : 0,
@@ -220,7 +227,13 @@ export default function Home() {
           inset: 0,
           zIndex: 2,
           pointerEvents: "none",
-          background: "linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0) 40%, rgba(0,0,0,0.35) 70%, rgba(0,0,0,0.65) 100%)",
+          /* Brief 2026-06-07 (média hero) — dégradé plus cinématographique :
+             léger voile en HAUT (0.22→0 sur le premier quart) qui encadre
+             le sujet et donne de la profondeur, milieu transparent (le
+             mannequin reste visible), et bas un peu plus profond (0.42/0.72)
+             pour que le kicker + H1 + CTAs ressortent nettement. */
+          background:
+            "linear-gradient(180deg, rgba(0,0,0,0.22) 0%, rgba(0,0,0,0.06) 24%, rgba(0,0,0,0) 46%, rgba(0,0,0,0.42) 72%, rgba(0,0,0,0.72) 100%)",
         }}
       />
 
