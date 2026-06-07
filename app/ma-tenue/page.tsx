@@ -206,6 +206,73 @@ function MaTenueLoader() {
   return <OutfitLoadingState />;
 }
 
+/**
+ * État « palette introuvable » (design 2026-06-07).
+ * Avant : une palette demandée par ?palette=<n> mais inexistante retombait
+ * SILENCIEUSEMENT sur une palette matchée par profil (« Bibliothèque »…) —
+ * trompeur (le client croit voir la tenue de la palette demandée). Maintenant
+ * on affiche un message honnête + un chemin pour repartir (jamais bloqué).
+ */
+function PaletteNotFound({ number }: { number: string }) {
+  return (
+    <main style={{
+      minHeight: "100vh", background: paper, color: ink,
+      fontFamily: fontBody, display: "flex", flexDirection: "column",
+    }}>
+      <div style={{ maxWidth: 1280, margin: "0 auto", width: "100%", padding: "24px 5% 0" }}>
+        <Link
+          href="/palettes"
+          style={{
+            display: "inline-flex", alignItems: "center", gap: 10,
+            color: ink, textDecoration: "none",
+            fontFamily: fontLabel, fontSize: 11, fontWeight: 600,
+            letterSpacing: "0.3em", textTransform: "uppercase",
+            padding: "8px 14px",
+            border: `1px solid ${border}`, borderRadius: 999,
+            background: "rgba(255,255,255,0.6)",
+          }}
+        >
+          <span aria-hidden style={{ fontSize: 14, letterSpacing: 0 }}>←</span>
+          <span>Retour</span>
+        </Link>
+      </div>
+
+      <div style={{
+        flex: 1, display: "flex", flexDirection: "column",
+        alignItems: "center", justifyContent: "center", textAlign: "center",
+        padding: "40px 5% 120px",
+      }}>
+        <p style={{ ...sectionLabel, color: mojo, marginBottom: 18 }}>
+          Palette introuvable
+        </p>
+        <h1 style={{
+          fontFamily: fontHeading, fontStyle: "italic", fontWeight: 500,
+          fontSize: "clamp(30px, 5vw, 48px)", margin: 0, letterSpacing: "-0.01em",
+        }}>
+          Cette palette n’existe pas
+        </h1>
+        <p style={{ marginTop: 14, color: textSecondary, maxWidth: "42ch", lineHeight: 1.6 }}>
+          La palette N°&nbsp;{number} n’est pas dans le dictionnaire WADA.
+          Parcourez les 348 accords pour en choisir une.
+        </p>
+        <Link
+          href="/palettes"
+          style={{
+            marginTop: 28,
+            display: "inline-block",
+            fontFamily: fontLabel, fontSize: 14, fontWeight: 600,
+            textDecoration: "none",
+            background: "#6B3A32", color: "#FAF8F4",
+            borderRadius: 999, padding: "13px 26px",
+          }}
+        >
+          Voir toutes les palettes →
+        </Link>
+      </div>
+    </main>
+  );
+}
+
 function MaTenueContent() {
   const searchParams = useSearchParams();
   // Palette imposée via URL param (?palette=037) — quand le client arrive
@@ -600,6 +667,14 @@ function MaTenueContent() {
      Le visuel généré faisait doublon avec les vraies photos MUJI et
      n'était plus cohérent (le flat-lay ne montrait pas les vraies pièces
      achetables). On économise aussi un appel Replicate par vue. */
+
+  /* Palette demandée explicitement mais absente du dictionnaire → message
+     honnête « introuvable » (avant : repli silencieux sur une autre palette).
+     On attend l'hydratation pour ne pas flasher l'état sur le shell SSR. */
+  if (hydrated && requestedPaletteNumber &&
+      !dictionary.some((d) => d.number === requestedPaletteNumber)) {
+    return <PaletteNotFound number={requestedPaletteNumber} />;
+  }
 
   /* Page de chargement avant hydratation — loader éditorial WADA.
      Si la palette est déjà résolue, on anime SES couleurs. */
