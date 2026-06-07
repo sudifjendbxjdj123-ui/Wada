@@ -604,18 +604,40 @@ function MaTenueContent() {
             </p>
             <h1 style={{
               fontFamily: fontHeading, fontStyle: "italic", fontWeight: 500,
-              fontSize: "clamp(36px, 6vw, 64px)", margin: "0 0 14px",
+              fontSize: "clamp(36px, 6vw, 60px)", margin: "0 0 6px",
               letterSpacing: "-0.02em", color: ink, lineHeight: 1.05,
             }}>
               {entry.name}
             </h1>
-            <p style={{
-              fontFamily: fontBody, fontStyle: "italic", fontSize: 22,
-              color: seal, margin: 0, letterSpacing: 0,
-            }}>
-              {entry.colors.map((c) => c.name).join(" · ")}
-            </p>
 
+            {/* Brief 2026-06-07 (design) — barre nuancier : remplace
+                l'ancien sous-titre italique « X · Y · Z » + les pastilles
+                rondes flottantes (redondants) par une rangée de swatches
+                NOMMÉS, type carte nuancier de coloriste. */}
+            <div style={{
+              display: "flex", justifyContent: "center", flexWrap: "wrap",
+              gap: 12, marginTop: 22,
+            }}>
+              {entry.colors.slice(0, 5).map((c, i) => (
+                <div key={`${c.hex}-${i}`} style={{
+                  display: "flex", flexDirection: "column",
+                  alignItems: "center", gap: 8,
+                }}>
+                  <span aria-hidden style={{
+                    width: 84, height: 50, borderRadius: 12,
+                    background: c.hex,
+                    boxShadow: "inset 0 0 0 1px rgba(30,30,30,.08), 0 8px 20px -12px rgba(30,30,30,.5)",
+                  }} />
+                  <span style={{
+                    fontFamily: fontLabel, fontSize: 10,
+                    letterSpacing: "0.12em", textTransform: "uppercase",
+                    color: textSecondary, fontWeight: 600,
+                  }}>
+                    {c.name}
+                  </span>
+                </div>
+              ))}
+            </div>
           </Reveal>
         </div>
       </section>
@@ -637,38 +659,15 @@ function MaTenueContent() {
         <section style={{ padding: "8px 5% 24px" }}>
           <div style={{ maxWidth: 720, margin: "0 auto" }}>
             <Reveal>
-              {/* Fine bande de pastilles couleur — identité chromatique sans grande image */}
-              <div
-                aria-hidden
-                style={{
-                  display: "flex", justifyContent: "center", gap: 10,
-                  marginBottom: 32,
-                }}
-              >
-                {entry.colors.slice(0, 5).map((c, i) => (
-                  <span
-                    key={`${c.hex}-${i}`}
-                    title={c.name}
-                    style={{
-                      width: 36, height: 36, borderRadius: "50%",
-                      background: c.hex,
-                      boxShadow: "0 0 0 1px rgba(30,30,30,.10)",
-                    }}
-                  />
-                ))}
-              </div>
-
+              {/* Pastilles rondes flottantes retirées (design 2026-06-07) :
+                  remplacées par la barre nuancier nommée du hero ci-dessus.
+                  Kicker « Direction artistique » retiré aussi — la phrase
+                  éditoriale se suffit comme chapô sous le nuancier. */}
               <div style={{ textAlign: "center", padding: "0 12px" }}>
                 <p style={{
-                  ...sectionLabel, color: mojo, fontWeight: 700,
-                  letterSpacing: "0.35em", marginBottom: 14,
-                }}>
-                  Direction artistique
-                </p>
-                <p style={{
-                  fontFamily: fontBody, fontStyle: "italic", fontSize: 19,
-                  color: ink, lineHeight: 1.65, margin: 0,
-                  letterSpacing: 0,
+                  fontFamily: fontBody, fontStyle: "italic", fontSize: 18,
+                  color: seal, lineHeight: 1.6, margin: "0 auto",
+                  maxWidth: "44ch", letterSpacing: 0,
                 }}>
                   {registreOutfit?.description || fashionOutput.description}
                 </p>
@@ -701,48 +700,43 @@ function MaTenueContent() {
               tabs ci-dessus). Le statut « validée par le styliste » reste
               porté par le badge plus bas. */}
 
-          {/* En-tête éditorial discret au-dessus de la grille */}
-          <p style={{
-            ...sectionLabel, color: mojo, fontWeight: 700,
-            letterSpacing: "0.35em", textAlign: "center", marginBottom: 28,
-          }}>
-            La tenue complète en détail
-          </p>
-
-          {/* Flat lay collage RETIRÉ (brief Page tenue V2) : le collage CSS
-              rendait mal (cases blanches, images mal cadrées). Les vraies
-              cartes pièces ci-dessous portent désormais toute la composition,
-              avec fond dégradé par couleur dominante. */}
-
-          {/* Brief 2026-06-01 v3 (user) : la dégradation gracieuse
-              « Pour cette palette précise et votre profil, je n'ai pas
-              trouvé de tenue à la hauteur » a été RETIRÉE. La tenue doit
-              TOUJOURS s'afficher, quitte à proposer un set imparfait
-              plutôt qu'un message décevant. Le validator LLM continue
-              de tourner pour le monitoring (cf. effect plus haut) mais
-              son verdict n'influence plus l'UI. */}
-
-          {/* Badge « ✓ Validée par le styliste WADA » quand cohérent. */}
-          {validation.state === "coherent" && (
+          {/* En-tête de section — divider éditorial (filets + label) avec le
+              badge de validation intégré dessous (design 2026-06-07). */}
+          <div style={{ textAlign: "center", marginBottom: 26 }}>
             <div style={{
-              display: "inline-flex", alignItems: "center", gap: 6,
-              padding: "5px 12px",
-              background: "rgba(168, 178, 154, 0.18)",
-              border: "1px solid rgba(168, 178, 154, 0.4)",
-              borderRadius: 999,
-              fontFamily: "'Inter', sans-serif",
-              fontSize: 11, color: "#5a6849",
-              fontWeight: 600, letterSpacing: "0.04em",
-              margin: "0 auto 22px",
-              position: "relative", left: "50%", transform: "translateX(-50%)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              gap: 16, maxWidth: 520, margin: "0 auto",
             }}>
+              <span aria-hidden style={{ flex: 1, height: 1, background: border }} />
               <span style={{
-                width: 8, height: 8, borderRadius: "50%",
-                background: "#A8B29A",
-              }} />
-              Tenue validée par le styliste WADA
+                ...sectionLabel, color: mojo, fontWeight: 700,
+                letterSpacing: "0.3em", whiteSpace: "nowrap",
+              }}>
+                La tenue complète
+              </span>
+              <span aria-hidden style={{ flex: 1, height: 1, background: border }} />
             </div>
-          )}
+
+            {/* Badge « ✓ Validée par le styliste WADA » quand cohérent. */}
+            {validation.state === "coherent" && (
+              <div style={{
+                display: "inline-flex", alignItems: "center", gap: 6,
+                padding: "5px 12px", marginTop: 14,
+                background: "rgba(168, 178, 154, 0.18)",
+                border: "1px solid rgba(168, 178, 154, 0.4)",
+                borderRadius: 999,
+                fontFamily: "'Inter', sans-serif",
+                fontSize: 11, color: "#5a6849",
+                fontWeight: 600, letterSpacing: "0.04em",
+              }}>
+                <span style={{
+                  width: 8, height: 8, borderRadius: "50%",
+                  background: "#A8B29A",
+                }} />
+                Tenue validée par le styliste WADA
+              </div>
+            )}
+          </div>
 
           {/* Scanner Phase 3 (2026-05-31) — Carte « Ta pièce » :
               affiche la pièce scannée par le client en 1ère position, avec
