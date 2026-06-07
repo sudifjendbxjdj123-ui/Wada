@@ -243,33 +243,66 @@ export default function ScannerPage() {
           display: "flex", alignItems: "center", justifyContent: "center",
           flexDirection: "column", gap: 14, padding: 32,
         }}>
-          <div style={{
-            width: 56, height: 56, borderRadius: "50%",
-            border: "3px solid rgba(255,255,255,0.2)",
-            borderTopColor: "#fff",
-            animation: cameraError ? "none" : "wada-spin 0.9s linear infinite",
-          }} />
+          {/* Brief 2026-06-07 (design) — état d'erreur clarifié : avant, un
+              anneau de spinner FIGÉ (animation:none) ressemblait à un
+              chargement en pause. Maintenant une icône caméra barrée
+              explicite + un sous-titre qui dit quoi faire. En chargement,
+              on garde le vrai spinner animé. */}
+          {cameraError ? (
+            <div aria-hidden style={{
+              width: 64, height: 64, borderRadius: "50%",
+              border: "1px solid rgba(255,255,255,0.18)",
+              background: "rgba(255,255,255,0.04)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+            }}>
+              <svg width="30" height="30" viewBox="0 0 24 24" fill="none"
+                stroke="rgba(255,255,255,0.85)" strokeWidth="1.5"
+                strokeLinecap="round" strokeLinejoin="round">
+                <path d="M4.5 7.5h2L8 5.5h8l1.5 2h2A1.5 1.5 0 0 1 21 9v8" />
+                <path d="M19 19H5a1.5 1.5 0 0 1-1.5-1.5V9" />
+                <path d="M3.5 3.5l17 17" />
+              </svg>
+            </div>
+          ) : (
+            <div style={{
+              width: 56, height: 56, borderRadius: "50%",
+              border: "3px solid rgba(255,255,255,0.2)",
+              borderTopColor: "#fff",
+              animation: "wada-spin 0.9s linear infinite",
+            }} />
+          )}
           <p style={{
             color: "#fff", fontFamily: fonts.display,
             fontSize: 18, fontWeight: 500, textAlign: "center",
+            margin: 0,
           }}>
             {cameraError ? "Caméra inaccessible" : "Activation de la caméra…"}
           </p>
           {cameraError && (
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              style={{
-                marginTop: 8,
-                background: palette.bordeaux, color: palette.cream,
-                border: "none", borderRadius: 999,
-                padding: "13px 24px",
-                fontFamily: fonts.sans, fontSize: 14, fontWeight: 600,
-                cursor: "pointer",
-              }}
-            >
-              Choisir une photo de la galerie
-            </button>
+            <>
+              <p style={{
+                color: "rgba(255,255,255,0.7)", fontFamily: fonts.sans,
+                fontSize: 13.5, lineHeight: 1.5, textAlign: "center",
+                margin: 0, maxWidth: "30ch",
+              }}>
+                Autorisez l’accès à la caméra dans votre navigateur, ou
+                importez une photo de votre galerie.
+              </p>
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                style={{
+                  marginTop: 8,
+                  background: palette.bordeaux, color: palette.cream,
+                  border: "none", borderRadius: 999,
+                  padding: "13px 24px",
+                  fontFamily: fonts.sans, fontSize: 14, fontWeight: 600,
+                  cursor: "pointer",
+                }}
+              >
+                Choisir une photo de la galerie
+              </button>
+            </>
           )}
         </div>
       )}
@@ -297,22 +330,29 @@ export default function ScannerPage() {
         >
           ×
         </Link>
-        <button
-          type="button"
-          onClick={toggleFlash}
-          aria-label={flashOn ? "Éteindre le flash" : "Allumer le flash"}
-          style={{
-            width: 38, height: 38, borderRadius: "50%",
-            background: flashOn ? "rgba(255,220,100,0.85)" : "rgba(0,0,0,0.4)",
-            backdropFilter: "blur(8px)",
-            WebkitBackdropFilter: "blur(8px)",
-            display: "inline-flex", alignItems: "center", justifyContent: "center",
-            color: "#fff", border: "1px solid rgba(255,255,255,0.12)",
-            cursor: "pointer", fontSize: 16, lineHeight: 1,
-          }}
-        >
-          ⚡
-        </button>
+        {/* Flash : seulement quand la caméra est live — inutile (et trompeur)
+            en chargement ou en fallback « caméra inaccessible » (brief
+            2026-06-07). */}
+        {cameraReady ? (
+          <button
+            type="button"
+            onClick={toggleFlash}
+            aria-label={flashOn ? "Éteindre le flash" : "Allumer le flash"}
+            style={{
+              width: 38, height: 38, borderRadius: "50%",
+              background: flashOn ? "rgba(255,220,100,0.85)" : "rgba(0,0,0,0.4)",
+              backdropFilter: "blur(8px)",
+              WebkitBackdropFilter: "blur(8px)",
+              display: "inline-flex", alignItems: "center", justifyContent: "center",
+              color: "#fff", border: "1px solid rgba(255,255,255,0.12)",
+              cursor: "pointer", fontSize: 16, lineHeight: 1,
+            }}
+          >
+            ⚡
+          </button>
+        ) : (
+          <span aria-hidden />
+        )}
       </div>
 
       {/* MIRE CENTRALE — 4 coins arrondis + pulse blanc au centre */}
