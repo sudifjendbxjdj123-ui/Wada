@@ -96,31 +96,8 @@ function occasionToContext(occ: string): Partial<UserIntent> {
   }
 }
 
-/* Brief 2026-06-01 (mockup tabs variations) — styles partagés pour les
-   3 tabs Safe / Audacieuse / Accessible affichés en haut de la grille. */
-const tabActiveStyle: React.CSSProperties = {
-  background: "#6B3A32",
-  color: "#fff",
-  border: "none",
-  padding: "8px 16px",
-  borderRadius: 999,
-  fontFamily: "'Fredoka', sans-serif",
-  fontSize: 13,
-  fontWeight: 500,
-  cursor: "default",
-};
-const tabIdleStyle: React.CSSProperties = {
-  background: "transparent",
-  color: "#8c8377",
-  border: "none",
-  padding: "8px 16px",
-  borderRadius: 999,
-  fontFamily: "'Fredoka', sans-serif",
-  fontSize: 13,
-  fontWeight: 500,
-  cursor: "pointer",
-  transition: "color .14s ease",
-};
+/* Tabs variations (Safe / Audacieuse / Accessible) retirés — styles
+   tabActiveStyle/tabIdleStyle supprimés avec (user 2026-06-07). */
 
 /**
  * Wrapper de page — Suspense obligatoire autour de useSearchParams pour
@@ -710,55 +687,10 @@ function MaTenueContent() {
           ═══════════════════════════════════════════════════════════════ */}
       <section style={{ padding: "16px 5% 64px" }}>
         <div style={{ maxWidth: 1000, margin: "0 auto" }}>
-          {/* Brief 2026-06-01 (mockup /ma-tenue user) — Tabs variations.
-              V1 (Safe) seul fonctionnel pour l'instant ; V2 Audacieuse
-              et V3 Accessible sont placeholders visuels (le code V2/V3
-              avec exclusions cross-tab arrive en sprint 5). Click sur
-              V2 ou V3 affiche un toast « bientôt disponible ». */}
-          {!anchor && composition.length > 0 && (
-            <div style={{
-              display: "flex", gap: 8, justifyContent: "center",
-              marginBottom: 22, padding: 5,
-              background: "#fbf7f0",
-              border: "1px solid #e5dccc",
-              borderRadius: 999,
-              width: "max-content",
-              margin: "0 auto 22px",
-            }}>
-              <button
-                type="button"
-                style={tabActiveStyle}
-                disabled
-              >
-                Safe
-                <small style={{ display: "block", fontSize: 9.5, letterSpacing: "0.08em", textTransform: "uppercase", opacity: 0.85, marginTop: 1 }}>
-                  Composée
-                </small>
-              </button>
-              {[
-                { label: "Audacieuse", note: "Bientôt" },
-                { label: "Accessible", note: "Bientôt" },
-              ].map((t) => (
-                <button
-                  key={t.label}
-                  type="button"
-                  onClick={() => {
-                    try {
-                      window.dispatchEvent(new CustomEvent("wada-toast", {
-                        detail: `Variation « ${t.label} » bientôt disponible — pour l'instant la tenue Safe est la composition par défaut.`,
-                      }));
-                    } catch {}
-                  }}
-                  style={tabIdleStyle}
-                >
-                  {t.label}
-                  <small style={{ display: "block", fontSize: 9.5, letterSpacing: "0.08em", textTransform: "uppercase", opacity: 0.7, marginTop: 1 }}>
-                    {t.note}
-                  </small>
-                </button>
-              ))}
-            </div>
-          )}
+          {/* Tabs variations (Safe / Audacieuse / Accessible) retirés
+              (user 2026-06-07) : les variantes V2/V3 n'étaient pas
+              fonctionnelles (« Bientôt ») → bruit visuel. La tenue Safe est
+              la seule composition, inutile de l'annoncer comme un onglet. */}
 
           {/* Brief 2026-06-01 (mockup) — Tenue Total head card.
               Mini résumé : nom de la tenue + nombre de pièces + score
@@ -1242,79 +1174,7 @@ function MaTenueContent() {
             );
           })()}
 
-          {/* Brief 2026-06-01 (mockup) — Note du styliste avec avatar 和.
-              Carte chaude beige avec citation éditoriale sur le pourquoi
-              de la tenue. Affichée uniquement si tenue validée (COHERENT)
-              pour ne pas contradicter la dégradation gracieuse. */}
-          {validation.state === "coherent" && entry && composition.length > 0 && (() => {
-            /* Brief 2026-06-01 §scénarios — message styliste adapté à
-               l'overshoot budget. On recalcule l'overshoot ici (déjà fait
-               dans le bloc total mais scope local, c'est OK). */
-            const resolvedNote = composition.map((p) => realPrices[p.piece] || 0).filter((v) => v > 0);
-            const totalNote = resolvedNote.length === composition.length
-              ? Math.round(resolvedNote.reduce((a, b) => a + b, 0))
-              : 0;
-            let budgetCibleNote: number | null = null;
-            try {
-              const profileRaw = typeof window !== "undefined" ? localStorage.getItem("wada.profile") : null;
-              if (profileRaw) {
-                const profile = JSON.parse(profileRaw);
-                if (profile?.budget === "< 150€") budgetCibleNote = 600;
-                else if (profile?.budget === "150–400€") budgetCibleNote = 1500;
-              }
-            } catch {}
-            const overshootNote = budgetCibleNote !== null && totalNote > budgetCibleNote
-              ? (totalNote - budgetCibleNote) / budgetCibleNote
-              : 0;
-            /* Message verbatim du brief par scénario (A/B/C/D). */
-            let noteText: string;
-            if (overshootNote > 1.0) {
-              noteText = `Cette palette est exigeante. Pour rendre ses tons profonds, il faut du cachemire et du cuir noble — voici la version idéale (${totalNote} €). Je peux te trouver une approximation honnête à ton budget, ou te proposer une palette qui matche mieux ton enveloppe.`;
-            } else if (overshootNote > 0.3) {
-              noteText = `Cette palette demande des matières plus nobles pour rendre vraiment. Voici la version qui en fait honneur — ${Math.round(overshootNote * 100)}% au-dessus de ton budget. Si tu veux rester ferme, je peux te composer une approximation à ton tarif (les couleurs seront là, les matières moins riches).`;
-            } else if (overshootNote > 0.1) {
-              noteText = `Voici la composition que je préfère pour cette palette. Elle dépasse ton budget de ${Math.round(overshootNote * 100)}% — c'est l'écart entre du basique propre et une vraie pièce qui dure. À toi de décider.`;
-            } else {
-              /* Scenario A (in-budget) — version mood/style générique. */
-              noteText = `Cette tenue tient sur un seul registre — ${(prefs.style || "minimaliste").toLowerCase()}. La couleur forte est portée par une seule pièce ; le reste reste sourd. Tu peux la porter trois fois par semaine sans t'en lasser.`;
-            }
-            return (
-            <div style={{
-              background: "linear-gradient(180deg, #fbf4e7, #f7eed8)",
-              border: "1px solid #e5d8b8",
-              borderRadius: 18,
-              padding: "18px 20px",
-              display: "flex", gap: 14, alignItems: "flex-start",
-              marginTop: 30, marginBottom: 8,
-            }}>
-              <div style={{
-                width: 38, height: 38, borderRadius: "50%",
-                background: "#6B3A32", color: "#fff",
-                display: "grid", placeItems: "center",
-                fontFamily: "'Noto Serif JP', serif",
-                fontSize: 18, fontWeight: 500,
-                flex: "0 0 auto",
-              }}>
-                和
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{
-                  fontSize: 10.5, letterSpacing: "0.14em",
-                  textTransform: "uppercase", color: "#5b4d2c",
-                  fontWeight: 600, margin: "0 0 4px",
-                }}>
-                  Note du styliste
-                </p>
-                <p style={{
-                  fontSize: 13.5, color: "#1E1E1E",
-                  lineHeight: 1.5, margin: 0,
-                }}>
-                  {noteText}
-                </p>
-              </div>
-            </div>
-            );
-          })()}
+          {/* Note du styliste (carte 和) retirée (user 2026-06-07). */}
 
           {/* Brief 2026-06-01 (mockup) — Stylist CTA « Quelque chose ne te
               plaît pas ? » → invite à dialoguer avec le styliste IA. */}
@@ -1414,66 +1274,11 @@ function MaTenueContent() {
             >
               Ajouter à mon dressing
             </button>
-            <a
-              href={(() => {
-                // « Tout chercher sur Amazon » — query combinée de la tenue
-                const parts = composition.map((p) => p._slot?.type || p.item).filter(Boolean);
-                const q = encodeURIComponent(`${parts.slice(0, 3).join(" ")} ${userGender || ""}`.trim());
-                return `https://www.amazon.fr/s?k=${q}&tag=wadastyle-21`;
-              })()}
-              target="_blank"
-              rel="noopener nofollow sponsored"
-              style={{
-                fontFamily: "'Inter', sans-serif",
-                fontSize: 14,
-                padding: "13px 24px",
-                borderRadius: 999,
-                background: "transparent",
-                color: ink,
-                border: `1px solid ${border}`,
-                textDecoration: "none",
-                display: "inline-block",
-                fontWeight: 500,
-              }}
-            >
-              Tout chercher sur Amazon →
-            </a>
+            {/* Bouton « Tout chercher sur Amazon » retiré (user 2026-06-07). */}
           </div>
 
-          {/* Brief P0 confiance 2026-05-28 §5 — bloc réassurance achat :
-              3 promesses concrètes côte à côte + lien CGV. Visible juste
-              sous les CTAs « Ajouter au dressing » / « Tout chercher sur Amazon »
-              pour rassurer au moment du clic. */}
-          <div
-            className="wada-reassurance"
-            style={{
-              maxWidth: 720,
-              margin: "28px auto 0",
-              display: "grid",
-              gridTemplateColumns: "repeat(3, 1fr)",
-              gap: 18,
-              padding: "20px 22px",
-              background: "rgba(255,255,255,0.55)",
-              border: `1px solid ${border}`,
-              borderRadius: 14,
-            }}
-          >
-            <ReassuranceItem
-              icon="🔒"
-              title="Paiement sécurisé"
-              desc="Stripe — chiffrement PCI-DSS de bout en bout"
-            />
-            <ReassuranceItem
-              icon="↗"
-              title="Achat direct"
-              desc="Directement chez le marchand, jamais via WADA"
-            />
-            <ReassuranceItem
-              icon="="
-              title="Prix identique"
-              desc="L'affiliation n'augmente pas votre prix"
-            />
-          </div>
+          {/* Bloc réassurance (Paiement sécurisé / Achat direct / Prix
+              identique) retiré (user 2026-06-07). */}
 
           <p style={{
             maxWidth: 720,
@@ -2893,29 +2698,7 @@ function PieceCard({
   );
 }
 
-/** ReassuranceItem — petit bloc 3-colonnes sous les CTAs d'achat (brief P0
- *  confiance §5 2026-05-28). 3 promesses concrètes côte à côte. */
-function ReassuranceItem({ icon, title, desc }: { icon: string; title: string; desc: string }) {
-  return (
-    <div style={{ textAlign: "center" }}>
-      <div aria-hidden style={{ fontSize: 18, marginBottom: 6, lineHeight: 1 }}>
-        {icon}
-      </div>
-      <p style={{
-        fontFamily: "'Inter', sans-serif", fontSize: 12, fontWeight: 700,
-        letterSpacing: "0.02em", color: ink, margin: 0, lineHeight: 1.2,
-      }}>
-        {title}
-      </p>
-      <p style={{
-        fontSize: 11, color: textSecondary, margin: "3px 0 0",
-        lineHeight: 1.4,
-      }}>
-        {desc}
-      </p>
-    </div>
-  );
-}
+/* ReassuranceItem retiré avec le bloc réassurance (user 2026-06-07). */
 
 const chipReadOnlyStyle = {
   fontFamily: fontLabel, fontSize: 11, fontWeight: 500,
