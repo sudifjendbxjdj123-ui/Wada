@@ -70,6 +70,15 @@ const PIECE_LABELS: Record<string, string> = {
   Accent: "Accent", accent: "Accent",
 };
 
+/** Brief 2026-06-07 (design) — format prix épuré, aligné sur /ma-tenue &
+ *  /stylist : masque les décimales « .00 » (80.00 → 80) et garde les
+ *  centimes réels avec une virgule FR (248.85 → 248,85). */
+function formatPrice(prix: number): string {
+  const rounded = Math.round(prix * 100) / 100;
+  if (Number.isInteger(rounded)) return String(rounded);
+  return rounded.toFixed(2).replace(".", ",");
+}
+
 export default function PanierPage() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [mounted, setMounted] = useState(false);
@@ -416,7 +425,7 @@ function CartItemCard({ item, fallback, onRemove }: {
               <strong style={{ color: palette.ink, fontWeight: 600 }}>{resolved.marque}</strong>
               {" · "}
               <span style={{ color: palette.bordeaux, fontWeight: 600 }}>
-                {typeof resolved.prix === "number" ? resolved.prix.toFixed(2) : "—"} {resolved.devise === "EUR" ? "€" : resolved.devise}
+                {typeof resolved.prix === "number" ? formatPrice(resolved.prix) : "—"} {resolved.devise === "EUR" ? "€" : resolved.devise}
               </span>
             </>
           ) : !loaded ? "Recherche du produit…" : `No. ${item.fromEntry}`}
