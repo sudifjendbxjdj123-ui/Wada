@@ -320,10 +320,15 @@ export default function PartenairesPage() {
                 gap: 14,
                 maxWidth: 680,
               }}>
-                <input required placeholder="Nom de la marque *" style={inputStyle()} value={form.brand} onChange={onChange("brand")} />
-                <input required type="url" placeholder="Site web *" style={inputStyle()} value={form.website} onChange={onChange("website")} />
-                <input required type="email" placeholder="Email de contact *" style={inputStyle()} value={form.email} onChange={onChange("email")} />
-                <select style={inputStyle()} value={form.category} onChange={onChange("category")} required>
+                {/* Brief 2026-06-07 (a11y) — aria-label sur chaque champ :
+                    les placeholders ne sont PAS des labels (ils disparaissent
+                    à la saisie et ne sont pas un nom accessible fiable). On
+                    ajoute un nom accessible persistant pour les lecteurs
+                    d'écran sans changer le visuel. */}
+                <input required aria-label="Nom de la marque" placeholder="Nom de la marque *" style={inputStyle()} value={form.brand} onChange={onChange("brand")} />
+                <input required type="url" aria-label="Site web" placeholder="Site web *" style={inputStyle()} value={form.website} onChange={onChange("website")} />
+                <input required type="email" aria-label="Email de contact" placeholder="Email de contact *" style={inputStyle()} value={form.email} onChange={onChange("email")} />
+                <select aria-label="Catégorie de la marque" style={inputStyle()} value={form.category} onChange={onChange("category")} required>
                   <option value="">Catégorie…</option>
                   <option value="pret-a-porter">Prêt-à-porter</option>
                   <option value="maroquinerie">Maroquinerie</option>
@@ -332,8 +337,8 @@ export default function PartenairesPage() {
                   <option value="bijoux">Bijoux</option>
                   <option value="parfum">Parfum</option>
                 </select>
-                <input placeholder="Réseau d'affiliation (Awin, Rakuten… ou « à mettre en place »)" style={{ ...inputStyle(), gridColumn: "1 / -1" }} value={form.affiliateNetwork} onChange={onChange("affiliateNetwork")} />
-                <input placeholder="Un mot sur votre univers (facultatif)" style={{ ...inputStyle(), gridColumn: "1 / -1" }} value={form.universe} onChange={onChange("universe")} />
+                <input aria-label="Réseau d'affiliation" placeholder="Réseau d'affiliation (Awin, Rakuten… ou « à mettre en place »)" style={{ ...inputStyle(), gridColumn: "1 / -1" }} value={form.affiliateNetwork} onChange={onChange("affiliateNetwork")} />
+                <input aria-label="Un mot sur votre univers (facultatif)" placeholder="Un mot sur votre univers (facultatif)" style={{ ...inputStyle(), gridColumn: "1 / -1" }} value={form.universe} onChange={onChange("universe")} />
                 <div style={{ gridColumn: "1 / -1", marginTop: 6 }}>
                   <button type="submit" style={{
                     fontFamily: fonts.sans, fontSize: 15,
