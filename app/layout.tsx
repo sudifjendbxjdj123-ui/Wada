@@ -18,11 +18,7 @@ import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
 import InstallPrompt from "@/components/InstallPrompt";
 import GoogleAnalytics from "@/components/GoogleAnalytics";
 import Toast from "@/components/Toast";
-/* Brief 2026-05-29 « Onboarding + profil + switcher » : overlay 3
-   questions au premier accès. Le composant ne rend rien si le profil
-   existe déjà — donc safe à monter globalement, le user existant ne
-   voit JAMAIS l'overlay. */
-import OnboardingOverlay from "@/components/OnboardingOverlay";
+/* Onboarding overlay (3 questions) retiré (user 2026-06-07). */
 /* Brief 2026-06-01 « Pages légales » §7 : bandeau RGPD au 1er accès.
    Affiché si localStorage.wada_consent absent ou >13 mois (TTL CNIL).
    Ne pose AUCUN cookie analytics avant l'accord explicite. */
@@ -348,8 +344,9 @@ export default function RootLayout({
             `wada-toast` sur window ; n'importe quel composant peut appeler
             `showToast("Ajouté à vos favoris ✓")` depuis `@/lib/toast`. */}
         <Toast />
-        {/* Onboarding overlay : ne rend rien si profile déjà en localStorage. */}
-        <OnboardingOverlay />
+        {/* Onboarding overlay (3 questions) retiré (user 2026-06-07) :
+            l'app démarre directement sur le profil par défaut, modifiable
+            via le ProfileSwitcher. */}
         {/* Bandeau RGPD — affiché AVANT toute pose de cookie analytics.
             Caché si l'user a déjà donné son consentement (TTL 13 mois). */}
         <CookieBanner />
