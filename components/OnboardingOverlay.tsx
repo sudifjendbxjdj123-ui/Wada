@@ -161,6 +161,29 @@ export default function OnboardingOverlay() {
 
         {/* CTAs */}
         <div style={{ marginTop: 12, display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
+          {/* Brief 2026-06-07 (UX) — indicateur de progression : 3 pastilles
+              (Pour qui / Budget / Style) qui se remplissent à mesure qu'on
+              répond. Avant, le bouton « Commencer » restait grisé sans dire
+              ce qu'il manquait. Masqué dès que les 3 sont répondues (le
+              bouton actif suffit alors). */}
+          {!allAnswered && (
+            <div
+              aria-hidden
+              style={{ display: "flex", gap: 8, marginBottom: 2 }}
+            >
+              {[genre, budget, style].map((v, i) => (
+                <span
+                  key={i}
+                  style={{
+                    width: 8, height: 8, borderRadius: "50%",
+                    background: v ? BORDEAUX : "transparent",
+                    border: `1.5px solid ${v ? BORDEAUX : "rgba(107,58,50,0.28)"}`,
+                    transition: "all 0.2s ease",
+                  }}
+                />
+              ))}
+            </div>
+          )}
           <button
             type="button"
             onClick={commit}
