@@ -52,6 +52,12 @@ export default function CulturesPage() {
                   <p style={{ ...sectionLabel, color: seal, marginBottom: 10 }}>{cult.region}</p>
                   <h2 style={{ fontSize: 44, fontWeight: 400, margin: 0, lineHeight: 1.1, fontFamily: "'Fredoka', sans-serif" }}>{cult.name}</h2>
                   <p style={{ fontSize: 15, color: textSecondary, fontStyle: "italic", marginTop: 12, fontFamily: "'Inter', sans-serif" }}>{cult.craft}</p>
+                  {/* Brief 2026-06-07 (fix) — l'indicateur dépendait de
+                      `cultIdx` (figé) et non de l'état réel ouvert/fermé :
+                      il MENTAIT dès que l'utilisateur ouvrait une autre
+                      culture ou repliait la 1ère. Désormais on rend les deux
+                      libellés et on les bascule en CSS selon `details[open]`,
+                      donc l'indicateur reflète toujours l'état réel. */}
                   <span aria-hidden style={{
                     display: "inline-block",
                     marginTop: 18,
@@ -61,7 +67,8 @@ export default function CulturesPage() {
                     color: subtle,
                     fontFamily: "'Inter', sans-serif",
                   }}>
-                    {cultIdx === 0 ? "▾ Replier" : "▸ Découvrir"}
+                    <span className="wada-acc-label-closed">▸ Découvrir</span>
+                    <span className="wada-acc-label-open">▾ Replier</span>
                   </span>
                 </summary>
 

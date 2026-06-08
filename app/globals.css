@@ -796,6 +796,11 @@ html[data-theme="nuit"] {
 .wada-culture-accordion[open] > summary {
   border-bottom: 1px dashed rgba(30, 30, 30, 0.08);
 }
+/* Indicateur ouvrir/replier piloté par l'état réel du <details> (fix
+   2026-06-07) : « ▸ Découvrir » quand fermé, « ▾ Replier » quand ouvert. */
+.wada-acc-label-open { display: none; }
+.wada-culture-accordion[open] .wada-acc-label-closed { display: none; }
+.wada-culture-accordion[open] .wada-acc-label-open { display: inline; }
 
 /* ─────────────────────────────────────────────────────────────────
    SOCIAL ICONS — Footer (brief P2, 24/05)
