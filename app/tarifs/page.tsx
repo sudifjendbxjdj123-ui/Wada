@@ -529,9 +529,14 @@ export default function TarifsPage() {
                     letterSpacing: "-0.01em",
                   }}>
                     <span style={{ flex: 1 }}>{f.q}</span>
-                    <span style={{
+                    {/* Brief 2026-06-07 (polish) — l'indicateur « + » restait
+                        « + » même question ouverte. Il tourne maintenant à 45°
+                        (→ « × ») via CSS quand le <details> est ouvert, pour
+                        refléter l'état. inline-block requis pour le transform. */}
+                    <span className="wada-faq-toggle" style={{
                       fontFamily: fontHeading, fontSize: 24, color: mojo,
                       lineHeight: 1, fontWeight: 500, flexShrink: 0,
+                      display: "inline-block",
                     }}>
                       +
                     </span>

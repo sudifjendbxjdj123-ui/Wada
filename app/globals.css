@@ -806,6 +806,11 @@ html[data-theme="nuit"] {
    Server Component, donc pas de onMouseOver inline). Fix 2026-06-07. */
 .wada-brand-link:hover { background: #faf6ee; }
 
+/* FAQ /tarifs — l'indicateur « + » tourne en « × » quand la question est
+   ouverte, pour refléter l'état du <details> (polish 2026-06-07). */
+.wada-faq-toggle { transition: transform 0.25s ease; }
+details[open] > summary .wada-faq-toggle { transform: rotate(45deg); }
+
 /* ─────────────────────────────────────────────────────────────────
    SOCIAL ICONS — Footer (brief P2, 24/05)
    Hover géré 100 % en CSS pour que Footer.tsx puisse rester un Server
