@@ -86,13 +86,15 @@ export default async function MarquesPage() {
             }}>
               {grouped[letter].map((brand) => (
                 <li key={brand.slug}>
-                  <Link href={`/marques/${brand.slug}`} style={{
+                  {/* Fix 2026-06-07 (bug) — page = Server Component : on NE peut
+                      PAS passer onMouseOver/onMouseOut à <Link> (« Event handlers
+                      cannot be passed to Client Component props » → page cassée).
+                      Le survol passe en CSS (.wada-brand-grid a:hover). */}
+                  <Link href={`/marques/${brand.slug}`} className="wada-brand-link" style={{
                     display: "flex", justifyContent: "space-between", alignItems: "baseline",
                     padding: "9px 12px", borderRadius: 8, textDecoration: "none",
                     transition: "background 0.1s",
-                  }}
-                    onMouseOver={(e) => (e.currentTarget.style.background = "#faf6ee")}
-                    onMouseOut={(e) => (e.currentTarget.style.background = "transparent")}>
+                  }}>
                     <span style={{ fontSize: 14, color: "#2c2c2a" }}>{brand.name}</span>
                     <span style={{ fontSize: 11, color: "#8a7a68" }}>{brand.count}</span>
                   </Link>

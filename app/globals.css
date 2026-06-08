@@ -802,6 +802,10 @@ html[data-theme="nuit"] {
 .wada-culture-accordion[open] .wada-acc-label-closed { display: none; }
 .wada-culture-accordion[open] .wada-acc-label-open { display: inline; }
 
+/* Index marques (/marques) — survol des liens en CSS (la page est un
+   Server Component, donc pas de onMouseOver inline). Fix 2026-06-07. */
+.wada-brand-link:hover { background: #faf6ee; }
+
 /* ─────────────────────────────────────────────────────────────────
    SOCIAL ICONS — Footer (brief P2, 24/05)
    Hover géré 100 % en CSS pour que Footer.tsx puisse rester un Server
