@@ -12,13 +12,30 @@ import { gunzipSync } from "node:zlib";
 import { readFileSync, createReadStream } from "node:fs";
 import { createInterface } from "node:readline";
 
+/* Charge .env.local dans process.env (node ne le fait pas tout seul). */
+function loadEnvLocal() {
+  try {
+    for (const line of readFileSync(".env.local", "utf-8").split(/\r?\n/)) {
+      const m = /^([A-Z0-9_]+)=(.*)$/.exec(line);
+      if (m && !process.env[m[1]]) process.env[m[1]] = m[2].replace(/^["']|["']$/g, "");
+    }
+  } catch {
+    console.warn("⚠️  .env.local introuvable — on compte sur l'environnement.");
+  }
+}
+loadEnvLocal();
+
 // Passe SLUG et CSV_PATH en argument : node script.mjs muji | node script.mjs suitable
 const WHICH = process.argv[2] || "suitable";
 const CSV_PATH = WHICH === "muji"
   ? "C:/Users/neman/Downloads/muji-feed.csv.gz"
   : "C:/Users/neman/Downloads/34175-78127-fr_FR-Suitable_Menswear_-_Webshop_FR.csv.gz";
-const KV_URL   = "https://fit-insect-135036.upstash.io";
-const KV_TOKEN = "gQAAAAAAAg98AAIgcDI0YmViZjExZDJkNGM0NmVjOTM0ODkwZWRkODFmYzU3Mw";
+const KV_URL   = process.env.KV_REST_API_URL;
+const KV_TOKEN = process.env.KV_REST_API_TOKEN;
+if (!KV_URL || !KV_TOKEN) {
+  console.error("❌ KV_REST_API_URL et KV_REST_API_TOKEN doivent être définis (voir .env.local).");
+  process.exit(1);
+}
 const SLUG     = WHICH === "muji" ? "muji-france" : "suitable-fr";
 
 // ── Helpers KV (même logique que lib/productStore.ts) ──

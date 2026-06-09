@@ -105,10 +105,19 @@ async function runIngest(feeds: FeedConfig[]) {
     }
   }
 
-  /* Préserve les `imageLocal` déjà mirrorés du snapshot précédent. Sans ça,
-     chaque ingest réinitialiserait le travail de mirror déjà fait. */
+  /* Snapshot précédent — sert à DEUX choses :
+     1) préserver les `imageLocal` déjà mirrorés (sinon chaque ingest
+        réinitialiserait le travail de mirror déjà fait) ;
+     2) CONSERVER les marchands non rafraîchis par ce run (slug absent des
+        produits frais). Brief New Era 2026-06-09 : avant, writeAllProducts
+        réécrivait le KV avec UNIQUEMENT les flux configurés dans
+        AWIN_DATAFEED_URLS → tout marchand chargé hors-cron (ex. New Era en
+        one-shot) était effacé à la nuit suivante. Désormais on fusionne.
+        Bonus : si un flux configuré échoue au fetch, ses produits sont
+        conservés au lieu de disparaître sur une simple panne réseau. */
+  const previous = await readAllProducts();
   const previousById = new Map<string, ProduitAwin>();
-  for (const p of await readAllProducts()) previousById.set(p.id, p);
+  for (const p of previous) previousById.set(p.id, p);
 
   let imagesReused = 0;
   for (let i = 0; i < allProducts.length; i++) {
@@ -120,15 +129,29 @@ async function runIngest(feeds: FeedConfig[]) {
     }
   }
 
-  console.log(`[INGEST] writing ${allProducts.length} products to KV (chunked)`);
-  const storage = await writeAllProducts(allProducts);
+  /* Slugs effectivement rafraîchis par CE run — dérivés des produits frais
+     (pas du label de config : la normalisation peut renommer le slug, ex.
+     « New Era Cap FR » → « new-era »). On garde tout le reste tel quel. */
+  const refreshedSlugs = new Set(allProducts.map((p) => p.marchandSlug || ""));
+  const retained = previous.filter((p) => !refreshedSlugs.has(p.marchandSlug || ""));
+  const retainedMerchants = [...new Set(retained.map((p) => p.marchandSlug || ""))];
+  if (retained.length > 0) {
+    console.log(`[INGEST] retaining ${retained.length} products from non-refreshed merchants: ${retainedMerchants.join(", ")}`);
+  }
+
+  const merged = [...retained, ...allProducts];
+  console.log(`[INGEST] writing ${merged.length} products to KV (chunked)`);
+  const storage = await writeAllProducts(merged);
   console.log(`[INGEST] storage result: ok=${storage.ok}, chunks=${storage.chunks}, totalBytes=${storage.total_bytes}, failed=${storage.failed_chunks.length}`);
 
   return {
     ok: storage.ok,
     phase: "ingest",
     merchants: feeds.length,
-    products_total: allProducts.length,
+    products_total: merged.length,
+    products_refreshed: allProducts.length,
+    products_retained: retained.length,
+    retained_merchants: retainedMerchants,
     images_reused_from_previous: imagesReused,
     stats: merchantStats,
     errors,

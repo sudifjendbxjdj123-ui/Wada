@@ -11,6 +11,19 @@ import { ingestAwinCsv } from "../lib/awinFeed";
 import type { ProduitAwin } from "../lib/schema";
 import sharp from "sharp";
 
+/* Charge .env.local dans process.env (tsx ne le fait pas tout seul). */
+function loadEnvLocal() {
+  try {
+    for (const line of readFileSync(".env.local", "utf-8").split(/\r?\n/)) {
+      const m = /^([A-Z0-9_]+)=(.*)$/.exec(line);
+      if (m && !process.env[m[1]]) process.env[m[1]] = m[2].replace(/^["']|["']$/g, "");
+    }
+  } catch {
+    console.warn("⚠️  .env.local introuvable — on compte sur l'environnement.");
+  }
+}
+loadEnvLocal();
+
 /**
  * Règle ABSOLUE : jamais de mannequin.
  * Heuristique rapide : si les 4 coins de l'image ne sont pas clairs
@@ -69,8 +82,12 @@ async function filterPackshots(products: ProduitAwin[], label: string): Promise<
   return result;
 }
 
-const KV_URL   = "https://fit-insect-135036.upstash.io";
-const KV_TOKEN = "gQAAAAAAAg98AAIgcDI0YmViZjExZDJkNGM0NmVjOTM0ODkwZWRkODFmYzU3Mw";
+const KV_URL   = process.env.KV_REST_API_URL;
+const KV_TOKEN = process.env.KV_REST_API_TOKEN;
+if (!KV_URL || !KV_TOKEN) {
+  console.error("❌ KV_REST_API_URL et KV_REST_API_TOKEN doivent être définis (voir .env.local).");
+  process.exit(1);
+}
 const CHUNK_SIZE = 900_000;
 
 const FEEDS = [
