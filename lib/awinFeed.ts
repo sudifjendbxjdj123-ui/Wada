@@ -564,12 +564,44 @@ export function normalizeAwinProduct(raw: RawAwinProduct): ProduitAwin | null {
   if (isNewEra) {
     /* Brief New Era 2026-06-09 — `category_name` ET
        `merchant_product_category_path` sont VIDES à 100 % dans ce flux.
-       L'inférence par mot-clé du nom raterait les casquettes nommées
-       « 9FIFTY », « 59FIFTY », « Snapback », « Trucker », « Bucket Hat »…
-       (pas de « cap »/« hat » dans le libellé). New Era = 100 % couvre-chefs
-       → on force le slot `accent` (slot WADA des chapeaux/casquettes,
-       cf. CATEGORY_MAPPING "caps"/"hats" → "accent"). */
-    category = "accent";
+       Le catalogue est très majoritairement des couvre-chefs, mais contient
+       AUSSI du textile (t-shirts, sweats…). On classe donc finement :
+         1. couvre-chef explicite (libellés FR + modèles New Era 9FIFTY/
+            59FIFTY/9FORTY/9TWENTY/39THIRTY + EN cap/hat) → slot `accent`
+            (slot WADA des chapeaux/casquettes, cf. CATEGORY_MAPPING).
+            Indispensable car « Casquette 9FORTY … » ne matche ni « cap »
+            ni « hat » via l'inférence standard.
+         2. sinon inférence standard du nom (« T-shirt … » → haut, etc.).
+         3. sinon défaut `accent` (le catalogue est surtout des casquettes). */
+    /* Les noms New Era commencent TOUJOURS par le type de produit
+       (« Casquette 9FORTY … », « T-shirt … », « Sweat à Capuche … »,
+       « Short … »). On classe donc sur le MOT DE TÊTE, ce qui évite le
+       piège des t-shirts graphiques qui mentionnent « Fitted Cap » dans
+       leur design, et celui du suffixe de marque « … New Era Cap unisex »
+       (le « Cap » de marque n'est jamais en tête). On retire quand même
+       ce suffixe par sécurité avant de matcher. */
+    const nameForType = (raw.product_name || "")
+      .replace(/\bnew\s*era(\s*cap)?\b/gi, " ")
+      .replace(/\bunisex(e)?\b/gi, " ")
+      .trimStart();
+    const NE_HEADWEAR_LEAD = /^\s*(casquette|bob|bonnet|chapeau|visi[èe]re|cap|hat|beanie|bucket)\b/i;
+    const NE_APPAREL_LEAD: Array<[RegExp, ProductCategorie]> = [
+      [/^\s*(veste|blouson|manteau|coupe[-\s]?vent|parka|doudoune|gilet)\b/i, "veste"],
+      [/^\s*(short|pantalon|jean|bermuda|jogging|legging)\b/i, "bas"],
+      [/^\s*(t[-\s]?shirt|tee|d[ée]bardeur|polo|chemise|top|sweat|hoodie|pull|maille|sweatshirt|crewneck|cardigan)\b/i, "haut"],
+    ];
+    if (NE_HEADWEAR_LEAD.test(nameForType)) {
+      category = "accent";
+    } else {
+      category = null;
+      for (const [re, c] of NE_APPAREL_LEAD) {
+        if (re.test(nameForType)) { category = c; break; }
+      }
+      /* Défaut `accent` : le catalogue New Era est très majoritairement des
+         couvre-chefs, donc un nom non reconnu est plus probablement une
+         casquette qu'autre chose. */
+      if (!category) category = "accent";
+    }
   } else if (merchantSlug === "the-business-fashion") {
     category = inferCategoryFromProductName(raw.product_name);
   } else if (merchantSlug === "suitable-fr") {
