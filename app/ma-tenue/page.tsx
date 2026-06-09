@@ -2356,42 +2356,71 @@ function useMujiProduct(
       } catch {}
     }
 
-    fetch(`/api/products?${params}`)
-      .then((r) => r.ok ? r.json() : null)
-      .then((data) => {
-        if (cancelled || !data?.products?.length) return;
-        const p = data.products[0];
-        /* Brief 2026-05-28 (image plein cadre 4/5) :
-           - priorité 1 : imageLocal (Vercel Blob CDN, déjà mirroré)
-           - priorité 2 : largeImage proxifié — meilleur rendu sur card vedette
-           - priorité 3 : image standard 200×200 proxifié (peut paraître flou
-             en grand mais évite la card vide). */
-        const sourceUrl = p.imageLocal
-          ? p.imageLocal
-          : p.largeImage
-            ? `/api/img?u=${encodeURIComponent(p.largeImage)}`
-            : p.image
-              ? `/api/img?u=${encodeURIComponent(p.image)}`
-              : "";
-        const picked = {
-          id: p.id,
-          nom: p.nom,
-          marque: p.marque || p.marchand || "MUJI",
-          /* Brief 2026-05-30 : marchand exposé pour le label
-             « via Awin · {marchand} partenaire » dynamique. */
-          marchand: p.marchand,
-          marchandSlug: p.marchandSlug,
-          image: sourceUrl,
-          prix: p.prix,
-          devise: p.devise,
-          url: p.urlProduit,
-          couleurNom: p.couleurNom,
-          couleurHex: p.hex,
-        };
-        setProduct(picked);
-        onPicked?.(p.id);
-      })
-      .catch(() => { /* silencieux — fallback Amazon */ });
+    /* Applique un produit /api/products au slot.
+       Image — Brief 2026-05-28 (plein cadre 4/5) : imageLocal (Blob) →
+       largeImage proxifié → image standard proxifiée. */
+    const applyProduct = (p: {
+      id: string; nom: string; marque?: string; marchand?: string;
+      marchandSlug?: string; imageLocal?: string; largeImage?: string;
+      image?: string; prix: number; devise: string; urlProduit: string;
+      couleurNom?: string; hex: string;
+    }) => {
+      const sourceUrl = p.imageLocal
+        ? p.imageLocal
+        : p.largeImage
+          ? `/api/img?u=${encodeURIComponent(p.largeImage)}`
+          : p.image
+            ? `/api/img?u=${encodeURIComponent(p.image)}`
+            : "";
+      setProduct({
+        id: p.id,
+        nom: p.nom,
+        marque: p.marque || p.marchand || "MUJI",
+        marchand: p.marchand,
+        marchandSlug: p.marchandSlug,
+        image: sourceUrl,
+        prix: p.prix,
+        devise: p.devise,
+        url: p.urlProduit,
+        couleurNom: p.couleurNom,
+        couleurHex: p.hex,
+      });
+      onPicked?.(p.id);
+    };
+
+    const pickFrom = (sp: URLSearchParams) =>
+      fetch(`/api/products?${sp}`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => d?.products?.[0] || null)
+        .catch(() => null);
+
+    /* Brief 2026-06-09 « moins de Bientôt » : la requête STRICTE (slot +
+       couleur + palette + genre + style + occasion + saison + envie +
+       pièces déjà choisies) sur-restreint certains slots → carte vide
+       « pas encore chez nos partenaires ». On retente alors en relâchant
+       par paliers les contraintes SECONDAIRES, en gardant l'essentiel
+       (slot, couleur, palette, genre) : un produit pertinent de la bonne
+       catégorie/couleur vaut mieux qu'un slot vide. On s'arrête au 1er
+       succès. (Le slot reste réellement vide seulement si le genre+slot
+       n'a vraiment aucun produit.) */
+    (async () => {
+      let p = await pickFrom(params);
+      if (!p) {
+        const RELAX = [
+          ["occasion", "season", "envie", "selectedNames"],            // garde le style
+          ["occasion", "season", "envie", "selectedNames", "style"],   // lâche aussi le style
+        ];
+        for (const drop of RELAX) {
+          if (cancelled) return;
+          const sp = new URLSearchParams(params);
+          for (const k of drop) sp.delete(k);
+          p = await pickFrom(sp);
+          if (p) break;
+        }
+      }
+      if (cancelled || !p) return;
+      applyProduct(p);
+    })();
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slot, colorHex, paletteRef, genre, style, seed, excludeKey, selectedNamesStr, tierMaxPrice]);
