@@ -1632,7 +1632,8 @@ function CompleteTheLook({
                 }}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={p.image} alt={p.nom} loading="lazy"
-                    style={{ width: "100%", height: "100%", objectFit: "contain", padding: 8 }} />
+                    style={{ width: "100%", height: "100%", objectFit: "contain", padding: 8 }}
+                    onError={(e) => { const img = e.currentTarget; img.style.display = "none"; if (img.parentElement) img.parentElement.style.background = "#F4EFE7"; }} />
                 </div>
                 <p style={{
                   margin: "10px 0 0", fontSize: 13, fontFamily: fontBody, lineHeight: 1.3,

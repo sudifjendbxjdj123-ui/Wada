@@ -204,7 +204,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="fr" className="h-full antialiased">
+    // suppressHydrationWarning : le script anti-flash (dans <head>) pose
+    // data-theme sur <html> AVANT l'hydratation → l'attribut diffère du HTML
+    // serveur. Intentionnel (pattern next-themes) → on évite le warning de
+    // hydration-mismatch « data-theme » présent sinon sur toutes les pages.
+    <html lang="fr" className="h-full antialiased" suppressHydrationWarning>
       <head>
         {/* ─── Anti-flash thème (brief 2026-05-26 §2) ───
             Pose data-theme="jour|nuit" sur <html> AVANT le paint, en lisant

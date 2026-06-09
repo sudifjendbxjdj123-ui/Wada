@@ -72,7 +72,8 @@ export function HomeNouveautes() {
                     aspectRatio: "3/4", position: "relative", marginBottom: 9,
                   }}>
                     <img src={p.image || p.largeImage} alt={p.nom} loading="lazy"
-                      style={{ width: "100%", height: "100%", objectFit: "contain", padding: 8 }} />
+                      style={{ width: "100%", height: "100%", objectFit: "contain", padding: 8 }}
+                      onError={(e) => { const img = e.currentTarget; img.style.display = "none"; if (img.parentElement) img.parentElement.style.background = "#F4EFE7"; }} />
                     <span style={{
                       position: "absolute", top: 8, left: 8,
                       width: 7, height: 7, borderRadius: "50%",
