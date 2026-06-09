@@ -448,9 +448,20 @@ export default function CategoryPage({ title, breadcrumb, slot, q, genre: initGe
     return {};
   }, [priceRange]);
 
+  /* Fix 2026-06-07 (BUG filtres) — les filtres Prix/Couleur/Style ne
+     s'appliquaient pas : fetchProducts (useCallback, deps [slot, PER_PAGE])
+     fermait sur genre/style/couleur/priceParams mais n'était JAMAIS recréé
+     quand ces filtres changeaient → il gardait les valeurs INITIALES (vides)
+     et l'API recevait toujours `?slot=…` sans paramètre de filtre.
+     On garde fetchProducts STABLE (sinon double-fetch via l'effet pagination)
+     et on lit les valeurs FRAÎCHES via un ref mis à jour à chaque render. */
+  const filtersRef = useRef({ q, genre, style, couleur, priceParams });
+  filtersRef.current = { q, genre, style, couleur, priceParams };
+
   /* ── Fetch produits ── */
   const fetchProducts = useCallback(async (currentPage: number) => {
     setLoading(true);
+    const { q, genre, style, couleur, priceParams } = filtersRef.current;
     const slots = slot.split(",");
     const offset = (currentPage - 1) * PER_PAGE;
     const results = await Promise.all(slots.map(async (s) => {
