@@ -33,6 +33,7 @@ import {
   type RegistreOutfit, type RegistreSlot,
 } from "@/lib/registreEngine";
 import { merchantsForPiece } from "@/lib/merchantsForPiece";
+import { formatProductPrice } from "@/lib/priceFormat";
 import {
   ink, paper, subtle, border, mojo, seal, cardBg,
   textSecondary, fontHeading, fontBody, fontLabel,
@@ -1552,7 +1553,7 @@ function MaTenueContent() {
    site d'affiliation). Si rien de pertinent → la section ne s'affiche pas. */
 type AccentItem = {
   id: string; nom: string; marque?: string; prix?: number;
-  devise?: string; image?: string; urlProduit: string;
+  devise?: string; image?: string; urlProduit: string; marchandSlug?: string;
 };
 
 function CompleteTheLook({
@@ -1615,7 +1616,7 @@ function CompleteTheLook({
               );
             }
             const prix = typeof p.prix === "number"
-              ? `${p.prix.toLocaleString("fr-FR")} ${!p.devise || p.devise === "EUR" ? "€" : p.devise}`
+              ? formatProductPrice(p.prix, p.marchandSlug, p.devise)
               : "";
             return (
               <ExternalLink
@@ -2234,6 +2235,7 @@ function useMujiProduct(
        « via Awin · {marchand} partenaire » (MUJI ou The Business
        Fashion ou autre flux futur). */
     marchand?: string;
+    marchandSlug?: string;
     image: string;
     prix: number;
     devise: string;
@@ -2377,6 +2379,7 @@ function useMujiProduct(
           /* Brief 2026-05-30 : marchand exposé pour le label
              « via Awin · {marchand} partenaire » dynamique. */
           marchand: p.marchand,
+          marchandSlug: p.marchandSlug,
           image: sourceUrl,
           prix: p.prix,
           devise: p.devise,
@@ -2841,7 +2844,7 @@ function PieceCard({
               letterSpacing: "-0.005em",
             }}>
               {mujiProduct
-                ? `${formatPrice(mujiProduct.prix)} ${mujiProduct.devise === "EUR" ? "€" : mujiProduct.devise}`
+                ? formatProductPrice(mujiProduct.prix, mujiProduct.marchandSlug, mujiProduct.devise)
                 : price}
             </p>
             {/* Ligne 4 : bouton Acheter — deep-link MUJI (rel sponsored) ou

@@ -5,6 +5,7 @@ import { shopOptionsAffiliated, type ShopLink } from "@/lib/data";
 import BackButton from "@/components/BackButton";
 import ExternalLink from "@/components/ExternalLink";
 import { openExternal } from "@/lib/native";
+import { formatProductPrice } from "@/lib/priceFormat";
 
 /* Brief audit mobile 2026-05-30 §2+§3 : chaque item du panier a besoin
    d'une vraie image + d'un vrai prix + d'une vraie marque, pas d'un
@@ -15,6 +16,7 @@ type ResolvedProduct = {
   nom: string;
   marque: string;
   marchand?: string;
+  marchandSlug?: string;
   image: string;
   prix: number;
   devise: string;
@@ -342,6 +344,7 @@ function CartItemCard({ item, fallback, onRemove }: {
           nom: p.nom,
           marque: p.marque || p.marchand || "MUJI",
           marchand: p.marchand,
+          marchandSlug: p.marchandSlug,
           image: sourceUrl,
           prix: p.prix,
           devise: p.devise || "EUR",
@@ -425,7 +428,7 @@ function CartItemCard({ item, fallback, onRemove }: {
               <strong style={{ color: palette.ink, fontWeight: 600 }}>{resolved.marque}</strong>
               {" · "}
               <span style={{ color: palette.bordeaux, fontWeight: 600 }}>
-                {typeof resolved.prix === "number" ? formatPrice(resolved.prix) : "—"} {resolved.devise === "EUR" ? "€" : resolved.devise}
+                {typeof resolved.prix === "number" ? formatProductPrice(resolved.prix, resolved.marchandSlug, resolved.devise) : "—"}
               </span>
             </>
           ) : !loaded ? "Recherche du produit…" : `No. ${item.fromEntry}`}

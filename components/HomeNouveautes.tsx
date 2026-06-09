@@ -6,6 +6,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { ProduitAwin } from "@/lib/schema";
+import { formatProductPrice } from "@/lib/priceFormat";
 
 const SOURCE_LABEL: Record<string, string> = {
   "muji-france": "MUJI France",
@@ -87,7 +88,7 @@ export function HomeNouveautes() {
                     {p.nom}
                   </p>
                   <p style={{ margin: "0 0 2px", fontSize: 14, fontWeight: 600, color: "#1a1a1a", fontFamily: "'Inter'" }}>
-                    {typeof p.prix === "number" ? `${p.prix.toLocaleString("fr-FR")} €` : "Prix sur le site"}
+                    {formatProductPrice(p.prix, p.marchandSlug, p.devise)}
                   </p>
                   <p style={{ margin: 0, fontSize: 11, color: "#a89880", fontFamily: "'Inter'", display: "flex", alignItems: "center", gap: 3 }}>
                     <span style={{ fontSize: 9 }}>↗</span> {source}
