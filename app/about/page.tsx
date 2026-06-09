@@ -85,17 +85,17 @@ export default function AboutPage() {
               color: palette.bordeaux,
               fontWeight: 500,
             }}>
-              plus facile
+              simple
             </em>
             .
           </h1>
           <p style={{
             fontSize: 16,
             color: palette.inkSoft,
-            maxWidth: "34ch",
+            maxWidth: "40ch",
             margin: "0 auto",
           }}>
-            Pas besoin d&apos;être expert. Vous scannez une couleur — WADA construit la tenue qui va avec.
+            S&apos;habiller devrait être un plaisir. WADA part de la couleur pour composer la tenue qui vous va — sans expertise, sans hésitation.
           </p>
         </section>
 
@@ -112,10 +112,10 @@ export default function AboutPage() {
             fontWeight: 500,
             letterSpacing: "-0.3px",
           }}>
-            Tout est parti d&apos;un problème très simple.
+            Tout commence par une question simple.
           </h2>
           <p style={ideeParaStyle}>
-            Passer trop de temps devant son armoire sans savoir quoi mettre. Tester, hésiter, renoncer.
+            Chaque matin, des millions de personnes passent du temps devant leur armoire. Trop de choix, trop d&apos;hésitations — trop d&apos;énergie pour une décision qui devrait être naturelle.
           </p>
 
           <div style={{
@@ -130,17 +130,17 @@ export default function AboutPage() {
             letterSpacing: "-0.3px",
           }}>
             <span style={{ opacity: 0.4, fontSize: 32, lineHeight: 1 }}>« </span>
-            Pourquoi s&apos;habiller doit-il toujours demander autant d&apos;énergie ?
+            Et si le style pouvait être guidé par une logique universelle ?
             <span style={{ opacity: 0.4, fontSize: 32, lineHeight: 1 }}> »</span>
           </div>
 
           <p style={ideeParaStyle}>
-            Quelques semaines plus tard, la découverte d&apos;un ancien livre du peintre japonais{" "}
-            <b style={{ color: palette.ink, fontWeight: 600 }}>Sanzo Wada</b>. En 1933, il y avait réuni{" "}
-            <b style={{ color: palette.ink, fontWeight: 600 }}>348 combinaisons de couleurs</b> pensées pour fonctionner naturellement ensemble.
+            La réponse tient dans un ouvrage publié en 1933 par le peintre et théoricien japonais{" "}
+            <b style={{ color: palette.ink, fontWeight: 600 }}>Sanzo Wada</b> — devenu une référence du design. Il y rassemble{" "}
+            <b style={{ color: palette.ink, fontWeight: 600 }}>348 harmonies de couleurs</b> conçues pour fonctionner naturellement ensemble.
           </p>
           <p style={ideeParaStyle}>
-            Si des couleurs fonctionnent ensemble, alors une tenue construite autour de ces couleurs fonctionne aussi.
+            Une approche intemporelle où l&apos;équilibre naît de la couleur, avant même la forme. Si des couleurs s&apos;accordent, une tenue construite autour d&apos;elles s&apos;accorde aussi.
           </p>
 
           <p style={{
@@ -152,7 +152,7 @@ export default function AboutPage() {
             marginTop: 32,
             letterSpacing: "-0.2px",
           }}>
-            C&apos;est l&apos;idée fondatrice de WADA.
+            WADA applique ce principe au vêtement.
           </p>
         </section>
 
@@ -268,10 +268,10 @@ export default function AboutPage() {
             LES PARTENAIRES — timeline budget
             ═══════════════════════════════════════════════════════════════════ */}
         <section style={{ padding: "60px 0 30px" }}>
-          <div style={{ ...kickerStyle, textAlign: "center" }}>Les partenaires actuels</div>
+          <div style={{ ...kickerStyle, textAlign: "center" }}>Marques et maisons sélectionnées</div>
           <h2 style={secTitleStyle}>
             Une sélection qui{" "}
-            <em style={emRomanStyle}>grandit chaque semaine</em>.
+            <em style={emRomanStyle}>s&apos;enrichit chaque semaine</em>.
           </h2>
 
           <div>
@@ -346,9 +346,9 @@ export default function AboutPage() {
         borderTop: `1px solid ${palette.line}`,
       }}>
         <div style={{ maxWidth: 680, margin: "0 auto" }}>
-          <div style={{ ...kickerStyle, textAlign: "center" }}>Gratuit, sans piège</div>
+          <div style={{ ...kickerStyle, textAlign: "center" }}>Notre modèle</div>
           <h2 style={secTitleStyle}>
-            Gratuit. <em style={emRomanStyle}>Simple</em>. Honnête.
+            Une approche <em style={emRomanStyle}>transparente</em> du style.
           </h2>
 
           <div style={{
@@ -435,7 +435,7 @@ export default function AboutPage() {
             margin: "30px auto 0",
             maxWidth: "34ch",
           }}>
-            Chaque accord de couleurs devient une silhouette prête à porter. Des palettes inspirées du livre original de 1933, adaptées à aujourd&apos;hui.
+            348 points de départ. Autant de façons d&apos;aborder le style. Chaque accord, hérité du livre de 1933, est réinterprété pour le vestiaire d&apos;aujourd&apos;hui.
           </p>
         </section>
       </div>{/* /wrap */}
@@ -469,7 +469,7 @@ export default function AboutPage() {
             maxWidth: "32ch",
             margin: "0 auto 16px",
           }}>
-            WADA est indépendant. Pas d&apos;investisseur, pas de pub. Juste les couleurs et vous.
+            Faire de la couleur le point de départ du style, et permettre à chacun de mieux s&apos;habiller — plus vite, avec plus de confiance. WADA est indépendant : pas d&apos;investisseur, pas de publicité. Juste les couleurs et vous.
           </p>
           <div style={{
             marginTop: 30,
@@ -498,17 +498,17 @@ export default function AboutPage() {
             color: palette.ink,
             letterSpacing: "-0.3px",
           }}>
-            Découvrez les palettes WADA.
+            Explorez le dictionnaire des couleurs.
           </h3>
           <p style={{
             fontSize: 14.5,
             color: palette.inkSoft,
             marginBottom: 24,
-            maxWidth: "30ch",
+            maxWidth: "32ch",
             marginLeft: "auto",
             marginRight: "auto",
           }}>
-            Le dictionnaire complet, pensé pour vous aider à mieux vous habiller au quotidien.
+            348 harmonies, des milliers de tenues. Le dictionnaire complet vous attend.
           </p>
           <Link
             href="/palettes"
@@ -543,7 +543,7 @@ export default function AboutPage() {
               marginLeft: 10,
             }}
           >
-            Scanner une couleur
+            Trouver une tenue à partir d&apos;une couleur
           </Link>
         </section>
       </div>
@@ -610,22 +610,22 @@ const ACTIONS = [
   {
     num: "I",
     title: "Une tenue complète",
-    desc: "Composée pour fonctionner ensemble, du haut aux chaussures. Cinq pièces, un seul registre.",
+    desc: "Des pièces choisies pour s'accorder naturellement, du haut aux chaussures. Cinq pièces, un seul registre.",
   },
   {
     num: "II",
     title: "Des idées de style",
-    desc: "Adaptées à votre humeur, à votre saison, à votre culture, à votre journée.",
+    desc: "Selon la saison, le contexte, l'humeur du jour ou l'influence culturelle qui vous inspire.",
   },
   {
     num: "III",
     title: "Des vêtements réels",
-    desc: "Issus d'une sélection de boutiques cotées, du vintage au luxe. Aucune image inventée.",
+    desc: "Issus de marques et boutiques existantes, du vintage au luxe. Aucun produit fictif, aucune image générée.",
   },
   {
     num: "IV",
-    title: "Des liens d'achat directs",
-    desc: "Transparents, sans intermédiaire caché. Vous achetez chez la marque, au même prix.",
+    title: "Un accès direct aux marques",
+    desc: "Vous achetez chez la marque ou le marchand officiel, au prix public. Sans intermédiaire caché.",
   },
 ];
 
@@ -660,18 +660,18 @@ const PARTNERS = [
   {
     tag: "À venir",
     title: "Sezane · Sandro · Maje · Net-a-Porter…",
-    desc: "D'autres marques rejoignent WADA chaque semaine. Vous voulez la vôtre ?",
+    desc: "De nouvelles maisons rejoignent WADA chaque semaine. Vous voulez la vôtre ?",
     cta: "Écrivez-nous",
-    range: "Catalogue en croissance",
+    range: "Un vestiaire en constante évolution",
     unit: "",
   },
 ];
 
 const PROMISES = [
-  { num: "i",   title: "Site gratuit",        desc: "Palettes, scanner, recommandations — sans abonnement." },
-  { num: "ii",  title: "Pas de pub intrusive",desc: "Aucun pop-up, aucune surcharge, pas de tracking publicitaire." },
-  { num: "iii", title: "Liens transparents",  desc: "Vous achetez chez la marque, au prix marchand. WADA touche parfois une commission." },
-  { num: "iv",  title: "Abonnement optionnel",desc: "Pour aller plus loin : recommandations personnalisées et calendrier de tenues." },
+  { num: "i",   title: "Gratuit par principe", desc: "Palettes, scanner couleur et recommandations, accessibles sans abonnement." },
+  { num: "ii",  title: "Sans publicité intrusive", desc: "Aucun pop-up, aucune surcharge, aucun tracking publicitaire." },
+  { num: "iii", title: "Liens transparents",  desc: "Vous achetez chez la marque, au prix public. WADA peut percevoir une commission — jamais à votre charge." },
+  { num: "iv",  title: "Indépendant",         desc: "Sans investisseurs ni pression commerciale. Un outil utile avant d'être un commerce." },
 ];
 
 /* ────────────────────── styles partagés ─────────────────────── */
