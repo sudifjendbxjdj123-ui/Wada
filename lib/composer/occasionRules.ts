@@ -22,6 +22,7 @@ export const WHITELIST_SOURCES = new Set<string>([
   "the-business-fashion",
   "suitable-fr",
   "new-era", // Brief New Era 2026-06-09 — ~5 500 casquettes/textile
+  "kastner-ohler", // Brief K&Ö 2026-06-09 — ~30k produits, 520 marques premium
   /* À ajouter quand intégrés : "the-shirt-company", "armor-lux", … */
 ]);
 

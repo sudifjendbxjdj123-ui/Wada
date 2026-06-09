@@ -92,6 +92,7 @@ const SOURCE_LABEL: Record<string, string> = {
   "the-business-fashion": "The Business Fashion",
   "suitable-fr": "Suitable FR",
   "new-era": "New Era",
+  "kastner-ohler": "Kastner & Öhler",
 };
 
 /* Garde anti-crash : vrai uniquement pour une URL http(s) bien formée.

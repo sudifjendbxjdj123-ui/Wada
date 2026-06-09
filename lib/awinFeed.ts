@@ -236,6 +236,26 @@ const CATEGORY_MAPPING: Record<string, ProductCategorie> = {
   "echarpes": "accent",
   "gants": "accent",
   "sacs": "accent",
+
+  // ─── Allemand (K&Ö) ─── Brief K&Ö 2026-06-09. category_name vide ; on
+  // mappe merchant_product_category_path (« Herren > Bekleidung > Jeans >
+  // Straight »). parseCategory teste chaque mot du chemin → on map les
+  // sous-catégories DE. Les macros (Bekleidung) restent non mappées (trop
+  // génériques) : c'est la sous-catégorie qui décide du slot.
+  "hemden": "haut", "blusen": "haut", "tuniken": "haut",
+  "poloshirts": "haut", "hoodies": "haut",
+  "pullover": "haut", "strick": "haut", "kleider": "haut",
+  "jacken": "veste", "mäntel": "veste", "maentel": "veste", "westen": "veste",
+  "anzüge": "veste", "anzuege": "veste", "sakkos": "veste", "strickjacken": "veste",
+  "blazer": "veste",
+  "hosen": "bas", "röcke": "bas", "roecke": "bas", "leggings": "bas",
+  "schuhe": "chaussures", "sneaker": "chaussures", "stiefel": "chaussures",
+  "stiefeletten": "chaussures", "halbschuhe": "chaussures", "pumps": "chaussures",
+  "sandalen": "chaussures",
+  "taschen": "accent", "accessoires": "accent", "schmuck": "accent",
+  "gürtel": "accent", "guertel": "accent", "mützen": "accent", "muetzen": "accent",
+  "schals": "accent", "tücher": "accent", "tuecher": "accent", "uhren": "accent",
+  "sonnenbrillen": "accent",
 };
 
 /** Catégories Muji explicitement EXCLUES de l'affichage public — brief
@@ -261,6 +281,17 @@ const EXCLUDED_CATEGORIES = new Set([
   "costumes de cérémonie & accessoires",
   "costumes de mariage",
   "smoking",
+  /* ─── Allemand (K&Ö) ─── Brief K&Ö 2026-06-09. K&Ö est un grand magasin :
+     il vend aussi beauté/parfums, enfant, lingerie, bain — hors périmètre
+     mode adulte WADA. On exclut sur le merchant_product_category_path
+     (match par sous-chaîne via isExcludedCategory). NB : « smoking » (déjà
+     présent) exclut aussi les smokings DE (tuxedos) — perte mineure acceptée. */
+  "beauty", "düfte", "duefte", "parfum", "parfüm", "kosmetik", "pflege", "fragrance",
+  "make-up", "schminke",
+  "unterwäsche", "unterwaesche", "wäsche", "waesche", "dessous", "nachtwäsche", "nachtwaesche",
+  "bademode", "bikini", "badeanzug",
+  "socken", "strümpfe", "struempfe", "strumpfhosen",
+  "kinder", "baby", "kids",
 ]);
 
 function isExcludedCategory(categoryName?: string): boolean {
@@ -290,8 +321,11 @@ function isExcludedCategory(categoryName?: string): boolean {
  */
 const GENDER_PATTERNS: Array<[RegExp, ProductGenre]> = [
   [/\b(unisex|unisexe|mixte)\b/i, "unisexe"],
-  [/\b(women|womens|woman|female|femme|ladies)\b|women's/i, "femme"],
-  [/\b(men|mens|man|male|homme|gents)\b|men's/i, "homme"],
+  /* « damen » (femme) AVANT « herren » (homme). \bmen\b ne matche pas
+     « damen » (pas de frontière entre « a » et « men ») → pas de faux
+     positif homme. Brief K&Ö 2026-06-09. */
+  [/\b(women|womens|woman|female|femme|ladies|damen)\b|women's/i, "femme"],
+  [/\b(men|mens|man|male|homme|gents|herren)\b|men's/i, "homme"],
 ];
 
 /** Mapping mot couleur (FR + EN) → hex de référence. Réutilise la table
@@ -330,6 +364,22 @@ const COLOR_TO_HEX: Record<string, string> = {
   "doré": "#B89A4A", "dore": "#B89A4A", "gold": "#B89A4A",
   "multicoloré": "#9B9B96", "multicolore": "#9B9B96", "multi": "#9B9B96",
   "turquoise": "#4A9A9A",
+  /* ─── Allemand (K&Ö) ─── Brief K&Ö 2026-06-09. Couleurs 100% en DE.
+     Mappées vers les hex WADA existants pour rester cohérent avec le
+     matching palette Sanzō Wada. Clés déjà présentes en EN/FR (beige,
+     khaki, bordeaux, pink, orange, camel, taupe, gold…) non redéclarées.
+     « keine farbe » non mappé → gris défaut. */
+  "schwarz": "#1E1E1E",
+  "weiss": "#F5F2EC", "weiß": "#F5F2EC",
+  "blau": "#5A7A95", "dunkelblau": "#1F3A5F", "hellblau": "#8AB4D4",
+  "grau": "#9B9B96", "hellgrau": "#C8C8C4", "dunkelgrau": "#2E2E30",
+  "braun": "#6B4A33", "oliv": "#7D8A4A",
+  "grün": "#5A6F4A", "gruen": "#5A6F4A", "dunkelgrün": "#2A4A28", "hellgrün": "#A4C890",
+  "rot": "#9B2D20", "weinrot": "#6B3A32",
+  "rosa": "#D6A8A8",
+  "gelb": "#D6BE6B", "lila": "#6B4A8A", "türkis": "#4A9A9A", "tuerkis": "#4A9A9A",
+  "silber": "#B8B8B8", "bronze": "#A87844",
+  "petrol": "#2A5A6A", "bunt": "#9B9B96", "natur": "#E8DFC4",
 };
 
 function colorNameToHex(colour?: string): string {
@@ -535,15 +585,27 @@ export function normalizeAwinProduct(raw: RawAwinProduct): ProduitAwin | null {
   const isNewEra =
     /new[\s-]?era/i.test(raw.merchant_name || "") ||
     /new[\s-]?era/i.test(raw.brand_name || "");
-  const merchantSlug = isNewEra ? "new-era" : slugMerchant(raw.merchant_name);
+  /* Brief K&Ö 2026-06-09 — Kastner & Öhler : flux allemand multi-marques
+     (520 marques sous UN marchand). Slug canonique « kastner-ohler » ; la
+     marque affichée reste brand_name (Polo Ralph Lauren, Boss…), donc
+     /marques liste bien les 520 marques (groupées par `marque`). */
+  const isKO = /kastner|öhler|oehler|ohler/i.test(raw.merchant_name || "");
+  const merchantSlug = isNewEra ? "new-era" : isKO ? "kastner-ohler" : slugMerchant(raw.merchant_name);
+
+  /* K&Ö : 42% du flux est is_for_sale=0 (invendable, 31k lignes). On drop
+     dès l'ingestion pour ne pas gonfler le KV de produits non achetables. */
+  if (isKO && raw.is_for_sale !== "1") return null;
 
   /* Brief Muji 2026-05-27 §4 — exclure underwear/nightwear de l'affichage
      public. Brief 2026-06-01 (Suitable FR) : Suitable utilise
-     `merchant_category` (« Boxers », « Shorts de bain ») au lieu de
-     `category_name` qui est vide pour eux → on teste les deux. */
+     `merchant_category` au lieu de `category_name` (vide). Brief K&Ö
+     2026-06-09 : K&Ö a category_name vide aussi → on exclut beauté/enfant/
+     lingerie/bain sur le merchant_product_category_path (100% rempli, en DE). */
   const categorySourceForExclusion =
     merchantSlug === "suitable-fr"
       ? (raw as RawAwinProduct & { merchant_category?: string }).merchant_category
+      : isKO
+      ? raw.merchant_product_category_path
       : raw.category_name;
   if (isExcludedCategory(categorySourceForExclusion)) return null;
 
@@ -602,6 +664,14 @@ export function normalizeAwinProduct(raw: RawAwinProduct): ProduitAwin | null {
          casquette qu'autre chose. */
       if (!category) category = "accent";
     }
+  } else if (isKO) {
+    /* Brief K&Ö 2026-06-09 — catégories 100% en allemand dans
+       merchant_product_category_path (« Herren > Bekleidung > Jeans >
+       Straight »), category_name vide. parseCategory matche les mots du
+       chemin via les libellés DE ajoutés à CATEGORY_MAPPING ; fallback sur
+       l'inférence par le nom du produit si le chemin ne résout rien. */
+    category = parseCategory(raw.merchant_product_category_path)
+      || inferCategoryFromProductName(raw.product_name);
   } else if (merchantSlug === "the-business-fashion") {
     category = inferCategoryFromProductName(raw.product_name);
   } else if (merchantSlug === "suitable-fr") {
@@ -625,8 +695,16 @@ export function normalizeAwinProduct(raw: RawAwinProduct): ProduitAwin | null {
      cohérence sitewide. Taux fixe 1.17 (moyenne lissée 2024-2026). À
      remplacer par un fetch xchange-rates si on veut un taux dynamique
      (mais 1.17 ± 3 % toléré pour un usage produit pas comptable). */
-  const isGBP = (raw.currency || "").toUpperCase() === "GBP";
-  const price = isGBP ? Math.round(rawPrice * 1.17 * 100) / 100 : rawPrice;
+  /* Brief K&Ö 2026-06-09 — conversion CHF → EUR : K&Ö publie en francs
+     suisses. WADA affiche tout en EUR (l'UI ignore le champ devise). Taux
+     fixe 1.03 (CHF→EUR lissé 2024-2026). Le prix réel reste celui de K&Ö ;
+     c'est un prix indicatif d'affichage. */
+  const currencyUp = (raw.currency || "").toUpperCase();
+  const isGBP = currencyUp === "GBP";
+  const isCHF = currencyUp === "CHF";
+  const price = isGBP ? Math.round(rawPrice * 1.17 * 100) / 100
+    : isCHF ? Math.round(rawPrice * 1.03 * 100) / 100
+    : rawPrice;
   /* Brief TBF 2026-05-30 — extraction couleur depuis product_name :
      TBF a `colour="-"` ou vide pour tous les produits. Sans hex valide,
      paletteRef tombe sur 094 (gris défaut) pour TOUT TBF → invisible
@@ -718,7 +796,12 @@ export function normalizeAwinProduct(raw: RawAwinProduct): ProduitAwin | null {
      le libellé du flux (« New Era Cap », « UK NewEraCap »…). */
   const marque = isNewEra
     ? "New Era"
-    : rawBrand.replace(/\s+(France|Europe|UK|US|Italia|España|Deutschland|Nederland)$/i, "");
+    /* Brief K&Ö 2026-06-09 — on retire les symboles ®/™ des marques
+       (« LEVI'S® » → « LEVI'S ») pour des libellés et slugs propres. */
+    : rawBrand
+        .replace(/\s+(France|Europe|UK|US|Italia|España|Deutschland|Nederland)$/i, "")
+        .replace(/[®™]/g, "")
+        .trim();
 
   /* Match Sanzo Wada — brief Muji §5 :
      hex → ΔE2000 vers les 348 accords → palette la plus proche.
@@ -772,7 +855,7 @@ export function normalizeAwinProduct(raw: RawAwinProduct): ProduitAwin | null {
     /* Brief TBF 2026-05-29 : si le flux était en GBP, on a converti le
        prix en EUR au-dessus → on tagge devise=EUR pour cohérence
        d'affichage. Autres devises restent comme telles. */
-    devise: isGBP ? "EUR" : ((raw.currency as "EUR" | "CHF" | "USD" | "GBP") || "EUR"),
+    devise: (isGBP || isCHF) ? "EUR" : ((raw.currency as "EUR" | "CHF" | "USD" | "GBP") || "EUR"),
     tailles: sizes,
     enStock: inStock,
     /* Image principale — Brief 2026-06-01 FIX PHOTOS + 2026-06-02 SANS MANNEQUIN :
@@ -806,11 +889,12 @@ export function normalizeAwinProduct(raw: RawAwinProduct): ProduitAwin | null {
          On extrait TOUJOURS l'URL CDN directe (Shopify/BigCommerce) qui est
          accessible sans restriction. Pour TBF ça peut montrer un mannequin
          mais au moins l'image s'affiche. */
-      /* New Era — Brief 2026-06-09 : large_image VIDE (0 %), alternate_image
-         rempli (99,9 %). On ajoute alternate_image à la cascade. Casquettes =
-         packshots fond blanc (chapeau posé/flottant) → conformes « jamais de
-         mannequin ». */
-      : isNewEra
+      /* New Era + K&Ö — Brief 2026-06-09 : large_image VIDE (0 %),
+         alternate_image rempli (New Era 99,9 % / K&Ö 89 %). On ajoute
+         alternate_image à la cascade. New Era = packshots fond blanc ;
+         K&Ö = grand magasin, on garde l'image dispo même si portée
+         (décision user « tout garder »). */
+      : (isNewEra || isKO)
       ? (extractFromAwinProxy(raw.aw_image_url)
           || raw.aw_image_url
           || raw.alternate_image
@@ -820,7 +904,7 @@ export function normalizeAwinProduct(raw: RawAwinProduct): ProduitAwin | null {
     thumb: raw.aw_thumb_url,
     largeImage: merchantSlug === "suitable-fr"
       ? suitableFlatImage(raw.merchant_image_url || raw.aw_image_url || "")
-      : isNewEra
+      : (isNewEra || isKO)
       ? (raw.large_image
           || extractFromAwinProxy(raw.aw_image_url)
           || raw.alternate_image
