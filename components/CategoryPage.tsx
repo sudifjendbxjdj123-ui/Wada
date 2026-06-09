@@ -4,7 +4,7 @@
  * Filtres : Genre (si non préselectionné), Prix, Couleur, Style, Tri.
  * Quick View modal sur clic carte.
  */
-import { useState, useEffect, useCallback, useMemo, useRef, useTransition } from "react";
+import { useState, useEffect, useCallback, useMemo, useTransition } from "react";
 import Link from "next/link";
 import type { ProduitAwin } from "@/lib/schema";
 import { dictionaryMinimal } from "@/lib/data-client";
@@ -115,96 +115,6 @@ function HeartIcon({ filled }: { filled: boolean }) {
       style={{ transition: "transform 0.2s cubic-bezier(.22,1.4,.36,1), fill 0.2s, stroke 0.2s", transform: filled ? "scale(1.12)" : "scale(1)" }}>
       <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z" />
     </svg>
-  );
-}
-
-/* ── Chevron SVG ── */
-function Chevron({ color = "#1a1a1a", open = false }: { color?: string; open?: boolean }) {
-  return (
-    <svg width="10" height="10" viewBox="0 0 24 24" fill="none"
-      stroke={color} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden
-      style={{ transition: "transform 0.2s", transform: open ? "rotate(180deg)" : "none" }}>
-      <path d="M6 9l6 6 6-6" />
-    </svg>
-  );
-}
-
-/* ── Dropdown générique ── */
-function FilterDropdown({
-  label, active, options, value, onChange, renderOption,
-}: {
-  label: string;
-  active: boolean;
-  options: Array<{ value: string; label: string; extra?: string }>;
-  value: string;
-  onChange: (v: string) => void;
-  renderOption?: (o: { value: string; label: string; extra?: string }) => React.ReactNode;
-}) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, []);
-
-  return (
-    <div ref={ref} style={{ position: "relative" }}>
-      <button
-        onClick={() => setOpen(!open)}
-        style={{
-          display: "inline-flex", alignItems: "center", gap: 6,
-          padding: "8px 14px", borderRadius: 999,
-          fontSize: 13, fontWeight: 500, fontFamily: "'Inter', sans-serif",
-          cursor: "pointer",
-          background: active ? "#1a1a1a" : "#fff",
-          color: active ? "#fff" : "#1a1a1a",
-          border: `1px solid ${active ? "#1a1a1a" : "rgba(26,26,26,0.18)"}`,
-          transition: "all 0.15s",
-          whiteSpace: "nowrap",
-        }}
-      >
-        {label}
-        <Chevron color={active ? "#fff" : "#1a1a1a"} open={open} />
-      </button>
-
-      {open && (
-        <div style={{
-          position: "absolute", top: "calc(100% + 6px)", left: 0, zIndex: 100,
-          background: "#fff", borderRadius: 12,
-          boxShadow: "0 4px 24px rgba(0,0,0,0.12)",
-          border: "1px solid rgba(0,0,0,0.07)",
-          minWidth: 180, overflow: "hidden",
-          animation: "fadeDown 0.15s ease",
-        }}>
-          {options.map((opt) => (
-            <button
-              key={opt.value}
-              onClick={() => { onChange(opt.value); setOpen(false); }}
-              style={{
-                display: "flex", alignItems: "center", gap: 10,
-                width: "100%", padding: "11px 16px",
-                background: value === opt.value ? "#faf6ee" : "transparent",
-                border: "none", cursor: "pointer",
-                fontSize: 13, fontFamily: "'Inter', sans-serif",
-                fontWeight: value === opt.value ? 600 : 400,
-                color: value === opt.value ? BORDEAUX : "#1a1a1a",
-                textAlign: "left",
-                transition: "background 0.1s",
-              }}
-            >
-              {renderOption ? renderOption(opt) : opt.label}
-              {value === opt.value && (
-                <span style={{ marginLeft: "auto", fontSize: 11, color: BORDEAUX }}>✓</span>
-              )}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
   );
 }
 
