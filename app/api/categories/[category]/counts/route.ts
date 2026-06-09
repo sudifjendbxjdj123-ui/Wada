@@ -11,7 +11,7 @@
 import { readAllProducts } from "@/lib/productStore";
 import { isAffiliated } from "@/lib/composer/occasionRules";
 import { visitorCountry, shouldShowProduct } from "@/lib/products/visibility";
-import { computeCounts } from "@/lib/categoryFilters";
+import { computeCounts, isSlotNameConsistent } from "@/lib/categoryFilters";
 import type { ProduitAwin } from "@/lib/schema";
 
 export const runtime = "nodejs";
@@ -54,6 +54,7 @@ export async function GET(
     isUsableImage(p) &&
     isAffiliated(p.marchandSlug || "") &&
     shouldShowProduct(p, country) &&
+    isSlotNameConsistent(p) &&
     (slots.length === 0 || slots.includes(p.categorie)),
   );
 

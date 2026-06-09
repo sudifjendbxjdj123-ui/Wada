@@ -508,8 +508,24 @@ const PRODUCT_NAME_TO_SLOT: Array<[RegExp, ProductCategorie]> = [
   [/\b(bracelet|necklace|chain|ring|earrings?|bag|tote|backpack|clutch|pouch|wallet|cardholder|sunglasses?|eyewear|belt|hat|cap|beanie|scarf|tie|bowtie|pocket\s*square|cufflinks?|watch|sac|ceinture|chapeau|montre|cravate)\b/i, "accent"],
 ];
 
+/* Noms de VÊTEMENTS explicites — Brief 2026-06-09 (« Derby jumper » dans
+   les chaussures). Les mots de STYLE de chaussure (« derby », « brogue »,
+   « oxford », « richelieu », « monk ») apparaissent aussi dans des noms de
+   vêtements (« Derby jumper », « Oxford shirt »…). Si le nom contient un de
+   ces vrais noms de vêtement, on l'utilise EN PRIORITÉ et on ignore le slot
+   chaussures pour ne pas ranger un pull dans les chaussures. Liste tenue
+   stricte (pas de « top »/« low-top », pas de « polo »=marque, pas de
+   « knit »/« denim » qui existent en baskets). */
+const APPAREL_NOUN = /\b(jumper|sweater|sweatshirt|pullover|cardigan|hoodie|t[\s-]?shirt|tee|chemise|chemisier|trousers?|pantalon|jeans?|chinos?|leggings?|joggers?|shorts?|bermuda|blazer|jacket|coat|manteau|parka|trench|gilet|robe|dress|skirt|jupe|blouse)\b/i;
+
 function inferCategoryFromProductName(name: string): ProductCategorie | null {
   if (!name) return null;
+  if (APPAREL_NOUN.test(name)) {
+    for (const [pattern, slot] of PRODUCT_NAME_TO_SLOT) {
+      if (slot === "chaussures") continue; // un vêtement n'est jamais une chaussure
+      if (pattern.test(name)) return slot;
+    }
+  }
   for (const [pattern, slot] of PRODUCT_NAME_TO_SLOT) {
     if (pattern.test(name)) return slot;
   }

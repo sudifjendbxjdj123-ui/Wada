@@ -101,6 +101,23 @@ export const TYPES_BY_CATEGORY: Record<string, { label: string; re: RegExp }[]> 
   ],
 };
 
+/* Garde-fou affichage 2026-06-09 (« Derby jumper » dans les chaussures) :
+   un produit classé dans un slot mais dont le NOM crie une autre catégorie
+   (ex. « Derby jumper » mis en chaussures car « derby » matchait) est écarté
+   du pool de ce slot. Corrige l'affichage sans réingérer le KV (le fix racine
+   est dans inferCategoryFromProductName, appliqué aux prochaines ingestions).
+   Liste stricte : pas de « top »/« low-top », « knit »/« denim » (existent en
+   baskets), ni « polo » (= marque). */
+const SLOT_NAME_MISMATCH: Partial<Record<string, RegExp>> = {
+  chaussures: /\b(jumper|sweater|sweatshirt|pullover|cardigan|hoodie|t[\s-]?shirt|tee|chemise|trousers?|pantalon|jeans?|chinos?|shorts?|bermuda|blazer|jacket|coat|manteau|parka|robe|dress|skirt|jupe|blouse)\b/i,
+};
+
+/** false si le produit est manifestement mal classé dans son slot (nom ≠ slot). */
+export function isSlotNameConsistent(p: { categorie?: string; nom?: string }): boolean {
+  const re = SLOT_NAME_MISMATCH[p.categorie || ""];
+  return re ? !re.test(p.nom || "") : true;
+}
+
 /** Familles de couleur — pastilles + mots-clés + hex de référence (pour ΔE). */
 export const COLOR_FAMILIES: { name: string; hex: string; kws: RegExp }[] = [
   { name: "Noir", hex: "#1a1a1a", kws: /noir|black|encre|anthracite/i },

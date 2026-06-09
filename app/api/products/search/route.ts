@@ -17,7 +17,7 @@ import type { ProduitAwin } from "@/lib/schema";
 import { isAffiliated } from "@/lib/composer/occasionRules";
 import {
   applyCategoryFilters, sortProducts, computeCounts,
-  getDefaultFilters, type CategoryFilters,
+  getDefaultFilters, isSlotNameConsistent, type CategoryFilters,
 } from "@/lib/categoryFilters";
 
 export const runtime = "nodejs";
@@ -75,6 +75,7 @@ export async function POST(req: Request) {
     if (!isUsableImage(p)) return false;
     if (!isAffiliated(p.marchandSlug || "")) return false;
     if (slots.length && !slots.includes(p.categorie)) return false;
+    if (!isSlotNameConsistent(p)) return false; // ex. « Derby jumper » hors chaussures
     return true;
   });
 
