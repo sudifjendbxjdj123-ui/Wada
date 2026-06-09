@@ -45,6 +45,13 @@ export interface RawAwinProduct {
   /** Image grand format (Awin standard) — bien plus large que 200×200,
    *  utilisée pour les cards en vedette plein cadre 4/5 sans flou. */
   large_image?: string;
+  /** Brief New Era 2026-06-09 : large_image est VIDE à 100 % dans le flux
+   *  New Era, mais alternate_image est rempli à 99,9 %. On l'ajoute donc à
+   *  la cascade d'images (utilisé en fallback, cf. resolveImageUrls). */
+  alternate_image?: string;
+  alternate_image_two?: string;
+  alternate_image_three?: string;
+  alternate_image_four?: string;
   /** Image hébergée par le marchand (autres feeds). */
   merchant_image_url?: string;
   search_price?: string;
@@ -520,7 +527,15 @@ export function normalizeAwinProduct(raw: RawAwinProduct): ProduitAwin | null {
     return null;
   }
 
-  const merchantSlug = slugMerchant(raw.merchant_name);
+  /* Brief New Era 2026-06-09 — détection robuste du marchand New Era.
+     Le flux New Era arrive sous des noms de marchand variables
+     (« New Era Cap », « UK NewEraCap »…). On normalise tout vers le slug
+     canonique « new-era » pour : un id stable, une page /marques/new-era
+     unique, et la marque affichée « New Era ». */
+  const isNewEra =
+    /new[\s-]?era/i.test(raw.merchant_name || "") ||
+    /new[\s-]?era/i.test(raw.brand_name || "");
+  const merchantSlug = isNewEra ? "new-era" : slugMerchant(raw.merchant_name);
 
   /* Brief Muji 2026-05-27 §4 — exclure underwear/nightwear de l'affichage
      public. Brief 2026-06-01 (Suitable FR) : Suitable utilise
@@ -546,7 +561,16 @@ export function normalizeAwinProduct(raw: RawAwinProduct): ProduitAwin | null {
      merchant_category en priorité pour ce marchand. CATEGORY_MAPPING a
      été enrichi avec les libellés FR (cf. plus haut). */
   let category: ProductCategorie | null;
-  if (merchantSlug === "the-business-fashion") {
+  if (isNewEra) {
+    /* Brief New Era 2026-06-09 — `category_name` ET
+       `merchant_product_category_path` sont VIDES à 100 % dans ce flux.
+       L'inférence par mot-clé du nom raterait les casquettes nommées
+       « 9FIFTY », « 59FIFTY », « Snapback », « Trucker », « Bucket Hat »…
+       (pas de « cap »/« hat » dans le libellé). New Era = 100 % couvre-chefs
+       → on force le slot `accent` (slot WADA des chapeaux/casquettes,
+       cf. CATEGORY_MAPPING "caps"/"hats" → "accent"). */
+    category = "accent";
+  } else if (merchantSlug === "the-business-fashion") {
     category = inferCategoryFromProductName(raw.product_name);
   } else if (merchantSlug === "suitable-fr") {
     const merchantCat = (raw as RawAwinProduct & { merchant_category?: string }).merchant_category;
@@ -634,6 +658,13 @@ export function normalizeAwinProduct(raw: RawAwinProduct): ProduitAwin | null {
   if (merchantSlug === "suitable-fr" && gender === "inconnu") {
     gender = "homme";
   }
+  /* Brief New Era 2026-06-09 — les casquettes New Era sont unisexes et le
+     flux ne tague aucun genre → parseGender retourne « inconnu » (donc
+     exclu pour un homme/une femme filtré·e). On force « unisexe » pour
+     qu'elles apparaissent pour tout le monde. */
+  if (isNewEra && gender === "inconnu") {
+    gender = "unisexe";
+  }
   const sizes = raw.product_size
     ? raw.product_size.split(/[,;|]/).map((s) => s.trim()).filter(Boolean)
     : undefined;
@@ -651,7 +682,11 @@ export function normalizeAwinProduct(raw: RawAwinProduct): ProduitAwin | null {
      nom du marchand, en retirant le suffixe pays (« MUJI France » → « MUJI »)
      pour que la headline reste propre sur les cartes WADA. */
   const rawBrand = (raw.brand_name && raw.brand_name.trim()) || raw.merchant_name;
-  const marque = rawBrand.replace(/\s+(France|Europe|UK|US|Italia|España|Deutschland|Nederland)$/i, "");
+  /* Brief New Era 2026-06-09 — marque canonique « New Era » quel que soit
+     le libellé du flux (« New Era Cap », « UK NewEraCap »…). */
+  const marque = isNewEra
+    ? "New Era"
+    : rawBrand.replace(/\s+(France|Europe|UK|US|Italia|España|Deutschland|Nederland)$/i, "");
 
   /* Match Sanzo Wada — brief Muji §5 :
      hex → ΔE2000 vers les 348 accords → palette la plus proche.
@@ -739,10 +774,26 @@ export function normalizeAwinProduct(raw: RawAwinProduct): ProduitAwin | null {
          On extrait TOUJOURS l'URL CDN directe (Shopify/BigCommerce) qui est
          accessible sans restriction. Pour TBF ça peut montrer un mannequin
          mais au moins l'image s'affiche. */
+      /* New Era — Brief 2026-06-09 : large_image VIDE (0 %), alternate_image
+         rempli (99,9 %). On ajoute alternate_image à la cascade. Casquettes =
+         packshots fond blanc (chapeau posé/flottant) → conformes « jamais de
+         mannequin ». */
+      : isNewEra
+      ? (extractFromAwinProxy(raw.aw_image_url)
+          || raw.aw_image_url
+          || raw.alternate_image
+          || raw.merchant_image_url
+          || "")
       : (extractFromAwinProxy(raw.aw_image_url) || raw.merchant_image_url || ""),
     thumb: raw.aw_thumb_url,
     largeImage: merchantSlug === "suitable-fr"
       ? suitableFlatImage(raw.merchant_image_url || raw.aw_image_url || "")
+      : isNewEra
+      ? (raw.large_image
+          || extractFromAwinProxy(raw.aw_image_url)
+          || raw.alternate_image
+          || raw.merchant_image_url
+          || "")
       : (raw.large_image
           || extractFromAwinProxy(raw.aw_image_url)
           || raw.merchant_image_url

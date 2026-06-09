@@ -89,6 +89,17 @@ const FEEDS = [
     slug: "suitable-fr",
     label: "Suitable FR",
   },
+  /* Brief New Era 2026-06-09 — ~25 367 casquettes. Télécharger le .csv.gz
+     du flux Awin New Era dans Downloads/ puis ajuster le `path` ci-dessous.
+     Le slug réel des produits est forcé à « new-era » par normalizeAwinProduct
+     (peu importe le libellé marchand du flux). Le filtre packshot reste ACTIF
+     (les casquettes sont des photos fond blanc → il les conserve, et écarte
+     les rares photos portées). */
+  {
+    path: "C:/Users/neman/Downloads/new-era-feed.csv.gz",
+    slug: "new-era",
+    label: "New Era",
+  },
 ];
 
 async function kvGet(key: string): Promise<unknown> {
