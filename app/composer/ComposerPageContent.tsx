@@ -259,10 +259,21 @@ export function ComposerPageContent() {
       });
       const json = (await res.json()) as VisionResponse;
       if ("error" in json) {
+        /* Fix 2026-06-09 : ne PAS afficher la `raison` technique brute à
+           l'utilisateur (« OPENAI_API_KEY absente », « OpenAI HTTP 429 »,
+           « Sortie LLM non parsable »…) — fuite du backend + jargon. On
+           garde la description amicale du LLM uniquement pour « non_reconnu »
+           (ex. « je vois un mur, pas un vêtement »), et un message générique
+           rassurant pour toutes les erreurs techniques. La sélection
+           manuelle du slot reste proposée par l'UI dans tous les cas. */
+        const friendly =
+          json.error === "non_reconnu"
+            ? (json.raison || "Pièce non reconnue")
+            : "Analyse indisponible pour le moment"; /* l'UI ajoute déjà « tu peux choisir le slot manuellement » */
         setVision({
           phase: "error",
           thumb: dataUrl,
-          message: json.raison || "Pièce non reconnue",
+          message: friendly,
         });
         return;
       }
