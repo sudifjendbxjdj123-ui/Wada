@@ -94,22 +94,47 @@ export async function readAllProducts(): Promise<ProduitAwin[]> {
     return [];
   }
 
-  // 2. Read tous les chunks en parallèle
-  const chunkPromises: Promise<ProduitAwin[] | null>[] = [];
-  for (let i = 0; i < meta.chunks; i++) {
-    chunkPromises.push(kvGetJson<ProduitAwin[]>(creds, `wada:products:chunk:${i}`));
+  /* 2. Read les chunks par LOTS bornés (pas un Promise.all géant).
+     Bug 2026-06-09 (K&Ö, catalogue ~70k → 350 chunks) : lancer 350 fetch
+     REST Upstash simultanés depuis une fonction serverless saturait les
+     connexions → beaucoup de GET échouaient en silence (kvGetJson catch →
+     null → chunk manquant), donc le catalogue arrivait tronqué en prod
+     (K&Ö quasi invisible) alors qu'il se lisait entièrement en local.
+     Fix : on lit par lots de READ_BATCH, + une passe de retry sur les
+     chunks manquants (les échecs Upstash sont surtout transitoires). */
+  const READ_BATCH = 24;
+  const chunks: (ProduitAwin[] | null)[] = new Array(meta.chunks).fill(null);
+  for (let start = 0; start < meta.chunks; start += READ_BATCH) {
+    const end = Math.min(start + READ_BATCH, meta.chunks);
+    const batch = await Promise.all(
+      Array.from({ length: end - start }, (_, k) =>
+        kvGetJson<ProduitAwin[]>(creds, `wada:products:chunk:${start + k}`),
+      ),
+    );
+    for (let k = 0; k < batch.length; k++) chunks[start + k] = batch[k];
   }
-  const chunks = await Promise.all(chunkPromises);
+
+  // Retry des chunks manquants (échecs transitoires de connexion/rate-limit).
+  let missingIdx = chunks.map((c, i) => (Array.isArray(c) ? -1 : i)).filter((i) => i >= 0);
+  if (missingIdx.length > 0) {
+    console.log(`[KV] readAllProducts: retry ${missingIdx.length} chunks manquants`);
+    for (let start = 0; start < missingIdx.length; start += READ_BATCH) {
+      const slice = missingIdx.slice(start, start + READ_BATCH);
+      const batch = await Promise.all(
+        slice.map((i) => kvGetJson<ProduitAwin[]>(creds, `wada:products:chunk:${i}`)),
+      );
+      for (let k = 0; k < slice.length; k++) chunks[slice[k]] = batch[k];
+    }
+    missingIdx = chunks.map((c, i) => (Array.isArray(c) ? -1 : i)).filter((i) => i >= 0);
+  }
 
   // 3. Concat avec compteur de diagnostic
   const all: ProduitAwin[] = [];
-  let missingChunks = 0;
   for (const c of chunks) {
     if (Array.isArray(c)) all.push(...c);
-    else missingChunks++;
   }
-  if (missingChunks > 0) {
-    console.log(`[KV] readAllProducts: ${missingChunks}/${meta.chunks} chunks missing/empty`);
+  if (missingIdx.length > 0) {
+    console.log(`[KV] readAllProducts: ${missingIdx.length}/${meta.chunks} chunks STILL missing after retry`);
   }
   console.log(`[KV] readAllProducts: ${all.length}/${meta.count} products loaded from ${meta.chunks} chunks`);
   return all;
