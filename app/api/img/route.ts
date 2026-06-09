@@ -58,6 +58,13 @@ const ALLOWED_HOSTS = [
   "scene7.com",                   // Adobe Scene7 (utilisé par certaines marques)
   // Suitable FR CDN — cdn.suitableshop.net (ajout 2026-06-02)
   "suitableshop.net",
+  /* Kastner & Öhler (ajout 2026-06-09) — images sur www.kastner-oehler.ch.
+     Sans ce host, le proxy /api/img renvoyait 403 → images K&Ö cassées sur
+     /ma-tenue (DIESEL, Y-3…). Le CDN K&Ö sert pourtant les images sans
+     hotlink-block (200 en direct) ; on l'autorise pour passer par le proxy
+     comme les autres marchands. */
+  "kastner-oehler.ch",
+  "kastneroehler.com",
 ];
 
 function isAllowedHost(u: URL): boolean {
