@@ -1471,6 +1471,21 @@ function MaTenueContent() {
       </section>
 
       {/* ═══════════════════════════════════════════════════════════════
+          COMPLÉTEZ VOTRE LOOK — accessoires compatibles palette
+          Brief « Page tenue premium » 2026-06-09, adapté à la réalité WADA :
+          rail d'accessoires RÉELS du catalogue KV (slot=accent, ΔE palette),
+          liens affiliés marchands. Pas de checkout/Klarna (WADA = affiliation).
+          ═══════════════════════════════════════════════════════════════ */}
+      {entry && (
+        <CompleteTheLook
+          paletteNumber={entry.number}
+          accentHex={registreOutfit?.slots.find((s) => s.slot === "accent")?.color?.hex || entry.colors[0]?.hex}
+          gender={prefs.gender}
+          style={prefs.style}
+        />
+      )}
+
+      {/* ═══════════════════════════════════════════════════════════════
           CTA — Voir une autre tenue (cycle dans les matches)
           ═══════════════════════════════════════════════════════════════ */}
       {matchedEntries.length > 1 && (
@@ -1526,6 +1541,114 @@ function MaTenueContent() {
       </section>
 
           </main>
+  );
+}
+
+/* ─────────────────── CompleteTheLook ───────────────────
+   « Complétez votre look » — rail horizontal d'accessoires compatibles
+   palette, tirés du VRAI catalogue KV (slot=accent, matching ΔE palette).
+   100% données réelles : packshots, prix, liens affiliés marchands. Aucun
+   contenu fabriqué (pas de faux avis, pas de checkout/Klarna : WADA est un
+   site d'affiliation). Si rien de pertinent → la section ne s'affiche pas. */
+type AccentItem = {
+  id: string; nom: string; marque?: string; prix?: number;
+  devise?: string; image?: string; urlProduit: string;
+};
+
+function CompleteTheLook({
+  paletteNumber, accentHex, gender, style,
+}: {
+  paletteNumber: string;
+  accentHex?: string;
+  gender: string | null;
+  style: string;
+}) {
+  const [items, setItems] = useState<AccentItem[] | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const params = new URLSearchParams({ slot: "accent", palette: paletteNumber, limit: "12" });
+    if (gender) params.set("genre", gender);
+    if (style) params.set("style", style);
+    if (accentHex) params.set("color", accentHex);
+    fetch(`/api/products?${params.toString()}`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (cancelled) return;
+        const list: AccentItem[] = (d.products || [])
+          .filter((p: AccentItem) => p.image && p.urlProduit)
+          .slice(0, 6);
+        setItems(list);
+      })
+      .catch(() => { if (!cancelled) setItems([]); });
+    return () => { cancelled = true; };
+  }, [paletteNumber, accentHex, gender, style]);
+
+  // Rien de pertinent → on n'affiche pas la section (jamais de bloc vide).
+  if (items !== null && items.length === 0) return null;
+
+  const cells: (AccentItem | null)[] = items ?? [null, null, null, null];
+
+  return (
+    <section style={{ padding: "8px 5% 56px" }}>
+      <div style={{ maxWidth: 1000, margin: "0 auto" }}>
+        <div style={{
+          display: "flex", alignItems: "center", justifyContent: "center",
+          gap: 16, maxWidth: 520, margin: "0 auto 26px",
+        }}>
+          <span aria-hidden style={{ flex: 1, height: 1, background: border }} />
+          <span style={{ ...sectionLabel, color: mojo, fontWeight: 700, letterSpacing: "0.3em", whiteSpace: "nowrap" }}>
+            Complétez votre look
+          </span>
+          <span aria-hidden style={{ flex: 1, height: 1, background: border }} />
+        </div>
+
+        <div style={{ display: "flex", gap: 14, overflowX: "auto", paddingBottom: 8 }}>
+          {cells.map((p, i) => {
+            if (!p) {
+              return (
+                <div key={`sk-${i}`} style={{ flex: "0 0 158px", width: 158 }}>
+                  <div style={{ aspectRatio: "1 / 1", background: cardBg, borderRadius: cardRadius }} />
+                  <div style={{ height: 12, background: cardBg, borderRadius: 4, marginTop: 10 }} />
+                  <div style={{ height: 10, width: "60%", background: cardBg, borderRadius: 4, marginTop: 6 }} />
+                </div>
+              );
+            }
+            const prix = typeof p.prix === "number"
+              ? `${p.prix.toLocaleString("fr-FR")} ${!p.devise || p.devise === "EUR" ? "€" : p.devise}`
+              : "";
+            return (
+              <ExternalLink
+                key={p.id}
+                href={p.urlProduit}
+                aria-label={`${p.nom}${p.marque ? " — " + p.marque : ""}`}
+                style={{ flex: "0 0 158px", width: 158, textDecoration: "none", color: ink }}
+              >
+                <div style={{
+                  aspectRatio: "1 / 1", background: "#fff", borderRadius: cardRadius,
+                  overflow: "hidden", border: `1px solid ${border}`,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={p.image} alt={p.nom} loading="lazy"
+                    style={{ width: "100%", height: "100%", objectFit: "contain", padding: 8 }} />
+                </div>
+                <p style={{
+                  margin: "10px 0 0", fontSize: 13, fontFamily: fontBody, lineHeight: 1.3,
+                  color: ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                }}>{p.nom}</p>
+                {p.marque && <p style={{ margin: "2px 0 0", fontSize: 11, color: textSecondary, fontFamily: fontBody }}>{p.marque}</p>}
+                {prix && <p style={{ margin: "4px 0 0", fontSize: 13, fontWeight: 600, color: ink, fontFamily: fontBody }}>{prix}</p>}
+              </ExternalLink>
+            );
+          })}
+        </div>
+
+        <p style={{ marginTop: 12, fontSize: 12, color: textSecondary, fontStyle: "italic", fontFamily: fontBody, textAlign: "center" }}>
+          Accessoires assortis à la palette · liens vers nos marchands partenaires
+        </p>
+      </div>
+    </section>
   );
 }
 
