@@ -30,6 +30,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import BackButton from "@/components/BackButton";
+import { formatProductPrice } from "@/lib/priceFormat";
 /* Vision Pt D (2026-05-31) — boutons like/dislike sous chaque tenue. */
 import OutfitFeedback from "@/components/OutfitFeedback";
 import { useSavedOutfits, type SavedOutfit } from "@/hooks/useSavedOutfits";
@@ -59,6 +60,7 @@ function useMujiForSlot(
     marque: string;
     /* Brief 2026-05-30 : marchand pour label dynamique « via Awin · {marchand} ». */
     marchand?: string;
+    marchandSlug?: string;
     image: string;
     prix: number;
     devise: string;
@@ -121,6 +123,7 @@ function useMujiForSlot(
           marque: p.marque || p.marchand || "MUJI",
           /* Brief 2026-05-30 : marchand pour label dynamique. */
           marchand: p.marchand,
+          marchandSlug: p.marchandSlug,
           image: displayImage,
           prix: p.prix,
           devise: p.devise,
@@ -143,14 +146,8 @@ function roleToApiSlot(role: string): string | null {
   return map[role] || null;
 }
 
-/** Brief 2026-06-07 (design) — format prix épuré, aligné sur /ma-tenue :
- *  masque les décimales « .00 » (80.00 → 80) et garde les centimes réels
- *  avec une virgule FR (248.85 → 248,85). */
-function formatPrice(prix: number): string {
-  const rounded = Math.round(prix * 100) / 100;
-  if (Number.isInteger(rounded)) return String(rounded);
-  return rounded.toFixed(2).replace(".", ",");
-}
+/* formatPrice local retiré 2026-06-09 → remplacé par formatProductPrice
+   (lib/priceFormat) qui gère le « ≈ » des marchands convertis (TBF/K&Ö). */
 
 /* ──────────────────────────────────────────────────────────────────────
    Design tokens — alignés sur le mockup
@@ -2207,7 +2204,7 @@ function PieceCard({
                 fontFamily: fonts.sans, fontSize: 14, fontWeight: 700,
                 color: palette.bordeaux, margin: "6px 0 0",
               }}>
-                {formatPrice(mujiProduct.prix)} {mujiProduct.devise === "EUR" ? "€" : mujiProduct.devise}
+                {formatProductPrice(mujiProduct.prix, mujiProduct.marchandSlug, mujiProduct.devise)}
               </p>
               <a
                 href={mujiProduct.url}
