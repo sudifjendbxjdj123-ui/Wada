@@ -29,6 +29,7 @@
  * Cache : 5 min CDN.
  */
 import { readAllProducts } from "@/lib/productStore";
+import { visitorCountry, filterByGeo } from "@/lib/products/visibility";
 import type { ProduitAwin } from "@/lib/schema";
 import { deltaEHex, hexToLab } from "@/lib/colorDistance";
 import { dictionary } from "@/lib/data";
@@ -237,7 +238,11 @@ export async function GET(req: Request) {
     violet: ["violet","purple","mauve","lilas","aubergine","lavande","prune","parme","améthyste","myrtille"],
   };
 
-  const catalog = await readAllProducts();
+  /* Visibilité géographique (2026-06-09) : K&Ö = CH uniquement. On filtre le
+     catalogue selon le pays visiteur (x-vercel-ip-country) AVANT tout matching
+     pour que K&Ö n'entre jamais dans le pool hors Suisse. */
+  const country = visitorCountry(req.headers);
+  const catalog = filterByGeo(await readAllProducts(), country);
   if (catalog.length === 0) {
     return Response.json({ products: [], total: 0, source: "empty" });
   }
@@ -1004,6 +1009,10 @@ export async function GET(req: Request) {
            fraîcheur + 1 h de stale-while-revalidate. Le catalogue ne change
            qu'au cron quotidien (4h), donc 5 min est largement assez frais. */
         "Cache-Control": "public, s-maxage=300, stale-while-revalidate=3600",
+        /* Visibilité géo (K&Ö = CH only) : le résultat dépend du pays
+           visiteur → le CDN doit cacher PAR pays, sinon il sert le résultat
+           filtré d'un pays à un autre. */
+        "Vary": "x-vercel-ip-country",
       },
     },
   );

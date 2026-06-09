@@ -1,15 +1,20 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { readAllProducts } from "@/lib/productStore";
+import { visitorCountry, filterByGeo } from "@/lib/products/visibility";
 
 export const metadata: Metadata = {
   title: "Index WADA — Rapport trimestriel",
   description: "Les palettes les plus recherchées, les marques en hausse et les couleurs du trimestre.",
 };
 
-export const revalidate = 3600;
+/* Visibilité géo (2026-06-09) : K&Ö = CH uniquement → stats/marques
+   dépendent du pays visiteur, donc dynamique (pas d'ISR partagé). */
+export const dynamic = "force-dynamic";
 
 export default async function IndexWadaPage() {
-  const products = await readAllProducts();
+  const country = visitorCountry(await headers());
+  const products = filterByGeo(await readAllProducts(), country);
   const total = products.length;
 
   /* Stats simples depuis le KV */

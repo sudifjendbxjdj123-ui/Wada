@@ -10,6 +10,7 @@
  */
 import { readAllProducts } from "@/lib/productStore";
 import { isAffiliated } from "@/lib/composer/occasionRules";
+import { visitorCountry, shouldShowProduct } from "@/lib/products/visibility";
 import { computeCounts } from "@/lib/categoryFilters";
 import type { ProduitAwin } from "@/lib/schema";
 
@@ -46,13 +47,17 @@ export async function GET(
   }
 
   const slots = CATEGORY_SLOTS[category] || [];
+  const country = visitorCountry(req.headers); // K&Ö = CH only (2026-06-09)
   const catalog = await readAllProducts();
   const pool = catalog.filter((p) =>
     p.enStock &&
     isUsableImage(p) &&
     isAffiliated(p.marchandSlug || "") &&
+    shouldShowProduct(p, country) &&
     (slots.length === 0 || slots.includes(p.categorie)),
   );
 
-  return Response.json(computeCounts(pool, category, dimension));
+  return Response.json(computeCounts(pool, category, dimension), {
+    headers: { "Vary": "x-vercel-ip-country" },
+  });
 }

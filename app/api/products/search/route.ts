@@ -12,6 +12,7 @@
  * sur le pool catégorie (pour griser les options vides côté sidebar).
  */
 import { readAllProducts } from "@/lib/productStore";
+import { visitorCountry, filterByGeo } from "@/lib/products/visibility";
 import type { ProduitAwin } from "@/lib/schema";
 import { isAffiliated } from "@/lib/composer/occasionRules";
 import {
@@ -61,7 +62,9 @@ export async function POST(req: Request) {
   const limit = Math.min(body.limit ?? 48, MAX_LIMIT);
   const offset = Math.max(0, body.offset ?? 0);
 
-  const catalog = await readAllProducts();
+  /* Visibilité géo (2026-06-09) : K&Ö = CH uniquement (x-vercel-ip-country). */
+  const country = visitorCountry(req.headers);
+  const catalog = filterByGeo(await readAllProducts(), country);
   if (catalog.length === 0) {
     return Response.json({ products: [], total: 0, count: 0, facets: {}, source: "empty" });
   }

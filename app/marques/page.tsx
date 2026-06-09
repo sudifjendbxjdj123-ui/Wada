@@ -4,21 +4,27 @@
  */
 import type { Metadata } from "next";
 import Link from "next/link";
+import { headers } from "next/headers";
 import { readAllProducts } from "@/lib/productStore";
+import { visitorCountry, filterByGeo } from "@/lib/products/visibility";
 
 export const metadata: Metadata = {
   title: "Toutes les marques — WADA",
   description: "Index A-Z de toutes les maisons partenaires disponibles sur WADA.",
 };
 
-export const revalidate = 3600; // ISR 1h
+/* Visibilité géo (2026-06-09) : K&Ö = CH uniquement → la liste des marques
+   dépend du pays visiteur, donc on ne peut PAS partager un HTML ISR entre
+   pays. Page rendue dynamiquement (headers() force déjà le dynamique). */
+export const dynamic = "force-dynamic";
 
 function slugBrand(name: string): string {
   return name.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 }
 
 export default async function MarquesPage() {
-  const products = await readAllProducts();
+  const country = visitorCountry(await headers());
+  const products = filterByGeo(await readAllProducts(), country);
 
   /* Extraire toutes les marques avec leur compte produits */
   const brandMap = new Map<string, { count: number; slug: string }>();

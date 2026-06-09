@@ -33,6 +33,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { dictionary } from "@/lib/data";
 import { readAllProducts } from "@/lib/productStore";
+import { visitorCountry, filterByGeo } from "@/lib/products/visibility";
 import { toComposerProduct } from "@/lib/composer/types";
 import { paletteIdentity } from "@/lib/composer/paletteIdentity";
 import { composeOutfit, generateVariations } from "@/lib/composer/composeOutfit";
@@ -83,8 +84,9 @@ export async function POST(req: NextRequest) {
     dislikes_marques: profile?.dislikes_marques,
   };
 
-  /* Pool produit depuis KV. Convertit ProduitAwin → ComposerProduct. */
-  const all = await readAllProducts();
+  /* Pool produit depuis KV. Convertit ProduitAwin → ComposerProduct.
+     Visibilité géo (2026-06-09) : K&Ö = CH uniquement → filtré avant map. */
+  const all = filterByGeo(await readAllProducts(), visitorCountry(req.headers));
   const pool = all
     .map(toComposerProduct)
     .filter((p): p is NonNullable<ReturnType<typeof toComposerProduct>> => p !== null);
