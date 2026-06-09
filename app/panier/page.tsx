@@ -96,12 +96,17 @@ export default function PanierPage() {
   }, []);
 
   const removeItem = (id: string) => {
-    const next = cart.filter((c) => c.id !== id);
-    setCart(next);
-    try {
-      localStorage.setItem("wada-cart", JSON.stringify(next));
-      window.dispatchEvent(new Event("storage"));
-    } catch {}
+    /* Fix 2026-06-09 : updater fonctionnel (et non `cart` capturé) — sinon
+       deux retraits rapides (avant le re-render) filtrent le MÊME snapshot,
+       le 2e setCart écrase le 1er, et le localStorage perd un retrait. */
+    setCart((prev) => {
+      const next = prev.filter((c) => c.id !== id);
+      try {
+        localStorage.setItem("wada-cart", JSON.stringify(next));
+        window.dispatchEvent(new Event("storage"));
+      } catch {}
+      return next;
+    });
   };
 
   // Pour chaque item, on prend la 1ʳᵉ offre marchande dispo (déjà rankée
