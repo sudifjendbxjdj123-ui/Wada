@@ -9,6 +9,34 @@ import Link from "next/link";
 import type { ProduitAwin } from "@/lib/schema";
 import { dictionaryMinimal } from "@/lib/data-client";
 import { deltaEHex, DELTA_E_LOOSE } from "@/lib/colorDistance";
+/* Brief 2026-06-09 — système de filtres complet (sidebar 11 filtres +
+   filtre Palette Sanzō Wada). Cf. lib/categoryFilters + components/category. */
+import {
+  FilterSidebar, ActiveFilters, MobileFilterButton, type Facets,
+} from "@/components/category/FilterSidebar";
+import {
+  type CategoryFilters, getDefaultFilters, paramsToFilters, filtersToParams,
+  FILTERS_STORAGE_KEY,
+} from "@/lib/categoryFilters";
+
+/** Label catégorie (pour sous-types + endpoint) dérivé du titre de page. */
+function deriveCategory(slot: string, title: string): string {
+  const t = title.toLowerCase();
+  if (/chaussure/.test(t) || slot === "chaussures") return "chaussures";
+  if (/v[êe]tement/.test(t) || /\bhaut\b/.test(slot)) return "vetements";
+  if (/\bsac/.test(t)) return "sacs";
+  if (/bijou/.test(t)) return "bijoux";
+  if (/accessoire/.test(t)) return "accessoires";
+  return "vetements";
+}
+
+/** Seed SSR-safe : genre/style préselectionnés via props (pas d'URL ici). */
+function seedFilters(initGenre?: string, initStyle?: string): CategoryFilters {
+  const f = getDefaultFilters();
+  if (initGenre === "homme" || initGenre === "femme") f.genres = [initGenre];
+  if (initStyle) f.styles = [initStyle.toLowerCase()];
+  return f;
+}
 
 /* ── Palettes WADA correspondant à un produit (marqueur unique WADA) ──
    Brief « Pages catégorie V2 premium » §3-5 : sous chaque produit, des
@@ -419,171 +447,87 @@ export default function CategoryPage({ title, breadcrumb, slot, q, genre: initGe
   const [products, setProducts] = useState<ProduitAwin[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [facets, setFacets] = useState<Facets>({});
 
   const PER_PAGE = 48;
 
-  /* Filtres API (server-side → refetch) */
-  const [genre, setGenre] = useState(initGenre ?? "");
-  const [style, setStyle] = useState(initStyle ?? "");
-  const [priceRange, setPriceRange] = useState("");
-  const [couleur, setCouleur] = useState("");
+  const category = useMemo(() => deriveCategory(slot, title), [slot, title]);
 
-  /* Tri client-side (instantané, pas de refetch) */
-  const [sortBy, setSortBy] = useState("");
+  /* État UNIQUE des 11 filtres. Seed SSR-safe (props), puis hydraté depuis
+     l'URL (+ localStorage en fallback) au montage → pas de mismatch SSR. */
+  const [filters, setFilters] = useState<CategoryFilters>(() => seedFilters(initGenre, initStyle));
+  const [hydrated, setHydrated] = useState(false);
 
-  /* Pagination */
   const [page, setPage] = useState(1);
-
   const [selected, setSelected] = useState<ProduitAwin | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const [, startTransition] = useTransition();
 
-  /* ── Mapping priceRange → prixMin/prixMax ── */
-  const priceParams = useMemo(() => {
-    if (!priceRange) return {};
-    if (priceRange === "0-50")    return { prixMin: "0",   prixMax: "50" };
-    if (priceRange === "50-100")  return { prixMin: "50",  prixMax: "100" };
-    if (priceRange === "100-200") return { prixMin: "100", prixMax: "200" };
-    if (priceRange === "200-500") return { prixMin: "200", prixMax: "500" };
-    if (priceRange === "500+")    return { prixMin: "500", prixMax: "" };
-    return {};
-  }, [priceRange]);
-
-  /* Fix 2026-06-07 (BUG filtres) — les filtres Prix/Couleur/Style ne
-     s'appliquaient pas : fetchProducts (useCallback, deps [slot, PER_PAGE])
-     fermait sur genre/style/couleur/priceParams mais n'était JAMAIS recréé
-     quand ces filtres changeaient → il gardait les valeurs INITIALES (vides)
-     et l'API recevait toujours `?slot=…` sans paramètre de filtre.
-     On garde fetchProducts STABLE (sinon double-fetch via l'effet pagination)
-     et on lit les valeurs FRAÎCHES via un ref mis à jour à chaque render. */
-  const filtersRef = useRef({ q, genre, style, couleur, priceParams });
-  filtersRef.current = { q, genre, style, couleur, priceParams };
-
-  /* ── Fetch produits ── */
-  const fetchProducts = useCallback(async (currentPage: number) => {
-    setLoading(true);
-    const { q, genre, style, couleur, priceParams } = filtersRef.current;
-    const slots = slot.split(",");
-    const offset = (currentPage - 1) * PER_PAGE;
-    const results = await Promise.all(slots.map(async (s) => {
-      const par = new URLSearchParams({ slot: s.trim(), limit: String(PER_PAGE), offset: String(offset) });
-      if (q)      par.set("q", q);
-      if (genre)  par.set("genre", genre);
-      if (style)  par.set("style", style);
-      if (couleur) par.set("couleurFamille", couleur);
-      if (priceParams.prixMin) par.set("prixMin", priceParams.prixMin);
-      if (priceParams.prixMax) par.set("prixMax", priceParams.prixMax);
-      return fetch(`/api/products?${par}`).then(r => r.json()).catch(() => ({ products: [], total: 0 }));
-    }));
-    const all: ProduitAwin[] = results.flatMap(r => r.products ?? []);
-    setProducts(all);
-    setTotal(results.reduce((s, r) => s + (r.total ?? 0), 0));
-    setLoading(false);
-  }, [slot, PER_PAGE]);
-
-  /* ── Debounce filter changes (300ms) — batch rapid filter updates into single fetch ── */
-  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
-
+  /* ── Hydratation : URL > localStorage > seed props (au montage client) ── */
   useEffect(() => {
-    /* Clear previous timer on every filter change */
-    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    let next: CategoryFilters;
+    const sp = new URLSearchParams(window.location.search);
+    if (sp.toString()) {
+      next = paramsToFilters(sp);
+      /* Préselections de route (ex. /vetements/homme) toujours respectées. */
+      if (initGenre === "homme" || initGenre === "femme") next.genres = [initGenre];
+    } else {
+      let stored: CategoryFilters | null = null;
+      try {
+        const raw = localStorage.getItem(`${FILTERS_STORAGE_KEY}:${category}`);
+        if (raw) stored = JSON.parse(raw);
+      } catch {}
+      next = stored || seedFilters(initGenre, initStyle);
+    }
+    setFilters(next);
+    setHydrated(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-    /* Set new timer: fetch after 300ms of inactivity */
-    debounceTimerRef.current = setTimeout(() => {
-      setPage(1); /* Reset to page 1 when filters change */
-      fetchProducts(1);
-    }, 300);
+  /* ── Maj filtres : reset page, persiste (localStorage), synchronise l'URL ── */
+  const updateFilters = useCallback((next: CategoryFilters) => {
+    setFilters(next);
+    setPage(1);
+    try { localStorage.setItem(`${FILTERS_STORAGE_KEY}:${category}`, JSON.stringify(next)); } catch {}
+    try {
+      const qs = filtersToParams(next).toString();
+      window.history.replaceState(null, "", qs ? `${window.location.pathname}?${qs}` : window.location.pathname);
+    } catch {}
+  }, [category]);
 
-    return () => {
-      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
-    };
-  }, [q, genre, style, couleur, priceParams, fetchProducts]);
+  /* ── Fetch unique vers /api/products/search (debounce 250ms + abort) ── */
+  const filtersKey = JSON.stringify(filters);
+  useEffect(() => {
+    if (!hydrated) return;
+    const ctrl = new AbortController();
+    const t = setTimeout(() => {
+      setLoading(true);
+      fetch("/api/products/search", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slot, category, filters, limit: PER_PAGE, offset: (page - 1) * PER_PAGE }),
+        signal: ctrl.signal,
+      })
+        .then((r) => r.json())
+        .then((d) => {
+          setProducts(d.products ?? []);
+          setTotal(d.total ?? 0);
+          if (d.facets) setFacets(d.facets);
+          setLoading(false);
+        })
+        .catch((e) => { if (e?.name !== "AbortError") setLoading(false); });
+    }, 250);
+    return () => { clearTimeout(t); ctrl.abort(); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hydrated, slot, category, filtersKey, page, PER_PAGE]);
 
-  useEffect(() => { fetchProducts(page); }, [fetchProducts, page]);
-
-  /* ── Familles de couleurs fixes (comme Zalando) ── */
-  const COLOR_FAMILIES: Array<{ value: string; label: string; hex: string; keywords: string[] }> = [
-    { value: "noir",    label: "Noir",          hex: "#1c1c1c", keywords: ["noir","black","anthracite","charbon","ébène","onyx","graphite"] },
-    { value: "blanc",   label: "Blanc / Crème", hex: "#f0ebe0", keywords: ["blanc","white","crème","cream","ivoire","ivory","écru","ecru","off-white","nacre","lait","cassé"] },
-    { value: "gris",    label: "Gris",          hex: "#8e8e8e", keywords: ["gris","grey","gray","argent","silver","acier","perle","ciment","ardoise","souris"] },
-    { value: "beige",   label: "Beige / Camel", hex: "#c4a882", keywords: ["beige","camel","sable","nude","grège","taupe","nougat","naturel","lin","chanvre","paille","blé","champagne","dune"] },
-    { value: "marron",  label: "Marron",        hex: "#7d4f35", keywords: ["marron","brun","brown","tabac","cognac","noisette","chocolat","caramel","tan","havane","moka","café","châtaigne","ocre"] },
-    { value: "bleu",    label: "Bleu",          hex: "#2c5282", keywords: ["bleu","blue","marine","navy","indigo","cobalt","saphir","cyan","ciel","azur","denim","électrique","nuit"] },
-    { value: "vert",    label: "Vert / Kaki",   hex: "#4a6741", keywords: ["vert","green","kaki","khaki","olive","sauge","sage","forêt","forest","émeraude","menthe","militaire","bouteille","chasseur","pistache","mousse"] },
-    { value: "rouge",   label: "Rouge",         hex: "#8b1a1a", keywords: ["rouge","red","bordeaux","burgundy","carmin","cramoisi","vermeil","grenat","cerise","fraise","rubis","brique"] },
-    { value: "rose",    label: "Rose",          hex: "#e8a4a4", keywords: ["rose","pink","blush","poudré","framboise","corail","coral","saumon","salmon","pêche","layette","nude rose","fushia","fuchsia","lilas rose"] },
-    { value: "jaune",   label: "Jaune / Moutarde", hex: "#c8951a", keywords: ["jaune","yellow","moutarde","mustard","doré","or","gold","citron","curry","safran","ambre","miel","sable doré"] },
-    { value: "orange",  label: "Orange",        hex: "#d4642a", keywords: ["orange","rouille","rust","terre cuite","brique","cannelle","roux","cuivre","paprika","brûlé"] },
-    { value: "violet",  label: "Violet",        hex: "#6b3a8b", keywords: ["violet","purple","mauve","lilas","aubergine","lavande","prune","parme","améthyste","myrtille"] },
-  ];
-
-  /* ── Tri client-side uniquement (prix/couleur = serveur) ── */
-  const filtered = useMemo(() => {
-    if (!sortBy) return products;
-    const list = [...products];
-    if (sortBy === "price-asc")  list.sort((a, b) => (a.prix ?? 0) - (b.prix ?? 0));
-    if (sortBy === "price-desc") list.sort((a, b) => (b.prix ?? 0) - (a.prix ?? 0));
-    if (sortBy === "az")         list.sort((a, b) => (a.marque || "").localeCompare(b.marque || "", "fr"));
-    return list;
-  }, [products, sortBy]);
-
-  /* ── Nombre de filtres actifs ── */
-  const activeCount = [priceRange, couleur, style, sortBy].filter(Boolean).length
-    + (initGenre ? 0 : genre ? 1 : 0);
-
-  /* ── Options des dropdowns ── */
-  const PRICE_OPTIONS = [
-    { value: "",        label: "Tous les prix",    extra: "" },
-    { value: "0-50",    label: "Moins de 50 €",    extra: "" },
-    { value: "50-100",  label: "50 € – 100 €",     extra: "" },
-    { value: "100-200", label: "100 € – 200 €",    extra: "" },
-    { value: "200-500", label: "200 € – 500 €",    extra: "" },
-    { value: "500+",    label: "Plus de 500 €",    extra: "" },
-  ];
-  const COLOR_OPTIONS = [
-    { value: "", label: "Toutes couleurs", extra: "" },
-    ...COLOR_FAMILIES.map(f => ({ value: f.value, label: f.label, extra: f.hex })),
-  ];
-  const STYLE_OPTIONS = [
-    { value: "",              label: "Tous les styles",  extra: "" },
-    { value: "Classique",     label: "Classique",        extra: "Chemises, costumes, tenues soignées" },
-    { value: "Minimaliste",   label: "Minimaliste",      extra: "Coupes épurées, matières nobles" },
-    { value: "Décontracté",   label: "Décontracté",      extra: "Casual, confortable, quotidien" },
-    { value: "Streetwear",    label: "Streetwear",       extra: "Sneakers, hoodies, looks urbains" },
-    { value: "Premium",       label: "Premium / Luxe",   extra: "Maisons haut de gamme" },
-  ];
-  const SORT_OPTIONS = [
-    { value: "",            label: "Pertinence",        extra: "" },
-    { value: "price-asc",   label: "Prix croissant ↑",  extra: "" },
-    { value: "price-desc",  label: "Prix décroissant ↓", extra: "" },
-    { value: "az",          label: "Marque A → Z",      extra: "" },
-  ];
-  const GENRES = [
-    { value: "", label: "Tous" },
-    { value: "homme", label: "Hommes" },
-    { value: "femme",  label: "Femmes" },
-  ];
-
-  /* Remettre à page 1 quand un filtre serveur change */
-  const changeGenre  = (v: string) => { setGenre(v);      setPage(1); };
-  const changeStyle  = (v: string) => { setStyle(v);      setPage(1); };
-  const changePrice  = (v: string) => { setPriceRange(v); setPage(1); };
-  const changeCouleur = (v: string) => { setCouleur(v);   setPage(1); };
-
-  const resetAll = () => {
-    if (!initGenre) changeGenre("");
-    changeStyle(""); changePrice(""); changeCouleur(""); setSortBy(""); setPage(1);
-  };
-
-  /* Nombre total de pages */
+  /* Nombre total de pages (le serveur /search renvoie déjà filtré + trié). */
   const totalPages = Math.max(1, Math.ceil(total / PER_PAGE));
 
-  /* ── Pré-calculation des matchs de palettes pour optimiser le rendu grille ──
-     Batch-populate cache pour tous les produits (évite recalcul pendant render) */
+  /* ── Pré-calculation des matchs de palettes pour optimiser le rendu grille ── */
   useMemo(() => {
-    filtered.forEach((p) => {
-      if (p.hex) getMatchingPalettes(p.hex);
-    });
-  }, [filtered]);
+    products.forEach((p) => { if (p.hex) getMatchingPalettes(p.hex); });
+  }, [products]);
 
   /* Pages à afficher dans le paginator */
   const pageNumbers = useMemo(() => {
@@ -630,129 +574,45 @@ export default function CategoryPage({ title, breadcrumb, slot, q, genre: initGe
         </p>
       </div>
 
-      {/* ── Barre de filtres sticky ── */}
-      <div style={{
-        padding: "10px 16px", background: "#fff",
-        borderBottom: "0.5px solid #e8dfd0",
-        position: "sticky", top: 0, zIndex: 50,
-        overflowX: "auto",
-      }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: "max-content" }}>
+      {/* ── Layout 2 colonnes : sidebar filtres + grille (brief 2026-06-09) ── */}
+      <div className="wada-cat-layout" style={{ maxWidth: 1200, margin: "0 auto", display: "flex", gap: 24, padding: "16px", alignItems: "flex-start", boxSizing: "border-box" }}>
 
-          {/* Genre — seulement si pas préselectionné */}
-          {!initGenre && (
-            <>
-              {GENRES.map((g) => (
-                <button key={g.value} onClick={() => changeGenre(g.value)}
-                  style={{
-                    padding: "8px 16px", borderRadius: 999, fontSize: 13,
-                    cursor: "pointer", fontFamily: "'Inter'", fontWeight: 500,
-                    background: genre === g.value ? "#1a1a1a" : "#fff",
-                    color: genre === g.value ? "#fff" : "#1a1a1a",
-                    border: `1px solid ${genre === g.value ? "#1a1a1a" : "rgba(26,26,26,0.18)"}`,
-                    transition: "all 0.15s", whiteSpace: "nowrap",
-                  }}>
-                  {g.label}
-                </button>
-              ))}
-              <span style={{ width: 1, height: 20, background: "#e8dfd0", flexShrink: 0 }} />
-            </>
-          )}
-
-          {/* Prix */}
-          <FilterDropdown
-            label={priceRange ? PRICE_OPTIONS.find(o => o.value === priceRange)?.label ?? "Prix" : "Prix"}
-            active={!!priceRange}
-            options={PRICE_OPTIONS}
-            value={priceRange}
-            onChange={changePrice}
-          />
-
-          {/* Couleur */}
-          <FilterDropdown
-            label={couleur ? COLOR_OPTIONS.find(o => o.value === couleur)?.label ?? "Couleur" : "Couleur"}
-            active={!!couleur}
-            options={COLOR_OPTIONS}
-            value={couleur}
-            onChange={changeCouleur}
-            renderOption={(opt) => (
-              <span style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                {opt.extra ? (
-                  <span style={{ width: 16, height: 16, borderRadius: "50%", background: opt.extra, border: "1px solid rgba(0,0,0,0.15)", flexShrink: 0, boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.3)" }} />
-                ) : (
-                  <span style={{ width: 16, height: 16, borderRadius: "50%", background: "conic-gradient(red,yellow,green,blue,violet,red)", flexShrink: 0, border: "1px solid rgba(0,0,0,0.1)" }} />
-                )}
-                {opt.label}
-              </span>
-            )}
-          />
-
-          {/* Style */}
-          <FilterDropdown
-            label={style ? STYLE_OPTIONS.find(o => o.value === style)?.label ?? "Style" : "Style"}
-            active={!!style}
-            options={STYLE_OPTIONS}
-            value={style}
-            onChange={changeStyle}
-            renderOption={(opt) => (
-              <span style={{ display: "flex", flexDirection: "column", gap: 1 }}>
-                <span>{opt.label}</span>
-                {opt.extra && <span style={{ fontSize: 11, color: "#8a7a68", fontWeight: 400 }}>{opt.extra}</span>}
-              </span>
-            )}
-          />
-
-          <span style={{ width: 1, height: 20, background: "#e8dfd0", flexShrink: 0 }} />
-
-          {/* Tri */}
-          <FilterDropdown
-            label={sortBy ? SORT_OPTIONS.find(o => o.value === sortBy)?.label ?? "Trier" : "Trier"}
-            active={!!sortBy}
-            options={SORT_OPTIONS}
-            value={sortBy}
-            onChange={setSortBy}
-            renderOption={(opt) => <span>{opt.label}</span>}
-          />
-
-          {/* Reset si filtres actifs */}
-          {activeCount > 0 && (
-            <button onClick={resetAll}
-              style={{
-                padding: "8px 14px", borderRadius: 999, fontSize: 13,
-                cursor: "pointer", fontFamily: "'Inter'", fontWeight: 500,
-                background: "transparent", color: BORDEAUX,
-                border: `1px solid ${BORDEAUX}`,
-                transition: "all 0.15s", whiteSpace: "nowrap",
-              }}>
-              Effacer ({activeCount})
-            </button>
-          )}
+        {/* Sidebar desktop (masquée ≤ 900px) */}
+        <div className="wada-cat-sidebar" style={{ flexShrink: 0 }}>
+          <FilterSidebar category={category} filters={filters} facets={facets} resultCount={total} onChange={updateFilters} />
         </div>
-      </div>
 
-      {/* Grille produits */}
-      <div style={{ padding: "20px 16px 60px" }}>
-        {loading ? (
-          <div className="wada-shop-grid" style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 16 }}>
-            {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} style={{ aspectRatio: "3/4", background: "#ede8e0", borderRadius: 12, opacity: 0.5 + (i % 3) * 0.1 }} />
-            ))}
+        {/* Colonne principale */}
+        <div style={{ flex: 1, minWidth: 0 }}>
+
+          {/* Barre mobile : bouton « Filtrer » (visible ≤ 900px) */}
+          <div className="wada-cat-mobilebar" style={{ marginBottom: 12 }}>
+            <MobileFilterButton filters={filters} resultCount={total} onClick={() => setDrawerOpen(true)} />
           </div>
-        ) : filtered.length === 0 ? (
-          <div style={{ textAlign: "center", padding: "60px 0" }}>
-            <p style={{ fontFamily: "'Fredoka'", fontSize: 20, color: "#8a7a68" }}>Aucun produit trouvé</p>
-            <button onClick={resetAll} style={{ marginTop: 12, padding: "10px 22px", borderRadius: 999, background: "#1a1a1a", color: "#fff", border: "none", cursor: "pointer", fontSize: 13, fontFamily: "'Inter'" }}>
-              Réinitialiser les filtres
-            </button>
-          </div>
-        ) : (
-          <div className="wada-shop-grid" style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 16 }}>
-            {filtered.map((p) => (
-              <ProductCard key={p.id} p={p} onClick={() => setSelected(p)} />
-            ))}
-          </div>
-        )}
-      </div>
+
+          <ActiveFilters filters={filters} onChange={updateFilters} />
+
+          {/* Grille produits */}
+          {loading ? (
+            <div className="wada-shop-grid" style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 16 }}>
+              {Array.from({ length: 8 }).map((_, i) => (
+                <div key={i} style={{ aspectRatio: "3/4", background: "#ede8e0", borderRadius: 12, opacity: 0.5 + (i % 3) * 0.1 }} />
+              ))}
+            </div>
+          ) : products.length === 0 ? (
+            <div style={{ textAlign: "center", padding: "60px 0" }}>
+              <p style={{ fontFamily: "'Fredoka'", fontSize: 20, color: "#8a7a68" }}>Aucun produit trouvé</p>
+              <button onClick={() => updateFilters(getDefaultFilters())} style={{ marginTop: 12, padding: "10px 22px", borderRadius: 999, background: "#1a1a1a", color: "#fff", border: "none", cursor: "pointer", fontSize: 13, fontFamily: "'Inter'" }}>
+                Réinitialiser les filtres
+              </button>
+            </div>
+          ) : (
+            <div className="wada-shop-grid" style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 16 }}>
+              {products.map((p) => (
+                <ProductCard key={p.id} p={p} onClick={() => setSelected(p)} />
+              ))}
+            </div>
+          )}
 
       {/* ── Pagination ── */}
       {!loading && totalPages > 1 && (
@@ -804,8 +664,11 @@ export default function CategoryPage({ title, breadcrumb, slot, q, genre: initGe
         </div>
       )}
 
+        </div>{/* /colonne principale */}
+      </div>{/* /layout 2 colonnes */}
+
       {/* CTA palette */}
-      <div style={{ margin: "0 16px 40px", padding: "18px 20px", background: "#f2ede4", borderRadius: 14, textAlign: "center" }}>
+      <div style={{ maxWidth: 1200, margin: "0 auto 40px", padding: "18px 20px", background: "#f2ede4", borderRadius: 14, textAlign: "center", boxSizing: "border-box" }}>
         <p style={{ fontFamily: "'Fredoka'", fontSize: 17, fontWeight: 500, margin: "0 0 6px" }}>Trouver les pièces de ta palette</p>
         <Link href="/palettes" style={{ display: "inline-block", background: "#1a1a1a", color: "#fff", borderRadius: 999, padding: "10px 22px", fontSize: 13, fontFamily: "'Inter'", fontWeight: 500, textDecoration: "none", marginTop: 10 }}>
           Explorer les 348 palettes →
@@ -814,9 +677,27 @@ export default function CategoryPage({ title, breadcrumb, slot, q, genre: initGe
 
       {selected && <ProductModal product={selected} onClose={() => setSelected(null)} />}
 
+      {/* ── Drawer mobile plein écran ── */}
+      {drawerOpen && (
+        <div onClick={() => setDrawerOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(26,26,26,.45)" }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ position: "absolute", inset: 0, background: "#fff", display: "flex", flexDirection: "column" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 16px", borderBottom: "1px solid #e8dfd0" }}>
+              <strong style={{ fontFamily: "'Fredoka', sans-serif", fontSize: 17, color: "#1a1a1a" }}>Filtres</strong>
+              <button type="button" onClick={() => setDrawerOpen(false)} aria-label="Fermer" style={{ background: "none", border: "none", fontSize: 24, cursor: "pointer", color: "#8a7a68", lineHeight: 1 }}>×</button>
+            </div>
+            <div style={{ flex: 1, overflowY: "auto", padding: "8px 0 16px" }}>
+              <FilterSidebar category={category} filters={filters} facets={facets} resultCount={total} onChange={updateFilters} variant="drawer" onClose={() => setDrawerOpen(false)} />
+            </div>
+          </div>
+        </div>
+      )}
+
       <style>{`
-        @media (min-width: 640px)  { .wada-shop-grid { grid-template-columns: repeat(3,1fr) !important; } }
-        @media (min-width: 1024px) { .wada-shop-grid { grid-template-columns: repeat(4,1fr) !important; } }
+        @media (min-width: 901px)  { .wada-shop-grid { grid-template-columns: repeat(3,1fr) !important; } }
+        @media (min-width: 1200px) { .wada-shop-grid { grid-template-columns: repeat(4,1fr) !important; } }
+        /* Sidebar desktop / bouton mobile — bascule à 900px (brief 2026-06-09). */
+        @media (max-width: 900px) { .wada-cat-sidebar { display: none !important; } }
+        @media (min-width: 901px) { .wada-cat-mobilebar { display: none !important; } }
         @keyframes fadeDown {
           from { opacity: 0; transform: translateY(-6px); }
           to   { opacity: 1; transform: translateY(0); }
