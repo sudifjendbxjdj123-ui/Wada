@@ -96,7 +96,7 @@ const FEEDS = [
      (les casquettes sont des photos fond blanc → il les conserve, et écarte
      les rares photos portées). */
   {
-    path: "C:/Users/neman/Downloads/new-era-feed.csv.gz",
+    path: "C:/Users/neman/Downloads/19284-109521-en_FR-FR.csv.gz",
     slug: "new-era",
     label: "New Era",
   },
