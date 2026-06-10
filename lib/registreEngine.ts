@@ -284,10 +284,22 @@ export function composeOutfitFromProfile(
   const colors = pickColors(entry);
   const SLOTS: SlotKey[] = ["haut", "bas", "veste", "chaussures", "accent"];
 
-  const slots: RegistreSlot[] = SLOTS.map((slot, idx) => {
-    const slotVocab = VOCAB[registre][slot];
-    const baseType = pickFromVocab(slotVocab, entry.number, idx);
-    const finalType = applyOccasionModifier(slot, baseType, registre, occasion);
+  // Type de base par slot (déterministe par palette), AVANT modifier d'occasion.
+  const baseTypes: Record<SlotKey, string> = {} as Record<SlotKey, string>;
+  SLOTS.forEach((slot, idx) => {
+    baseTypes[slot] = pickFromVocab(VOCAB[registre][slot], entry.number, idx);
+  });
+  /* Cohérence 2026-06-10 (user « pull + cardigan ») : pas DEUX mailles —
+     un pull/maille/sweat en HAUT + un cardigan en VESTE = superposition
+     redondante. Si c'est le cas, on remplace la veste par la 1ʳᵉ option
+     NON-maille de son vocabulaire registre (blazer, manteau, surchemise…). */
+  if (/pull|maille|tricot|knit|cardigan|sweat/i.test(baseTypes.haut) && /cardigan|maille|tricot|knit|strick/i.test(baseTypes.veste)) {
+    const nonKnit = VOCAB[registre].veste.find((t) => !/cardigan|maille|tricot|knit|strick/i.test(t));
+    if (nonKnit) baseTypes.veste = nonKnit;
+  }
+
+  const slots: RegistreSlot[] = SLOTS.map((slot) => {
+    const finalType = applyOccasionModifier(slot, baseTypes[slot], registre, occasion);
     const paletteColor = colors[slot];
     // Brief §1A : nom de couleur DÉRIVÉ DU HEX (jamais le nom poétique
     // de la palette Wada). « Crème » sur un hex camel devient « Camel ».

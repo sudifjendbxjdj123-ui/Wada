@@ -56,10 +56,10 @@ const MICRO_TYPE_PATTERNS: Array<[RegExp, MicroType]> = [
   [/\b(pantalon|trousers?|slacks?|dress\s+pant)/i,                               "pantalon"],
   [/\b(blazer|veste\s+de\s+costume|suit\s+jacket|sport\s+coat)/i,               "blazer"],
   [/\b(training\s+jacket|veste\s+de\s+sport|track\s+jacket)/i,                  "veste_sport"],
-  [/\b(cardigan)/i,                                                                "cardigan"],
+  [/\b(cardigan|strickjacke|gilet\s+(?:en\s+)?maille)/i,                          "cardigan"],
   [/\b(pull\s+fin|mailles?\s+fines?|fine[\s-]knit|lightweight\s+knit|polo\s+knit)/i, "pull_fin"],
   [/\b(polo\b)/i,                                                                  "polo"],
-  [/\b(pull|pullover|sweatshirt|jumper|sweater|maille|knit)/i,                   "pull_over"],
+  [/\b(pull|pullover|sweatshirt|jumper|sweater|maille|knit|strickpullover|strickpulli)/i, "pull_over"],
   [/\b(sweat\b|hoodie|hooded)/i,                                                  "sweat"],
   [/\b(chemise|shirt\b|oxford\s+shirt|dress\s+shirt)/i,                          "chemise"],
   [/\b(t[\s-]?shirt|tee\b|tee-shirt)/i,                                          "tshirt"],
@@ -109,6 +109,13 @@ export function detectMicroTypes(productName: string): MicroType[] {
  *  - pull_fin + short_sport : chemisier formel + short de sport
  */
 const INCOMPATIBLE_PAIRS: Array<[MicroType, MicroType]> = [
+  /* Deux mailles dans une tenue — brief 2026-06-10 (user « pull + cardigan ») :
+     un pull/sweat (HAUT) + un cardigan (VESTE, incl. « Strickjacke » DE) =
+     superposition de mailles redondante → on l'interdit. La veste se résout
+     alors sur une pièce structurée (blazer, manteau, surchemise…). */
+  ["pull_over",    "cardigan"],
+  ["pull_fin",     "cardigan"],
+  ["sweat",        "cardigan"],
   ["short",        "cardigan"],
   ["short",        "blazer"],
   ["short",        "derby"],
