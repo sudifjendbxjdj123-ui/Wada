@@ -48,6 +48,25 @@ interface Meta {
 }
 
 /* ──────────────────────────────────────────────────────────────────────
+   CACHE MÉMOIRE process-level — Brief 2026-06-10 (« améliore la rapidité »)
+   ──────────────────────────────────────────────────────────────────────
+   Avant : readAllProducts relisait meta + les ~350 chunks KV (~58 Mo) à
+   CHAQUE appel. Une page /ma-tenue déclenche 5-15 appels /api/products (un
+   par slot + retries) → autant de relectures complètes du catalogue → lent.
+   Maintenant : on garde le catalogue en mémoire du process. Sur Vercel, une
+   instance serverless chaude réutilise ce module entre requêtes, donc les
+   appels rapprochés (même page, utilisateurs proches) repartent du cache.
+   TTL court : le catalogue ne change qu'au cron quotidien + uploads ponctuels
+   → 60s de fraîcheur est large. writeAllProducts invalide en plus le cache. */
+let _catalogCache: { data: ProduitAwin[]; at: number } | null = null;
+const CATALOG_TTL_MS = 60_000;
+
+/** Vide le cache mémoire du catalogue (appelé après une écriture KV). */
+export function invalidateCatalogCache(): void {
+  _catalogCache = null;
+}
+
+/* ──────────────────────────────────────────────────────────────────────
    READ
    ────────────────────────────────────────────────────────────────────── */
 
@@ -72,6 +91,11 @@ async function kvGetJson<T>(creds: KvCreds, key: string): Promise<T | null> {
 
 /** Lit l'intégralité du catalogue depuis KV (concat des chunks). */
 export async function readAllProducts(): Promise<ProduitAwin[]> {
+  // Cache mémoire : sert le catalogue sans relire KV si encore frais.
+  if (_catalogCache && Date.now() - _catalogCache.at < CATALOG_TTL_MS) {
+    return _catalogCache.data;
+  }
+
   const creds = getCreds();
   if (!creds) {
     console.log("[KV] readAllProducts: KV not configured");
@@ -137,6 +161,11 @@ export async function readAllProducts(): Promise<ProduitAwin[]> {
     console.log(`[KV] readAllProducts: ${missingIdx.length}/${meta.chunks} chunks STILL missing after retry`);
   }
   console.log(`[KV] readAllProducts: ${all.length}/${meta.count} products loaded from ${meta.chunks} chunks`);
+  /* On ne met en cache QUE les lectures complètes (aucun chunk manquant) pour
+     ne jamais servir un catalogue tronqué depuis le cache (cf. bug K&Ö). */
+  if (missingIdx.length === 0 && all.length > 0) {
+    _catalogCache = { data: all, at: Date.now() };
+  }
   return all;
 }
 
@@ -221,6 +250,7 @@ export async function writeAllProducts(products: ProduitAwin[]): Promise<{
       return { ok: false, chunks: chunks.length, total_bytes: totalBytes, failed_chunks: [], errors };
     }
     console.log(`[KV] OK meta (${chunks.length} chunks, ${products.length} products total)`);
+    invalidateCatalogCache(); // le catalogue a changé → vide le cache mémoire
     // Nettoie l'ancienne clé monolithique pour économiser l'espace si présente
     try {
       await fetch(`${creds.url}/del/wada:products`, {

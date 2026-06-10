@@ -303,8 +303,12 @@ function buildFrenchDescription(
   entry: DictionaryEntry
 ): string {
   const vocab = VOCAB_FR[registre];
-  // Brief §1A : noms de couleurs dérivés du hex pour le texte de DA aussi.
-  const colorNames = entry.colors.map((c) => hexToPlainName(c.hex).toLowerCase()).slice(0, 3).join(", ");
+  /* Cohérence 2026-06-10 (user « améliore la cohérence ») : on utilise les
+     VRAIS noms de la palette (entry.colors[].name) — ceux affichés sous les
+     pastilles (« Mousse », « Érable rouge », « Pierre ») — au lieu de noms
+     génériques dérivés du hex (hexToPlainName donnait « anthracite, bordeaux,
+     moutarde » → le texte décrivait des couleurs absentes des pastilles). */
+  const colorNames = entry.colors.map((c) => c.name.toLowerCase()).slice(0, 3).join(", ");
   const fitFr = fit === "ample" ? "volumes amples" : fit === "ajuste" ? "coupe ajustée" : "coupe regular";
   const occasionFr: Record<Occasion, string> = {
     bureau: "pour le bureau",
