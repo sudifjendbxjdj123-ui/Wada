@@ -205,24 +205,44 @@ function applyOccasionModifier(
 }
 
 /* ──────────────────────────────────────────────────────────────────────
-   PIVOT — slot → couleur palette Wada
+   PIVOT — slot → couleur palette Wada — refonte cohérence 2026-06-10
    ──────────────────────────────────────────────────────────────────────
-   La palette donne 3 couleurs ; on a 5 slots. On attribue :
-   - haut       → color[0]
-   - bas        → color[1]
-   - veste      → color[2] (ou color[0] si seulement 3)
-   - chaussures → couleur la plus neutre (claire ou foncée)
-   - accent     → la couleur la plus saturée */
+   Avant : attribution POSITIONNELLE (haut=color[0], bas=color[1]…). Quand
+   la couleur la plus VIVE de la palette tombait en color[1], elle finissait
+   sur le BAS (grande pièce) → ex. « chino ROUGE » dans une tenue sobre,
+   incohérent (user : « améliore la cohérence »).
+
+   Maintenant : attribution par RÔLE (principe de style que le commentaire
+   d'origine énonçait déjà mais que le code ne faisait pas) :
+   - la couleur la plus SATURÉE = le « pop » → réservée au petit ACCESSOIRE
+     (un seul point de couleur fort dans la tenue),
+   - les NEUTRES habillent les grandes pièces : plus clairs en haut
+     (haut, veste), plus foncés au sol (bas, chaussures). */
+
+function hexRgb(hex: string): [number, number, number] {
+  const h = hex.replace("#", "");
+  return [parseInt(h.slice(0, 2), 16) || 0, parseInt(h.slice(2, 4), 16) || 0, parseInt(h.slice(4, 6), 16) || 0];
+}
+function chroma(hex: string): number { const [r, g, b] = hexRgb(hex); return Math.max(r, g, b) - Math.min(r, g, b); }
+function luminance(hex: string): number { const [r, g, b] = hexRgb(hex); return 0.299 * r + 0.587 * g + 0.114 * b; }
 
 function pickColors(entry: DictionaryEntry): Record<SlotKey, { hex: string; name: string }> {
-  const colors = entry.colors;
   const fallback = { hex: "#1E1E1E", name: "ink" };
+  const cols = entry.colors.length ? entry.colors : [fallback];
+  // Couleur la plus vive = pop (accent). Le reste = neutres, triés clair→foncé.
+  const bySaturation = [...cols].sort((a, b) => chroma(b.hex) - chroma(a.hex));
+  const pop = bySaturation[0];
+  const neutrals = (bySaturation.length > 1 ? bySaturation.slice(1) : cols)
+    .slice()
+    .sort((a, b) => luminance(b.hex) - luminance(a.hex)); // clair → foncé
+  const light = neutrals[0] || pop;
+  const dark = neutrals[neutrals.length - 1] || light;
   return {
-    haut:       colors[0] || fallback,
-    bas:        colors[1] || colors[0] || fallback,
-    veste:      colors[2] || colors[0] || fallback,
-    chaussures: colors[2] || colors[0] || fallback, // souvent la plus foncée
-    accent:     colors[colors.length - 1] || fallback,
+    haut:       light,   // clair en haut
+    veste:      light,   // veste neutre (ton du haut)
+    bas:        dark,     // neutre plus foncé pour ancrer
+    chaussures: dark,     // chaussures = ton le plus foncé/neutre
+    accent:     pop,      // l'unique point de couleur vif
   };
 }
 

@@ -90,12 +90,27 @@ async function kvGetJson<T>(creds: KvCreds, key: string): Promise<T | null> {
 }
 
 /** Lit l'intégralité du catalogue depuis KV (concat des chunks). */
+let _inFlight: Promise<ProduitAwin[]> | null = null;
+
 export async function readAllProducts(): Promise<ProduitAwin[]> {
   // Cache mémoire : sert le catalogue sans relire KV si encore frais.
   if (_catalogCache && Date.now() - _catalogCache.at < CATALOG_TTL_MS) {
     return _catalogCache.data;
   }
+  /* Single-flight : si une lecture KV est déjà en cours (ex. les 5 PieceCards
+     d'une page /ma-tenue qui démarrent ensemble sur une instance FROIDE), on
+     PARTAGE la même promesse au lieu de relire les 350 chunks N fois en
+     parallèle (thundering herd au démarrage à froid). */
+  if (_inFlight) return _inFlight;
+  _inFlight = _readAllProductsFromKV();
+  try {
+    return await _inFlight;
+  } finally {
+    _inFlight = null;
+  }
+}
 
+async function _readAllProductsFromKV(): Promise<ProduitAwin[]> {
   const creds = getCreds();
   if (!creds) {
     console.log("[KV] readAllProducts: KV not configured");
