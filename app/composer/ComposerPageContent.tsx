@@ -47,6 +47,7 @@ const SLOT_OPTIONS: Array<{ slug: Slot; label: string; icon: string }> = [
   { slug: "bas", label: "Bas", icon: "👖" },
   { slug: "veste", label: "Veste", icon: "🧥" },
   { slug: "chaussures", label: "Chaussures", icon: "👟" },
+  { slug: "accent", label: "Accessoire", icon: "👜" },
 ];
 
 /* Brief « Scanner Un vêtement » §2 : style → registre WADA pour /ma-tenue.
@@ -56,13 +57,16 @@ const STYLE_BY_SLOT: Record<Slot, Array<{ label: string; register: string }>> = 
   haut: [
     { label: "T-shirt", register: "Décontracté" },
     { label: "Chemise", register: "Classique" },
+    { label: "Polo", register: "Classique" },
     { label: "Pull", register: "Classique" },
+    { label: "Sweat", register: "Décontracté" },
     { label: "Hoodie", register: "Streetwear" },
   ],
   bas: [
     { label: "Jean", register: "Décontracté" },
     { label: "Chino", register: "Classique" },
     { label: "Pantalon habillé", register: "Old money" },
+    { label: "Short", register: "Décontracté" },
     { label: "Jogging", register: "Streetwear" },
   ],
   chaussures: [
@@ -79,9 +83,12 @@ const STYLE_BY_SLOT: Record<Slot, Array<{ label: string; register: string }>> = 
     { label: "Coupe-vent", register: "Décontracté" },
   ],
   accent: [
-    { label: "Ceinture", register: "Classique" },
-    { label: "Foulard", register: "Old money" },
     { label: "Sac", register: "Décontracté" },
+    { label: "Ceinture", register: "Classique" },
+    { label: "Écharpe", register: "Old money" },
+    { label: "Casquette", register: "Streetwear" },
+    { label: "Lunettes", register: "Classique" },
+    { label: "Bonnet", register: "Décontracté" },
   ],
 };
 
@@ -411,16 +418,29 @@ export function ComposerPageContent() {
     /* Stockage ancre en sessionStorage (taille thumb ~50-150ko en JPEG
        0.78, dans le quota 5MB du sessionStorage). Une seule ancre
        active à la fois — pas de cumul. */
+    /* Brief 2026-06-10 (user : « la photo que j'ai prise n'apparaît pas dans
+       la tenue, ça ne sert à rien de prendre une photo ») : on crée l'ancre
+       dès qu'une PHOTO a été scannée (vision.thumb non vide), MÊME si la
+       Vision n'a pas reconnu la pièce. On retombe alors sur le slot + le type
+       choisis MANUELLEMENT et la couleur détectée. Avant, l'ancre n'était
+       posée que si vision.phase === "garment" → quand Vision échouait
+       (« non reconnu »), la photo était jetée et /ma-tenue composait une
+       tenue générique SANS la pièce du client. */
+    const photoThumb =
+      (vision.phase === "garment" || vision.phase === "error" || vision.phase === "pending") && vision.thumb
+        ? vision.thumb
+        : null;
     try {
-      if (vision.phase === "garment") {
+      if (photoThumb) {
+        const v = vision.phase === "garment" ? vision.data : null;
         sessionStorage.setItem("wada.anchor", JSON.stringify({
-          thumb: vision.thumb,
-          slot: vision.data.slot,
-          type: vision.data.type,
-          marque: vision.data.marque,
-          modele: vision.data.modele,
-          couleur: vision.data.couleur_principale,
-          registre: vision.data.registre,
+          thumb: photoThumb,
+          slot: v?.slot || pickedSlot,
+          type: v?.type || pickedStyle || "",
+          marque: v?.marque || "",
+          modele: v?.modele || "",
+          couleur: v?.couleur_principale || detected.hex,
+          registre: v?.registre || register,
           piecePicked: pickedStyle,
           detectedHex: detected.hex,
         }));
@@ -440,7 +460,7 @@ export function ComposerPageContent() {
     /* Flag pour signaler à /ma-tenue qu'il y a une ancre (peut lire
        sessionStorage en complément). Évite un round-trip si l'user
        arrive directement sur /ma-tenue sans passer par /composer. */
-    if (vision.phase === "garment") params.set("anchor", "1");
+    if (photoThumb) params.set("anchor", "1");
     router.push(`/ma-tenue?${params}`);
   };
 
@@ -890,7 +910,7 @@ export function ComposerPageContent() {
                       color: palette.inkSoft, margin: "2px 0 0",
                       lineHeight: 1.3,
                     }}>
-                      {vision.message}. Tu peux quand même choisir le slot manuellement ci-dessous.
+                      {vision.message.replace(/[.…\s]+$/, "")}. Tu peux quand même choisir le slot manuellement ci-dessous.
                     </p>
                   )}
                 </div>
@@ -1066,18 +1086,21 @@ const chipRow: React.CSSProperties = {
 
 function chipStyle(active: boolean): React.CSSProperties {
   return {
-    padding: "8px 13px",
-    background: active ? palette.ink : "#FAF8F4",
-    color: active ? palette.cream : palette.ink,
-    border: `1px solid ${active ? palette.ink : palette.line}`,
+    padding: "9px 15px",
+    background: active ? palette.bordeaux : "#FFFFFF",
+    color: active ? "#FFFFFF" : palette.ink,
+    border: `1px solid ${active ? palette.bordeaux : palette.line}`,
     borderRadius: 999,
     cursor: "pointer",
     fontFamily: fonts.sans,
     fontSize: 13,
-    fontWeight: active ? 500 : 400,
+    fontWeight: active ? 600 : 400,
     transition: "all .15s ease",
     display: "inline-flex",
     alignItems: "center",
     gap: 5,
+    boxShadow: active
+      ? "0 4px 12px -3px rgba(107,58,50,0.4)"
+      : "0 1px 2px rgba(30,30,30,0.04)",
   };
 }
