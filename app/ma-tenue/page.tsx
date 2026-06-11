@@ -1626,36 +1626,8 @@ function MaTenueContent() {
             <span>Voir une autre tenue</span>
             <span aria-hidden style={{ fontSize: 14, letterSpacing: 0 }}>↻</span>
           </button>
-          <p style={{ marginTop: 18, fontSize: 13, color: textSecondary, fontStyle: "italic" }}>
-            {matchIndex + 1} / {matchedEntries.length} tenues pour votre profil
-          </p>
         </section>
       )}
-
-      {/* Brief « appli efficace » §6 (2026-05-29) : repère « Ensuite »
-          pour ne jamais laisser le client en cul-de-sac. Après la tenue,
-          on propose la suite logique : sauver dans favoris ou scanner
-          une autre couleur. */}
-      <section style={{ padding: "0 5% 24px" }}>
-        <NextStepHint
-          label="Garder cette tenue · Voir mes favoris"
-          href="/favoris"
-        />
-      </section>
-
-      {/* Lien retour vers le profil pour ajuster */}
-      <section style={{ padding: "0 5% 80px", textAlign: "center" }}>
-        <Link
-          href="/atelier"
-          style={{
-            fontFamily: fontLabel, fontSize: 11, fontWeight: 600,
-            letterSpacing: "0.25em", textTransform: "uppercase",
-            color: textSecondary, textDecoration: "underline",
-          }}
-        >
-          Ajuster mon profil
-        </Link>
-      </section>
 
           </main>
   );

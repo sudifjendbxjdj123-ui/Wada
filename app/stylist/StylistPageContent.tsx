@@ -823,27 +823,35 @@ export function StylistPageContent() {
     });
   }
 
-  /* ─── Étape 5 : occasion → compose ─── */
+  /* ─── Étape 5 : occasion → compose ───
+     Fix 2026-06-11 « double-bubble » : on NE met plus le botDelay/compose
+     à l'intérieur d'un setState updater. Sous StrictMode (dev), les
+     updaters sont délibérément double-invoqués pour révéler les impuretés
+     — chaque side-effect (setTimeout, addBot) firait deux fois et toutes
+     les bulles compose() doublaient. On projette le next state en clair
+     puis on déclenche les side-effects en dehors de setState. */
   function onOccasion(t: string) {
     addMe(t);
     setChips([]);
-    setState((s) => {
-      const next = { ...s, occasion: t };
-      // Compose immédiatement avec le state final (s'évite un useEffect)
-      botDelay(() => compose(next));
-      return next;
-    });
+    const next: State = { ...state, occasion: t };
+    setState(next);
+    botDelay(() => compose(next));
   }
 
   /* ─── Compose la tenue ───
      Brief « Styliste IA — accords Wada » (24/05) : on calcule l'accord
      dérivé de la couleur signature et on l'affiche en chat. Les pièces
-     viennent ensuite de buildFull/buildAnchor qui utilisent ce même accord
-     (les helpers le re-calculent mais c'est pur, donc idempotent). */
+     viennent ensuite de buildFull/buildAnchor qui utilisent ce même accord.
+     Fix 2026-06-11 : renseigne lastComposedRef pour que « C'est parfait »
+     puisse réellement sauver. */
   function compose(s: State) {
     let pieces: OutfitPiece[];
     const sigHex = s.couleurHex || COULEURS[s.couleur || "Beige"] || "#C7A06A";
     const accord = accordForColor(sigHex, s.style);
+    const anchorName = s.piece === "Loro Piana" ? "Loro Piana" : s.piece?.toLowerCase();
+    const nomTenue = s.mode === "full"
+      ? `${(s.style || "Look").charAt(0).toUpperCase()}${(s.style || "Look").slice(1).toLowerCase()} ${s.couleur?.toLowerCase() || ""}`.trim()
+      : `Autour ${anchorName ? `du ${anchorName}` : "de votre pièce"}`;
     if (s.mode === "full") {
       pieces = buildFull(s);
       addBot(
@@ -851,7 +859,6 @@ export function StylistPageContent() {
       );
     } else {
       pieces = buildAnchor(s);
-      const anchorName = s.piece === "Loro Piana" ? "Loro Piana" : s.piece?.toLowerCase();
       addBot(
         `Voilà : autour de vos/votre ${anchorName}, un look <b>${s.style?.toLowerCase()}</b> pour <b>${s.occasion?.toLowerCase()}</b> — accord <b>No. ${accord.number} — ${accord.name}</b>.`
       );
@@ -862,6 +869,25 @@ export function StylistPageContent() {
       accordNumber: accord.number,
       accordName: accord.name,
     }));
+    /* Renseigne la tenue pour saveOutfit (chip « C'est parfait »). Avant
+       2026-06-11 ce champ n'était rempli que par le path LLM, donc le
+       chip mentait dans le flow déterministe. */
+    lastComposedRef.current = {
+      nomTenue,
+      accordRef: accord.number,
+      accordName: accord.name,
+      accordColors: accord.colors.map((c) => ({ hex: c.hex, name: c.name })),
+      pieces: pieces.map((p) => ({
+        role: p.role,
+        type: p.type,
+        hex: p.hex,
+        couleurNom: p.couleurNom,
+        ancre: p.ancre,
+        genre: p.genre,
+      })),
+      reponse: undefined,
+      pourquoi: pourquoiFor(s.couleur),
+    };
     addOutfit(pieces);
     botDelay(() => {
       addBot(`<b>Pourquoi ça marche</b> — ${pourquoiFor(s.couleur)}`);
@@ -947,70 +973,111 @@ export function StylistPageContent() {
     return [base.Haut, base.Bas, base.Chaussures, base.Veste, base.Accent];
   }
 
-  /* ─── Ajustements après composition ─── */
+  /* ─── Ajustements après composition ───
+     Fix 2026-06-11 « double-bubble » : tous les side-effects (addBot,
+     addOutfit, botDelay, compose) sortent du setState updater pour éviter
+     le doublement StrictMode. On lit `state` du closure (cohérent puisque
+     l'user ne peut cliquer un chip que pendant un render stable). */
   function onAdjust(t: string) {
     addMe(t);
     setChips([]);
     if (/parfait/i.test(t)) {
-      botDelay(() => addBot("Très bien. Je l'ajoute à votre dressing ✓"));
+      /* Fix 2026-06-11 « C'est parfait sauve vraiment » : avant on disait
+         "Je l'ajoute" sans rien sauver — `lastComposedRef.current` n'était
+         renseigné que dans le path LLM, jamais dans le path chips
+         déterministe. Maintenant compose() le renseigne aussi, donc on
+         appelle saveOutfit ici. Si rien à sauver (cas garde-fou),
+         on garde l'ancien message. */
+      botDelay(() => {
+        if (lastComposedRef.current) {
+          saveOutfit(lastComposedRef.current);
+          addBot("Très bien. Ajoutée à votre dressing ✓");
+          showToast("Tenue gardée — retrouvez-la dans vos favoris ✓");
+        } else {
+          addBot("Très bien. Notée.");
+        }
+      });
       return;
     }
     if (/autre couleur/i.test(t)) {
       botDelay(() => {
         addBot("On change la teinte signature — laquelle ?");
         setChips(Object.keys(COULEURS).map((c) => ({ label: c })));
-        // Hijack le handler — au prochain clic chip, on relance compose
         setNextChipHandler(() => (c: string) => {
           addMe(c);
           setChips([]);
-          setState((prev) => {
-            const next = { ...prev, couleur: c, couleurHex: COULEURS[c] || "#888" };
-            botDelay(() => compose(next));
-            return next;
-          });
+          const next: State = { ...state, couleur: c, couleurHex: COULEURS[c] || "#888" };
+          setState(next);
+          botDelay(() => compose(next));
         });
       });
       return;
     }
-    setState((prev) => {
-      if (!prev.pieces) return prev;
-      let next = [...prev.pieces];
-      if (/chaud/i.test(t)) {
-        next = applyHotter(next);
-        addBot("Plus chaud : une terracotta et du brun.");
-      } else if (/sans veste/i.test(t)) {
-        next = next.filter((p) => p.role !== "Veste");
-        addBot("Sans veste : on allège, plus épuré.");
-      } else if (/décontract/i.test(t)) {
-        next = applyCasual(next);
-        addBot("Plus décontracté : tee, chino et sneakers, mêmes couleurs.");
-      }
-      addOutfit(next);
-      botDelay(() => {
-        setChips([
-          { label: "Plus chaud" },
-          { label: "Sans veste" },
-          { label: "Plus décontracté" },
-          { label: "Une autre couleur" },
-          { label: "C'est parfait", primary: true },
-        ]);
-      });
-      return { ...prev, pieces: next };
+    if (!state.pieces) return;
+    let nextPieces = [...state.pieces];
+    let msg = "";
+    /* Fix 2026-06-11 « accord Wada préservé » : applyHotter/applyCasual
+       prennent maintenant l'accord en argument pour rester dans la palette
+       harmonique au lieu d'y écraser des hex terracotta/écru hardcodés.
+       L'accord vient du state (calculé au dernier compose). */
+    const sigHex = state.couleurHex || COULEURS[state.couleur || "Beige"] || "#C7A06A";
+    const accord = accordForColor(sigHex, state.style);
+    if (/chaud/i.test(t)) {
+      nextPieces = applyHotter(nextPieces, accord);
+      msg = "Plus chaud : on bascule sur la touche la plus chaude de l'accord.";
+    } else if (/sans veste/i.test(t)) {
+      nextPieces = nextPieces.filter((p) => p.role !== "Veste");
+      msg = "Sans veste : on allège, plus épuré.";
+    } else if (/décontract/i.test(t)) {
+      nextPieces = applyCasual(nextPieces);
+      msg = "Plus décontracté : on garde l'accord, on change la coupe — tee, chino, sneakers.";
+    }
+    setState({ ...state, pieces: nextPieces });
+    addBot(msg);
+    addOutfit(nextPieces);
+    botDelay(() => {
+      setChips([
+        { label: "Plus chaud" },
+        { label: "Sans veste" },
+        { label: "Plus décontracté" },
+        { label: "Une autre couleur" },
+        { label: "C'est parfait", primary: true },
+      ]);
     });
   }
 
-  function applyHotter(pieces: OutfitPiece[]): OutfitPiece[] {
+  /* Fix 2026-06-11 « accord Wada préservé » : applyHotter prend l'accord
+     en argument et pioche dedans la couleur la plus chaude (temperature
+     warm + saturation la plus haute, fallback : la plus sombre). Plus
+     d'hex terracotta hardcodé qui cassait l'harmonie d'un accord froid. */
+  function applyHotter(pieces: OutfitPiece[], accord: DictionaryEntry): OutfitPiece[] {
+    const candidates = accord.colors.map((c) => ({ hex: c.hex, name: c.name, m: analyzeColor(c.hex) }));
+    const warm = candidates
+      .filter((c) => c.m.temperature === "warm")
+      .sort((a, b) => b.m.saturation - a.m.saturation)[0]
+      || [...candidates].sort((a, b) => a.m.lightness - b.m.lightness)[0];
+    if (!warm) return pieces;
     return pieces.map((p) => {
-      if (p.role === "Veste" && !p.ancre) return { ...p, type: "Surveste terracotta", hex: "#B5613F", couleurNom: "terracotta" };
-      if (p.role === "Accent" && !p.ancre) return { ...p, type: "Touche brun chaud", hex: "#8a5a3a", couleurNom: "brun" };
+      if (p.role === "Veste" && !p.ancre) {
+        return { ...p, type: `Surveste ${warm.name.toLowerCase()}`, hex: warm.hex, couleurNom: warm.name };
+      }
+      if (p.role === "Accent" && !p.ancre) {
+        return { ...p, type: `Touche ${warm.name.toLowerCase()}`, hex: warm.hex, couleurNom: warm.name };
+      }
       return p;
     });
   }
+  /* Fix 2026-06-11 « accord Wada préservé » : applyCasual garde les hex
+     déjà posés (issus de l'accord par buildFull/buildAnchor) et ne touche
+     QUE les types de vêtements. Avant, on écrasait par #ECE4D6/#C9B79C ce
+     qui sortait de l'accord et faisait que « plus décontracté » revenait
+     toujours à du sable et de l'écru indépendamment de la palette. */
   function applyCasual(pieces: OutfitPiece[]): OutfitPiece[] {
     return pieces.map((p) => {
-      if (p.role === "Haut" && !p.ancre) return { ...p, type: "Tee coton", hex: "#ECE4D6", couleurNom: "écru" };
-      if (p.role === "Bas" && !p.ancre) return { ...p, type: "Chino souple", hex: "#C9B79C", couleurNom: "sable" };
-      if (p.role === "Chaussures" && !p.ancre) return { ...p, type: "Sneakers", hex: "#E8E2D6", couleurNom: "écru" };
+      if (p.role === "Haut" && !p.ancre) return { ...p, type: "Tee coton" };
+      if (p.role === "Bas" && !p.ancre) return { ...p, type: "Chino souple" };
+      if (p.role === "Chaussures" && !p.ancre) return { ...p, type: "Sneakers" };
+      if (p.role === "Veste" && !p.ancre) return { ...p, type: "Surchemise" };
       return p;
     });
   }
