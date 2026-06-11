@@ -129,17 +129,55 @@ async function runIngest(feeds: FeedConfig[]) {
     }
   }
 
-  /* Slugs effectivement rafraîchis par CE run — dérivés des produits frais
-     (pas du label de config : la normalisation peut renommer le slug, ex.
-     « New Era Cap FR » → « new-era »). On garde tout le reste tel quel. */
-  const refreshedSlugs = new Set(allProducts.map((p) => p.marchandSlug || ""));
+  // Comptes par slug — avant (snapshot) et après (frais).
+  const prevBySlug: Record<string, number> = {};
+  for (const p of previous) prevBySlug[p.marchandSlug || ""] = (prevBySlug[p.marchandSlug || ""] || 0) + 1;
+  const freshBySlug: Record<string, number> = {};
+  for (const p of allProducts) freshBySlug[p.marchandSlug || ""] = (freshBySlug[p.marchandSlug || ""] || 0) + 1;
+
+  /* GARDE-FOU anti-fetch-partiel — incident 2026-06-10 (Suitable 18k→2,8k,
+     New Era 5,5k→0). Si un flux rafraîchi revient avec MOINS DE 50% du compte
+     précédent pour ce marchand, on considère le téléchargement RATÉ (.csv.gz
+     tronqué / panne réseau) → on EXCLUT ces produits frais et on RETIENT
+     l'ancien snapshot pour ce slug. Évite de vider des milliers de produits. */
+  const badSlugs = new Set<string>();
+  for (const slug of Object.keys(freshBySlug)) {
+    const before = prevBySlug[slug] || 0;
+    if (before >= 200 && freshBySlug[slug] < before * 0.5) {
+      badSlugs.add(slug);
+      console.log(`[INGEST] GUARD partial-feed: ${slug} fresh=${freshBySlug[slug]} < 50% of ${before} → keeping previous snapshot`);
+    }
+  }
+  const goodFresh = badSlugs.size > 0
+    ? allProducts.filter((p) => !badSlugs.has(p.marchandSlug || ""))
+    : allProducts;
+
+  /* Slugs effectivement rafraîchis par CE run (et jugés sains) — dérivés des
+     produits frais. On garde tout le reste tel quel (marchands non rafraîchis
+     + marchands au fetch jugé partiel). */
+  const refreshedSlugs = new Set(goodFresh.map((p) => p.marchandSlug || ""));
   const retained = previous.filter((p) => !refreshedSlugs.has(p.marchandSlug || ""));
   const retainedMerchants = [...new Set(retained.map((p) => p.marchandSlug || ""))];
   if (retained.length > 0) {
-    console.log(`[INGEST] retaining ${retained.length} products from non-refreshed merchants: ${retainedMerchants.join(", ")}`);
+    console.log(`[INGEST] retaining ${retained.length} products (non-refreshed/guarded): ${retainedMerchants.join(", ")}`);
   }
 
-  const merged = [...retained, ...allProducts];
+  const merged = [...retained, ...goodFresh];
+
+  /* GARDE-FOU anti-rétrécissement global : on refuse d'écrire un catalogue
+     dramatiquement plus petit que le précédent (lecture tronquée du snapshot,
+     plusieurs flux KO…). Si on écrirait <70% du compte précédent, on ABANDONNE
+     — le KV garde l'ancien jeu intact plutôt que de subir une perte massive. */
+  if (previous.length >= 1000 && merged.length < previous.length * 0.7) {
+    console.log(`[INGEST] ABORT WRITE: merged ${merged.length} < 70% of previous ${previous.length} — refusing to shrink the catalog`);
+    return {
+      ok: false, phase: "ingest", aborted: "would_shrink_catalog",
+      previous_total: previous.length, would_write: merged.length,
+      products_refreshed: allProducts.length, bad_slugs: [...badSlugs],
+      stats: merchantStats, errors,
+    };
+  }
+
   console.log(`[INGEST] writing ${merged.length} products to KV (chunked)`);
   const storage = await writeAllProducts(merged);
   console.log(`[INGEST] storage result: ok=${storage.ok}, chunks=${storage.chunks}, totalBytes=${storage.total_bytes}, failed=${storage.failed_chunks.length}`);
@@ -149,9 +187,10 @@ async function runIngest(feeds: FeedConfig[]) {
     phase: "ingest",
     merchants: feeds.length,
     products_total: merged.length,
-    products_refreshed: allProducts.length,
+    products_refreshed: goodFresh.length,
     products_retained: retained.length,
     retained_merchants: retainedMerchants,
+    guarded_partial_merchants: [...badSlugs],
     images_reused_from_previous: imagesReused,
     stats: merchantStats,
     errors,
