@@ -136,6 +136,48 @@ function isFormalStyle(style: string | null): boolean {
 }
 
 /* ──────────────────────────────────────────────────────────────────────
+   PERF 2026-06-11 (« attente trop longue ») — POOL DE BASE PRÉ-FILTRÉ + CACHÉ
+   ──────────────────────────────────────────────────────────────────────
+   La page /ma-tenue lance 5 appels /api/products simultanés. Chacun refaisait,
+   AVANT le filtre slot : filterByGeo(~70k) + le filtre enStock/image (2 regex
+   par produit sur ~70k). Multiplié par 5 appels sérialisés sur l'event-loop
+   Node → mur mesuré ~4,8–5,5s.
+
+   On calcule ce pool de base UNE fois par (géo × 60s) et on le PARTITIONNE par
+   slot. Un appel slot=haut démarre alors d'un bucket de quelques milliers de
+   produits déjà filtrés (stock + image + shopifypreview), au lieu de re-dériver
+   depuis 70k. `all` reste l'union (cas sans slot). Le contenu est identique à
+   l'ancien `initialPool` filtré par slot — donc fallback registre inchangé. */
+type BasePool = { bySlot: Map<string, ProduitAwin[]>; all: ProduitAwin[] };
+let _basePoolCache: { key: string; at: number; pool: BasePool } | null = null;
+const BASE_POOL_TTL_MS = 60_000;
+
+function getBasePool(catalog: ProduitAwin[], country: string | null): BasePool {
+  const key = country === "CH" ? "CH" : "other";
+  if (_basePoolCache && _basePoolCache.key === key && Date.now() - _basePoolCache.at < BASE_POOL_TTL_MS) {
+    return _basePoolCache.pool;
+  }
+  const geo = filterByGeo(catalog, country);
+  const all: ProduitAwin[] = [];
+  const bySlot = new Map<string, ProduitAwin[]>();
+  for (const p of geo) {
+    if (!p.enStock) continue;
+    const imageUrl = p.imageLocal || p.largeImage || p.image || "";
+    if (!imageUrl || imageUrl === "-") continue;
+    if (/noimage\.(gif|png|jpe?g|webp)/i.test(imageUrl)) continue;
+    if (/shopifypreview\.com/i.test(imageUrl) || /shopifypreview\.com/i.test(p.urlProduit || "")) continue;
+    all.push(p);
+    const cat = p.categorie || "";
+    const bucket = bySlot.get(cat);
+    if (bucket) bucket.push(p);
+    else bySlot.set(cat, [p]);
+  }
+  const pool: BasePool = { bySlot, all };
+  _basePoolCache = { key, at: Date.now(), pool };
+  return pool;
+}
+
+/* ──────────────────────────────────────────────────────────────────────
    ROUTE
    ────────────────────────────────────────────────────────────────────── */
 
@@ -242,7 +284,7 @@ export async function GET(req: Request) {
      catalogue selon le pays visiteur (x-vercel-ip-country) AVANT tout matching
      pour que K&Ö n'entre jamais dans le pool hors Suisse. */
   const country = visitorCountry(req.headers);
-  const catalog = filterByGeo(await readAllProducts(), country);
+  const catalog = await readAllProducts();
   if (catalog.length === 0) {
     return Response.json({ products: [], total: 0, source: "empty" });
   }
@@ -268,27 +310,19 @@ export async function GET(req: Request) {
      qui rendent 404 pour les utilisateurs publics. On filtre les URLs
      produit contenant `shopifypreview.com` pour ne plus jamais envoyer
      un client sur une page 404. */
-  let filtered = catalog.filter((p) => {
-    if (!p.enStock) return false;
-    const imageUrl = p.imageLocal || p.largeImage || p.image || "";
-    if (!imageUrl || imageUrl === "-") return false;
-    if (/noimage\.(gif|png|jpe?g|webp)/i.test(imageUrl)) return false;
-    /* Bug client 2026-05-30 : URL deep-link en mode preview Shopify
-       (draft non publié) → 404 publique. Le pclick.php Awin résout
-       côté serveur vers shopifypreview.com qu'on peut détecter à
-       l'inverse via le champ image (cdn.shopify.com hash distinctif)
-       ou plus précisément via la deep-link finale. Comme aw_deep_link
-       passe par awin1.com (redirection serveur), on ne peut pas
-       détecter la cible finale sans hit HTTP. À DÉFAUT on regarde si
-       l'image hash contient un pattern de preview Shopify (`*.shopify
-       preview.com`) — rare mais sentinelle utile. */
-    if (/shopifypreview\.com/i.test(imageUrl) || /shopifypreview\.com/i.test(p.urlProduit || "")) return false;
-    return true;
-  });
+  /* PERF 2026-06-11 : on démarre du bucket pré-filtré (géo + stock + image OK
+     + pas shopifypreview) du slot demandé, calculé UNE fois par (géo × 60s)
+     dans getBasePool et partitionné par slot. Sans slot, on prend l'union
+     `all`. Le filtre stock/image (2 regex/produit sur ~70k) ne tourne donc
+     plus à chaque requête — c'était le coût fixe sérialisé sur les 5 appels
+     simultanés de /ma-tenue. */
+  const basePool = getBasePool(catalog, country);
+  let filtered = slot ? (basePool.bySlot.get(slot) || []).slice() : basePool.all.slice();
 
-  /* Fix 2026-05-31 v3 : on capture le pool de base (enStock + image OK
-     + pas shopifypreview) avant tout filtre métier. Sert au fallback
-     registre plus bas (cf. commentaire « FALLBACK REGISTRE »). */
+  /* Fix 2026-05-31 v3 : pool de base (stock + image OK + pas shopifypreview)
+     pour CE slot, avant tout filtre métier. Sert au fallback registre plus
+     bas (cf. « FALLBACK REGISTRE »). Identique à l'ancien initialPool ensuite
+     filtré par slot — le fallback re-filtre déjà par slot, donc inchangé. */
   const initialPool = filtered.slice();
 
   /* Brief URGENT 2026-06-01 Nemanja — Règle 1 : WHITELIST SOURCES.
@@ -307,8 +341,7 @@ export async function GET(req: Request) {
      pour que tout le reste opère sur l'ensemble réduit. Résultat identique (filtres
      conjonctifs, l'ordre ne change que le coût) ; initialPool (fallback) capturé
      plus haut, donc inchangé. */
-  // Brief §1 : strict slot match
-  if (slot) filtered = filtered.filter((p) => p.categorie === slot);
+  /* slot déjà appliqué via le bucket getBasePool (cf. plus haut). */
   if (merchant) filtered = filtered.filter((p) => p.marchandSlug === merchant);
   // Brief 2026-05-28 (dedup intra-tenue) : exclure les produits déjà
   // sélectionnés sur les autres slots de la même tenue.
