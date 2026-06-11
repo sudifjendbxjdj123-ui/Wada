@@ -140,8 +140,15 @@ async function _readAllProductsFromKV(): Promise<ProduitAwin[]> {
      null → chunk manquant), donc le catalogue arrivait tronqué en prod
      (K&Ö quasi invisible) alors qu'il se lisait entièrement en local.
      Fix : on lit par lots de READ_BATCH, + une passe de retry sur les
-     chunks manquants (les échecs Upstash sont surtout transitoires). */
-  const READ_BATCH = 24;
+     chunks manquants (les échecs Upstash sont surtout transitoires).
+
+     PERF 2026-06-11 (« attente trop longue ») : READ_BATCH 24 → 48. Le cold
+     start d'une instance serverless relit les ~350 chunks ; à 24/lot ça faisait
+     ~15 rounds séquentiels (~4s mesuré). À 48/lot → ~8 rounds (~2s). La passe de
+     retry ci-dessous couvre les échecs transitoires qu'une concurrence plus
+     élevée pourrait provoquer, donc le garde-fou anti-troncature de 06-09 reste
+     intact (seules les lectures COMPLÈTES sont mises en cache). */
+  const READ_BATCH = 48;
   const chunks: (ProduitAwin[] | null)[] = new Array(meta.chunks).fill(null);
   for (let start = 0; start < meta.chunks; start += READ_BATCH) {
     const end = Math.min(start + READ_BATCH, meta.chunks);
