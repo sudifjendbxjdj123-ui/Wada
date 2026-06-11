@@ -110,6 +110,11 @@ export const TYPES_BY_CATEGORY: Record<string, { label: string; re: RegExp }[]> 
    baskets), ni « polo » (= marque). */
 const SLOT_NAME_MISMATCH: Partial<Record<string, RegExp>> = {
   chaussures: /\b(jumper|sweater|sweatshirt|pullover|cardigan|hoodie|t[\s-]?shirt|tee|chemise|trousers?|pantalon|jeans?|chinos?|shorts?|bermuda|blazer|jacket|coat|manteau|parka|robe|dress|skirt|jupe|blouse)\b/i,
+  /* veste : écarte les PANTALONS mal classés en veste — ex. « Anzughose »
+     (pantalon de costume K&Ö) tombait sous le chemin « Anzüge » → veste.
+     « hose » en sous-chaîne capte les composés allemands (Anzughose,
+     Stoffhose…). 2026-06-10. */
+  veste: /hose|\bpantalon\b|\btrousers?\b/i,
 };
 
 /** false si le produit est manifestement mal classé dans son slot (nom ≠ slot). */

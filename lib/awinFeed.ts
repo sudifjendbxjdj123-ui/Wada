@@ -685,9 +685,19 @@ export function normalizeAwinProduct(raw: RawAwinProduct): ProduitAwin | null {
        merchant_product_category_path (« Herren > Bekleidung > Jeans >
        Straight »), category_name vide. parseCategory matche les mots du
        chemin via les libellés DE ajoutés à CATEGORY_MAPPING ; fallback sur
-       l'inférence par le nom du produit si le chemin ne résout rien. */
-    category = parseCategory(raw.merchant_product_category_path)
-      || inferCategoryFromProductName(raw.product_name);
+       l'inférence par le nom du produit si le chemin ne résout rien.
+
+       Fix 2026-06-10 (user « Anzughose en veste ») : le chemin « Anzüge »
+       (costumes) regroupe les VESTES de costume (Sakko) ET les PANTALONS
+       (Anzughose) → parseCategory classait les deux en veste. Le NOM
+       tranche : tout « …hose » (Anzughose, Stoffhose…) est un BAS. On le
+       teste AVANT le chemin. (« Strumpfhose »/bain déjà exclus en amont.) */
+    if (/hose/i.test(raw.product_name || "")) {
+      category = "bas";
+    } else {
+      category = parseCategory(raw.merchant_product_category_path)
+        || inferCategoryFromProductName(raw.product_name);
+    }
   } else if (merchantSlug === "the-business-fashion") {
     category = inferCategoryFromProductName(raw.product_name);
   } else if (merchantSlug === "suitable-fr") {
