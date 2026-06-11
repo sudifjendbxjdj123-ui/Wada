@@ -2630,21 +2630,28 @@ function PieceCard({
    *  attend (pas de fetch propre) pour ne pas relancer les 5 GET cold-start. */
   prefetchPending?: boolean;
 }) {
+  const [alternativeCount, setAlternativeCount] = useState(0);
+
   // Tentative MUJI réel — brief variété : on passe la VRAIE couleur de la
   // palette assignée à ce slot (color.hex) + un seed unique par slot.
+  // Le seed est modifié quand l'utilisateur clique sur la croix.
+  const currentSeed = seed && alternativeCount > 0
+    ? `${seed}-alt${alternativeCount}`
+    : seed;
+
   const mujiProduct = useMujiProduct(
     pieceToSlot(piece),
     color.hex,
     paletteRef || null,
     genre || null,
     style || null,
-    seed || null,
+    currentSeed || null,
     excludeIds || [],
     onPicked,
     selectedNamesStr,
     tierMaxPrice,
-    prefetched,
-    prefetchPending,
+    prefetched && alternativeCount === 0 ? prefetched : null,
+    prefetchPending && alternativeCount === 0,
   );
   /* Quand le produit est résolu (prix réel arrivé), on remonte au parent. */
   useEffect(() => {
@@ -2774,6 +2781,45 @@ function PieceCard({
         transition: "transform 0.3s cubic-bezier(.22,1,.36,1), box-shadow 0.3s ease",
       }}
     >
+      {/* Bouton croix pour changer l'habit — brief user 2026-06-11 */}
+      <button
+        type="button"
+        onClick={() => setAlternativeCount((c) => c + 1)}
+        aria-label="Changer cet habit"
+        title="Changer cet habit"
+        style={{
+          position: "absolute",
+          top: 12,
+          right: 12,
+          zIndex: 7,
+          width: 32,
+          height: 32,
+          borderRadius: "50%",
+          background: "rgba(255, 255, 255, 0.92)",
+          border: `1px solid ${border}`,
+          cursor: "pointer",
+          fontSize: 20,
+          color: "#6B3A32",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          lineHeight: 1,
+          padding: 0,
+          fontWeight: 500,
+          transition: "all 0.2s ease",
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.background = "rgba(255, 255, 255, 1)";
+          e.currentTarget.style.boxShadow = "0 4px 12px rgba(30, 30, 30, 0.15)";
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.background = "rgba(255, 255, 255, 0.92)";
+          e.currentTarget.style.boxShadow = "none";
+        }}
+      >
+        ×
+      </button>
+
       {/* Tag « Pièce centrale » sur la vedette (brief Page tenue V2 §7). */}
       {featured && (
         <span style={{

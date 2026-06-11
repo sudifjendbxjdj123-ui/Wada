@@ -39,6 +39,9 @@ import MoodChips from "@/components/MoodChips"; */
    « Composées pour vous » + propagation du profil vers /ma-tenue. */
 import ProfileChip from "@/components/ProfileChip";
 import { useProfile } from "@/hooks/useProfile";
+/* Refonte maquette « Composez votre tenue » 2026-06-11 — nouveau formulaire
+   5 questions (remplace l'ancien PersonalizedCompose inline plus bas). */
+import ComposeForm from "./ComposeForm";
 
 const palette = {
   beige: "#F4EFE7",
@@ -210,7 +213,7 @@ export default function PalettePage({ params }: { params: Promise<{ number: stri
       WebkitFontSmoothing: "antialiased",
     }}>
       
-      <div style={{ maxWidth: 1060, margin: "0 auto", padding: "30px 28px" }}>
+      <div style={{ maxWidth: 880, margin: "0 auto", padding: "30px 28px" }}>
         {/* Retour */}
         <Link href="/palettes" style={{
           display: "inline-flex", gap: 8,
@@ -225,189 +228,56 @@ export default function PalettePage({ params }: { params: Promise<{ number: stri
           ← Retour
         </Link>
 
-        {/* ═══════════════════ HERO 2 COLONNES ═══════════════════
-            Brief client 2026-05-26 « ameliore plus intuitif » : on
-            compacte la palette card (padding 26→20, font 23→19) pour
-            que les 3 looks soient visibles plus vite. La colonne droite
-            gagne en respiration et hiérarchie. */}
-        <div className="wada-palette-hero" style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr",
-          gap: 50,
-          alignItems: "stretch",
-          marginTop: 20,
-        }}>
-          {/* LEFT — palette card avec swatches WADA, compactée */}
+        {/* ═══ TÊTE COMPOSE — refonte maquette 2026-06-11 : pastille palette
+            compacte (remplace les grandes cartes nuancier) + titre éditorial. */}
+        <div style={{ marginTop: 22 }}>
+          {/* Pastille palette compacte : 3 points + n°/culture + nom + actions */}
           <div style={{
-            borderRadius: 22,
-            overflow: "hidden",
-            boxShadow: shadow,
-            border: `1px solid ${palette.line}`,
-            alignSelf: "start",
+            display: "flex", alignItems: "center", gap: 16,
+            background: palette.cream, border: `1px solid ${palette.line}`,
+            borderRadius: 16, padding: "16px 20px",
+            boxShadow: "0 10px 34px -26px rgba(60,40,25,.5)", flexWrap: "wrap",
           }}>
-            {entry.colors.map((c, i) => {
-              const lum = luminance(c.hex);
-              const txt = lum < 140 ? "#fbf1ea" : "#2a1f16";
-              return (
-                <div
-                  key={i}
-                  style={{
-                    display: "flex", alignItems: "center", justifyContent: "space-between",
-                    padding: "20px 22px",
-                    background: c.hex,
-                    color: txt,
-                  }}
-                >
-                  <div>
-                    <p style={{
-                      fontSize: 9, letterSpacing: "0.2em",
-                      textTransform: "uppercase", opacity: 0.7,
-                    }}>
-                      {refCode(c.hex)}
-                    </p>
-                    <p style={{
-                      fontFamily: fonts.display, fontWeight: 600,
-                      fontSize: 19, marginTop: 3, letterSpacing: "-0.005em",
-                    }}>
-                      {c.name}
-                    </p>
-                  </div>
-                  <p style={{ fontSize: 10, opacity: 0.78, letterSpacing: "0.04em" }}>
-                    {c.hex.toUpperCase()}
-                  </p>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* RIGHT — info épurée
-              Brief client 2026-05-26 « rends la plus pertinente, on
-              comprend pas le voir la tenue perdu au milieu ».
-              On retire : les 3 features pills (matières/couleurs/soin =
-              marketing) ET le bouton solo « Voir la tenue » qui faisait
-              doublon avec les 3 cards « Choisissez votre look » plus
-              bas. Maintenant : kicker + nom + 1 phrase italique + ♡ + P
-              dans une rangée discrète. L'action principale (voir une
-              tenue) est entièrement portée par les 3 cards de look. */}
-          {/* Brief 2026-06-07 (design) — colonne droite centrée verticalement
-              pour équilibrer la grande carte nuancier de gauche (avant :
-              contenu collé en haut → grand vide sous les boutons). */}
-          <div style={{
-            display: "flex", flexDirection: "column", justifyContent: "center",
-          }}>
-            <p style={{
-              fontFamily: fonts.display, fontWeight: 600,
-              fontSize: 13, color: palette.bordeaux,
-              letterSpacing: "0.02em",
-            }}>
-              No. {entry.number}
-              {entry.culture && ` · ${cultureLabels[entry.culture] || entry.culture}`}
-            </p>
-            <h1 style={{
-              fontFamily: fonts.display, fontWeight: 700,
-              fontSize: "clamp(36px, 5vw, 50px)",
-              lineHeight: 1.02, margin: "8px 0",
-              letterSpacing: "-0.01em",
-            }}>
-              {entry.name}
-            </h1>
-            <p style={{
-              fontFamily: fonts.body, fontStyle: "italic",
-              fontSize: 18, color: palette.inkSoft,
-              maxWidth: "32ch",
-              margin: "10px 0 24px",
-            }}>
-              {entry.description}
-            </p>
-
-            {/* ♡ favori + Pinterest : actions secondaires discrètes,
-                petites tailles. Plus de gros CTA bordeaux ici. */}
-            <div style={{ display: "flex", gap: 10 }}>
-              <button
-                type="button"
-                onClick={toggleFavorite}
-                aria-label={isFavorite ? "Retirer des favoris" : "Ajouter aux favoris"}
-                style={{
-                  width: 42, height: 42, borderRadius: "50%",
-                  border: `1px solid ${isFavorite ? palette.bordeaux : palette.line}`,
-                  background: isFavorite ? palette.bordeaux : palette.cream,
-                  color: isFavorite ? "#fff" : palette.bordeaux,
-                  fontSize: 16, cursor: "pointer",
-                  transition: `all 0.2s ${ease}`,
-                }}
-              >
-                {isFavorite ? "♥" : "♡"}
-              </button>
-              {/* Brief client 2026-05-27 « mets le vrai logo Pinterest » —
-                  avant on avait juste un « P » texte bordeaux (placeholder).
-                  Maintenant : vrai pictogramme officiel Pinterest (cercle
-                  rouge #E60023 + glyphe « P » blanc), proportions et tracé
-                  fidèles à brand.pinterest.com (path SVG simplifié, libre
-                  d'utilisation pour boutons "Save"/"Pin it"). */}
-              <a
-                href={`https://www.pinterest.com/pin/create/button/?url=${encodeURIComponent(`https://www.wada.style/palette/${entry.number}`)}&media=${encodeURIComponent(`https://www.wada.style/palette/${entry.number}/opengraph-image`)}&description=${encodeURIComponent(
-                  `${entry.name} — accord No. ${entry.number} du dictionnaire Sanzo Wada. ${entry.colors.map((c) => c.name).join(", ")}. La tenue qui va avec cette palette sur WADA. #palette #couleur #tenue #mode #SanzoWada`
-                )}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="Épingler cette palette sur Pinterest"
-                title="Épingler sur Pinterest"
-                style={{
-                  width: 42, height: 42, borderRadius: "50%",
-                  border: `1px solid ${palette.line}`,
-                  background: palette.cream,
-                  cursor: "pointer",
-                  textDecoration: "none",
-                  display: "inline-flex", alignItems: "center", justifyContent: "center",
-                  transition: `all 0.2s ${ease}`,
-                  overflow: "hidden",
-                }}
-              >
-                <svg
-                  width="22"
-                  height="22"
-                  viewBox="0 0 24 24"
-                  fill="#E60023"
-                  aria-hidden
-                >
-                  <path d="M12 0C5.373 0 0 5.372 0 12c0 5.084 3.163 9.426 7.627 11.174-.105-.949-.2-2.405.042-3.441.218-.937 1.407-5.965 1.407-5.965s-.359-.719-.359-1.782c0-1.668.967-2.914 2.171-2.914 1.023 0 1.518.769 1.518 1.69 0 1.029-.655 2.568-.994 3.995-.283 1.194.599 2.169 1.777 2.169 2.133 0 3.772-2.249 3.772-5.495 0-2.873-2.064-4.882-5.012-4.882-3.414 0-5.418 2.561-5.418 5.207 0 1.031.397 2.137.893 2.738a.36.36 0 0 1 .083.343c-.091.378-.293 1.193-.333 1.361-.053.218-.173.265-.4.16-1.494-.696-2.428-2.879-2.428-4.633 0-3.772 2.74-7.235 7.895-7.235 4.144 0 7.366 2.953 7.366 6.899 0 4.117-2.595 7.43-6.199 7.43-1.211 0-2.348-.629-2.738-1.372l-.745 2.84c-.269 1.04-.997 2.345-1.485 3.139C9.572 23.812 10.766 24 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0z"/>
-                </svg>
-              </a>
+            <div style={{ display: "flex", gap: 8 }}>
+              {entry.colors.slice(0, 3).map((c, i) => (
+                <i key={i} style={{ width: 30, height: 30, borderRadius: "50%", background: c.hex, border: "1px solid rgba(0,0,0,.07)", display: "block" }} />
+              ))}
             </div>
+            <div style={{ flex: 1, minWidth: 150 }}>
+              <p style={{ fontFamily: fonts.display, fontSize: 10.5, fontWeight: 600, letterSpacing: "0.2em", textTransform: "uppercase", color: palette.inkSoft, margin: 0 }}>
+                No. {entry.number}{entry.culture && ` · ${cultureLabels[entry.culture] || entry.culture}`}
+              </p>
+              <p style={{ fontFamily: fonts.display, fontSize: 21, fontWeight: 500, color: palette.ink, margin: "2px 0 0", letterSpacing: "-0.2px" }}>
+                {entry.name}
+              </p>
+            </div>
+            <Link href="/palettes" style={{ fontFamily: fonts.sans, fontSize: 13, fontWeight: 500, color: palette.bordeaux, textDecoration: "underline", textUnderlineOffset: 3, whiteSpace: "nowrap" }}>
+              Changer de palette
+            </Link>
+            <button
+              type="button"
+              onClick={toggleFavorite}
+              aria-label={isFavorite ? "Retirer des favoris" : "Ajouter aux favoris"}
+              style={{ width: 38, height: 38, borderRadius: "50%", border: `1px solid ${isFavorite ? palette.bordeaux : palette.line}`, background: isFavorite ? palette.bordeaux : "#fff", color: isFavorite ? "#fff" : palette.bordeaux, fontSize: 15, cursor: "pointer", flexShrink: 0 }}
+            >
+              {isFavorite ? "♥" : "♡"}
+            </button>
           </div>
-        </div>
 
-        {/* ═══════════════════ 3 LOOKS — action principale ═══════════════════
-            Brief client 2026-05-26 : « voir la tenue est perdu au milieu de
-            tout ». L'ancien CTA solo dans la colonne droite faisait doublon
-            avec ces 3 variantes. On en a fait L'ACTION principale :
-            titre plus grand, kicker bordeaux, cards plus aérées, CTA
-            « Voir ce look → » explicite et bordeaux sur chaque card.
-            Sémantique d'override (cf. /ma-tenue lit ?style= & ?occasion=) :
-              - classique  → style=Classique, occasion=quotidien
-              - casual     → style=Minimal,   occasion=quotidien
-              - dressy     → style=Old money, occasion=sorties */}
-        {/* Section action principale — refonte intuitive 2026-05-27.
-            Brief client : « savoir quel type de tenue le client veut ».
-            Avant : titres abstraits (« Ce look » / « Plus décontracté »
-            / « Plus habillé ») obligeaient à lire la desc pour comprendre.
-            Maintenant chaque card mène avec une PASTILLE OCCASION
-            explicite (Au bureau / Au quotidien / En soirée) puis un nom
-            de tenue + 4 chips de pièces concrètes. Le client choisit
-            en 2 secondes selon son besoin réel. */}
-        <h2 style={{
-          textAlign: "center", fontFamily: fonts.display, fontWeight: 700,
-          fontSize: "clamp(26px, 3.4vw, 34px)", margin: "48px 0 10px",
-          color: palette.ink, letterSpacing: "-0.01em",
-        }}>
-          Comment porter <em style={{ fontStyle: "italic", fontWeight: 600 }}>{entry.name.toLowerCase()}</em> ?
-        </h2>
-        <p style={{
-          textAlign: "center", fontSize: 14, color: palette.inkSoft,
-          margin: "0 auto 26px", maxWidth: 480,
-        }}>
-          Réglez vos préférences — WADA compose la tenue adaptée.
-        </p>
+          {/* Eyebrow + titre éditorial + sous-titre */}
+          <p style={{ fontFamily: fonts.display, fontSize: 12.5, fontWeight: 600, letterSpacing: "0.22em", textTransform: "uppercase", color: palette.inkSoft, margin: "40px 0 12px" }}>
+            Personnalisez votre tenue
+          </p>
+          <h1 style={{ fontFamily: fonts.display, fontSize: "clamp(34px, 6vw, 54px)", fontWeight: 600, lineHeight: 1.04, letterSpacing: "-0.02em", margin: 0, color: palette.ink }}>
+            Comment porter{" "}
+            <em style={{ fontStyle: "italic", fontWeight: 500, color: [...entry.colors].sort((a, b) => luminance(a.hex) - luminance(b.hex))[0]?.hex || palette.bordeaux }}>
+              {entry.name}
+            </em>{" "}?
+          </h1>
+          <p style={{ fontFamily: fonts.body, fontSize: 17, lineHeight: 1.6, color: palette.inkSoft, margin: "18px 0 30px", maxWidth: 560 }}>
+            Répondez à 5 questions, et notre styliste WADA compose votre tenue parfaite dans cette palette.
+          </p>
+        </div>
         {/* User feedback 2026-05-31 « rends cette page cohérente elle
             n'a aucun sens pour le client » : retrait du bloc de 5 lignes
             de chips ProfileQuickChips + bloc MoodChips. Sur la page
@@ -426,7 +296,7 @@ export default function PalettePage({ params }: { params: Promise<{ number: stri
             personnalisé qui montre le profil + 1 picker d'occasion +
             1 CTA. Le client voit IMMÉDIATEMENT pour qui est composée
             la tenue et la modifie en 1 clic si besoin. */}
-        <PersonalizedCompose entry={entry} />
+        <ComposeForm entry={entry} />
 
         {/* ═══ STYLISTE IA — alternative aux 3 looks fixes ═══
             Brief client 2026-05-26 « ameliore plus intuitif » : pour
@@ -609,369 +479,8 @@ type Occasion = "bureau" | "quotidien" | "soiree";
 type Univers = "Minimaliste" | "Classique" | "Streetwear" | "Décontracté";
 type Genre = "Femme" | "Homme" | "Mixte";
 
-function PersonalizedCompose({ entry }: { entry: DictionaryEntry }) {
-  const { effective, hydrated } = useProfile();
-  const [occasion, setOccasion] = useState<Occasion>("quotidien");
-  const [univers, setUnivers] = useState<Univers>("Classique");
-  const [genre, setGenre] = useState<Genre>("Homme");
-  const [budget, setBudget] = useState<number>(450);
-
-  /* Re-sync au hydrate : on prend les valeurs du profil comme défaut. */
-  useEffect(() => {
-    if (!hydrated) return;
-    if (effective.style && ["Minimaliste", "Classique", "Streetwear", "Décontracté"].includes(effective.style)) {
-      setUnivers(effective.style as Univers);
-    }
-    if (effective.genre === "Femme" || effective.genre === "Homme") {
-      setGenre(effective.genre);
-    }
-    /* Budget profil → valeur slider raisonnable */
-    if (effective.budget === "< 150€") setBudget(150);
-    else if (effective.budget === "150–400€") setBudget(400);
-    else if (effective.budget === "Premium") setBudget(1000);
-  }, [hydrated, effective.style, effective.genre, effective.budget]);
-
-  if (!hydrated) {
-    return <div style={{ height: 600, marginBottom: 26 }} aria-hidden />;
-  }
-
-  const genreParam = genre === "Femme" ? "femme" : genre === "Homme" ? "homme" : "unisexe";
-  const composeHref = `/ma-tenue?palette=${entry.number}&style=${encodeURIComponent(univers)}&occasion=${occasion}&genre=${genreParam}&maxPrice=${budget >= 1500 ? "" : budget}`;
-
-  /* ─────────── Styles ─────────── */
-  const cardStyle: React.CSSProperties = {
-    background: "#fbf7f0",
-    border: `1px solid ${palette.line}`,
-    borderRadius: 24,
-    padding: "34px clamp(20px,4vw,40px)",
-    maxWidth: 780,
-    margin: "0 auto",
-    boxShadow: "0 18px 50px -28px rgba(60,40,25,.45)",
-  };
-  const secTitle: React.CSSProperties = {
-    fontFamily: fonts.display, fontSize: 12.5, fontWeight: 600,
-    letterSpacing: "0.22em", textTransform: "uppercase",
-    color: palette.bordeaux, marginBottom: 14,
-  };
-  const divider: React.CSSProperties = {
-    height: 1, background: "rgba(0,0,0,.07)", margin: "30px 0 26px",
-  };
-
-  /* Cartes type "Occasion" et "Pour qui" — icône + label, check badge actif */
-  const occCardStyle = (active: boolean): React.CSSProperties => ({
-    background: active ? "#f7e9e3" : "#fff",
-    border: `1.5px solid ${active ? palette.bordeaux : palette.line}`,
-    borderRadius: 16,
-    padding: "22px 16px",
-    textAlign: "center",
-    cursor: "pointer",
-    position: "relative",
-    fontFamily: fonts.display,
-    transition: "all 0.18s",
-    color: active ? palette.bordeaux : palette.ink,
-  });
-  const occIconStyle: React.CSSProperties = {
-    width: 36, height: 36, margin: "0 auto 10px",
-    display: "grid", placeItems: "center",
-  };
-  const occLabelStyle = (active: boolean): React.CSSProperties => ({
-    fontSize: 14, fontWeight: active ? 600 : 500,
-  });
-  const checkBadge: React.CSSProperties = {
-    position: "absolute", top: 10, right: 10,
-    width: 22, height: 22, borderRadius: "50%",
-    background: palette.bordeaux, color: "#fff",
-    display: "grid", placeItems: "center", fontSize: 11,
-  };
-
-  /* Chips type "Univers" — plus compacts, fill bordeaux actif */
-  const univChipStyle = (active: boolean): React.CSSProperties => ({
-    background: active ? palette.bordeaux : "#fff",
-    color: active ? "#fff" : palette.ink,
-    border: `1.5px solid ${active ? palette.bordeaux : palette.line}`,
-    borderRadius: 14,
-    padding: "14px 10px",
-    cursor: "pointer",
-    display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-    fontFamily: fonts.display, fontSize: 14, fontWeight: 500,
-    transition: "all 0.18s",
-  });
-
-  /* Slider */
-  const pct = ((budget - 100) / (1500 - 100)) * 100;
-
-  /* ─────────── Données affichage ─────────── */
-  const occasionLabel = occasion === "bureau" ? "bureau" : occasion === "quotidien" ? "quotidien" : "soirée";
-  const summaryColors = entry.colors.slice(0, 3);
-
-  return (
-    <div style={cardStyle} className="wada-compose-card">
-
-      {/* ═══════ 1. Pour quelle occasion ? ═══════ */}
-      <div style={secTitle}>Pour quelle occasion&nbsp;?</div>
-      <div className="wada-occ-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12 }}>
-        {[
-          { v: "bureau" as const,    label: "Au bureau",    icon: <BriefcaseIcon /> },
-          { v: "quotidien" as const, label: "Au quotidien", icon: <UserIcon /> },
-          { v: "soiree" as const,    label: "En soirée",    icon: <GlassIcon /> },
-        ].map((o) => {
-          const active = occasion === o.v;
-          return (
-            <button key={o.v} type="button" onClick={() => setOccasion(o.v)} style={occCardStyle(active)}>
-              <div style={{ ...occIconStyle, color: active ? palette.bordeaux : palette.inkSoft }}>{o.icon}</div>
-              <div style={occLabelStyle(active)}>{o.label}</div>
-              {active && <span style={checkBadge} aria-hidden>✓</span>}
-            </button>
-          );
-        })}
-      </div>
-
-      <div style={divider} />
-
-      {/* ═══════ 2. Quel univers ? ═══════ */}
-      <div style={secTitle}>Quel univers&nbsp;?</div>
-      <div className="wada-univ-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 10 }}>
-        {(["Minimaliste", "Classique", "Streetwear", "Décontracté"] as Univers[]).map((u) => {
-          const active = univers === u;
-          return (
-            <button key={u} type="button" onClick={() => setUnivers(u)} style={univChipStyle(active)}>
-              <span style={{ width: 22, height: 22, display: "grid", placeItems: "center" }}>{UNIVERS_ICON[u]}</span>
-              {u}
-            </button>
-          );
-        })}
-      </div>
-
-      <div style={divider} />
-
-      {/* ═══════ 3. Budget tenue ═══════ */}
-      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 18 }}>
-        <div style={{ ...secTitle, marginBottom: 0 }}>Budget tenue</div>
-        <span style={{ fontFamily: fonts.sans, fontSize: 12, color: palette.inkSoft, fontWeight: 500 }}>(total)</span>
-        <span
-          title="Budget total estimé pour les 5 pièces de la tenue"
-          style={{
-            width: 18, height: 18, borderRadius: "50%",
-            border: `1px solid ${palette.inkSoft}`,
-            color: palette.inkSoft, fontSize: 11,
-            display: "grid", placeItems: "center", cursor: "help",
-          }}
-        >i</span>
-      </div>
-      <div style={{ position: "relative", padding: "0 4px", marginBottom: 18 }}>
-        <div style={{
-          display: "flex", justifyContent: "space-between",
-          fontFamily: fonts.sans, fontSize: 12,
-          color: palette.inkSoft, marginBottom: 8,
-        }}>
-          <span>100€</span>
-          <span>1500€+</span>
-        </div>
-        <input
-          type="range" min={100} max={1500} step={50}
-          value={budget}
-          onChange={(e) => setBudget(parseInt(e.target.value))}
-          className="wada-budget-slider"
-          style={{
-            width: "100%", height: 8, borderRadius: 999,
-            background: `linear-gradient(to right, ${palette.bordeaux} 0%, ${palette.bordeaux} ${pct}%, #efe7da ${pct}%, #efe7da 100%)`,
-            WebkitAppearance: "none", appearance: "none",
-            outline: "none", cursor: "pointer",
-          }}
-        />
-      </div>
-      <div style={{ textAlign: "center", marginTop: 18 }}>
-        <div style={{
-          fontFamily: fonts.display, fontSize: 30, fontWeight: 500,
-          color: palette.bordeaux, lineHeight: 1, letterSpacing: "-0.5px",
-        }}>
-          {budget >= 1500 ? "1500 €+" : `${budget} €`}
-        </div>
-        <div style={{ fontFamily: fonts.sans, fontSize: 13, color: palette.inkSoft, marginTop: 6 }}>
-          Budget estimé pour la tenue complète
-        </div>
-      </div>
-
-      <div style={divider} />
-
-      {/* ═══════ 4. Pour qui ? ═══════ */}
-      <div style={secTitle}>Pour qui&nbsp;?</div>
-      <div className="wada-occ-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12 }}>
-        {[
-          { v: "Femme" as const, icon: <WomanIcon /> },
-          { v: "Homme" as const, icon: <ManIcon /> },
-          { v: "Mixte" as const, icon: <MixIcon /> },
-        ].map((g) => {
-          const active = genre === g.v;
-          return (
-            <button key={g.v} type="button" onClick={() => setGenre(g.v)} style={occCardStyle(active)}>
-              <div style={{ ...occIconStyle, color: active ? palette.bordeaux : palette.inkSoft }}>{g.icon}</div>
-              <div style={occLabelStyle(active)}>{g.v}</div>
-              {active && <span style={checkBadge} aria-hidden>✓</span>}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* ═══════ 5. Résumé palette ═══════ */}
-      <div className="wada-summary-grid" style={{
-        background: palette.beige,
-        border: `1.5px solid ${palette.line}`,
-        borderRadius: 18,
-        padding: "22px 24px",
-        marginTop: 30,
-        display: "grid",
-        gridTemplateColumns: "auto 1fr auto",
-        gap: 18,
-        alignItems: "center",
-      }}>
-        <div className="wada-sum-pal" style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          {summaryColors.map((c, i) => (
-            <i key={i} style={{
-              width: 38, height: 14, borderRadius: 4, display: "block",
-              border: "1px solid rgba(0,0,0,0.05)",
-              background: c.hex,
-            }} />
-          ))}
-        </div>
-        <div style={{ minWidth: 0 }}>
-          <div style={{
-            fontFamily: fonts.display, fontSize: 10.5, fontWeight: 600,
-            letterSpacing: "0.22em", textTransform: "uppercase",
-            color: palette.inkSoft, marginBottom: 4,
-          }}>
-            Votre sélection
-          </div>
-          <div style={{
-            fontFamily: fonts.display, fontSize: 26, fontWeight: 500,
-            letterSpacing: "-0.3px", marginBottom: 10, lineHeight: 1.1,
-          }}>
-            {entry.name}
-          </div>
-          <div style={{
-            display: "flex", gap: 16, flexWrap: "wrap",
-            fontSize: 13, color: palette.inkSoft,
-            fontFamily: fonts.sans, marginBottom: 6,
-          }}>
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
-              Style <b style={{ marginLeft: 3, color: palette.ink, fontWeight: 500 }}>{univers.toLowerCase()}</b>
-            </span>
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
-              Usage <b style={{ marginLeft: 3, color: palette.ink, fontWeight: 500 }}>{occasionLabel}</b>
-            </span>
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
-              Budget&nbsp;: <b style={{ marginLeft: 3, color: palette.ink, fontWeight: 500 }}>
-                {budget >= 1500 ? "1500 €+" : `${budget} €`}
-              </b>
-            </span>
-          </div>
-          <div style={{ fontSize: 12, color: palette.inkSoft, marginTop: 8 }}>
-            5 pièces sélectionnées
-          </div>
-        </div>
-        <Link
-          href={`/compte`}
-          className="wada-modif-btn"
-          style={{
-            background: "#fff",
-            border: `1px solid ${palette.line}`,
-            borderRadius: 11,
-            padding: "9px 14px",
-            fontFamily: fonts.display, fontSize: 13, fontWeight: 500,
-            color: palette.ink,
-            display: "inline-flex", alignItems: "center", gap: 6,
-            textDecoration: "none",
-          }}
-        >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" width={13} height={13}>
-            <path d="M12 20h9M16 4l4 4-11 11H5v-4z" />
-          </svg>
-          Modifier
-        </Link>
-      </div>
-
-      {/* ═══════ 6. CTA primaire ═══════ */}
-      <Link
-        href={composeHref}
-        style={{
-          display: "block", width: "100%",
-          background: palette.bordeaux,
-          color: "#fff",
-          borderRadius: 16,
-          padding: 18,
-          fontFamily: fonts.display, fontSize: 17, fontWeight: 500,
-          marginTop: 18,
-          textAlign: "center",
-          textDecoration: "none",
-          boxShadow: "0 10px 30px -10px rgba(110,59,50,0.5)",
-          transition: "all 0.18s",
-        }}
-      >
-        Voir ma tenue&nbsp;→
-      </Link>
-
-      {/* Foot message */}
-      <p style={{
-        textAlign: "center", marginTop: 22,
-        fontSize: 13.5, color: palette.inkSoft,
-        display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-      }}>
-        <span style={{ color: palette.bordeaux, fontSize: 14 }}>✦</span>
-        <span>
-          <b style={{ fontFamily: fonts.display, fontWeight: 500, color: palette.ink }}>WADA</b>
-          {" "}compose pour vous une tenue harmonieuse et adaptée à votre style.
-        </span>
-      </p>
-
-      <style jsx>{`
-        :global(.wada-budget-slider::-webkit-slider-thumb) {
-          -webkit-appearance: none;
-          appearance: none;
-          width: 22px; height: 22px;
-          border-radius: 50%;
-          background: ${palette.bordeaux};
-          cursor: pointer;
-          border: none;
-          box-shadow: 0 2px 8px rgba(110,59,50,0.4);
-          transition: transform 0.14s;
-        }
-        :global(.wada-budget-slider::-webkit-slider-thumb:hover) {
-          transform: scale(1.1);
-        }
-        :global(.wada-budget-slider::-moz-range-thumb) {
-          width: 22px; height: 22px;
-          border-radius: 50%;
-          background: ${palette.bordeaux};
-          cursor: pointer;
-          border: none;
-          box-shadow: 0 2px 8px rgba(110,59,50,0.4);
-        }
-        @media (max-width: 680px) {
-          :global(.wada-occ-grid) {
-            grid-template-columns: 1fr !important;
-            gap: 8px !important;
-          }
-          :global(.wada-univ-grid) {
-            grid-template-columns: 1fr 1fr !important;
-            gap: 8px !important;
-          }
-          :global(.wada-summary-grid) {
-            grid-template-columns: auto 1fr !important;
-            gap: 14px !important;
-          }
-          :global(.wada-summary-grid .wada-modif-btn) {
-            grid-column: 1 / -1 !important;
-            justify-self: end !important;
-            margin-top: 6px !important;
-          }
-          :global(.wada-sum-pal) {
-            flex-direction: row !important;
-          }
-        }
-      `}</style>
-    </div>
-  );
-}
+/* PersonalizedCompose (ancien formulaire photo 2) retiré 2026-06-11 —
+   remplacé par ComposeForm (./ComposeForm.tsx, maquette photo 1). */
 
 /* ──────────── Icônes inline (stroke 1.6-1.8) ──────────── */
 const BriefcaseIcon = () => (

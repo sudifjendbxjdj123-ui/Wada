@@ -684,6 +684,30 @@ export function StylistPageContent() {
     });
   }
 
+  /* Fix 2026-06-11 « logique IA » : détecte une couleur déjà présente dans
+     la phrase de la pièce (« Un pull noir », « Chemise bordeaux », « Marine »).
+     Sans ça, le bot demande la couleur même quand l'user l'a déjà donnée,
+     puis écrase la vraie réponse par le clic chip suivant. Cherche d'abord
+     les nuances (Marine, Pétrole, Sable…) avant les familles (Bleu, Beige…)
+     pour qu'un « pull marine » ne soit pas matché comme « bleu » générique. */
+  function detectColorInText(text: string): { label: string; hex: string } | null {
+    const lower = ` ${text.toLowerCase()} `;
+    for (const nuances of Object.values(NUANCES_PAR_COULEUR)) {
+      for (const n of nuances) {
+        if (lower.includes(` ${n.label.toLowerCase()} `) || lower.includes(` ${n.label.toLowerCase()},`)) {
+          return { label: n.label, hex: n.hex };
+        }
+      }
+    }
+    for (const [label, hex] of Object.entries(COULEURS)) {
+      const k = label.toLowerCase();
+      if (lower.includes(` ${k} `) || lower.includes(` ${k},`) || lower.endsWith(` ${k} `)) {
+        return { label, hex };
+      }
+    }
+    return null;
+  }
+
   /* ─── Étape 2B (anchor) : pièce ─── */
   function onPiece(t: string) {
     addMe(t);
@@ -704,8 +728,37 @@ export function StylistPageContent() {
     } else if (/autre/i.test(t)) {
       piece = "votre pièce"; role = "Haut";
     }
-    setState((s) => ({ ...s, piece, anchorRole: role }));
+    /* Fix 2026-06-11 : extrait la couleur si elle est dans la phrase et
+       saute la question couleur. Sinon, on tombe sur le flow d'origine. */
+    const detected = detectColorInText(t);
+    setState((s) => ({
+      ...s,
+      piece,
+      anchorRole: role,
+      ...(detected ? { couleur: detected.label, couleurHex: detected.hex } : {}),
+    }));
     botDelay(() => {
+      if (detected) {
+        const nuances = NUANCES_PAR_COULEUR[detected.label];
+        if (nuances && nuances.length > 0) {
+          addBot(`Un ${piece.toLowerCase()} ${detected.label.toLowerCase()} — quelle nuance ?`);
+          setChips(nuances.map((n) => ({ label: n.label })));
+          setNextChipHandler(() => (c: string) => {
+            addMe(c);
+            setChips([]);
+            const picked = nuances.find((n) => n.label === c) || nuances[0];
+            setState((s) => ({ ...s, couleur: picked.label, couleurHex: picked.hex }));
+            botDelay(() => {
+              addBot(`${picked.label}, parfait — quel style autour ?`);
+              setChips(Object.keys(STYLES).map((k) => ({ label: k })));
+            });
+          });
+          return;
+        }
+        addBot(`Un ${piece.toLowerCase()} ${detected.label.toLowerCase()}, parfait — quel style autour ?`);
+        setChips(Object.keys(STYLES).map((k) => ({ label: k })));
+        return;
+      }
       const intro =
         piece === "Loro Piana"
           ? "Très beau choix — le luxe discret, le daim. De quelle couleur sont-elles ?"
