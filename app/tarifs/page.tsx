@@ -591,10 +591,10 @@ export default function TarifsPage() {
                 lineHeight: 1.05, letterSpacing: "-0.02em", margin: "0 0 20px",
                 fontStyle: "italic", color: "#FFFFFF",
               }}>
-                Sept jours <SketchUnderline color="#FFFFFF">offerts</SketchUnderline>. Aucune carte.
+                Sept jours <SketchUnderline color="#FFFFFF">offerts</SketchUnderline>. Sans engagement.
               </h2>
               <p style={{ fontFamily: fontBody, fontSize: 19, color: "rgba(255,255,255,0.85)", margin: "0 auto 32px", maxWidth: 560, lineHeight: 1.5 }}>
-                Essayez Premium sans engagement. Annulez en un clic si ça ne vous parle pas.
+                Essayez Premium librement. Annulez en un clic si ça ne vous parle pas.
               </p>
               <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
                 <button

@@ -37,7 +37,7 @@ const QUESTIONS: Array<{ q: string; a: string }> = [
   },
   {
     q: "Qu'est-ce que WADA Premium ?",
-    a: "Un abonnement (1,99 €/mois, ou 17,99 €/an) qui ajoute les looks du jour, les inspirations par culture, l'exploration par teinte et des recommandations personnalisées. Essai 7 jours sans carte, annulable en un clic.",
+    a: "Un abonnement (1,99 €/mois, ou 17,99 €/an) qui ajoute les looks du jour, les inspirations par culture, l'exploration par teinte et des recommandations personnalisées. Essai 7 jours sans engagement, annulable en un clic.",
   },
   {
     q: "Mes photos sont-elles envoyées à WADA ?",
