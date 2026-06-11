@@ -69,13 +69,13 @@ export default function ConfidentialitePage() {
 
             <h2 style={{ fontSize: 24, margin: "32px 0 16px" }}>4. Liens et programmes d'affiliation</h2>
             <p style={{ color: textSecondary, marginBottom: 16 }}>
-              Quand vous cliquez sur un lien d'achat (Vinted, Zara, COS, Polène, Sézane, etc.), vous quittez WADA et entrez sur le site de la boutique, qui possède sa propre politique de confidentialité.
+              Quand vous cliquez sur un lien d'achat vers une de nos boutiques partenaires, vous quittez WADA et entrez sur le site de la boutique, qui possède sa propre politique de confidentialité.
             </p>
             <p style={{ color: textSecondary, marginBottom: 16 }}>
               <strong>Programmes d'affiliation utilisés par WADA :</strong>
             </p>
             <ul style={{ color: textSecondary, marginBottom: 16, paddingLeft: 20 }}>
-              <li><strong>Awin</strong> (publisher ID 2879911) — réseau d'affiliation pour marques européennes (Sézane, Lacoste, COS, etc.). Cookie de suivi déposé pour 30 jours typiquement, attribue la vente à WADA si vous achetez. <a href="https://www.awin.com/fr/legal/politique-de-confidentialite" target="_blank" rel="noopener noreferrer" style={{ color: ink }}>Politique Awin</a>.</li>
+              <li><strong>Awin</strong> (publisher ID 2879911) — réseau d'affiliation pour marques mode et lifestyle européennes. Cookie de suivi déposé pour 30 jours typiquement, attribue la vente à WADA si vous achetez. <a href="https://www.awin.com/fr/legal/politique-de-confidentialite" target="_blank" rel="noopener noreferrer" style={{ color: ink }}>Politique Awin</a>.</li>
               <li><strong>Amazon Associates</strong> (tag wadastyle-21) — programme d'affiliation Amazon. Cookie déposé pour 24 heures (10 jours pour un panier validé). <a href="https://www.amazon.fr/gp/help/customer/display.html?nodeId=GVP69FUNYG8DKEY3" target="_blank" rel="noopener noreferrer" style={{ color: ink }}>Politique Amazon</a>.</li>
             </ul>
             <p style={{ color: textSecondary, marginBottom: 16 }}>

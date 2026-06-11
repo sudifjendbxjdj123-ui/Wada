@@ -128,24 +128,27 @@ export default function FonctionnalitesPage() {
             <ValueSection
               label="III · L'achat"
               title="De la couleur à la commande en secondes."
-              description="Cliquez sur la tenue, choisissez votre boutique — Vinted, Sézane, COS, Net-a-Porter. Wada vous y conduit, vous achetez, vous portez. Aucun compte, aucun panier captif."
+              description="Cliquez sur la tenue, choisissez parmi nos boutiques partenaires. Wada vous y conduit, vous achetez, vous portez. Aucun compte, aucun panier captif."
               ctaLabel="Voir les boutiques"
               ctaHref="/cultures"
               visual={(
                 <div style={{ display: "flex", flexDirection: "column", gap: 8, width: "100%", maxWidth: 260 }}>
+                  {/* Brief 2026-06-11 (audit /tarifs · honnêteté) : remplacé les
+                      boutiques fictives + notes étoiles INVENTÉES par les vrais
+                      canaux affiliés WADA, sans note fabriquée. */}
                   {[
-                    { label: "Vinted",        sub: "Seconde main",  stars: 5 },
-                    { label: "COS",           sub: "Premium",       stars: 5 },
-                    { label: "Zara",          sub: "Prêt-à-porter", stars: 3 },
-                    { label: "Net-a-Porter",  sub: "Luxe",          stars: 5 },
-                    { label: "Sézane",        sub: "Premium FR",    stars: 5 },
+                    { label: "MUJI",                 sub: "Basiques japonais" },
+                    { label: "Suitable",             sub: "Tailoring & costume" },
+                    { label: "The Business Fashion", sub: "Mode contemporaine" },
+                    { label: "New Era",              sub: "Casquettes" },
+                    { label: "Amazon",               sub: "Sélection mode" },
                   ].map((b) => (
                     <div key={b.label} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: paper, border: `1px solid ${border}`, padding: "10px 14px" }}>
                       <div>
                         <p style={{ fontSize: 12, fontWeight: 600, letterSpacing: "0.05em", margin: 0, fontFamily: "'Inter', sans-serif" }}>{b.label}</p>
                         <p style={{ fontSize: 9, letterSpacing: "0.2em", textTransform: "uppercase", color: subtle, margin: "2px 0 0", fontFamily: "'Inter', sans-serif" }}>{b.sub}</p>
                       </div>
-                      <span style={{ fontSize: 10, color: seal, letterSpacing: 0 }}>{"★".repeat(b.stars)}</span>
+                      <span style={{ fontSize: 13, color: seal, letterSpacing: 0 }} aria-hidden="true">↗</span>
                     </div>
                   ))}
                 </div>

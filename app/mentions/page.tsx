@@ -74,7 +74,7 @@ export default function MentionsPage() {
 
             <h2 style={{ fontSize: 24, margin: "32px 0 16px" }}>Liens externes et affiliation</h2>
             <p style={{ color: textSecondary, marginBottom: 16 }}>
-              WADA propose des liens vers des boutiques tierces (Vinted, Zara, Massimo Dutti, COS, Polène, Sézane, etc.). Certains de ces liens sont des liens d'affiliation : si vous effectuez un achat via ces liens, WADA peut percevoir une commission de la part de la boutique, sans surcoût pour vous.
+              WADA propose des liens vers des boutiques tierces partenaires. Certains de ces liens sont des liens d'affiliation : si vous effectuez un achat via ces liens, WADA peut percevoir une commission de la part de la boutique, sans surcoût pour vous.
             </p>
             <p style={{ color: textSecondary, marginBottom: 16 }}>
               <strong>Programmes d'affiliation actifs :</strong>

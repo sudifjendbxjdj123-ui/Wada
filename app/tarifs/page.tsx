@@ -103,7 +103,7 @@ const PREMIUM_PLAN: PremiumPlan = {
 const FAQ: Array<{ q: string; a: string }> = [
   {
     q: "Combien coûtent les vêtements ?",
-    a: "WADA ne vend rien directement. Vous êtes redirigé vers les boutiques (Vinted, Sézane, COS, Net-a-Porter…) où vous achetez au prix de la marque. WADA touche une petite commission d'affiliation — sans surcoût pour vous.",
+    a: "WADA ne vend rien directement. Vous êtes redirigé vers nos boutiques partenaires où vous achetez au prix de la marque. WADA touche une petite commission d'affiliation — sans surcoût pour vous.",
   },
   {
     q: "Faut-il un compte pour commencer ?",

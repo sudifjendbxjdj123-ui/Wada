@@ -659,8 +659,8 @@ const PARTNERS = [
   },
   {
     tag: "À venir",
-    title: "Sezane · Sandro · Maje · Net-a-Porter…",
-    desc: "De nouvelles maisons rejoignent WADA chaque semaine. Vous voulez la vôtre ?",
+    title: "De nouvelles maisons partenaires…",
+    desc: "Le cercle de nos boutiques partenaires s'agrandit. Vous voulez la vôtre ?",
     cta: "Écrivez-nous",
     range: "Un vestiaire en constante évolution",
     unit: "",

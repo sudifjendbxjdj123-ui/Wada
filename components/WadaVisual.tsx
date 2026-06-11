@@ -190,12 +190,14 @@ export default function WadaVisual({
   }
 
   if (kind === "shop-chips") {
+    /* Brief 2026-06-11 (audit honnêteté) : vrais canaux affiliés WADA,
+       plus de boutiques fictives. */
     const chips = [
-      { label: "Vinted",       sub: "Seconde main",  color: "#5C2018" },
-      { label: "Sézane",       sub: "Premium FR",    color: "#3A4555" },
-      { label: "COS",          sub: "Minimaliste",   color: "#7E7166" },
-      { label: "Net-a-Porter", sub: "Luxe",          color: "#1B2840" },
-      { label: "Amazon",       sub: "Marketplace",   color: "#C44E3A" },
+      { label: "MUJI",                 sub: "Basiques",    color: "#5C2018" },
+      { label: "Suitable",             sub: "Tailoring",   color: "#3A4555" },
+      { label: "The Business Fashion", sub: "Mode",        color: "#7E7166" },
+      { label: "New Era",              sub: "Casquettes",  color: "#1B2840" },
+      { label: "Amazon",               sub: "Marketplace", color: "#C44E3A" },
     ];
     return (
       <div style={{

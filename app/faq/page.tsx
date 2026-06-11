@@ -29,7 +29,7 @@ const QUESTIONS: Array<{ q: string; a: string }> = [
   },
   {
     q: "Combien coûtent les vêtements ?",
-    a: "WADA ne vend rien directement. Vous êtes redirigé vers les boutiques (COS, Sézane, Vinted, Net-a-Porter…) au prix de la marque. WADA touche une petite commission d'affiliation, sans surcoût pour vous.",
+    a: "WADA ne vend rien directement. Vous êtes redirigé vers nos boutiques partenaires au prix de la marque. WADA touche une petite commission d'affiliation, sans surcoût pour vous.",
   },
   {
     q: "Faut-il un compte pour commencer ?",

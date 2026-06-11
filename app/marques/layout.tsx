@@ -9,8 +9,8 @@ export const revalidate = 604800; // 7 days in seconds
 
 export const metadata = pageMetadata({
   path: "/marques",
-  title: "64 marques partenaires WADA — Nos sélections mode",
-  description: "Découvrez les 64 marques partenaires WADA : MUJI, COS, Uniqlo, Lemaire, Stone Island, et bien d'autres. Mode responsable, qualité premium, prix accessibles.",
+  title: "Nos marques partenaires — Sélections mode WADA",
+  description: "Découvrez les marques partenaires de WADA : mode responsable, qualité premium, prix accessibles.",
 });
 
 export default function MarquesLayout({ children }: { children: React.ReactNode }) {

@@ -75,7 +75,7 @@ export default function CGVPage() {
 
             <h2 style={{ fontSize: 24, margin: "32px 0 16px" }}>Article 6 — Liens vers les boutiques tierces</h2>
             <p style={{ color: textSecondary, marginBottom: 16 }}>
-              WADA ne vend aucun bien physique. Les achats effectués via les liens proposés (Vinted, Zara, Massimo Dutti, COS, Polène, Sézane, etc.) relèvent exclusivement du contrat conclu entre vous et la boutique concernée. WADA ne peut être tenu responsable d'un litige relatif à ces achats (livraison, remboursement, qualité, conformité, etc.).
+              WADA ne vend aucun bien physique. Les achats effectués via les liens proposés vers nos boutiques partenaires relèvent exclusivement du contrat conclu entre vous et la boutique concernée. WADA ne peut être tenu responsable d'un litige relatif à ces achats (livraison, remboursement, qualité, conformité, etc.).
             </p>
 
             <h2 style={{ fontSize: 24, margin: "32px 0 16px" }}>Article 7 — Affiliation</h2>
