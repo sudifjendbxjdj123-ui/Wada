@@ -1,6 +1,8 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useFavorites } from "@/hooks/useFavorites";
+import { useSavedOutfits } from "@/hooks/useSavedOutfits";
 
 /**
  * MobileTabBar — barre d'onglets fixée en bas, visible uniquement ≤880px.
@@ -115,6 +117,11 @@ const TABS: Array<{
 
 export default function MobileTabBar() {
   const path = usePathname() || "/";
+  const { favorites, hydrated: favHydrated } = useFavorites();
+  const { outfits, hydrated: outfitHydrated } = useSavedOutfits();
+
+  const notifCount = favorites.length + outfits.length;
+  const showNotif = favHydrated && outfitHydrated && notifCount > 0;
 
   return (
     <nav className="wada-tabbar" aria-label="Navigation mobile">
@@ -154,16 +161,27 @@ export default function MobileTabBar() {
           );
         }
 
+        const isFavoritesTab = t.href === "/favoris";
+
         return (
           <Link
             key={t.href}
             href={t.href}
             aria-current={active ? "page" : undefined}
             className="wada-tabbar-link"
+            style={{ position: "relative" }}
           >
             <span className="wada-tabbar-icon" aria-hidden="true">
               <Icon kind={t.icon} />
             </span>
+            {isFavoritesTab && showNotif && (
+              <span
+                className="wada-tabbar-badge"
+                aria-label={`${notifCount} favoris sauvegardés`}
+              >
+                {notifCount > 9 ? "9+" : notifCount}
+              </span>
+            )}
             <span className="wada-tabbar-label">{t.label}</span>
           </Link>
         );

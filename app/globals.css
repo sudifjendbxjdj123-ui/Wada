@@ -2172,6 +2172,32 @@ a[data-wada-btn="ghost"]:hover {
     color: #C9A567;
   }
 
+  /* Badge notification rouge sur l'onglet Favoris */
+  .wada-tabbar-badge {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    background: #E63946;
+    color: #fff;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: 700;
+    box-shadow: 0 2px 8px rgba(230, 57, 70, 0.4);
+    animation: wada-badge-pulse 2s ease-in-out infinite;
+  }
+  @keyframes wada-badge-pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.08); }
+  }
+  [data-theme="dark"] .wada-tabbar-badge {
+    background: #EF5350;
+  }
+
   /* Pousse le contenu pour ne pas passer sous la tabbar.
      Hauteur estimée : 6+20+3+10+6 ≈ 45px + safe-area. On prend
      56px + safe-area pour confort. */
