@@ -247,10 +247,11 @@ export default function Home() {
           position: "absolute",
           left: 0,
           right: 0,
-          // Distance depuis le bas : on remonte légèrement le bloc texte
-          // (demande user « monte un petit ce texte ») : 140px de marge +
-          // safe-area-inset-bottom pour rester au-dessus de la MobileTabBar.
-          bottom: "calc(140px + env(safe-area-inset-bottom, 0px))",
+          // Distance depuis le bas : bloc texte remonté (demande user 2026-06-10
+          // « lève le texte ») de 140 → 200px, pour que le H1 + les 2 CTAs
+          // (dont « Notre histoire ») soient bien au-dessus de la MobileTabBar
+          // et non rognés. + safe-area-inset-bottom.
+          bottom: "calc(200px + env(safe-area-inset-bottom, 0px))",
           zIndex: 3,
           padding: "0 22px",
           display: "flex",
