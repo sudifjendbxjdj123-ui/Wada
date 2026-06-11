@@ -142,13 +142,12 @@ async function _readAllProductsFromKV(): Promise<ProduitAwin[]> {
      Fix : on lit par lots de READ_BATCH, + une passe de retry sur les
      chunks manquants (les échecs Upstash sont surtout transitoires).
 
-     PERF 2026-06-11 (« attente trop longue ») : READ_BATCH 24 → 48. Le cold
-     start d'une instance serverless relit les ~350 chunks ; à 24/lot ça faisait
-     ~15 rounds séquentiels (~4s mesuré). À 48/lot → ~8 rounds (~2s). La passe de
-     retry ci-dessous couvre les échecs transitoires qu'une concurrence plus
-     élevée pourrait provoquer, donc le garde-fou anti-troncature de 06-09 reste
-     intact (seules les lectures COMPLÈTES sont mises en cache). */
-  const READ_BATCH = 48;
+     NB 2026-06-11 : testé READ_BATCH 24 → 48 pour accélérer le cold start —
+     AUCUN gain mesuré (cold ≈ 5s avant/après). Le coût froid est le boot
+     serverless + la latence réseau Upstash, pas le nombre de rounds. Donc on
+     RESTE à 24, la valeur sûre validée après l'incident de troncature du
+     2026-06-09 (350 fetch simultanés saturaient les connexions). */
+  const READ_BATCH = 24;
   const chunks: (ProduitAwin[] | null)[] = new Array(meta.chunks).fill(null);
   for (let start = 0; start < meta.chunks; start += READ_BATCH) {
     const end = Math.min(start + READ_BATCH, meta.chunks);
