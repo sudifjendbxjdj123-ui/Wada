@@ -355,6 +355,27 @@ function MaTenueContent() {
     });
   }, []);
 
+  /* PERF 2026-06-11 (« attente trop longue ») — préfetch de TOUTE la tenue en
+     UNE requête /api/outfit, au lieu des 5 fetches /api/products simultanés
+     que lançaient les 5 cartes (5 cold starts serverless → mur ~5s). Chaque
+     carte reçoit son produit pré-résolu via la prop `prefetched` et n'émet
+     plus son propre fetch. Si /api/outfit échoue, `outfitPrefetch` reste null
+     → les cartes fetchent elles-mêmes (fallback legacy). Type produit = produit
+     formaté /api/products (identique à ce que chaque carte recevait). */
+  type PrefetchedProduct = {
+    id: string; nom: string; marque?: string; marchand?: string;
+    marchandSlug?: string; imageLocal?: string; largeImage?: string;
+    image?: string; prix: number; devise: string; urlProduit: string;
+    couleurNom?: string; hex: string;
+  };
+  const [outfitPrefetch, setOutfitPrefetch] = useState<Record<string, PrefetchedProduct> | null>(null);
+  /* Tant que le préfetch tenue est EN COURS, les cartes ne lancent PAS leur
+     propre fetch (sinon on relance les 5 GET /api/products = le cold-start
+     qu'on veut justement éviter). Passe à false dès que /api/outfit répond
+     (succès OU échec) ou au timeout de secours → fallback fetch par carte. */
+  const [prefetchPending, setPrefetchPending] = useState(true);
+  const prefetchSigRef = useRef<string>("");
+
   /* Scanner Phase 2+3 (2026-05-31) — ancre stockée par /composer en
      sessionStorage après une Vision API réussie. Le slot ancré est exclu
      du composer (le client a déjà cette pièce) et affiché en 1ère carte
@@ -527,6 +548,98 @@ function MaTenueContent() {
 
   /* Genre du client (priorité au choix explicite, fallback sur la palette). */
   const userGender = prefs.gender || (entry ? paletteGender(entry.composition) : null);
+
+  /* PERF 2026-06-11 — déclenche le préfetch tenue (1 requête /api/outfit) dès
+     que la composition est prête. On réplique EXACTEMENT les params que chaque
+     carte aurait envoyés (slot, color=_slot.color.hex, seed, + saison/occasion/
+     envie partagés), pour que les produits pré-résolus soient identiques à un
+     fetch par carte. Re-fetch seulement si la signature (palette/genre/style/
+     slots) change. La re-sélection tier (outlier prix) reste gérée par carte. */
+  useEffect(() => {
+    /* Pas encore prête (entry/dico en cours) : on NE touche PAS à
+       prefetchPending. Aucune carte n'est montée tant que composition est
+       vide, et on doit garder le gate FERMÉ (pending=true initial) pour que,
+       quand les cartes montent, elles attendent le préfetch au lieu de
+       lancer leurs 5 GET. On ne débloque QUE via un vrai aboutissement de
+       /api/outfit (succès/échec/timeout) ci-dessous. */
+    if (!entry || composition.length === 0) return;
+    const sig = JSON.stringify({
+      p: entry.number, g: userGender, s: prefs.style || "",
+      slots: composition.map((c) => c.piece),
+    });
+    if (prefetchSigRef.current === sig) return;
+    prefetchSigRef.current = sig;
+
+    let cancelled = false;
+    setPrefetchPending(true);
+    /* Filet de sécurité : si /api/outfit traîne (> 8s, ex. cold start lent),
+       on débloque les cartes pour qu'elles fetchent elles-mêmes plutôt que
+       rester en skeleton indéfiniment. */
+    const safety = setTimeout(() => { if (!cancelled) setPrefetchPending(false); }, 8000);
+    const done = () => { if (!cancelled) { clearTimeout(safety); setPrefetchPending(false); } };
+    let season: string | undefined, occasion: string | undefined, envie: string | undefined;
+    try {
+      const profileRaw = localStorage.getItem("wada.profile");
+      if (profileRaw) {
+        const pr = JSON.parse(profileRaw);
+        if (pr?.saison === "Hiver") season = "hiver,automne";
+        else if (pr?.saison === "Été") season = "été,printemps";
+        else if (pr?.saison === "Mi-saison") season = "automne,printemps";
+      }
+    } catch {}
+    try {
+      const urlOcc = new URLSearchParams(window.location.search).get("occasion");
+      if (urlOcc) occasion = urlOcc;
+    } catch {}
+    try {
+      const moodRaw = localStorage.getItem("wada.mood");
+      if (moodRaw) {
+        const mood = JSON.parse(moodRaw);
+        const today = new Date().toISOString().slice(0, 10);
+        if (mood?.date === today && mood?.perception) {
+          const ENVIE_MAP: Record<string, string> = {
+            "Élégant": "elegant", "Créatif": "creatif", "Accessible": "confortable",
+            "Autoritaire": "affirme", "Séduisant": "affirme", "Mystérieux": "discret",
+          };
+          envie = ENVIE_MAP[mood.perception];
+        }
+      }
+    } catch {}
+
+    const slots = composition.map((piece) => {
+      const s = piece._slot;
+      const color = s?.color || entry.colors[0];
+      return {
+        slot: piece.piece,
+        color: color?.hex,
+        seed: `${entry.number}-${piece.piece}-${prefs.style || "default"}`,
+      };
+    });
+    const body = {
+      slots, palette: entry.number,
+      genre: userGender || undefined,
+      style: prefs.style || undefined,
+      season, occasion, envie,
+    };
+    fetch("/api/outfit", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { slots?: Array<{ slot: string; product: PrefetchedProduct | null }> } | null) => {
+        if (cancelled) return;
+        if (d?.slots) {
+          const map: Record<string, PrefetchedProduct> = {};
+          for (const s of d.slots) if (s.product) map[s.slot] = s.product;
+          setOutfitPrefetch(map);
+        }
+        done();
+      })
+      .catch(() => { done(); /* échec → cartes en fallback fetch */ });
+    return () => { cancelled = true; clearTimeout(safety); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [entry?.number, userGender, prefs.style, composition.length]);
 
   /* Brief 2026-05-31 v8 — Couche 6 : validation LLM de la tenue assemblée.
      Déclenchée quand TOUTES les pièces de composition sont résolues. Envoie
@@ -1174,6 +1287,9 @@ function MaTenueContent() {
                   /* Brief 2026-06-07 COHÉRENCE DE TIER : plafond imposé si
                      cette pièce est un outlier de prix dans la tenue. */
                   tierMaxPrice={tierCeilings[piece.piece] ?? null}
+                  /* PERF 2026-06-11 : produit pré-résolu par /api/outfit. */
+                  prefetched={outfitPrefetch?.[piece.piece] ?? null}
+                  prefetchPending={prefetchPending}
                 />
               </div>
             );
@@ -2227,6 +2343,18 @@ function useMujiProduct(
    *  l'API re-sélectionne une pièce ≤ ce plafond dans le même slot/couleur,
    *  ramenant la tenue dans un tier de prix homogène. */
   tierMaxPrice?: number | null,
+  /** PERF 2026-06-11 — produit déjà résolu par /api/outfit (composition de
+   *  toute la tenue en 1 requête). Si fourni (et pas de plafond tier), la
+   *  carte l'applique directement sans refaire son propre fetch. */
+  prefetched?: {
+    id: string; nom: string; marque?: string; marchand?: string;
+    marchandSlug?: string; imageLocal?: string; largeImage?: string;
+    image?: string; prix: number; devise: string; urlProduit: string;
+    couleurNom?: string; hex: string;
+  } | null,
+  /** PERF 2026-06-11 — true tant que le préfetch tenue (/api/outfit) est en
+   *  cours. La carte attend (aucun fetch) pour ne pas relancer les 5 GET. */
+  prefetchPending?: boolean,
 ) {
   const [product, setProduct] = useState<{
     id: string;
@@ -2388,6 +2516,27 @@ function useMujiProduct(
       onPicked?.(p.id);
     };
 
+    /* PERF 2026-06-11 (« attente trop longue ») — ATTENTE du préfetch tenue.
+       Tant que /api/outfit n'a pas répondu (prefetchPending), la carte ne
+       fetch PAS : sinon on relance les 5 GET /api/products simultanés (le
+       cold-start qu'on veut éliminer). L'effet se relance quand pending
+       passe à false (via les deps). Exception : une re-sélection tier
+       (tierMaxPrice) doit pouvoir refetch même hors préfetch. */
+    if (prefetchPending && (tierMaxPrice == null || tierMaxPrice <= 0)) {
+      return () => { cancelled = true; };
+    }
+
+    /* Produit pré-résolu par /api/outfit (1 requête tenue → 1 cold start au
+       lieu de 5). On l'applique directement et on saute le fetch de cette
+       carte. EXCEPTION : un plafond tier (pièce outlier en prix) impose une
+       re-sélection → on retombe sur le fetch par carte avec tierCap. Si
+       `prefetched` est absent (échec /api/outfit), la carte fetch elle-même
+       → fallback robuste, comportement legacy. */
+    if (prefetched && (tierMaxPrice == null || tierMaxPrice <= 0)) {
+      applyProduct(prefetched);
+      return () => { cancelled = true; };
+    }
+
     const pickFrom = (sp: URLSearchParams) =>
       fetch(`/api/products?${sp}`)
         .then((r) => (r.ok ? r.json() : null))
@@ -2423,7 +2572,7 @@ function useMujiProduct(
     })();
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [slot, colorHex, paletteRef, genre, style, seed, excludeKey, selectedNamesStr, tierMaxPrice]);
+  }, [slot, colorHex, paletteRef, genre, style, seed, excludeKey, selectedNamesStr, tierMaxPrice, prefetched, prefetchPending]);
 
   return product;
 }
@@ -2431,7 +2580,7 @@ function useMujiProduct(
 function PieceCard({
   piece, itemName, color, merchants, paletteRef, genre, style,
   seed, excludeIds, onPicked, featured, onPriceResolved, onPieceMetaResolved,
-  selectedNamesStr, onImageResolved, tierMaxPrice,
+  selectedNamesStr, onImageResolved, tierMaxPrice, prefetched, prefetchPending,
 }: {
   piece: string;
   itemName: string;
@@ -2469,6 +2618,17 @@ function PieceCard({
   /** Brief 2026-06-07 COHÉRENCE DE TIER — plafond prix imposé par le parent
    *  quand cette pièce est un outlier (> 5× la médiane des autres). null sinon. */
   tierMaxPrice?: number | null;
+  /** PERF 2026-06-11 — produit pré-résolu par /api/outfit (composition tenue
+   *  en 1 requête). Court-circuite le fetch par carte quand fourni. */
+  prefetched?: {
+    id: string; nom: string; marque?: string; marchand?: string;
+    marchandSlug?: string; imageLocal?: string; largeImage?: string;
+    image?: string; prix: number; devise: string; urlProduit: string;
+    couleurNom?: string; hex: string;
+  } | null;
+  /** PERF 2026-06-11 — true tant que /api/outfit n'a pas répondu : la carte
+   *  attend (pas de fetch propre) pour ne pas relancer les 5 GET cold-start. */
+  prefetchPending?: boolean;
 }) {
   // Tentative MUJI réel — brief variété : on passe la VRAIE couleur de la
   // palette assignée à ce slot (color.hex) + un seed unique par slot.
@@ -2483,6 +2643,8 @@ function PieceCard({
     onPicked,
     selectedNamesStr,
     tierMaxPrice,
+    prefetched,
+    prefetchPending,
   );
   /* Quand le produit est résolu (prix réel arrivé), on remonte au parent. */
   useEffect(() => {
