@@ -297,6 +297,46 @@ export async function GET(req: Request) {
      — pas de commission, pas de fiabilité. */
   filtered = filtered.filter((p) => isAffiliated(p.marchandSlug || ""));
 
+  /* ─── PERF 2026-06-11 (« attente trop longue ») — filtres discriminants EN PREMIER.
+     La page /ma-tenue lance 5 appels simultanés ; chacun refait tout le matching
+     sur ~36k produits → ils se sérialisent sur l'event-loop Node (mesuré : 5,5s mur,
+     dernière carte 5,3s). Les passes coûteuses qui suivent (inferMacroStyle par
+     produit pour la palette + selectedNames, longues chaînes de regex) tournaient
+     sur le catalogue ENTIER avant le filtre slot. On déplace ici slot/marchand/
+     excludeIds/genre — qui réduisent le pool ~5× (un slot ≈ quelques milliers) —
+     pour que tout le reste opère sur l'ensemble réduit. Résultat identique (filtres
+     conjonctifs, l'ordre ne change que le coût) ; initialPool (fallback) capturé
+     plus haut, donc inchangé. */
+  // Brief §1 : strict slot match
+  if (slot) filtered = filtered.filter((p) => p.categorie === slot);
+  if (merchant) filtered = filtered.filter((p) => p.marchandSlug === merchant);
+  // Brief 2026-05-28 (dedup intra-tenue) : exclure les produits déjà
+  // sélectionnés sur les autres slots de la même tenue.
+  if (excludeIds) filtered = filtered.filter((p) => !excludeIds.has(p.id));
+  // Brief §3 : genre identique sur toute la tenue (+ unisexe accepté).
+  // Brief « Page Tenue maître » P0-1 (24/05) : depuis l'ajout du sentinel
+  // `inconnu` dans ProductGenre, les produits sans tag explicite ne
+  // passent plus ce filtre (avant ils étaient classés "unisexe" par défaut
+  // et leakaient dans les deux genres).
+  if (genre === "homme" || genre === "femme") {
+    filtered = filtered.filter((p) => p.genre === genre || p.genre === "unisexe");
+    /* Fix 2026-05-31 v3 (user feedback « pas de muji tbf ») : la regex
+       v2 filtrait trop large — « pour homme » bannissait « Pour homme.
+       Pour femme. Mixte. » dans une description marketing générique, et
+       « men » matchait « menswear » de TBF (qui est menswear-focused) sur
+       une recherche femme légitime. Maintenant on n'exclut que si le
+       NOM (pas description) contient une marque genre explicite. */
+    const OPPOSITE_GENDER_NAME = genre === "homme"
+      ? /\b(women's?|womens|woman's?|womenswear|pour\s+femme|f[ée]minin)\b/i
+      : /\b(men's?|mens|man's?|menswear|pour\s+homme|masculin)\b/i;
+    filtered = filtered.filter((p) => {
+      /* Test sur le nom UNIQUEMENT. La description bilingue marketing
+         contient souvent « pour homme et femme » ou « menswear collection »
+         et déclenchait des exclusions intempestives. */
+      return !OPPOSITE_GENDER_NAME.test(p.nom);
+    });
+  }
+
   /* Brief URGENT 2026-06-01 Nemanja — Règle 3 : FORBIDDEN_TYPES par occasion.
      Rejette short_bain / sneakers_sport / cravate / costume_ceremonie / etc.
      quand l'occasion ne les autorise pas. Match par mots-clés dans product_name. */
@@ -333,37 +373,6 @@ export async function GET(req: Request) {
       const pStyle = inferMacroStyle(p.nom, p.brandRegistre ?? null);
       const combined = [...existingStyles, pStyle];
       return checkForbiddenStyles(combined) === null;
-    });
-  }
-
-  // Brief §1 : strict slot match
-  if (slot) filtered = filtered.filter((p) => p.categorie === slot);
-  if (merchant) filtered = filtered.filter((p) => p.marchandSlug === merchant);
-  // Brief 2026-05-28 (dedup intra-tenue) : exclure les produits déjà
-  // sélectionnés sur les autres slots de la même tenue.
-  if (excludeIds) filtered = filtered.filter((p) => !excludeIds.has(p.id));
-
-  // Brief §3 : genre identique sur toute la tenue (+ unisexe accepté).
-  // Brief « Page Tenue maître » P0-1 (24/05) : depuis l'ajout du sentinel
-  // `inconnu` dans ProductGenre, les produits sans tag explicite ne
-  // passent plus ce filtre (avant ils étaient classés "unisexe" par défaut
-  // et leakaient dans les deux genres).
-  if (genre === "homme" || genre === "femme") {
-    filtered = filtered.filter((p) => p.genre === genre || p.genre === "unisexe");
-    /* Fix 2026-05-31 v3 (user feedback « pas de muji tbf ») : la regex
-       v2 filtrait trop large — « pour homme » bannissait « Pour homme.
-       Pour femme. Mixte. » dans une description marketing générique, et
-       « men » matchait « menswear » de TBF (qui est menswear-focused) sur
-       une recherche femme légitime. Maintenant on n'exclut que si le
-       NOM (pas description) contient une marque genre explicite. */
-    const OPPOSITE_GENDER_NAME = genre === "homme"
-      ? /\b(women's?|womens|woman's?|womenswear|pour\s+femme|f[ée]minin)\b/i
-      : /\b(men's?|mens|man's?|menswear|pour\s+homme|masculin)\b/i;
-    filtered = filtered.filter((p) => {
-      /* Test sur le nom UNIQUEMENT. La description bilingue marketing
-         contient souvent « pour homme et femme » ou « menswear collection »
-         et déclenchait des exclusions intempestives. */
-      return !OPPOSITE_GENDER_NAME.test(p.nom);
     });
   }
 
