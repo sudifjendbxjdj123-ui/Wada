@@ -139,6 +139,11 @@ function ProductModal({ product: p, onClose }: { product: ProduitAwin; onClose: 
   const source = SOURCE_LABEL[p.marchandSlug || ""] || p.marchand;
   const [liked, setLiked] = useState(false);
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
+  const [imgIndex, setImgIndex] = useState(0);
+
+  /* Galerie d'images : largeImage + image + thumb si disponibles */
+  const images = [p.largeImage, p.image, p.thumb].filter(Boolean);
+  const currentImg = images[imgIndex] || p.largeImage || p.image;
 
   const matches = useMemo(() => getMatchingPalettes(p.hex), [p.hex]);
   const sizes = (p.tailles || []).filter(Boolean);
@@ -158,16 +163,50 @@ function ProductModal({ product: p, onClose }: { product: ProduitAwin; onClose: 
       <div onClick={(e) => e.stopPropagation()} className="wada-qv-modal wada-modal-grid" style={{ background: "#fff", width: "100%", maxWidth: 940, maxHeight: "88vh", borderRadius: 24, overflow: "hidden", display: "grid", gridTemplateColumns: "1.1fr 1fr", position: "relative" }}>
         <button onClick={onClose} style={{ position: "absolute", top: 14, right: 14, zIndex: 10, width: 34, height: 34, borderRadius: "50%", background: "rgba(255,255,255,0.92)", boxShadow: "0 1px 6px rgba(0,0,0,0.12)", border: "none", cursor: "pointer", fontSize: 16, fontWeight: 300, display: "flex", alignItems: "center", justifyContent: "center" }} aria-label="Fermer">✕</button>
 
-        {/* ── CÔTÉ IMAGE (gauche) ── */}
-        <div className="wada-qv-imgside" style={{ background: gradient, display: "flex", alignItems: "center", justifyContent: "center", padding: 32, minHeight: 380 }}>
-          <div style={{ width: "82%", aspectRatio: "1/1", background: "#fff", borderRadius: 14, boxShadow: "0 8px 30px rgba(0,0,0,0.10)", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
-            {(p.largeImage || p.image) ? (
-              <img src={p.largeImage || p.image} alt={p.nom || p.marque || "Produit"} loading="lazy" decoding="async" style={{ width: "100%", height: "100%", objectFit: "contain", padding: 18 }}
+        {/* ── CÔTÉ IMAGE (gauche) — CAROUSEL ── */}
+        <div className="wada-qv-imgside" style={{ background: gradient, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 32, minHeight: 380, position: "relative" }}>
+          {/* Image container */}
+          <div style={{ width: "82%", aspectRatio: "1/1", background: "#fff", borderRadius: 14, boxShadow: "0 8px 30px rgba(0,0,0,0.10)", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", marginBottom: images.length > 1 ? 14 : 0, position: "relative" }}>
+            {currentImg ? (
+              <img src={currentImg} alt={p.nom || p.marque || "Produit"} loading="lazy" decoding="async" style={{ width: "100%", height: "100%", objectFit: "contain", padding: 18 }}
                 onError={(e) => { const img = e.currentTarget; img.style.display = "none"; if (img.parentElement) img.parentElement.style.background = "#F4EFE7"; }} />
             ) : (
               <span style={{ fontSize: 48, opacity: 0.3 }}>◻</span>
             )}
+
+            {/* Prev button */}
+            {images.length > 1 && (
+              <button onClick={() => setImgIndex((i) => (i - 1 + images.length) % images.length)}
+                style={{ position: "absolute", left: 8, top: "50%", transform: "translateY(-50%)", width: 28, height: 28, borderRadius: "50%", background: "rgba(255,255,255,0.85)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, color: "#1a1a1a", transition: "background 0.15s" }}
+                onMouseOver={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.95)"; }}
+                onMouseOut={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.85)"; }}
+                aria-label="Image précédente">
+                ‹
+              </button>
+            )}
+
+            {/* Next button */}
+            {images.length > 1 && (
+              <button onClick={() => setImgIndex((i) => (i + 1) % images.length)}
+                style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", width: 28, height: 28, borderRadius: "50%", background: "rgba(255,255,255,0.85)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, color: "#1a1a1a", transition: "background 0.15s" }}
+                onMouseOver={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.95)"; }}
+                onMouseOut={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.85)"; }}
+                aria-label="Image suivante">
+                ›
+              </button>
+            )}
           </div>
+
+          {/* Dots indicator */}
+          {images.length > 1 && (
+            <div style={{ display: "flex", gap: 4, justifyContent: "center" }}>
+              {images.map((_, i) => (
+                <button key={i} onClick={() => setImgIndex(i)}
+                  style={{ width: i === imgIndex ? 20 : 6, height: 6, borderRadius: 3, background: i === imgIndex ? "#1a1a1a" : "rgba(26,26,26,0.3)", border: "none", cursor: "pointer", transition: "all 0.2s" }}
+                  aria-label={`Image ${i + 1}`} aria-current={i === imgIndex ? "true" : undefined} />
+              ))}
+            </div>
+          )}
         </div>
 
         {/* ── CÔTÉ MÉTA (droite) ── */}
