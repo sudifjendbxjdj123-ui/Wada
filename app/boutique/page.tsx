@@ -7,10 +7,10 @@ import BackButton from "@/components/BackButton";
 import { BoutiqueHero } from "@/components/BoutiqueHero";
 
 export default function BoutiquePage() {
-  /* Force le navigateur à ne jamais servir cette page depuis son cache */
+  /* Rafraîchit uniquement le cache produits (ne wipe pas les autres) */
   useEffect(() => {
     if ("caches" in window) {
-      caches.keys().then((names) => names.forEach((n) => caches.delete(n)));
+      caches.delete("products-v1");
     }
   }, []);
 
