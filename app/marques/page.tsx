@@ -22,11 +22,23 @@ function slugBrand(name: string): string {
   return name.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 }
 
-export default async function MarquesPage() {
-  const country = visitorCountry(await headers());
-  const products = filterByGeo(await readAllProducts(), country);
+type Brand = { name: string; count: number; slug: string };
+type MarquesData = { grouped: Record<string, Brand[]>; letters: string[]; brandsCount: number; totalProducts: number };
 
-  /* Extraire toutes les marques avec leur compte produits */
+/* Cache mémoire de l'index marques — Brief 2026-06-10 (« attente trop longue ») :
+   /marques est `force-dynamic` (geo-gate K&Ö), donc il re-groupait ~586 marques
+   sur 70k produits à CHAQUE requête (~0,7s). On met le RÉSULTAT en cache par
+   groupe géo (« CH » qui voit K&Ö vs le reste), 60s. La lecture KV est déjà
+   cachée en amont ; ceci évite de refaire le groupement A-Z à chaque hit. */
+const _marquesCache = new Map<string, { data: MarquesData; at: number }>();
+const MARQUES_TTL_MS = 60_000;
+
+async function getMarquesData(country: string | null): Promise<MarquesData> {
+  const key = country === "CH" ? "CH" : "other";
+  const cached = _marquesCache.get(key);
+  if (cached && Date.now() - cached.at < MARQUES_TTL_MS) return cached.data;
+
+  const products = filterByGeo(await readAllProducts(), country);
   const brandMap = new Map<string, { count: number; slug: string }>();
   for (const p of products) {
     const name = (p.marque || p.marchand || "").trim();
@@ -34,22 +46,27 @@ export default async function MarquesPage() {
     const existing = brandMap.get(name);
     brandMap.set(name, { count: (existing?.count ?? 0) + 1, slug: slugBrand(name) });
   }
-
-  /* Trier A-Z */
-  const brands = [...brandMap.entries()]
+  const brands: Brand[] = [...brandMap.entries()]
     .sort(([a], [b]) => a.localeCompare(b, "fr"))
     .map(([name, data]) => ({ name, ...data }));
-
-  /* Grouper par première lettre */
-  const grouped: Record<string, typeof brands> = {};
+  const grouped: Record<string, Brand[]> = {};
   for (const brand of brands) {
     const letter = brand.name.charAt(0).toUpperCase();
-    if (!grouped[letter]) grouped[letter] = [];
-    grouped[letter].push(brand);
+    (grouped[letter] = grouped[letter] || []).push(brand);
   }
+  const data: MarquesData = {
+    grouped,
+    letters: Object.keys(grouped).sort(),
+    brandsCount: brands.length,
+    totalProducts: products.length,
+  };
+  _marquesCache.set(key, { data, at: Date.now() });
+  return data;
+}
 
-  const letters = Object.keys(grouped).sort();
-  const totalProducts = products.length;
+export default async function MarquesPage() {
+  const country = visitorCountry(await headers());
+  const { grouped, letters, brandsCount, totalProducts } = await getMarquesData(country);
 
   return (
     <main style={{ minHeight: "100vh", background: "#FAF8F4", fontFamily: "'Inter', sans-serif" }}>
@@ -59,7 +76,7 @@ export default async function MarquesPage() {
           Toutes les marques
         </h1>
         <p style={{ fontSize: 13, color: "#8a7a68", margin: 0, fontStyle: "italic" }}>
-          {brands.length} maisons partenaires · {totalProducts.toLocaleString("fr-FR")} pièces
+          {brandsCount} maisons partenaires · {totalProducts.toLocaleString("fr-FR")} pièces
         </p>
       </header>
 
