@@ -56,10 +56,16 @@ interface Meta {
    Maintenant : on garde le catalogue en mémoire du process. Sur Vercel, une
    instance serverless chaude réutilise ce module entre requêtes, donc les
    appels rapprochés (même page, utilisateurs proches) repartent du cache.
-   TTL court : le catalogue ne change qu'au cron quotidien + uploads ponctuels
-   → 60s de fraîcheur est large. writeAllProducts invalide en plus le cache. */
+   Le catalogue ne change qu'au cron quotidien (4h) + uploads ponctuels, et
+   writeAllProducts invalide en plus le cache → on peut être généreux sur le TTL.
+   PERF 2026-06-11 (« attente trop longue » / keep-warm) : 60s → 10 min. À 60s,
+   une instance même CHAUDE re-lisait les ~350 chunks KV (~4s) toutes les
+   minutes ; le coût « froid » revenait donc en permanence sous faible trafic.
+   À 10 min, un ping keep-warm toutes les ~5 min (ou n'importe quel trafic
+   organique) garde le cache plein en continu. Staleness max = 10 min après le
+   refresh quotidien de 4h → sans impact (catalogue journalier). */
 let _catalogCache: { data: ProduitAwin[]; at: number } | null = null;
-const CATALOG_TTL_MS = 60_000;
+const CATALOG_TTL_MS = 600_000;
 
 /** Vide le cache mémoire du catalogue (appelé après une écriture KV). */
 export function invalidateCatalogCache(): void {

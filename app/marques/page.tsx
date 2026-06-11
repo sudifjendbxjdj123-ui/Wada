@@ -31,7 +31,9 @@ type MarquesData = { grouped: Record<string, Brand[]>; letters: string[]; brands
    groupe géo (« CH » qui voit K&Ö vs le reste), 60s. La lecture KV est déjà
    cachée en amont ; ceci évite de refaire le groupement A-Z à chaque hit. */
 const _marquesCache = new Map<string, { data: MarquesData; at: number }>();
-const MARQUES_TTL_MS = 60_000;
+/* PERF 2026-06-11 (keep-warm) : 60s → 10 min, aligné sur le cache catalogue.
+   L'index marques dérive du catalogue journalier → 10 min de fraîcheur est large. */
+const MARQUES_TTL_MS = 600_000;
 
 async function getMarquesData(country: string | null): Promise<MarquesData> {
   const key = country === "CH" ? "CH" : "other";

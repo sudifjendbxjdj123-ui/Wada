@@ -150,7 +150,12 @@ function isFormalStyle(style: string | null): boolean {
    l'ancien `initialPool` filtré par slot — donc fallback registre inchangé. */
 type BasePool = { bySlot: Map<string, ProduitAwin[]>; all: ProduitAwin[] };
 let _basePoolCache: { key: string; at: number; pool: BasePool } | null = null;
-const BASE_POOL_TTL_MS = 60_000;
+/* PERF 2026-06-11 (keep-warm) : 60s → 10 min, aligné sur le cache catalogue
+   (productStore CATALOG_TTL_MS). Le pool de base dérive du catalogue journalier ;
+   un TTL court forçait un re-filtrage géo+stock du catalogue à chaque minute même
+   sur instance chaude. 10 min garde l'instance pleinement chaude entre deux pings
+   keep-warm. */
+const BASE_POOL_TTL_MS = 600_000;
 
 function getBasePool(catalog: ProduitAwin[], country: string | null): BasePool {
   const key = country === "CH" ? "CH" : "other";
