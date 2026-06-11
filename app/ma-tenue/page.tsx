@@ -16,6 +16,7 @@
  */
 import { useState, useEffect, useMemo, useCallback, useRef, Suspense } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import {
   dictionary, shopOptionsAffiliated, filterAndRankBrandsByProfile,
@@ -1719,9 +1720,15 @@ function CompleteTheLook({
                   display: "flex", alignItems: "center", justifyContent: "center",
                 }}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={p.image} alt={p.nom} loading="lazy"
-                    style={{ width: "100%", height: "100%", objectFit: "contain", padding: 8 }}
-                    onError={(e) => { const img = e.currentTarget; img.style.display = "none"; if (img.parentElement) img.parentElement.style.background = "#F4EFE7"; }} />
+                  <img
+                    src={p.image}
+                    alt={p.nom}
+                    loading="lazy"
+                    decoding="async"
+                    fetchPriority="low"
+                    style={{ width: "100%", height: "100%", objectFit: "contain", padding: 8, containIntrinsicSize: "1px 1px" }}
+                    onError={(e) => { const img = e.currentTarget; img.style.display = "none"; if (img.parentElement) img.parentElement.style.background = "#F4EFE7"; }}
+                  />
                 </div>
                 <p style={{
                   margin: "10px 0 0", fontSize: 13, fontFamily: fontBody, lineHeight: 1.3,
@@ -1851,12 +1858,23 @@ function FlatLayCollage({
   const cellStyle2 = (extra: React.CSSProperties = {}): React.CSSProperties => ({
     background: "#fff", borderRadius: 12, overflow: "hidden",
     boxShadow: "0 1px 6px rgba(30,30,30,0.08)",
-    display: "flex", alignItems: "center", justifyContent: "center", ...extra,
+    display: "flex", alignItems: "center", justifyContent: "center",
+    contain: "layout style paint",
+    ...extra,
   });
-  const imgEl3 = (slot: string): React.ReactNode => (
-    <img src={images[slot]} alt={slot} loading="lazy"
-      style={{ width: "100%", height: "100%", objectFit: "contain", padding: 6 }} />
-  );
+  const imgEl3 = (slot: string): React.ReactNode => {
+    const isCritical = slot === "haut" || slot === "veste";
+    return (
+      <img
+        src={images[slot]}
+        alt={slot}
+        loading={isCritical ? "eager" : "lazy"}
+        fetchPriority={isCritical ? "high" : "low"}
+        decoding="async"
+        style={{ width: "100%", height: "100%", objectFit: "contain", padding: 6, containIntrinsicSize: "1px 1px" }}
+      />
+    );
+  };
 
   return (
     <div style={{ marginBottom: 32 }}>
@@ -1970,7 +1988,7 @@ function FlatLayCollage({
 
             {pieces.map((p) => p.url && (
               <div key={p.slot} style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12, padding: "10px 14px", background: "#fff", borderRadius: 12, border: "1px solid rgba(30,30,30,0.07)" }}>
-                {images[p.slot] && <img src={images[p.slot]} alt={p.slot} loading="lazy" decoding="async" style={{ width: 44, height: 44, objectFit: "contain", borderRadius: 8 }} />}
+                {images[p.slot] && <img src={images[p.slot]} alt={p.slot} loading="lazy" decoding="async" fetchPriority="low" style={{ width: 44, height: 44, objectFit: "contain", borderRadius: 8, containIntrinsicSize: "44px 44px" }} />}
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <p style={{ margin: 0, fontSize: 11, fontWeight: 600, color: "#6B3A32", textTransform: "uppercase", letterSpacing: "0.06em" }}>{p.marque}</p>
                   <p style={{ margin: "2px 0 0", fontSize: 13, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.nom}</p>

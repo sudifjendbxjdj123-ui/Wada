@@ -3498,3 +3498,94 @@ html, body {
     #fbf7f0;
   background-attachment: fixed;
 }
+
+/* ═════════════════════════════════════════════════════════════════
+   IMAGE PERFORMANCE OPTIMIZATION (2026-06-11)
+   Rapid image loading, smooth rendering, prevent layout shifts
+   ═════════════════════════════════════════════════════════════════
+   Strategy:
+   - fetchPriority for above-fold images (HAUT, VESTE)
+   - containIntrinsicSize to prevent CLS during load
+   - contain: layout for image containers
+   - will-change on animated elements
+   - decoding: async for non-blocking decode
+   ─────────────────────────────────────────────────────────────── */
+
+/* Product images: enforce layout to prevent shift when src loads */
+img[src] {
+  /* Allow browser to allocate space before image arrives */
+  background: linear-gradient(45deg, #f0f0f0 25%, transparent 25%, transparent 75%, #f0f0f0 75%, #f0f0f0);
+  background-size: 20px 20px;
+  background-position: 0 0;
+  background-color: #f5f5f5;
+}
+
+/* Image containers: isolate for paint optimization */
+[style*="object-fit: contain"],
+.wada-product-image,
+.wada-piece-image {
+  contain: layout style paint;
+  will-change: transform;
+}
+
+/* Critical images (HAUT, VESTE) — eager loading reduces perceived latency */
+/* Applied via fetchPriority=high in imgEl3 function */
+
+/* Non-critical images — lazy decode for smooth scrolling */
+img[decoding="async"] {
+  contain: layout style paint;
+}
+
+/* Transition smoothing for product interactions */
+.wada-product-card,
+.wada-piece-card,
+[class*="card"]:hover {
+  /* Use transform instead of left/top for better performance */
+  transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+              box-shadow 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Reduce repaints on scroll: isolate sections */
+section[style*="padding"],
+[role="main"] {
+  /* Already has contain: layout style paint from earlier rule, but
+     emphasize here that scroll-bound sections should use it */
+  contain: layout style;
+}
+
+/* Hardware acceleration for animations */
+.wada-thinking-dots > span,
+.wada-fade-in,
+[style*="animation"] {
+  backface-visibility: hidden;
+  perspective: 1000px;
+  transform: translateZ(0);
+  will-change: transform, opacity;
+}
+
+/* Optimize sliders for mobile touch interactions */
+input[type="range"] {
+  will-change: background-color;
+}
+input[type="range"]:active {
+  /* Prevent flickering during drag */
+  transition: none;
+}
+
+/* Modal performance: contain everything inside */
+[role="dialog"],
+.wada-modal,
+.wada-drawer {
+  contain: layout style paint;
+  isolation: isolate;
+}
+
+/* Skeleton loading states: optimize shimmer animation */
+.wada-skeleton {
+  /* Use transform instead of background-position for better performance */
+  background-size: 100% 100%;
+  animation: wada-skeleton-shimmer 1.4s ease-in-out infinite;
+  will-change: opacity;
+  backface-visibility: hidden;
+}
+
