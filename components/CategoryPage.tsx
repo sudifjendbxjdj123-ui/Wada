@@ -185,47 +185,65 @@ function ProductModal({ product: p, onClose, clickPosition }: { product: Produit
       <div onClick={(e) => e.stopPropagation()} className="wada-qv-modal wada-modal-grid" style={{ background: "#fff", width: "100%", maxWidth: 940, maxHeight: "88vh", borderRadius: 24, overflow: "hidden", display: "grid", gridTemplateColumns: "1.1fr 1fr", position: "fixed", ...modalPos, pointerEvents: "auto" }}>
         <button onClick={onClose} style={{ position: "absolute", top: 14, right: 14, zIndex: 10, width: 34, height: 34, borderRadius: "50%", background: "rgba(255,255,255,0.92)", boxShadow: "0 1px 6px rgba(0,0,0,0.12)", border: "none", cursor: "pointer", fontSize: 16, fontWeight: 300, display: "flex", alignItems: "center", justifyContent: "center" }} aria-label="Fermer">✕</button>
 
-        {/* ── CÔTÉ IMAGE (gauche) — CAROUSEL ── */}
-        <div className="wada-qv-imgside" style={{ background: gradient, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 32, minHeight: 380, position: "relative" }}>
-          {/* Image container */}
-          <div style={{ width: "82%", aspectRatio: "1/1", background: "#fff", borderRadius: 14, boxShadow: "0 8px 30px rgba(0,0,0,0.10)", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", marginBottom: images.length > 1 ? 14 : 0, position: "relative" }}>
-            {currentImg ? (
-              <img src={currentImg} alt={p.nom || p.marque || "Produit"} loading="lazy" decoding="async" style={{ width: "100%", height: "100%", objectFit: "contain", padding: 18 }}
-                onError={(e) => { const img = e.currentTarget; img.style.display = "none"; if (img.parentElement) img.parentElement.style.background = "#F4EFE7"; }} />
-            ) : (
-              <span style={{ fontSize: 48, opacity: 0.3 }}>◻</span>
-            )}
+        {/* ── CÔTÉ IMAGE (gauche) — CAROUSEL STYLE LYST ── */}
+        <div className="wada-qv-imgside" style={{ background: gradient, display: "flex", flexDirection: "row", alignItems: "stretch", justifyContent: "space-between", gap: 12, padding: 32, minHeight: 380, position: "relative" }}>
+          {/* Main image + nav buttons */}
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", position: "relative" }}>
+            {/* Image container */}
+            <div style={{ width: "100%", aspectRatio: "1/1", background: "#fff", borderRadius: 14, boxShadow: "0 8px 30px rgba(0,0,0,0.10)", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", position: "relative", marginBottom: 14 }}>
+              {currentImg ? (
+                <img src={currentImg} alt={p.nom || p.marque || "Produit"} loading="lazy" decoding="async" style={{ width: "100%", height: "100%", objectFit: "contain", padding: 18 }}
+                  onError={(e) => { const img = e.currentTarget; img.style.display = "none"; if (img.parentElement) img.parentElement.style.background = "#F4EFE7"; }} />
+              ) : (
+                <span style={{ fontSize: 48, opacity: 0.3 }}>◻</span>
+              )}
 
-            {/* Prev button */}
-            {images.length > 1 && (
-              <button onClick={() => setImgIndex((i) => (i - 1 + images.length) % images.length)}
-                style={{ position: "absolute", left: 8, top: "50%", transform: "translateY(-50%)", width: 28, height: 28, borderRadius: "50%", background: "rgba(255,255,255,0.85)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, color: "#1a1a1a", transition: "background 0.15s" }}
-                onMouseOver={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.95)"; }}
-                onMouseOut={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.85)"; }}
-                aria-label="Image précédente">
-                ‹
-              </button>
-            )}
+              {/* Prev button */}
+              {images.length > 1 && (
+                <button onClick={() => setImgIndex((i) => (i - 1 + images.length) % images.length)}
+                  style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", width: 32, height: 32, borderRadius: "50%", background: "rgba(255,255,255,0.9)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, fontWeight: 700, color: "#1a1a1a", transition: "all 0.2s" }}
+                  onMouseOver={(e) => { e.currentTarget.style.background = "rgba(255,255,255,1)"; e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.15)"; }}
+                  onMouseOut={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.9)"; e.currentTarget.style.boxShadow = "none"; }}
+                  aria-label="Image précédente">
+                  ‹
+                </button>
+              )}
 
-            {/* Next button */}
+              {/* Next button */}
+              {images.length > 1 && (
+                <button onClick={() => setImgIndex((i) => (i + 1) % images.length)}
+                  style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", width: 32, height: 32, borderRadius: "50%", background: "rgba(255,255,255,0.9)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, fontWeight: 700, color: "#1a1a1a", transition: "all 0.2s" }}
+                  onMouseOver={(e) => { e.currentTarget.style.background = "rgba(255,255,255,1)"; e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.15)"; }}
+                  onMouseOut={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.9)"; e.currentTarget.style.boxShadow = "none"; }}
+                  aria-label="Image suivante">
+                  ›
+                </button>
+              )}
+            </div>
+
+            {/* Dots indicator (kept below main image) */}
             {images.length > 1 && (
-              <button onClick={() => setImgIndex((i) => (i + 1) % images.length)}
-                style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", width: 28, height: 28, borderRadius: "50%", background: "rgba(255,255,255,0.85)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, color: "#1a1a1a", transition: "background 0.15s" }}
-                onMouseOver={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.95)"; }}
-                onMouseOut={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.85)"; }}
-                aria-label="Image suivante">
-                ›
-              </button>
+              <div style={{ display: "flex", gap: 4, justifyContent: "center" }}>
+                {images.map((_, i) => (
+                  <button key={i} onClick={() => setImgIndex(i)}
+                    style={{ width: i === imgIndex ? 20 : 6, height: 6, borderRadius: 3, background: i === imgIndex ? "#1a1a1a" : "rgba(26,26,26,0.3)", border: "none", cursor: "pointer", transition: "all 0.2s" }}
+                    aria-label={`Image ${i + 1}`} aria-current={i === imgIndex ? "true" : undefined} />
+                ))}
+            </div>
             )}
           </div>
 
-          {/* Dots indicator */}
+          {/* ── COLONNE THUMBNAILS (droite) — STYLE LYST ── */}
           {images.length > 1 && (
-            <div style={{ display: "flex", gap: 4, justifyContent: "center" }}>
-              {images.map((_, i) => (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: "100%", overflowY: "auto", paddingRight: 4, minWidth: 64 }}>
+              {images.map((img, i) => (
                 <button key={i} onClick={() => setImgIndex(i)}
-                  style={{ width: i === imgIndex ? 20 : 6, height: 6, borderRadius: 3, background: i === imgIndex ? "#1a1a1a" : "rgba(26,26,26,0.3)", border: "none", cursor: "pointer", transition: "all 0.2s" }}
-                  aria-label={`Image ${i + 1}`} aria-current={i === imgIndex ? "true" : undefined} />
+                  style={{ width: 60, height: 60, borderRadius: 8, border: i === imgIndex ? "2px solid #1a1a1a" : "1px solid #d4ccc0", background: "#fff", cursor: "pointer", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", padding: 6, transition: "all 0.2s" }}
+                  onMouseOver={(e) => { if (i !== imgIndex) e.currentTarget.style.borderColor = "#8a7a68"; }}
+                  onMouseOut={(e) => { if (i !== imgIndex) e.currentTarget.style.borderColor = "#d4ccc0"; }}
+                  aria-label={`Image ${i + 1}`} aria-current={i === imgIndex ? "true" : undefined}>
+                  <img src={img} alt={`Vue ${i + 1}`} style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+                </button>
               ))}
             </div>
           )}
