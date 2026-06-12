@@ -90,7 +90,7 @@ function CheckIcon() {
   );
 }
 
-function ProductModal({ product: p, onClose, clickPosition }: { product: ProduitAwin; onClose: () => void; clickPosition: { x: number; y: number } | null }) {
+function ProductModal({ product: p, onClose, clickPosition, allProducts }: { product: ProduitAwin; onClose: () => void; clickPosition: { x: number; y: number } | null; allProducts: ProduitAwin[] }) {
   const source = SOURCE_LABEL[p.marchandSlug || ""] || p.marchand;
   const [liked, setLiked] = useState(false);
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
@@ -342,6 +342,73 @@ function ProductModal({ product: p, onClose, clickPosition }: { product: Produit
                     <p style={{ fontSize: 8, color: "#8a7a68", margin: "2px 0 0", fontFamily: "'Inter'" }}>Composer une tenue →</p>
                   </Link>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {/* Vous aimerez aussi — Related products */}
+          {allProducts.length > 0 && (
+            <div style={{ marginTop: 24, paddingTop: 24, borderTop: "1px solid #e8dfd0" }}>
+              <p style={{ fontSize: 9, letterSpacing: "0.18em", textTransform: "uppercase", color: "#8a7a68", fontWeight: 600, margin: "0 0 12px", fontFamily: "'Inter'" }}>
+                Vous aimerez aussi
+              </p>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                {allProducts
+                  .filter((pr) => pr.categorie === p.categorie && pr.id !== p.id)
+                  .slice(0, 4)
+                  .map((related) => (
+                    <button
+                      key={related.id}
+                      onClick={() => {
+                        // Changer le produit affiché
+                        window.scrollTo({ top: 0, behavior: "smooth" });
+                      }}
+                      style={{
+                        background: "#faf6ee",
+                        border: "1px solid #e8dfd0",
+                        borderRadius: 10,
+                        padding: 8,
+                        cursor: "pointer",
+                        transition: "all 0.2s",
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.borderColor = "#d4ccc0";
+                        e.currentTarget.style.background = "#f5ede2";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.borderColor = "#e8dfd0";
+                        e.currentTarget.style.background = "#faf6ee";
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: "100%",
+                          aspectRatio: "1",
+                          background: `linear-gradient(180deg, #fff 0%, ${/^#[0-9a-f]{6}$/i.test(related.hex || "") ? related.hex : "#ede4d4"}30 100%)`,
+                          borderRadius: 6,
+                          marginBottom: 6,
+                          overflow: "hidden",
+                        }}
+                      >
+                        {related.image && (
+                          <img
+                            src={related.image}
+                            alt={related.nom}
+                            style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                            onError={(e) => {
+                              (e.currentTarget as any).style.display = "none";
+                            }}
+                          />
+                        )}
+                      </div>
+                      <p style={{ fontSize: 9, fontWeight: 600, color: "#1a1a1a", margin: 0, fontFamily: "'Inter'", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {related.nom}
+                      </p>
+                      <p style={{ fontSize: 10, color: "#8a7a68", margin: "2px 0 0", fontFamily: "'Inter'" }}>
+                        {formatProductPrice(related.prix, related.marchandSlug, related.devise)}
+                      </p>
+                    </button>
+                  ))}
               </div>
             </div>
           )}
@@ -809,7 +876,7 @@ export default function CategoryPage({ title, breadcrumb, slot, q, genre: initGe
         </Link>
       </div>
 
-      {selected && <ProductModal product={selected} onClose={() => setSelected(null)} clickPosition={clickPosition} />}
+      {selected && <ProductModal product={selected} onClose={() => setSelected(null)} clickPosition={clickPosition} allProducts={products} />}
 
       {/* Back to top button */}
       <BackToTopButton />
