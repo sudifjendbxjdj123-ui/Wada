@@ -121,8 +121,8 @@ export function OutfitSlotCard({
   const mujiProduct = useMujiForSlot(
     piece.ancre ? null : piece.role.toLowerCase(),
     piece.ancre ? null : piece.hex,
-    style,
-    genre,
+    style ?? null,
+    genre ?? null,
     piece.typeKeyword,
   );
 

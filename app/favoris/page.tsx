@@ -1,4 +1,5 @@
 "use client";
+import { useState } from "react";
 import Link from "next/link";
 import { dictionary } from "@/lib/data";
 import { ink, paper, subtle, seal, border, sectionLabel, textSecondary } from "@/lib/styles";
