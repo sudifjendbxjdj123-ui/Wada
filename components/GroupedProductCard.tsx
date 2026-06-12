@@ -1,5 +1,6 @@
 "use client";
 import { useState, useMemo } from "react";
+import Link from "next/link";
 import { GroupedProduct } from "@/lib/groupProducts";
 import { formatProductPrice } from "@/lib/priceFormat";
 import { getMatchingPalettes } from "@/lib/getMatchingPalettes";
@@ -177,9 +178,11 @@ export function GroupedProductCard({ g, onClick }: Props) {
             </div>
           )}
 
-          {/* Palette badges — enhanced visibility */}
+          {/* Palette badges — clickable & enhanced */}
           {matches.length > 0 && (
-            <div
+            <Link
+              href={`/palette/${matches[0]?.number}`}
+              onClick={(e) => e.stopPropagation()}
               style={{
                 position: "absolute",
                 top: 10,
@@ -192,13 +195,24 @@ export function GroupedProductCard({ g, onClick }: Props) {
                 alignItems: "center",
                 gap: 8,
                 boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+                cursor: "pointer",
+                transition: "all 0.2s",
+                textDecoration: "none",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = "translateY(-2px)";
+                e.currentTarget.style.boxShadow = "0 4px 12px rgba(0,0,0,0.2)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = "translateY(0)";
+                e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.15)";
               }}
             >
               <div style={{ display: "flex", gap: 3 }}>
                 {matches.slice(0, 3).map((m) => (
                   <span
                     key={m.number}
-                    title={`Palette n°${m.number} · ${m.name}`}
+                    title={`Palette n°${m.number} · ${m.name}\n(Cliquez pour explorer)`}
                     style={{
                       width: 14,
                       height: 14,
@@ -209,7 +223,7 @@ export function GroupedProductCard({ g, onClick }: Props) {
                       transition: "transform 0.2s",
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.transform = "scale(1.2)";
+                      e.currentTarget.style.transform = "scale(1.3)";
                     }}
                     onMouseLeave={(e) => {
                       e.currentTarget.style.transform = "scale(1)";
@@ -228,7 +242,7 @@ export function GroupedProductCard({ g, onClick }: Props) {
               >
                 {matches.length} palette{matches.length > 1 ? "s" : ""}
               </span>
-            </div>
+            </Link>
           )}
 
           {/* Overlay au hover */}
