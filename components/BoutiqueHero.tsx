@@ -29,20 +29,10 @@ const CATEGORIES: Array<{ label: string; href: string }> = [
 const CACHE_KEY = "wada-boutique-hero-images";
 const CACHE_MAX = 60;
 const EAGER_COUNT = 16; // 1res images loadées en priorité (≈ above-the-fold)
-const FALLBACK_IMAGES = [
-  "https://muji.com/img/img/jp/g/47024010_400.jpg",
-  "https://muji.com/img/img/jp/g/47023931_400.jpg",
-  "https://muji.com/img/img/jp/g/47020996_400.jpg",
-  "https://muji.com/img/img/jp/g/47023860_400.jpg",
-  "https://muji.com/img/img/jp/g/47024153_400.jpg",
-  "https://muji.com/img/img/jp/g/47023918_400.jpg",
-  "https://muji.com/img/img/jp/g/47024009_400.jpg",
-  "https://muji.com/img/img/jp/g/47023932_400.jpg",
-  "https://muji.com/img/img/jp/g/47023861_400.jpg",
-  "https://muji.com/img/img/jp/g/47024154_400.jpg",
-  "https://muji.com/img/img/jp/g/47024010_400.jpg",
-  "https://muji.com/img/img/jp/g/47023931_400.jpg",
-];
+// Placeholders neutres en attendant les images API
+const FALLBACK_IMAGES = Array.from({ length: 24 }, (_, i) =>
+  `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 500'%3E%3Crect fill='%23${["d4c5b9","c9b8ac","e8ddd4","bfb0a4"][i % 4]}' width='400' height='500'/%3E%3C/svg%3E`
+);
 
 function readCachedImages(): string[] {
   if (typeof window === "undefined") return FALLBACK_IMAGES;
