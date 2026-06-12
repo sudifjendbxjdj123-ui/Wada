@@ -38,7 +38,7 @@ export const STYLE_KEYWORDS: Record<MacroStyle, RegExp> = {
   country:     /\b(denim|plaid|carreaux|western|cowboy|wrangler|flannel|ranch)\b/i,
   soiree:      /\b(paillette|satin|velours|soirée|gala|cocktail|brillant|sparkle|sequin)\b/i,
   plage:       /\b(lin|linen|bain|maillot|beach|surf|tropical|estival|plage|caftan)\b/i,
-  sport:       /\b(sport|running|gym|fitness|training|stretch|compression|athletic|performance)\b/i,
+  sport:       /\b(sport|running|gym|fitness|training|stretch|compression|athletic|performance|nba|nfl|mlb|nhl|mls|football|basketball|baseball|hockey|soccer|bulls|broncos|lakers|dodgers|giants|patriots|braves|yankees|steelers|cowboys|heat)\b/i,
 };
 
 /** Couleurs typiques par style (pour le scoring couleur). */
