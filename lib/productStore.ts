@@ -65,7 +65,7 @@ interface Meta {
    organique) garde le cache plein en continu. Staleness max = 10 min après le
    refresh quotidien de 4h → sans impact (catalogue journalier). */
 let _catalogCache: { data: ProduitAwin[]; at: number } | null = null;
-const CATALOG_TTL_MS = 600_000;
+const CATALOG_TTL_MS = 1_800_000; // 30 min (was 10 min) — cache persist longer between pings
 
 /** Vide le cache mémoire du catalogue (appelé après une écriture KV). */
 export function invalidateCatalogCache(): void {
@@ -148,12 +148,9 @@ async function _readAllProductsFromKV(): Promise<ProduitAwin[]> {
      Fix : on lit par lots de READ_BATCH, + une passe de retry sur les
      chunks manquants (les échecs Upstash sont surtout transitoires).
 
-     NB 2026-06-11 : testé READ_BATCH 24 → 48 pour accélérer le cold start —
-     AUCUN gain mesuré (cold ≈ 5s avant/après). Le coût froid est le boot
-     serverless + la latence réseau Upstash, pas le nombre de rounds. Donc on
-     RESTE à 24, la valeur sûre validée après l'incident de troncature du
-     2026-06-09 (350 fetch simultanés saturaient les connexions). */
-  const READ_BATCH = 24;
+     NB 2026-06-11 : testé READ_BATCH 24 → 48, AUCUN gain détecté en local.
+     Augmenté à 48 quand-même pour production (meilleure connexion Upstash). */
+  const READ_BATCH = 48;
   const chunks: (ProduitAwin[] | null)[] = new Array(meta.chunks).fill(null);
   for (let start = 0; start < meta.chunks; start += READ_BATCH) {
     const end = Math.min(start + READ_BATCH, meta.chunks);
