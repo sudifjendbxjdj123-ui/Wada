@@ -37,6 +37,16 @@ export function GroupedProductCard({ g, onClick }: Props) {
   const dom = /^#[0-9a-f]{6}$/i.test(currentVariant.hex || "") ? currentVariant.hex : "#ede4d4";
   const bgGradient = `linear-gradient(180deg, #fff 0%, ${dom}30 100%)`;
 
+  // Déterminer les badges
+  const badges: Array<{ label: string; icon: string; bg: string; text: string }> = [];
+  if ((currentVariant.popularite || 0) > 0.7) {
+    badges.push({ label: "POPULAIRE", icon: "🔥", bg: "#fff3e0", text: "#d97706" });
+  }
+  // Heuristique: prix bas = possible sale
+  if (currentVariant.prix < 50) {
+    badges.push({ label: "PROMO", icon: "⚡", bg: "#fee2e2", text: "#dc2626" });
+  }
+
   const handleAddToCart = (e: React.MouseEvent) => {
     e.stopPropagation();
 
@@ -124,6 +134,42 @@ export function GroupedProductCard({ g, onClick }: Props) {
               }}
             >
               ◻
+            </div>
+          )}
+
+          {/* Product badges (POPULAIRE, PROMO) */}
+          {badges.length > 0 && (
+            <div
+              style={{
+                position: "absolute",
+                top: 10,
+                right: 10,
+                display: "flex",
+                flexDirection: "column",
+                gap: 6,
+              }}
+            >
+              {badges.map((badge, i) => (
+                <div
+                  key={i}
+                  style={{
+                    background: badge.bg,
+                    color: badge.text,
+                    padding: "4px 10px",
+                    borderRadius: 6,
+                    fontSize: 10,
+                    fontWeight: 700,
+                    fontFamily: "'Inter'",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 4,
+                    letterSpacing: "0.05em",
+                  }}
+                >
+                  <span>{badge.icon}</span>
+                  {badge.label}
+                </div>
+              ))}
             </div>
           )}
 
