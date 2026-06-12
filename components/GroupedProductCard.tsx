@@ -23,6 +23,7 @@ export function GroupedProductCard({ g, onClick }: Props) {
   const [quickView, setQuickView] = useState(false);
   const [selectedColorHex, setSelectedColorHex] = useState(g.primary.hex);
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
+  const [imgLoading, setImgLoading] = useState(true);
 
   // Reset selectedSize when product changes (g.key)
   useEffect(() => {
@@ -86,6 +87,12 @@ export function GroupedProductCard({ g, onClick }: Props) {
       return;
     }
 
+    // Vérifier que le produit est en stock
+    if (!currentVariant.enStock) {
+      showToast("Produit indisponible", { variant: "info" });
+      return;
+    }
+
     addToCart({
       piece: currentVariant.categorie || "accent",
       item: g.nom,
@@ -129,23 +136,38 @@ export function GroupedProductCard({ g, onClick }: Props) {
           }}
         >
           {currentVariant.image || currentVariant.largeImage ? (
-            <img
-              src={currentVariant.image || currentVariant.largeImage}
-              alt={g.nom || g.marque || "Produit"}
-              loading="lazy"
-              style={{
-                width: "100%",
-                height: "100%",
-                objectFit: "cover",
-                objectPosition: "center",
-                transition: "transform 0.4s cubic-bezier(.22,1,.36,1)",
-              }}
-              onError={(e) => {
-                const img = e.currentTarget;
-                img.style.display = "none";
-                if (img.parentElement) img.parentElement.style.background = "#F4EFE7";
-              }}
-            />
+            <>
+              {imgLoading && (
+                <div
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    background: "linear-gradient(110deg, rgba(0,0,0,0) 30%, rgba(255,255,255,.5) 50%, rgba(0,0,0,0) 70%)",
+                    animation: "wada-skel-shimmer 1.4s linear infinite",
+                  }}
+                />
+              )}
+              <img
+                src={currentVariant.image || currentVariant.largeImage}
+                alt={g.nom || g.marque || "Produit"}
+                loading="lazy"
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "cover",
+                  objectPosition: "center",
+                  transition: "transform 0.4s cubic-bezier(.22,1,.36,1)",
+                  opacity: imgLoading ? 0.7 : 1,
+                }}
+                onLoad={() => setImgLoading(false)}
+                onError={(e) => {
+                  const img = e.currentTarget;
+                  img.style.display = "none";
+                  if (img.parentElement) img.parentElement.style.background = "#F4EFE7";
+                  setImgLoading(false);
+                }}
+              />
+            </>
           ) : (
             <div
               style={{

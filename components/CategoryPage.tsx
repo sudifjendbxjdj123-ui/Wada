@@ -94,7 +94,7 @@ function CheckIcon() {
   );
 }
 
-function ProductModal({ product: p, onClose, clickPosition, allProducts }: { product: ProduitAwin; onClose: () => void; clickPosition: { x: number; y: number } | null; allProducts: ProduitAwin[] }) {
+function ProductModal({ product: p, onClose, clickPosition, allProducts, onProductChange }: { product: ProduitAwin; onClose: () => void; clickPosition: { x: number; y: number } | null; allProducts: ProduitAwin[]; onProductChange?: (product: ProduitAwin) => void }) {
   const source = SOURCE_LABEL[p.marchandSlug || ""] || p.marchand;
   const [liked, setLiked] = useState(false);
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
@@ -364,7 +364,7 @@ function ProductModal({ product: p, onClose, clickPosition, allProducts }: { pro
                     <button
                       key={related.id}
                       onClick={() => {
-                        // Changer le produit affiché
+                        onProductChange?.(related);
                         window.scrollTo({ top: 0, behavior: "smooth" });
                       }}
                       style={{
@@ -593,6 +593,7 @@ export default function CategoryPage({ title, breadcrumb, slot, q, genre: initGe
   const updateFilters = useCallback((next: CategoryFilters) => {
     setFilters(next);
     setPage(1);
+    setDrawerOpen(false); // Close mobile filter drawer after apply
     try { localStorage.setItem(`${FILTERS_STORAGE_KEY}:${category}`, JSON.stringify(next)); } catch {}
     try {
       const qs = filtersToParams(next).toString();
@@ -939,7 +940,7 @@ export default function CategoryPage({ title, breadcrumb, slot, q, genre: initGe
         </Link>
       </div>
 
-      {selected && <ProductModal product={selected} onClose={() => setSelected(null)} clickPosition={clickPosition} allProducts={products} />}
+      {selected && <ProductModal product={selected} onClose={() => setSelected(null)} clickPosition={clickPosition} allProducts={products} onProductChange={setSelected} />}
 
       {/* Cart Sidebar */}
       <CartSidebar isOpen={cartOpen} onClose={() => setCartOpen(false)} />
