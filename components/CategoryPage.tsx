@@ -20,6 +20,8 @@ import { SortDropdown, type SortOption } from "@/components/category/SortDropdow
 import { BackToTopButton } from "@/components/BackToTopButton";
 import { showToast } from "@/lib/toast";
 import { SizeGuideModal } from "@/components/SizeGuideModal";
+import { CartSidebar } from "@/components/CartSidebar";
+import { getCartCount } from "@/lib/cart";
 /* Brief 2026-06-09 — système de filtres complet (sidebar 11 filtres +
    filtre Palette Sanzō Wada). Cf. lib/categoryFilters + components/category. */
 import {
@@ -551,6 +553,8 @@ export default function CategoryPage({ title, breadcrumb, slot, q, genre: initGe
   const [selected, setSelected] = useState<ProduitAwin | null>(null);
   const [clickPosition, setClickPosition] = useState<{ x: number; y: number } | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [cartOpen, setCartOpen] = useState(false);
+  const [cartCount, setCartCount] = useState(() => getCartCount());
   const [sort, setSort] = useState<SortOption>(() => {
     if (typeof window === "undefined") return "relevance";
     try {
@@ -649,6 +653,54 @@ export default function CategoryPage({ title, breadcrumb, slot, q, genre: initGe
 
   return (
     <main style={{ minHeight: "100vh", background: "#FAF8F4", fontFamily: "'Inter', sans-serif" }}>
+
+      {/* Cart button — top right */}
+      <div style={{ position: "absolute", top: 16, right: 20, zIndex: 50 }}>
+        <button
+          onClick={() => {
+            setCartOpen(true);
+            setCartCount(getCartCount());
+          }}
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 8,
+            padding: "10px 16px",
+            background: "#1a1a1a",
+            color: "#fff",
+            border: "none",
+            borderRadius: 8,
+            cursor: "pointer",
+            fontSize: 13,
+            fontWeight: 600,
+            fontFamily: "'Inter'",
+            position: "relative",
+          }}
+        >
+          🛒 Panier
+          {cartCount > 0 && (
+            <span
+              style={{
+                position: "absolute",
+                top: -6,
+                right: -6,
+                background: "#6B3A32",
+                color: "#fff",
+                width: 24,
+                height: 24,
+                borderRadius: "50%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: 11,
+                fontWeight: 700,
+              }}
+            >
+              {cartCount}
+            </span>
+          )}
+        </button>
+      </div>
 
       {/* Fix 2026-06-11 : bouton retour explicite (pill « ← Retour ») — la
           breadcrumb seule ne suffisait pas comme affordance de navigation
@@ -886,6 +938,9 @@ export default function CategoryPage({ title, breadcrumb, slot, q, genre: initGe
       </div>
 
       {selected && <ProductModal product={selected} onClose={() => setSelected(null)} clickPosition={clickPosition} allProducts={products} />}
+
+      {/* Cart Sidebar */}
+      <CartSidebar isOpen={cartOpen} onClose={() => setCartOpen(false)} />
 
       {/* Back to top button */}
       <BackToTopButton />
