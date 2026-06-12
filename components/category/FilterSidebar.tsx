@@ -113,15 +113,79 @@ export function FilterSidebar({ category, filters, onChange, facets, resultCount
         {open.palette && (
           <div style={{ paddingTop: 8 }}>
             {popular.slice(0, 5).map((p) => (
-              <label key={p.id} style={{ ...checkboxRow, gap: 8 }}>
-                <input type="checkbox" checked={filters.palettes.includes(p.id)} onChange={() => set({ palettes: toggle(filters.palettes, p.id) })} style={{ accentColor: C.bordeaux, width: 13, height: 13 }} />
-                <span style={{ display: "flex", height: 14, width: 46, borderRadius: 3, overflow: "hidden", flexShrink: 0 }}>
-                  {p.colors.slice(0, 4).map((c, i) => <span key={i} style={{ flex: 1, background: c }} />)}
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => set({ palettes: toggle(filters.palettes, p.id) })}
+                style={{
+                  width: "100%",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  padding: "10px 0",
+                  background: filters.palettes.includes(p.id) ? "rgba(107, 58, 50, 0.08)" : "transparent",
+                  border: "none",
+                  borderRadius: 6,
+                  cursor: "pointer",
+                  transition: "all 0.2s",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = "rgba(107, 58, 50, 0.05)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = filters.palettes.includes(p.id)
+                    ? "rgba(107, 58, 50, 0.08)"
+                    : "transparent";
+                }}
+              >
+                {/* Swatch palette — bigger & nicer */}
+                <span
+                  style={{
+                    display: "flex",
+                    height: 24,
+                    width: 56,
+                    borderRadius: 6,
+                    overflow: "hidden",
+                    flexShrink: 0,
+                    boxShadow: filters.palettes.includes(p.id) ? "0 0 0 2px " + C.bordeaux : "0 2px 6px rgba(0,0,0,0.08)",
+                    transition: "all 0.2s",
+                  }}
+                >
+                  {p.colors.slice(0, 4).map((c, i) => (
+                    <span key={i} style={{ flex: 1, background: c }} />
+                  ))}
                 </span>
-                <span style={{ fontSize: 11.5 }}>{p.name}</span>
-              </label>
+                {/* Palette name + number */}
+                <div style={{ flex: 1, minWidth: 0, textAlign: "left" }}>
+                  <p style={{ fontSize: 11.5, fontWeight: filters.palettes.includes(p.id) ? 600 : 500, color: C.ink, margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {p.name}
+                  </p>
+                  <p style={{ fontSize: 9, color: C.muted, margin: "2px 0 0", fontFamily: "'Inter'" }}>
+                    {p.id}
+                  </p>
+                </div>
+                {/* Checkmark when selected */}
+                {filters.palettes.includes(p.id) && (
+                  <span style={{ fontSize: 16, color: C.bordeaux }}>✓</span>
+                )}
+              </button>
             ))}
-            <button type="button" onClick={() => setShowAll(true)} style={{ fontSize: 10.5, color: C.bordeaux, background: "none", border: "none", cursor: "pointer", marginTop: 6, padding: "2px 0", fontWeight: 600 }}>
+            <button
+              type="button"
+              onClick={() => setShowAll(true)}
+              style={{
+                fontSize: 10.5,
+                color: C.bordeaux,
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+                marginTop: 12,
+                padding: "8px 0",
+                fontWeight: 600,
+                width: "100%",
+                textAlign: "left",
+              }}
+            >
               + {Math.max(0, 348 - 5)} palettes →
             </button>
           </div>
