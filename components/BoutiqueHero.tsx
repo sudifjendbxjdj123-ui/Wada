@@ -72,7 +72,7 @@ export function BoutiqueHero() {
       const slots = ["haut", "bas", "veste"];
       const results = await Promise.all(
         slots.map((s) =>
-          fetch(`/api/products?slot=${s}&limit=32`)
+          fetch(`/api/products?slot=${s}&style=minimaliste&limit=32`)
             .then((r) => r.json())
             .catch(() => ({ products: [] })),
         ),
