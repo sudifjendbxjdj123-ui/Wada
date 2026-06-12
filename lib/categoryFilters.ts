@@ -244,8 +244,9 @@ export function matchColor(p: ProduitAwin, colors: string[]): boolean {
     const fam = COLOR_FAMILIES.find((f) => f.name === name);
     if (!fam) return false;
     if (fam.kws.test(hay)) return true;
-    /* Fallback ΔE sur le hex produit (couleurNom parfois absent/« - »). */
-    return p.hex ? deltaEHex(p.hex, fam.hex) < 22 : false;
+    /* Fallback ΔE sur le hex produit (couleurNom parfois absent/« - »).
+       Seuil strict (15) pour éviter confusion marron↔rouge, bordeaux↔noir. */
+    return p.hex ? deltaEHex(p.hex, fam.hex) < 15 : false;
   });
 }
 
