@@ -53,80 +53,123 @@ export default function FavorisPage() {
           </header>
 
           {!hydrated || !outfitsHydrated ? null : totalCount === 0 ? (
-            /* Brief client 2026-05-29 « appli efficace » §7 :
-               état vide soigné — UNE action principale (Scanner =
-               vraie porte d'entrée WADA), pas 2 boutons de même
-               poids. Grosse icône cœur visuelle + message direct
-               orienté action. Lien secondaire discret pour ceux
-               qui préfèrent explorer le dictionnaire. */
+            /* Improved empty state with better visual hierarchy and engagement */
             <section style={{
               textAlign: "center",
-              padding: "60px 24px",
-              border: `1px solid ${border}`,
-              background: "rgba(255,255,255,0.4)",
-              borderRadius: 20,
-              maxWidth: 560,
+              padding: "80px 32px 64px",
+              border: `2px solid ${border}`,
+              background: `linear-gradient(135deg, rgba(255,255,255,0.6) 0%, rgba(107, 58, 50, 0.04) 100%)`,
+              borderRadius: 24,
+              maxWidth: 600,
               margin: "0 auto",
+              position: "relative",
+              overflow: "hidden",
             }}>
-              {/* Grosse icône cœur stylisée — repère visuel immédiat */}
+              {/* Subtle animated background element */}
               <div style={{
-                width: 72, height: 72, margin: "0 auto 24px",
+                position: "absolute",
+                top: -40, right: -40, width: 200, height: 200,
                 borderRadius: "50%",
-                background: "rgba(107, 58, 50, 0.08)",
+                background: "rgba(107, 58, 50, 0.06)",
+                animation: "wadaEmptyStatePulse 4s ease-in-out infinite",
+                pointerEvents: "none",
+              }} />
+
+              {/* Heart icon with enhanced styling */}
+              <div style={{
+                width: 84, height: 84, margin: "0 auto 32px",
+                borderRadius: "50%",
+                background: "linear-gradient(135deg, rgba(107, 58, 50, 0.12) 0%, rgba(107, 58, 50, 0.06) 100%)",
                 color: "#6B3A32",
                 display: "inline-flex", alignItems: "center", justifyContent: "center",
+                position: "relative",
+                boxShadow: "0 8px 20px rgba(107, 58, 50, 0.12)",
               }}>
                 <svg
-                  width="34" height="34" viewBox="0 0 24 24"
-                  fill="none" stroke="currentColor" strokeWidth="1.6"
+                  width="40" height="40" viewBox="0 0 24 24"
+                  fill="none" stroke="currentColor" strokeWidth="1.5"
                   strokeLinecap="round" strokeLinejoin="round"
                   aria-hidden="true"
                 >
                   <path d="M12 21s-7-4.5-9.5-9A5 5 0 0 1 12 6a5 5 0 0 1 9.5 6c-2.5 4.5-9.5 9-9.5 9z" />
                 </svg>
               </div>
+
               <h2 style={{
                 fontFamily: "'Fredoka', sans-serif",
-                fontSize: 22, fontWeight: 600,
-                color: ink, margin: "0 0 12px",
+                fontSize: 28, fontWeight: 600,
+                color: ink, margin: "0 0 16px", letterSpacing: "-0.3px",
               }}>
                 Vos favoris vous attendent
               </h2>
+
               <p style={{
                 fontSize: 15, color: textSecondary,
-                margin: "0 auto 32px", maxWidth: 380,
-                fontFamily: "'Inter', sans-serif", lineHeight: 1.55,
+                margin: "0 auto 40px", maxWidth: 420,
+                fontFamily: "'Inter', sans-serif", lineHeight: 1.6,
               }}>
-                Scannez une couleur pour démarrer — chaque palette ou tenue gardée apparaîtra ici.
+                Sauvegardez vos palettes et tenues préférées pour les retrouver facilement. Commencez par scanner une couleur ou explorer notre dictionnaire.
               </p>
-              {/* UN seul CTA principal — l'action évidente. */}
-              <Link
-                href="/scanner"
-                style={{
-                  display: "inline-flex", alignItems: "center", gap: 10,
-                  background: "#6B3A32", color: "#FAF8F4",
-                  padding: "15px 30px", borderRadius: 999,
-                  fontSize: 14, fontWeight: 600, letterSpacing: "0.02em",
-                  textDecoration: "none",
-                  fontFamily: "'Inter', sans-serif",
-                  boxShadow: "0 8px 24px rgba(107, 58, 50, 0.28)",
-                }}
-              >
-                <span>Scanner ma première couleur</span>
-                <span aria-hidden style={{ fontSize: 16 }}>→</span>
-              </Link>
-              <p style={{
-                marginTop: 20, fontSize: 13,
-                color: subtle, fontFamily: "'Inter', sans-serif",
+
+              {/* Two-column CTA layout on desktop */}
+              <div style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+                gap: 12,
+                marginBottom: 20,
+                position: "relative",
+                zIndex: 1,
               }}>
-                ou{" "}
+                {/* Primary CTA */}
+                <Link
+                  href="/scanner"
+                  style={{
+                    display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 10,
+                    background: "#6B3A32", color: "#FAF8F4",
+                    padding: "16px 28px", borderRadius: 12,
+                    fontSize: 14, fontWeight: 600, letterSpacing: "0.02em",
+                    textDecoration: "none",
+                    fontFamily: "'Inter', sans-serif",
+                    boxShadow: "0 12px 32px rgba(107, 58, 50, 0.25)",
+                    transition: "all 0.2s ease",
+                    border: "none",
+                    cursor: "pointer",
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 16px 40px rgba(107, 58, 50, 0.32)"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 12px 32px rgba(107, 58, 50, 0.25)"; }}
+                >
+                  <span style={{ fontSize: 16 }}>⬡</span>
+                  <span>Scanner une couleur</span>
+                </Link>
+
+                {/* Secondary CTA */}
                 <Link
                   href="/palettes"
-                  style={{ color: subtle, textDecoration: "underline", textUnderlineOffset: 3 }}
+                  style={{
+                    display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 10,
+                    background: "transparent", color: "#6B3A32",
+                    padding: "16px 28px", borderRadius: 12,
+                    fontSize: 14, fontWeight: 600, letterSpacing: "0.02em",
+                    textDecoration: "none",
+                    fontFamily: "'Inter', sans-serif",
+                    border: `2px solid ${border}`,
+                    transition: "all 0.2s ease",
+                    cursor: "pointer",
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(107, 58, 50, 0.06)"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
                 >
-                  explorer les 348 palettes
+                  <span style={{ fontSize: 16 }}>▦</span>
+                  <span>Explorer les palettes</span>
                 </Link>
-              </p>
+              </div>
+
+              <style>{`
+                @keyframes wadaEmptyStatePulse {
+                  0%, 100% { transform: scale(1); opacity: 0.8; }
+                  50% { transform: scale(1.15); opacity: 0.4; }
+                }
+              `}</style>
             </section>
           ) : (
             <>
