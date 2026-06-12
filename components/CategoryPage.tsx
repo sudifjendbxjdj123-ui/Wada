@@ -562,14 +562,64 @@ export default function CategoryPage({ title, breadcrumb, slot, q, genre: initGe
           /boutique car les catégories sont accessibles depuis le hub shopping. */}
       <BackButton fallback="/boutique" />
 
-      {/* Breadcrumb */}
-      <div style={{ padding: "10px 20px", fontSize: 12, color: "#8a7a68", borderBottom: "0.5px solid #e8dfd0" }}>
+      {/* Breadcrumb — amélioré */}
+      <div style={{ padding: "12px 20px", borderBottom: "0.5px solid #e8dfd0", display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
         {breadcrumb.map((item, i) => (
-          <span key={item.href}>
-            {i > 0 && <span style={{ margin: "0 5px", opacity: 0.5 }}>›</span>}
-            <Link href={item.href} style={{ color: "#8a7a68", textDecoration: "none" }}>{item.label}</Link>
-          </span>
+          <div key={item.href} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            {i > 0 && <span style={{ fontSize: 10, color: "#c5b9a8", opacity: 0.5 }}>›</span>}
+            <Link
+              href={item.href}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                padding: "6px 12px",
+                background: i === breadcrumb.length - 1 ? "#1a1a1a" : "#f9f5ef",
+                color: i === breadcrumb.length - 1 ? "#fff" : "#1a1a1a",
+                textDecoration: "none",
+                borderRadius: 6,
+                fontSize: 11,
+                fontWeight: i === breadcrumb.length - 1 ? 600 : 500,
+                fontFamily: "'Inter', sans-serif",
+                transition: "all 0.2s",
+                cursor: "pointer",
+              }}
+              onMouseEnter={(e) => {
+                if (i < breadcrumb.length - 1) {
+                  e.currentTarget.style.background = "#efeae2";
+                  e.currentTarget.style.transform = "translateY(-2px)";
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (i < breadcrumb.length - 1) {
+                  e.currentTarget.style.background = "#f9f5ef";
+                  e.currentTarget.style.transform = "translateY(0)";
+                }
+              }}
+            >
+              {item.label}
+            </Link>
+          </div>
         ))}
+        {initGenre && (
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginLeft: "auto" }}>
+            <span style={{ fontSize: 10, color: "#c5b9a8", opacity: 0.5 }}>·</span>
+            <span
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                padding: "6px 12px",
+                background: "#f0e8f5",
+                color: "#5a3f8f",
+                borderRadius: 6,
+                fontSize: 11,
+                fontWeight: 500,
+                fontFamily: "'Inter', sans-serif",
+              }}
+            >
+              {initGenre === "homme" ? "👔 Hommes" : "👗 Femmes"}
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Header éditorial (brief Pages catégorie V2 §2.1) */}
