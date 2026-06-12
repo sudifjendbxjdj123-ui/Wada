@@ -1,19 +1,24 @@
 "use client";
 import Link from "next/link";
-import { useState } from "react";
-import { getCart, removeFromCart, getCartTotal } from "@/lib/cart";
-import { formatProductPrice } from "@/lib/priceFormat";
+import { useState, useEffect } from "react";
+import { getCart, removeFromCart } from "@/lib/cart";
 
 export function CartSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const [cart, setCart] = useState(() => getCart());
 
-  const handleRemove = (productId: string, taille: string, hex: string) => {
-    removeFromCart(productId, taille, hex);
+  // Sync with localStorage changes (from other tabs/components)
+  useEffect(() => {
+    const handleStorageChange = () => {
+      setCart(getCart());
+    };
+    window.addEventListener("storage", handleStorageChange);
+    return () => window.removeEventListener("storage", handleStorageChange);
+  }, []);
+
+  const handleRemove = (cartItemId: string) => {
+    removeFromCart(cartItemId);
     setCart(getCart());
   };
-
-  const total = cart.reduce((sum, item) => sum + item.prix * item.quantite, 0);
-  const count = cart.reduce((sum, item) => sum + item.quantite, 0);
 
   return (
     <>
@@ -99,9 +104,9 @@ export function CartSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
             </div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              {cart.map((item, i) => (
+              {cart.map((item) => (
                 <div
-                  key={i}
+                  key={item.id}
                   style={{
                     background: "#faf6ee",
                     borderRadius: 8,
@@ -110,25 +115,17 @@ export function CartSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
                     gap: 12,
                   }}
                 >
-                  {/* Image */}
+                  {/* Color swatch */}
                   <div
                     style={{
                       width: 60,
                       height: 60,
                       borderRadius: 6,
-                      background: "#f0e9d8",
-                      overflow: "hidden",
+                      background: item.colorHex,
+                      border: "1px solid #e8dfd0",
                       flexShrink: 0,
                     }}
-                  >
-                    {item.image && (
-                      <img
-                        src={item.image}
-                        alt={item.nom}
-                        style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                      />
-                    )}
-                  </div>
+                  />
 
                   {/* Info */}
                   <div style={{ flex: 1, minWidth: 0 }}>
@@ -144,50 +141,40 @@ export function CartSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
                         whiteSpace: "nowrap",
                       }}
                     >
-                      {item.nom}
+                      {item.item}
                     </p>
                     <p style={{ fontFamily: "'Inter'", fontSize: 10, color: "#8a7a68", margin: "0 0 4px" }}>
-                      {item.marque}
+                      {item.colorName}
                     </p>
-                    <div style={{ display: "flex", gap: 6, fontSize: 10, color: "#8a7a68", fontFamily: "'Inter'" }}>
-                      <span>Taille: {item.taille}</span>
-                      <span style={{ width: 12, height: 12, borderRadius: 3, background: item.hex }} />
-                    </div>
                   </div>
 
-                  {/* Price + Remove */}
-                  <div style={{ textAlign: "right", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
-                    <p style={{ fontFamily: "'Inter'", fontSize: 12, fontWeight: 600, color: "#1a1a1a", margin: 0 }}>
-                      {formatProductPrice(item.prix * item.quantite, "", item.devise)}
-                    </p>
-                    <button
-                      onClick={() => handleRemove(item.productId, item.taille, item.hex)}
-                      style={{
-                        background: "none",
-                        border: "none",
-                        color: "#8a7a68",
-                        cursor: "pointer",
-                        fontSize: 12,
-                        textDecoration: "underline",
-                        fontFamily: "'Inter'",
-                        padding: 0,
-                      }}
-                    >
-                      Retirer
-                    </button>
-                  </div>
+                  {/* Remove button */}
+                  <button
+                    onClick={() => handleRemove(item.id)}
+                    style={{
+                      background: "none",
+                      border: "none",
+                      color: "#8a7a68",
+                      cursor: "pointer",
+                      fontSize: 16,
+                      padding: 0,
+                      fontFamily: "'Inter'",
+                      textDecoration: "underline",
+                    }}
+                  >
+                    ×
+                  </button>
                 </div>
               ))}
             </div>
           )}
         </div>
 
-        {/* Footer — Total + Checkout */}
+        {/* Footer — Checkout link */}
         {cart.length > 0 && (
           <div style={{ padding: 16, borderTop: "1px solid #e8dfd0", display: "flex", flexDirection: "column", gap: 12 }}>
             <div style={{ display: "flex", justifyContent: "space-between", fontFamily: "'Inter'" }}>
-              <span style={{ fontSize: 12, color: "#8a7a68" }}>Total ({count} article{count > 1 ? "s" : ""}):</span>
-              <span style={{ fontSize: 14, fontWeight: 700, color: "#1a1a1a" }}>{formatProductPrice(total, "", "EUR")}</span>
+              <span style={{ fontSize: 12, color: "#8a7a68" }}>{cart.length} article{cart.length > 1 ? "s" : ""}</span>
             </div>
             <Link
               href="/panier"
@@ -207,7 +194,7 @@ export function CartSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
                 border: "none",
               }}
             >
-              Passer la commande
+              Voir le panier
             </Link>
           </div>
         )}

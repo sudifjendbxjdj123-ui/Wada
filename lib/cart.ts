@@ -1,16 +1,13 @@
+// CartItem — structure identique à /app/panier/page.tsx (panier officiel)
 export interface CartItem {
-  productId: string;
-  marque: string;
-  nom: string;
-  couleur: string;
-  hex: string;
-  taille: string;
-  prix: number;
-  devise: string;
-  image?: string;
-  quantite: number;
-  urlProduit: string;
-  marchand: string;
+  id: string;
+  piece: string; // "Top", "Bottom", "Shoes", "Accent", etc.
+  item: string; // nom du produit
+  colorName: string;
+  colorHex: string;
+  query: string; // pour retrouver le produit via /api/products
+  fromEntry: string;
+  addedAt: number;
 }
 
 const CART_KEY = "wada-cart";
@@ -31,29 +28,23 @@ export function saveCart(items: CartItem[]) {
   if (typeof window === "undefined") return;
   try {
     localStorage.setItem(CART_KEY, JSON.stringify(items));
+    window.dispatchEvent(new Event("storage"));
   } catch {}
 }
 
-export function addToCart(item: CartItem): void {
+export function addToCart(item: Omit<CartItem, "id" | "addedAt">): void {
   const cart = getCart();
-  const key = `${item.productId}-${item.taille}-${item.hex}`;
-  const existing = cart.find(
-    (c) => `${c.productId}-${c.taille}-${c.hex}` === key
-  );
-
-  if (existing) {
-    existing.quantite += item.quantite;
-  } else {
-    cart.push(item);
-  }
-
+  cart.push({
+    id: String(Date.now()),
+    addedAt: Date.now(),
+    ...item,
+  });
   saveCart(cart);
 }
 
-export function removeFromCart(productId: string, taille: string, hex: string) {
+export function removeFromCart(cartItemId: string) {
   const cart = getCart();
-  const key = `${productId}-${taille}-${hex}`;
-  const filtered = cart.filter((c) => `${c.productId}-${c.taille}-${c.hex}` !== key);
+  const filtered = cart.filter((c) => c.id !== cartItemId);
   saveCart(filtered);
 }
 
@@ -62,10 +53,6 @@ export function clearCart() {
   localStorage.removeItem(CART_KEY);
 }
 
-export function getCartTotal(): number {
-  return getCart().reduce((sum, item) => sum + item.prix * item.quantite, 0);
-}
-
 export function getCartCount(): number {
-  return getCart().reduce((sum, item) => sum + item.quantite, 0);
+  return getCart().length;
 }

@@ -73,19 +73,19 @@ export function GroupedProductCard({ g, onClick }: Props) {
       return;
     }
 
+    // Vérifier que la taille est en stock pour la couleur sélectionnée
+    if (!availableSizes.includes(selectedSize)) {
+      showToast("Cette taille n'est pas disponible", { variant: "info" });
+      return;
+    }
+
     addToCart({
-      productId: currentVariant.id,
-      marque: g.marque,
-      nom: g.nom,
-      couleur: currentVariant.couleurNom || currentVariant.hex,
-      hex: currentVariant.hex,
-      taille: selectedSize,
-      prix: currentVariant.prix,
-      devise: currentVariant.devise,
-      image: currentVariant.image || currentVariant.largeImage,
-      quantite: 1,
-      urlProduit: currentVariant.urlProduit,
-      marchand: currentVariant.marchand,
+      piece: currentVariant.categorie || "accent",
+      item: g.nom,
+      colorName: currentVariant.couleurNom || currentVariant.hex,
+      colorHex: currentVariant.hex,
+      query: `${g.marque} ${g.nom}`,
+      fromEntry: currentVariant.id,
     });
 
     showToast(`✓ ${g.marque} ${g.nom} ajouté au panier`, { variant: "success", duration: 3000 });
