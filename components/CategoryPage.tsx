@@ -161,9 +161,21 @@ function ProductModal({ product: p, onClose, clickPosition }: { product: Produit
 
   /* Calcul position dynamique de la modal près du clic */
   const getModalPosition = () => {
-    /* Toujours centrer la modal au centre de la fenêtre d'affichage, peu importe
-       la position du clic. Cela garantit que la modal reste centrée même après un scroll. */
-    return { top: "50%", left: "50%", transform: "translate(-50%, -50%)" };
+    if (!clickPosition) return { top: "50%", left: "50%", transform: "translate(-50%, -50%)" };
+
+    const modalWidth = 940;
+    const modalHeight = 600;
+    const offset = 20;
+    let top = clickPosition.y - modalHeight / 2;
+    let left = clickPosition.x - modalWidth / 2;
+
+    /* Ajuste si la modal sort de l'écran */
+    if (left < offset) left = offset;
+    if (left + modalWidth > window.innerWidth - offset) left = window.innerWidth - modalWidth - offset;
+    if (top < offset) top = offset;
+    if (top + modalHeight > window.innerHeight - offset) top = window.innerHeight - modalHeight - offset;
+
+    return { top: `${top}px`, left: `${left}px`, transform: "none" };
   };
 
   const modalPos = getModalPosition();
@@ -231,30 +243,6 @@ function ProductModal({ product: p, onClose, clickPosition }: { product: Produit
             <p style={{ fontFamily: "'Inter'", fontSize: 24, fontWeight: 600, color: "#1a1a1a", margin: 0 }}>{formatProductPrice(p.prix, p.marchandSlug, p.devise)}</p>
             <span style={{ fontSize: 10, color: "#5a5a5a", fontFamily: "'Inter'" }}>Livraison directe par {source}</span>
           </div>
-
-          {/* ── Palettes WADA compatibles — FEATURE UNIQUE ── */}
-          {matches.length > 0 && (
-            <div style={{ marginBottom: 18 }}>
-              <p style={{ fontSize: 9, letterSpacing: "0.18em", textTransform: "uppercase", color: "#8a7a68", fontWeight: 600, margin: "0 0 8px", fontFamily: "'Inter'" }}>
-                Compatible avec ces palettes WADA
-              </p>
-              <div style={{ display: "flex", gap: 8 }}>
-                {matches.slice(0, 3).map((m) => (
-                  <Link key={m.number} href={`/palette/${m.number}`} style={{ flex: 1, padding: 8, background: "#faf6ee", borderRadius: 10, textDecoration: "none", transition: "background 0.15s" }}
-                    onMouseOver={(e) => { e.currentTarget.style.background = "#f0e9d8"; }}
-                    onMouseOut={(e) => { e.currentTarget.style.background = "#faf6ee"; }}>
-                    <div style={{ display: "flex", height: 16, borderRadius: 4, overflow: "hidden", marginBottom: 6 }}>
-                      {m.colors.slice(0, 5).map((c, i) => (
-                        <span key={i} style={{ flex: 1, background: c }} />
-                      ))}
-                    </div>
-                    <p style={{ fontSize: 10, fontWeight: 600, color: "#1a1a1a", margin: 0, lineHeight: 1.2, fontFamily: "'Inter'", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.name}</p>
-                    {m.culture && <p style={{ fontSize: 8, letterSpacing: "0.06em", textTransform: "uppercase", color: "#8a7a68", margin: "2px 0 0", fontFamily: "'Inter'" }}>{m.culture}</p>}
-                  </Link>
-                ))}
-              </div>
-            </div>
-          )}
 
           {/* ── Tailles / Pointures ── */}
           {sizes.length > 0 && (
