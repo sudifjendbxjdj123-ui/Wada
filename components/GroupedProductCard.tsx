@@ -127,23 +127,57 @@ export function GroupedProductCard({ g, onClick }: Props) {
             </div>
           )}
 
-          {/* Pastilles palettes */}
+          {/* Palette badges — enhanced visibility */}
           {matches.length > 0 && (
-            <div style={{ position: "absolute", top: 10, left: 10, display: "flex", gap: 4 }}>
-              {matches.slice(0, 3).map((m) => (
-                <span
-                  key={m.number}
-                  title={`Palette n°${m.number} · ${m.name}`}
-                  style={{
-                    width: 9,
-                    height: 9,
-                    borderRadius: "50%",
-                    background: m.swatch,
-                    border: "1px solid rgba(0,0,0,0.18)",
-                    boxShadow: "0 0 0 1.5px rgba(255,255,255,0.7)",
-                  }}
-                />
-              ))}
+            <div
+              style={{
+                position: "absolute",
+                top: 10,
+                left: 10,
+                background: "rgba(255,255,255,0.95)",
+                backdropFilter: "blur(8px)",
+                borderRadius: 8,
+                padding: "6px 10px",
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+              }}
+            >
+              <div style={{ display: "flex", gap: 3 }}>
+                {matches.slice(0, 3).map((m) => (
+                  <span
+                    key={m.number}
+                    title={`Palette n°${m.number} · ${m.name}`}
+                    style={{
+                      width: 14,
+                      height: 14,
+                      borderRadius: "50%",
+                      background: m.swatch,
+                      border: "1px solid rgba(0,0,0,0.1)",
+                      cursor: "pointer",
+                      transition: "transform 0.2s",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = "scale(1.2)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = "scale(1)";
+                    }}
+                  />
+                ))}
+              </div>
+              <span
+                style={{
+                  fontSize: 11,
+                  fontWeight: 600,
+                  color: "#6B3A32",
+                  fontFamily: "'Inter'",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {matches.length} palette{matches.length > 1 ? "s" : ""}
+              </span>
             </div>
           )}
 
