@@ -18,6 +18,7 @@ import { SOURCE_LABEL } from "@/lib/SOURCE_LABEL";
 import { HeartIcon } from "@/components/HeartIcon";
 import { SortDropdown, type SortOption } from "@/components/category/SortDropdown";
 import { BackToTopButton } from "@/components/BackToTopButton";
+import { showToast } from "@/lib/toast";
 /* Brief 2026-06-09 — système de filtres complet (sidebar 11 filtres +
    filtre Palette Sanzō Wada). Cf. lib/categoryFilters + components/category. */
 import {
@@ -497,6 +498,13 @@ export default function CategoryPage({ title, breadcrumb, slot, q, genre: initGe
       const qs = filtersToParams(next).toString();
       window.history.replaceState(null, "", qs ? `${window.location.pathname}?${qs}` : window.location.pathname);
     } catch {}
+    // Toast feedback
+    const activeCount = Object.values(next).flat().length;
+    if (activeCount === 0) {
+      showToast("Filtres réinitialisés", { variant: "info", duration: 2000 });
+    } else {
+      showToast(`✓ Filtres appliqués (${activeCount})`, { variant: "success", duration: 2000 });
+    }
   }, [category]);
 
   /* ── Fetch unique vers /api/products/search (debounce 250ms + abort) ── */
@@ -612,6 +620,14 @@ export default function CategoryPage({ title, breadcrumb, slot, q, genre: initGe
                 try {
                   localStorage.setItem("wada-sort-pref", newSort);
                 } catch {}
+                const sortLabels: Record<SortOption, string> = {
+                  relevance: "Pertinence",
+                  "price-low": "Prix: bas → haut",
+                  "price-high": "Prix: haut → bas",
+                  newest: "Les plus nouveaux",
+                  popular: "Les plus populaires",
+                };
+                showToast(`✓ Trié par ${sortLabels[newSort]}`, { variant: "success", duration: 2000 });
               }} />
             </div>
           </div>
