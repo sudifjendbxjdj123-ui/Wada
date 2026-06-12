@@ -22,6 +22,7 @@ import { showToast } from "@/lib/toast";
 import { SizeGuideModal } from "@/components/SizeGuideModal";
 import { CartSidebar } from "@/components/CartSidebar";
 import { getCartCount } from "@/lib/cart";
+import { NewsletterBanner } from "@/components/NewsletterBanner";
 /* Brief 2026-06-09 — système de filtres complet (sidebar 11 filtres +
    filtre Palette Sanzō Wada). Cf. lib/categoryFilters + components/category. */
 import {
@@ -944,6 +945,9 @@ export default function CategoryPage({ title, breadcrumb, slot, q, genre: initGe
 
       {/* Back to top button */}
       <BackToTopButton />
+
+      {/* Newsletter Banner */}
+      <NewsletterBanner />
 
       {/* ── Drawer mobile plein écran ── */}
       {drawerOpen && (
