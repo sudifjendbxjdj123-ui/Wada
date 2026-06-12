@@ -26,7 +26,7 @@ import {
 } from "@/components/category/FilterSidebar";
 import {
   type CategoryFilters, getDefaultFilters, paramsToFilters, filtersToParams,
-  FILTERS_STORAGE_KEY,
+  FILTERS_STORAGE_KEY, activeFilterCount,
 } from "@/lib/categoryFilters";
 
 /** Label catégorie (pour sous-types + endpoint) dérivé du titre de page. */
@@ -631,6 +631,24 @@ export default function CategoryPage({ title, breadcrumb, slot, q, genre: initGe
               }} />
             </div>
           </div>
+
+          {/* Section Tendances — 4 produits populaires */}
+          {!loading && products.length > 0 && activeFilterCount(filters) === 0 && (
+            <div style={{ marginBottom: 32 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
+                <span style={{ fontSize: 18 }}>🔥</span>
+                <h2 style={{ fontFamily: "'Fredoka'", fontSize: 20, fontWeight: 500, margin: 0, color: "#1a1a1a" }}>À la une cette semaine</h2>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16 }}>
+                {sortProducts([...products].sort((a, b) => (b.popularite || 0) - (a.popularite || 0)), "relevance").slice(0, 4).map((p) => (
+                  <GroupedProductCard key={p.id} g={groupProducts([p])[0]!} onClick={(e) => {
+                    setClickPosition({ x: e.clientX, y: e.clientY });
+                    setSelected(p);
+                  }} />
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Grille produits */}
           {loading ? (
