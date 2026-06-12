@@ -37,6 +37,11 @@ import { useSavedOutfits, type SavedOutfit } from "@/hooks/useSavedOutfits";
 import { showToast } from "@/lib/toast";
 import { dictionary, type DictionaryEntry } from "@/lib/data";
 import { analyzeColor } from "@/lib/colorEngine";
+/* Refonte 2026-06-12 — nouveaux composants structure de tenue */
+import { OutfitLayout } from "./OutfitLayout";
+import { OutfitSlotCard } from "./OutfitSlotCard";
+import { OutfitExplainer } from "./OutfitExplainer";
+import { OutfitAdjustBar } from "./OutfitAdjustBar";
 
 /** Hook qui fetch un vrai produit MUJI pour ce slot+couleur via /api/products.
  *  Brief 2026-05-28 : aligne /stylist sur /ma-tenue → vraies photos MUJI
@@ -439,7 +444,13 @@ interface OutfitPiece {
 type Bubble =
   | { who: "bot"; html: string; transient?: boolean }
   | { who: "me"; text: string }
-  | { who: "outfit"; pieces: OutfitPiece[] }
+  | {
+      who: "outfit";
+      pieces: OutfitPiece[];
+      pourquoi?: string;
+      explication?: { palette?: string; pieces?: string; profil?: string };
+      paletteColors?: Array<{ hex: string; name: string }>;
+    }
   | { who: "accord"; ref: string; name: string; colors: Array<{ hex: string; name: string }>; nomTenue?: string }
   /* Vision Pt D (2026-05-31) — boutons feedback (like/dislike) sous la tenue. */
   | {
@@ -1793,7 +1804,17 @@ export function StylistPageContent() {
         }}>
           {bubbles.map((b, i) => {
             if (b.who === "outfit") {
-              return <OutfitBubble key={i} pieces={b.pieces} genre={state.genre} style={state.style} />;
+              return (
+                <OutfitBubble
+                  key={i}
+                  pieces={b.pieces}
+                  genre={state.genre}
+                  style={state.style}
+                  pourquoi={b.pourquoi}
+                  explication={b.explication}
+                  paletteColors={b.paletteColors}
+                />
+              );
             }
             if (b.who === "accord") {
               return <AccordBubble key={i} accordRef={b.ref} accordName={b.name} colors={b.colors} nomTenue={b.nomTenue} />;
@@ -2072,7 +2093,23 @@ function AccordBubble({
   );
 }
 
-function OutfitBubble({ pieces, genre, style }: { pieces: OutfitPiece[]; genre: string | null; style: string | null }) {
+function OutfitBubble({
+  pieces,
+  genre,
+  style,
+  pourquoi,
+  explication,
+  paletteColors,
+  onAdjust,
+}: {
+  pieces: OutfitPiece[];
+  genre: string | null;
+  style: string | null;
+  pourquoi?: string;
+  explication?: { palette?: string; pieces?: string; profil?: string };
+  paletteColors?: Array<{ hex: string; name: string }>;
+  onAdjust?: (label: string) => void;
+}) {
   return (
     <div
       style={{
@@ -2086,50 +2123,15 @@ function OutfitBubble({ pieces, genre, style }: { pieces: OutfitPiece[]; genre: 
         boxShadow: SOFT,
       }}
     >
-      <p style={{
-        fontSize: 10, letterSpacing: "0.16em",
-        textTransform: "uppercase", color: palette.olive,
-        marginBottom: 10, fontWeight: 600,
-      }}>
-        La tenue
-      </p>
-      <div
-        className="wada-stylist-outfit"
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(2, 1fr)",
-          gap: 12,
-        }}
-      >
-        {pieces.map((p, i) => (
-          <PieceCard
-            key={i}
-            piece={p}
-            style={style}
-            genre={genre}
-          />
-        ))}
-      </div>
-      {/* Strip palette en bas */}
-      <div style={{ display: "flex", gap: 6, marginTop: 10 }}>
-        {pieces.map((p, i) => (
-          <span
-            key={i}
-            aria-hidden
-            style={{
-              flex: 1, height: 24, borderRadius: 6,
-              background: p.hex,
-            }}
-          />
-        ))}
-      </div>
-      <style jsx>{`
-        @media (max-width: 400px) {
-          :global(.wada-stylist-outfit) {
-            grid-template-columns: 1fr !important;
-          }
-        }
-      `}</style>
+      <OutfitLayout
+        pieces={pieces}
+        genre={genre}
+        style={style}
+        pourquoi={pourquoi}
+        explication={explication}
+        paletteColors={paletteColors}
+        onAdjust={onAdjust}
+      />
     </div>
   );
 }
