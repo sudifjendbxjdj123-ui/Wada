@@ -343,9 +343,10 @@ function ProductModal({ product: p, onClose }: { product: ProduitAwin; onClose: 
    - Fond dégradé subtil tiré de la couleur dominante du produit
    - Pastilles des palettes WADA correspondantes (haut gauche)
    - Compteur « X palettes » en bordeaux (polyvalence)
-   - Hover : soulèvement + léger zoom image */
+   - Hover : soulèvement + léger zoom image + overlay "Voir détails" */
 function ProductCard({ p, onClick }: { p: ProduitAwin; onClick: () => void }) {
   const [liked, setLiked] = useState(false);
+  const [hovering, setHovering] = useState(false);
   const source = SOURCE_LABEL[p.marchandSlug || ""] || p.marchand;
   const matches = useMemo(() => getMatchingPalettes(p.hex), [p.hex]);
   const dom = /^#[0-9a-f]{6}$/i.test(p.hex || "") ? p.hex : "#ede4d4";
@@ -355,8 +356,8 @@ function ProductCard({ p, onClick }: { p: ProduitAwin; onClick: () => void }) {
     <article style={{ position: "relative", cursor: "pointer" }}>
       <div onClick={onClick}>
         <div style={{ background: bgGradient, borderRadius: 14, overflow: "hidden", aspectRatio: "3/4", position: "relative", marginBottom: 10, boxShadow: "0 2px 10px rgba(0,0,0,0.05)", transition: "box-shadow 0.25s, transform 0.25s" }}
-          onMouseOver={(e) => { e.currentTarget.style.boxShadow = "0 10px 26px rgba(0,0,0,0.14)"; e.currentTarget.style.transform = "translateY(-3px)"; const img = e.currentTarget.querySelector("img"); if (img) (img as HTMLImageElement).style.transform = "scale(1.05)"; }}
-          onMouseOut={(e) => { e.currentTarget.style.boxShadow = "0 2px 10px rgba(0,0,0,0.05)"; e.currentTarget.style.transform = "translateY(0)"; const img = e.currentTarget.querySelector("img"); if (img) (img as HTMLImageElement).style.transform = "scale(1)"; }}>
+          onMouseEnter={(e) => { setHovering(true); e.currentTarget.style.boxShadow = "0 10px 26px rgba(0,0,0,0.14)"; e.currentTarget.style.transform = "translateY(-3px)"; const img = e.currentTarget.querySelector("img"); if (img) (img as HTMLImageElement).style.transform = "scale(1.05)"; }}
+          onMouseLeave={(e) => { setHovering(false); e.currentTarget.style.boxShadow = "0 2px 10px rgba(0,0,0,0.05)"; e.currentTarget.style.transform = "translateY(0)"; const img = e.currentTarget.querySelector("img"); if (img) (img as HTMLImageElement).style.transform = "scale(1)"; }}>
           {(p.image || p.largeImage) ? (
             <img src={p.image || p.largeImage} alt={p.nom || p.marque || "Produit"} loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center", transition: "transform 0.4s cubic-bezier(.22,1,.36,1)" }}
               onError={(e) => { /* image marchand morte/hotlink → tuile neutre au lieu de l'icône cassée */ const img = e.currentTarget; img.style.display = "none"; if (img.parentElement) img.parentElement.style.background = "#F4EFE7"; }} />
@@ -370,6 +371,15 @@ function ProductCard({ p, onClick }: { p: ProduitAwin; onClick: () => void }) {
                 <span key={m.number} title={`Palette n°${m.number} · ${m.name}`}
                   style={{ width: 9, height: 9, borderRadius: "50%", background: m.swatch, border: "1px solid rgba(0,0,0,0.18)", boxShadow: "0 0 0 1.5px rgba(255,255,255,0.7)" }} />
               ))}
+            </div>
+          )}
+
+          {/* Overlay "Voir détails" au hover */}
+          {hovering && (
+            <div style={{ position: "absolute", inset: 0, background: "rgba(26,26,26,0.72)", borderRadius: 14, display: "flex", alignItems: "center", justifyContent: "center", animation: "wadaProductOverlay 0.2s ease-out", backdropFilter: "blur(2px)" }}>
+              <div style={{ textAlign: "center", color: "#fff", fontFamily: "'Fredoka'", fontSize: 18, fontWeight: 500, letterSpacing: "-0.4px" }}>
+                Voir détails
+              </div>
             </div>
           )}
         </div>
@@ -390,6 +400,13 @@ function ProductCard({ p, onClick }: { p: ProduitAwin; onClick: () => void }) {
         style={{ position: "absolute", top: 10, right: 10, width: 34, height: 34, background: "rgba(255,255,255,0.92)", backdropFilter: "blur(4px)", border: "none", borderRadius: "50%", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 1px 5px rgba(0,0,0,0.12)" }}>
         <HeartIcon filled={liked} />
       </button>
+
+      <style>{`
+        @keyframes wadaProductOverlay {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+      `}</style>
     </article>
   );
 }
