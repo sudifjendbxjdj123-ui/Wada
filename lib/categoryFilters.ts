@@ -354,7 +354,7 @@ export function computeCounts(
       for (const d of (TYPES_BY_CATEGORY[category] || [])) if (d.re.test(hay)) bump(d.label);
     } else if (dimension === "color") {
       const cc = `${p.couleurNom || ""} ${p.nom}`.toLowerCase();
-      for (const f of COLOR_FAMILIES) if (f.kws.test(cc) || (p.hex && deltaEHex(p.hex, f.hex) < 22)) bump(f.name);
+      for (const f of COLOR_FAMILIES) if (f.kws.test(cc)) bump(f.name);
     } else if (dimension === "brand") {
       const b = (p.marque || p.marchand || "").trim(); if (b) bump(b);
     } else if (dimension === "size") {
