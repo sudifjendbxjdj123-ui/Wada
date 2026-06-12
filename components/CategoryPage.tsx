@@ -323,14 +323,16 @@ function ProductModal({ product: p, onClose, clickPosition }: { product: Produit
               </p>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                 {matches.slice(0, 4).map((m) => (
-                  <Link key={m.number} href={`/palette/${m.number}`} style={{ background: "#fff", borderRadius: 10, padding: 8, textDecoration: "none", boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
+                  <Link key={m.number} href={`/stylist?palette=${m.number}`} style={{ background: "#fff", borderRadius: 10, padding: 8, textDecoration: "none", boxShadow: "0 1px 4px rgba(0,0,0,0.04)", cursor: "pointer", transition: "box-shadow 0.2s" }}
+                    onMouseEnter={(e) => { e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.08)"; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.boxShadow = "0 1px 4px rgba(0,0,0,0.04)"; }}>
                     <div style={{ display: "flex", height: 12, borderRadius: 3, overflow: "hidden", marginBottom: 6 }}>
                       {m.colors.slice(0, 5).map((c, i) => (
                         <span key={i} style={{ flex: 1, background: c }} />
                       ))}
                     </div>
                     <p style={{ fontSize: 10, fontWeight: 600, color: "#1a1a1a", margin: 0, fontFamily: "'Inter'", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.name}</p>
-                    <p style={{ fontSize: 8, color: "#8a7a68", margin: "2px 0 0", fontFamily: "'Inter'" }}>Palette n°{m.number} →</p>
+                    <p style={{ fontSize: 8, color: "#8a7a68", margin: "2px 0 0", fontFamily: "'Inter'" }}>Composer une tenue →</p>
                   </Link>
                 ))}
               </div>
