@@ -38,24 +38,27 @@ export function useCart() {
     return () => window.removeEventListener("storage", sync);
   }, []);
 
-  const persist = useCallback((next: CartItem[]) => {
-    setCart(next);
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-      window.dispatchEvent(new StorageEvent("storage", { key: STORAGE_KEY, newValue: JSON.stringify(next) }));
-    } catch {}
+  const persist = useCallback((next: CartItem[] | ((prev: CartItem[]) => CartItem[])) => {
+    setCart((prev) => {
+      const updated = typeof next === "function" ? next(prev) : next;
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+        window.dispatchEvent(new StorageEvent("storage", { key: STORAGE_KEY, newValue: JSON.stringify(updated) }));
+      } catch {}
+      return updated;
+    });
   }, []);
 
   const add = useCallback((item: Omit<CartItem, "id" | "addedAt">) => {
-    persist([{ ...item, id: uid(), addedAt: Date.now() }, ...cart]);
-  }, [cart, persist]);
+    persist((prev) => [{ ...item, id: uid(), addedAt: Date.now() }, ...prev]);
+  }, [persist]);
 
   const addMany = useCallback((items: Array<Omit<CartItem, "id" | "addedAt">>) => {
     const stamped = items.map((i) => ({ ...i, id: uid(), addedAt: Date.now() }));
-    persist([...stamped, ...cart]);
-  }, [cart, persist]);
+    persist((prev) => [...stamped, ...prev]);
+  }, [persist]);
 
-  const remove = useCallback((id: string) => persist(cart.filter((c) => c.id !== id)), [cart, persist]);
+  const remove = useCallback((id: string) => persist((prev) => prev.filter((c) => c.id !== id)), [persist]);
 
   const clear = useCallback(() => persist([]), [persist]);
 

@@ -62,7 +62,7 @@ export default async function VetementsPage({ params, searchParams }: Props) {
         { label: "Vêtements", href: "/vetements" },
         ...(subSlug ? [{ label: subSlug.replace(/-/g, " "), href: `/vetements/${subSlug}` }] : []),
       ]}
-      slot={mapping?.slot ?? "haut,bas,veste"}
+      slot={mapping?.slot ?? "haut"}
       q={mapping?.q}
       genre={sp.genre}
       style={sp.style}
