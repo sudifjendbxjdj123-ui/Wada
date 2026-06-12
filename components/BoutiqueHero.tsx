@@ -24,20 +24,36 @@ const CATEGORIES: Array<{ label: string; href: string }> = [
 /* Fix 2026-06-11 « hero instantané » :
    localStorage cache des URLs d'images pour hydrater le mur à la 1re paint
    au lieu d'attendre 3 fetches /api/products (6-7s cold). On garde au max 60
-   URLs, qu'on refresh silencieusement en arrière-plan à chaque visite. */
+   URLs, qu'on refresh silencieusement en arrière-plan à chaque visite.
+   Fallback : 12 images Muji par défaut pour les 1re visites (même sans cache). */
 const CACHE_KEY = "wada-boutique-hero-images";
 const CACHE_MAX = 60;
 const EAGER_COUNT = 16; // 1res images loadées en priorité (≈ above-the-fold)
+const FALLBACK_IMAGES = [
+  "https://muji.com/img/img/jp/g/47024010_400.jpg",
+  "https://muji.com/img/img/jp/g/47023931_400.jpg",
+  "https://muji.com/img/img/jp/g/47020996_400.jpg",
+  "https://muji.com/img/img/jp/g/47023860_400.jpg",
+  "https://muji.com/img/img/jp/g/47024153_400.jpg",
+  "https://muji.com/img/img/jp/g/47023918_400.jpg",
+  "https://muji.com/img/img/jp/g/47024009_400.jpg",
+  "https://muji.com/img/img/jp/g/47023932_400.jpg",
+  "https://muji.com/img/img/jp/g/47023861_400.jpg",
+  "https://muji.com/img/img/jp/g/47024154_400.jpg",
+  "https://muji.com/img/img/jp/g/47024010_400.jpg",
+  "https://muji.com/img/img/jp/g/47023931_400.jpg",
+];
 
 function readCachedImages(): string[] {
-  if (typeof window === "undefined") return [];
+  if (typeof window === "undefined") return FALLBACK_IMAGES;
   try {
     const raw = localStorage.getItem(CACHE_KEY);
-    if (!raw) return [];
+    if (!raw) return FALLBACK_IMAGES;
     const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    return parsed.filter((s) => typeof s === "string").slice(0, CACHE_MAX);
-  } catch { return []; }
+    if (!Array.isArray(parsed)) return FALLBACK_IMAGES;
+    const cached = parsed.filter((s) => typeof s === "string").slice(0, CACHE_MAX);
+    return cached.length > 0 ? cached : FALLBACK_IMAGES;
+  } catch { return FALLBACK_IMAGES; }
 }
 
 function writeCachedImages(imgs: string[]) {
@@ -191,7 +207,7 @@ export function BoutiqueHero() {
           flex: 1 1 auto;
           min-height: 500px;
           overflow: hidden;
-          background: #2a2420;
+          background: linear-gradient(135deg, #1c1612 0%, #3a342d 50%, #2a2420 100%);
         }
         /* ── Mur défilant ── */
         .wada-bh-wall {
