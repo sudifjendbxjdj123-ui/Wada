@@ -46,6 +46,10 @@ export function GroupedProductCard({ g, onClick }: Props) {
   if (currentVariant.prix < 50) {
     badges.push({ label: "PROMO", icon: "⚡", bg: "#fee2e2", text: "#dc2626" });
   }
+  // Heuristique: prix moyen = best value
+  if (currentVariant.prix >= 50 && currentVariant.prix < 150) {
+    badges.push({ label: "✓ MEILLEUR PRIX", icon: "💎", bg: "#f0fdf4", text: "#16a34a" });
+  }
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -378,30 +382,33 @@ export function GroupedProductCard({ g, onClick }: Props) {
           </div>
         )}
 
-        {/* Prix et palette count */}
+        {/* Prix (BIG & BOLD) + palette count */}
         <div
           style={{
             display: "flex",
-            alignItems: "center",
+            alignItems: "baseline",
             justifyContent: "space-between",
             gap: 6,
             marginBottom: 6,
+            padding: "8px 10px",
+            background: "#faf6ee",
+            borderRadius: 8,
           }}
         >
           <p
             style={{
               margin: 0,
-              fontSize: 14,
-              fontWeight: 600,
-              color: "#1a1a1a",
+              fontSize: 16,
+              fontWeight: 700,
+              color: "#6B3A32",
               fontFamily: "'Inter'",
             }}
           >
             {formatProductPrice(currentVariant.prix, currentVariant.marchandSlug, currentVariant.devise)}
           </p>
           {matches.length > 0 && (
-            <span style={{ fontSize: 10, color: BORDEAUX, fontFamily: "'Inter'", fontWeight: 500, whiteSpace: "nowrap" }}>
-              {matches.length} palette{matches.length > 1 ? "s" : ""}
+            <span style={{ fontSize: 9, color: "#8a7a68", fontFamily: "'Inter'", fontWeight: 500, whiteSpace: "nowrap" }}>
+              {matches.length}P
             </span>
           )}
         </div>
