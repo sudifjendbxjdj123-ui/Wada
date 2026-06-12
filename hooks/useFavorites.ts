@@ -35,5 +35,22 @@ export function useFavorites() {
 
   const clear = useCallback(() => persist([]), [persist]);
 
-  return { favorites, toggle, has, clear, hydrated };
+  /** Remove with 5-second undo window. Returns undo callback. */
+  const removeWithUndo = useCallback((number: string, onUndo?: () => void) => {
+    const backup = favorites;
+    const nextFavorites = favorites.filter((n) => n !== number);
+    persist(nextFavorites);
+
+    const timeout = setTimeout(() => {
+      // Auto-finalize after 5s (nothing to do, already persisted)
+    }, 5000);
+
+    return () => {
+      clearTimeout(timeout);
+      persist(backup);
+      onUndo?.();
+    };
+  }, [favorites, persist]);
+
+  return { favorites, toggle, has, clear, removeWithUndo, hydrated };
 }

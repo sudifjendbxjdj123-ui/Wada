@@ -15,8 +15,9 @@ import { useFavorites } from "@/hooks/useFavorites";
 import { useSavedOutfits, type SavedOutfit } from "@/hooks/useSavedOutfits";
 
 export default function FavorisPage() {
-  const { favorites, clear, hydrated } = useFavorites();
-  const { outfits, remove: removeOutfit, hydrated: outfitsHydrated } = useSavedOutfits();
+  const { favorites, clear, removeWithUndo, hydrated } = useFavorites();
+  const { outfits, removeWithUndo: removeOutfitWithUndo, hydrated: outfitsHydrated } = useSavedOutfits();
+  const [undoState, setUndoState] = useState<{ undo: () => void; label: string; timeout: NodeJS.Timeout } | null>(null);
 
   const clearAll = () => {
     if (confirm("Vider toutes les palettes favorites ?")) clear();
@@ -212,7 +213,16 @@ export default function FavorisPage() {
                   </div>
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 20 }}>
                     {outfits.map((o) => (
-                      <SavedOutfitCard key={o.id} outfit={o} onRemove={() => removeOutfit(o.id)} />
+                      <SavedOutfitCard
+                        key={o.id}
+                        outfit={o}
+                        onRemove={() => {
+                          if (undoState) clearTimeout(undoState.timeout);
+                          const undo = removeOutfitWithUndo(o.id);
+                          const timeout = setTimeout(() => setUndoState(null), 5000);
+                          setUndoState({ undo, label: o.nomTenue, timeout });
+                        }}
+                      />
                     ))}
                   </div>
                 </section>
@@ -233,6 +243,40 @@ export default function FavorisPage() {
 
         </div>
               </div>
+
+      {/* Toast Undo */}
+      {undoState && (
+        <div style={{
+          position: "fixed", bottom: "calc(56px + env(safe-area-inset-bottom) + 20px)", right: 20,
+          background: ink, color: paper, padding: "14px 20px", borderRadius: 12,
+          fontSize: 14, fontFamily: "'Inter', sans-serif", display: "flex", gap: 12,
+          alignItems: "center", boxShadow: "0 12px 32px rgba(30,30,30,0.25)",
+          animation: "wadaUndoSlideIn 0.25s ease-out", zIndex: 10000,
+        }}>
+          <span>"{undoState.label}" supprimée</span>
+          <button
+            onClick={() => {
+              clearTimeout(undoState.timeout);
+              undoState.undo();
+              setUndoState(null);
+            }}
+            style={{
+              background: "transparent", border: "none", color: "#F4EFE7",
+              textDecoration: "underline", cursor: "pointer", fontSize: 13, fontWeight: 600,
+              padding: 0, fontFamily: "'Inter', sans-serif", whiteSpace: "nowrap",
+            }}
+          >
+            Annuler
+          </button>
+        </div>
+      )}
+
+      <style>{`
+        @keyframes wadaUndoSlideIn {
+          from { opacity: 0; transform: translateY(20px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
     </main>
   );
 }

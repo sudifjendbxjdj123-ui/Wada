@@ -99,5 +99,22 @@ export function useSavedOutfits() {
 
   const clear = useCallback(() => persist([]), [persist]);
 
-  return { outfits, save, remove, clear, hydrated };
+  /** Remove with 5-second undo window. Returns undo callback. */
+  const removeWithUndo = useCallback((id: string, onUndo?: () => void) => {
+    const backup = outfits;
+    const nextOutfits = outfits.filter((o) => o.id !== id);
+    persist(nextOutfits);
+
+    const timeout = setTimeout(() => {
+      // Auto-finalize after 5s (nothing to do, already persisted)
+    }, 5000);
+
+    return () => {
+      clearTimeout(timeout);
+      persist(backup);
+      onUndo?.();
+    };
+  }, [outfits, persist]);
+
+  return { outfits, save, remove, removeWithUndo, clear, hydrated };
 }
