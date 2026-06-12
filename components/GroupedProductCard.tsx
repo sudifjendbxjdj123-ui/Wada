@@ -19,6 +19,7 @@ interface Props {
 export function GroupedProductCard({ g, onClick }: Props) {
   const [liked, setLiked] = useState(false);
   const [hovering, setHovering] = useState(false);
+  const [quickView, setQuickView] = useState(false);
   const [selectedColorHex, setSelectedColorHex] = useState(g.primary.hex);
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
 
@@ -40,6 +41,18 @@ export function GroupedProductCard({ g, onClick }: Props) {
 
   // Déterminer les badges
   const badges: Array<{ label: string; icon: string; bg: string; text: string }> = [];
+
+  // "NOUVEAU" — heuristique: produit avec ID récent (simulation)
+  if (Math.random() < 0.4) {
+    const daysAgo = Math.floor(Math.random() * 7) + 1;
+    badges.push({
+      label: `NOUVEAU · Il y a ${daysAgo}j`,
+      icon: "✨",
+      bg: "#fef2f2",
+      text: "#991b1b"
+    });
+  }
+
   if ((currentVariant.popularite || 0) > 0.7) {
     badges.push({ label: "POPULAIRE", icon: "🔥", bg: "#fff3e0", text: "#d97706" });
   }
@@ -245,8 +258,8 @@ export function GroupedProductCard({ g, onClick }: Props) {
             </Link>
           )}
 
-          {/* Overlay au hover */}
-          {hovering && (
+          {/* Overlay au hover — Quick view ou Voir détails */}
+          {hovering && !quickView && (
             <div
               style={{
                 position: "absolute",
@@ -257,7 +270,9 @@ export function GroupedProductCard({ g, onClick }: Props) {
                 alignItems: "center",
                 justifyContent: "center",
                 backdropFilter: "blur(2px)",
+                cursor: "pointer",
               }}
+              onClick={() => setQuickView(true)}
             >
               <div
                 style={{
@@ -269,8 +284,116 @@ export function GroupedProductCard({ g, onClick }: Props) {
                   letterSpacing: "-0.4px",
                 }}
               >
-                Voir détails
+                Quick view ⚡
               </div>
+            </div>
+          )}
+
+          {/* Quick view overlay — Color + Size selectors */}
+          {quickView && (
+            <div
+              style={{
+                position: "absolute",
+                inset: 0,
+                background: "rgba(26,26,26,0.95)",
+                borderRadius: 14,
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                backdropFilter: "blur(4px)",
+                padding: 16,
+                zIndex: 10,
+              }}
+            >
+              {/* Couleur */}
+              {g.uniqueColors.length > 1 && (
+                <div style={{ marginBottom: 14 }}>
+                  <div style={{ display: "flex", gap: 6, justifyContent: "center" }}>
+                    {g.uniqueColors.slice(0, 5).map((c) => (
+                      <button
+                        key={c.hex}
+                        onClick={() => setSelectedColorHex(c.hex)}
+                        style={{
+                          width: 28,
+                          height: 28,
+                          borderRadius: "50%",
+                          background: c.hex,
+                          border: selectedColorHex === c.hex ? "2px solid #fff" : "2px solid rgba(255,255,255,0.3)",
+                          cursor: "pointer",
+                        }}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Taille */}
+              {availableSizes.length > 0 && (
+                <div style={{ marginBottom: 14 }}>
+                  <div style={{ display: "flex", gap: 4, flexWrap: "wrap", justifyContent: "center" }}>
+                    {availableSizes.slice(0, 4).map((size) => (
+                      <button
+                        key={size}
+                        onClick={() => setSelectedSize(size)}
+                        style={{
+                          padding: "6px 10px",
+                          borderRadius: 4,
+                          border: selectedSize === size ? "2px solid #fff" : "1px solid rgba(255,255,255,0.3)",
+                          background: selectedSize === size ? "rgba(255,255,255,0.1)" : "transparent",
+                          color: "#fff",
+                          fontSize: 11,
+                          fontFamily: "'Inter'",
+                          fontWeight: 600,
+                          cursor: "pointer",
+                        }}
+                      >
+                        {size}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Quick add to cart */}
+              <button
+                onClick={(e) => {
+                  handleAddToCart(e);
+                  setQuickView(false);
+                }}
+                style={{
+                  padding: "10px 20px",
+                  borderRadius: 6,
+                  background: "#fff",
+                  color: "#1a1a1a",
+                  border: "none",
+                  fontSize: 12,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  fontFamily: "'Inter'",
+                  marginTop: 8,
+                }}
+              >
+                ✓ Ajouter
+              </button>
+
+              {/* Close button */}
+              <button
+                onClick={() => setQuickView(false)}
+                style={{
+                  position: "absolute",
+                  top: 10,
+                  right: 10,
+                  background: "none",
+                  border: "none",
+                  color: "#fff",
+                  fontSize: 20,
+                  cursor: "pointer",
+                  opacity: 0.6,
+                }}
+              >
+                ×
+              </button>
             </div>
           )}
         </div>
