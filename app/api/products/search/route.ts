@@ -94,14 +94,15 @@ export async function POST(req: Request) {
   /* Application des filtres + tri. */
   const filtered = sortProducts(applyCategoryFilters(pool, filters, category), filters.sort);
 
-  /* Dédup par ID produit unique (Awin ID). Chaque produit = un ID unique.
-     Si deux produits partagent le même ID → même article, garder le premier.
-     Cela évite les doublons tout en conservant les variantes couleur (IDs différents). */
+  /* Dédup par marque + nom + couleur (ignorer les tailles).
+     Raison : Awin donne un ID unique par SKU (taille/couleur), donc chaque
+     taille serait un produit distinct. On veut afficher CHAQUE PRODUIT UNE FOIS.
+     Tailles sont dans p.tailles[] si l'utilisateur veut les détails. */
   const seen = new Set<string>();
   const deduped: ProduitAwin[] = [];
   for (const p of filtered) {
-    const id = p.id || `${p.marque}-${p.nom}`;  // Fallback si pas d'ID
-    if (!seen.has(id)) { seen.add(id); deduped.push(p); }
+    const key = `${(p.marque || "").toLowerCase()}-${(p.nom || "").toLowerCase()}-${(p.couleurNom || p.hex || "").toLowerCase()}`;
+    if (!seen.has(key)) { seen.add(key); deduped.push(p); }
   }
 
   const total = deduped.length;
