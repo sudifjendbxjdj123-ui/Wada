@@ -19,6 +19,7 @@ import { HeartIcon } from "@/components/HeartIcon";
 import { SortDropdown, type SortOption } from "@/components/category/SortDropdown";
 import { BackToTopButton } from "@/components/BackToTopButton";
 import { showToast } from "@/lib/toast";
+import { SizeGuideModal } from "@/components/SizeGuideModal";
 /* Brief 2026-06-09 — système de filtres complet (sidebar 11 filtres +
    filtre Palette Sanzō Wada). Cf. lib/categoryFilters + components/category. */
 import {
@@ -94,6 +95,7 @@ function ProductModal({ product: p, onClose, clickPosition }: { product: Produit
   const [liked, setLiked] = useState(false);
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
   const [imgIndex, setImgIndex] = useState(0);
+  const [sizeGuideOpen, setSizeGuideOpen] = useState(false);
 
   /* Galerie d'images : largeImage + image + thumb si disponibles */
   const images = [p.largeImage, p.image, p.thumb].filter(Boolean);
@@ -224,7 +226,25 @@ function ProductModal({ product: p, onClose, clickPosition }: { product: Produit
           {/* ── Tailles / Pointures ── */}
           {sizes.length > 0 && (
             <div style={{ marginBottom: 18 }}>
-              <p style={{ fontSize: 9, letterSpacing: "0.18em", textTransform: "uppercase", color: "#8a7a68", fontWeight: 600, margin: "0 0 8px", fontFamily: "'Inter'" }}>{sizeLabel}</p>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+                <p style={{ fontSize: 9, letterSpacing: "0.18em", textTransform: "uppercase", color: "#8a7a68", fontWeight: 600, margin: 0, fontFamily: "'Inter'" }}>{sizeLabel}</p>
+                <button
+                  onClick={() => setSizeGuideOpen(true)}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    color: "#6B3A32",
+                    fontSize: 10,
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    textDecoration: "underline",
+                    fontFamily: "'Inter'",
+                    padding: 0,
+                  }}
+                >
+                  ? Guide des tailles
+                </button>
+              </div>
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                 {sizes.map((s) => (
                   <button key={s} onClick={() => setSelectedSize(s === selectedSize ? null : s)}
@@ -327,6 +347,9 @@ function ProductModal({ product: p, onClose, clickPosition }: { product: Produit
           )}
         </div>
       </div>
+
+      {/* Size Guide Modal */}
+      <SizeGuideModal isOpen={sizeGuideOpen} onClose={() => setSizeGuideOpen(false)} category={p.categorie} />
 
       <style>{`
         .wada-qv-backdrop { animation: wadaQvFade 0.2s ease-out; }
