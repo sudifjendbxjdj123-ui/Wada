@@ -1,19 +1,16 @@
 "use client";
 /**
  * /boutique — Page shopping WADA.
+ *
+ * Fix 2026-06-11 « hero instantané » : retiré le caches.delete("products-v1")
+ * qui s'exécutait à chaque mount → toutes les requêtes /api/products
+ * repartaient à froid (4-6s contre ~200ms en chaud). Le cache produits doit
+ * être invalidé par /api/cron, pas par l'utilisateur qui ouvre la page.
  */
-import { useEffect } from "react";
 import BackButton from "@/components/BackButton";
 import { BoutiqueHero } from "@/components/BoutiqueHero";
 
 export default function BoutiquePage() {
-  /* Rafraîchit uniquement le cache produits (ne wipe pas les autres) */
-  useEffect(() => {
-    if ("caches" in window) {
-      caches.delete("products-v1");
-    }
-  }, []);
-
   return (
     <main
       style={{

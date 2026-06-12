@@ -6,6 +6,7 @@
  */
 import { useState, useEffect, useCallback, useMemo, useTransition } from "react";
 import Link from "next/link";
+import BackButton from "@/components/BackButton";
 import type { ProduitAwin } from "@/lib/schema";
 import { formatProductPrice } from "@/lib/priceFormat";
 import { dictionaryMinimal } from "@/lib/data-client";
@@ -160,21 +161,9 @@ function ProductModal({ product: p, onClose, clickPosition }: { product: Produit
 
   /* Calcul position dynamique de la modal près du clic */
   const getModalPosition = () => {
-    if (!clickPosition) return { top: "50%", left: "50%", transform: "translate(-50%, -50%)" };
-
-    const modalWidth = 940;
-    const modalHeight = 600;
-    const offset = 20;
-    let top = clickPosition.y - modalHeight / 2;
-    let left = clickPosition.x - modalWidth / 2;
-
-    /* Ajuste si la modal sort de l'écran */
-    if (left < offset) left = offset;
-    if (left + modalWidth > window.innerWidth - offset) left = window.innerWidth - modalWidth - offset;
-    if (top < offset) top = offset;
-    if (top + modalHeight > window.innerHeight - offset) top = window.innerHeight - modalHeight - offset;
-
-    return { top: `${top}px`, left: `${left}px`, position: "fixed" as const };
+    /* Toujours centrer la modal au centre de la fenêtre d'affichage, peu importe
+       la position du clic. Cela garantit que la modal reste centrée même après un scroll. */
+    return { top: "50%", left: "50%", transform: "translate(-50%, -50%)" };
   };
 
   const modalPos = getModalPosition();
@@ -536,6 +525,12 @@ export default function CategoryPage({ title, breadcrumb, slot, q, genre: initGe
 
   return (
     <main style={{ minHeight: "100vh", background: "#FAF8F4", fontFamily: "'Inter', sans-serif" }}>
+
+      {/* Fix 2026-06-11 : bouton retour explicite (pill « ← Retour ») — la
+          breadcrumb seule ne suffisait pas comme affordance de navigation
+          arrière, surtout pour les sous-catégories profondes. Fallback
+          /boutique car les catégories sont accessibles depuis le hub shopping. */}
+      <BackButton fallback="/boutique" />
 
       {/* Breadcrumb */}
       <div style={{ padding: "10px 20px", fontSize: 12, color: "#8a7a68", borderBottom: "0.5px solid #e8dfd0" }}>

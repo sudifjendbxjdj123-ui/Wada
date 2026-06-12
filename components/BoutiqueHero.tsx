@@ -21,10 +21,36 @@ const CATEGORIES: Array<{ label: string; href: string }> = [
   { label: "Marques",    href: "/marques" },
 ];
 
+/* Fix 2026-06-11 « hero instantané » :
+   localStorage cache des URLs d'images pour hydrater le mur à la 1re paint
+   au lieu d'attendre 3 fetches /api/products (6-7s cold). On garde au max 60
+   URLs, qu'on refresh silencieusement en arrière-plan à chaque visite. */
+const CACHE_KEY = "wada-boutique-hero-images";
+const CACHE_MAX = 60;
+const EAGER_COUNT = 16; // 1res images loadées en priorité (≈ above-the-fold)
+
+function readCachedImages(): string[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((s) => typeof s === "string").slice(0, CACHE_MAX);
+  } catch { return []; }
+}
+
+function writeCachedImages(imgs: string[]) {
+  try { localStorage.setItem(CACHE_KEY, JSON.stringify(imgs.slice(0, CACHE_MAX))); } catch {}
+}
+
 export function BoutiqueHero() {
-  const [images, setImages] = useState<string[]>([]);
+  /* Hydrate synchroniquement depuis localStorage pour que la 1re paint
+     contienne déjà le mur — pas d'attente de useEffect. Sur SSR/1re visite
+     ça retombe sur [], et le fetch en useEffect rempli ~1s plus tard. */
+  const [images, setImages] = useState<string[]>(() => readCachedImages());
   const [cols, setCols] = useState(4);
-  const [genre, setGenre] = useState<"femme" | "homme">("femme"); // Femme actif par défaut
+  const [genre, setGenre] = useState<"femme" | "homme">("femme");
 
   /* Nombre de colonnes adapté à la largeur (≈1 colonne / 260px). */
   useEffect(() => {
@@ -50,8 +76,10 @@ export function BoutiqueHero() {
           .map((p: { image?: string; largeImage?: string }) => p.image || p.largeImage)
           .filter(Boolean),
       );
-      const uniq = Array.from(new Set(imgs)).slice(0, 60);
-      if (alive) setImages(uniq);
+      const uniq = Array.from(new Set(imgs)).slice(0, CACHE_MAX);
+      if (!alive || uniq.length === 0) return;
+      setImages(uniq);
+      writeCachedImages(uniq);
     })();
     return () => { alive = false; };
   }, []);
@@ -76,10 +104,24 @@ export function BoutiqueHero() {
               style={{ animationDuration: `${30 + (ci % 4) * 7}s`, animationDelay: `-${(ci % 5) * 6}s` }}
             >
               {col.length > 0 &&
-                [...col, ...col].map((src, i) => (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img key={i} src={src} alt="" loading="lazy" decoding="async" />
-                ))}
+                [...col, ...col].map((src, i) => {
+                  /* Fix 2026-06-11 « hero instantané » : les 1res images
+                     (above-the-fold) en eager + fetchpriority=high pour
+                     remplir le mur dès la 1re paint au lieu de streamer
+                     en lazy. Au-delà du seuil on garde lazy. */
+                  const isEager = i < Math.max(2, Math.ceil(EAGER_COUNT / cols));
+                  return (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      key={i}
+                      src={src}
+                      alt=""
+                      loading={isEager ? "eager" : "lazy"}
+                      decoding="async"
+                      {...(isEager ? { fetchPriority: "high" as const } : {})}
+                    />
+                  );
+                })}
             </div>
           ))}
         </div>
