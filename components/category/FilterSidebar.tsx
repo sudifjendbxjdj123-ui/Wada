@@ -75,6 +75,15 @@ export function FilterSidebar({ category, filters, onChange, facets, resultCount
   const [popular, setPopular] = useState<PopularPalette[]>([]);
   const [showAll, setShowAll] = useState(false);
   const [brandQuery, setBrandQuery] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
+
+  // Debounce brand search to avoid re-rendering on every keystroke
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedQuery(brandQuery);
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [brandQuery]);
 
   useEffect(() => {
     let cancelled = false;
@@ -87,7 +96,7 @@ export function FilterSidebar({ category, filters, onChange, facets, resultCount
 
   const types = TYPES_BY_CATEGORY[category] || [];
   const brandList = useMemo(() => Object.entries(facets.brand || {}).sort((a, b) => b[1] - a[1]).map(([b]) => b), [facets.brand]);
-  const filteredBrands = brandQuery ? brandList.filter((b) => b.toLowerCase().includes(brandQuery.toLowerCase())) : brandList.slice(0, 12);
+  const filteredBrands = useMemo(() => debouncedQuery ? brandList.filter((b) => b.toLowerCase().includes(debouncedQuery.toLowerCase())) : brandList.slice(0, 12), [debouncedQuery, brandList]);
   const sizeList = useMemo(() => Object.keys(facets.size || {}).sort(), [facets.size]);
 
   const isDrawer = variant === "drawer";
