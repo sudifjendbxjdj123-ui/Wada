@@ -880,52 +880,59 @@ export default function CategoryPage({ title, breadcrumb, slot, q, genre: initGe
           )}
 
       {/* ── Pagination ── */}
-      {!loading && totalPages > 1 && (
-        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 6, padding: "8px 16px 32px", flexWrap: "wrap" }}>
-          {/* Précédent */}
-          <button
-            onClick={() => { startTransition(() => setPage(p => Math.max(1, p - 1))); window.scrollTo({ top: 0, behavior: "smooth" }); }}
-            disabled={page === 1}
-            style={{ padding: "9px 16px", borderRadius: 999, fontSize: 13, fontFamily: "'Inter'", fontWeight: 500, cursor: page === 1 ? "default" : "pointer", background: "transparent", color: page === 1 ? "#ccc" : "#1a1a1a", border: `1px solid ${page === 1 ? "#eee" : "rgba(26,26,26,0.2)"}`, transition: "all 0.15s" }}
-            aria-label="Page précédente"
-          >
-            ← Précédent
-          </button>
-
-          {/* Numéros de pages */}
-          {pageNumbers.map((n, i) =>
-            n === "…" ? (
-              <span key={`dots-${i}`} style={{ padding: "9px 4px", color: "#aaa", fontSize: 13 }}>…</span>
-            ) : (
-              <button
-                key={n}
-                onClick={() => { startTransition(() => setPage(n as number)); window.scrollTo({ top: 0, behavior: "smooth" }); }}
-                style={{
-                  width: 38, height: 38, borderRadius: "50%", fontSize: 13,
-                  fontFamily: "'Inter'", fontWeight: page === n ? 700 : 500,
-                  cursor: "pointer",
-                  background: page === n ? "#1a1a1a" : "transparent",
-                  color: page === n ? "#fff" : "#1a1a1a",
-                  border: `1px solid ${page === n ? "#1a1a1a" : "rgba(26,26,26,0.2)"}`,
-                  transition: "all 0.15s",
-                }}
-                aria-label={`Page ${n}`}
-                aria-current={page === n ? "page" : undefined}
-              >
-                {n}
-              </button>
-            )
+      {totalPages > 1 && (
+        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 6, padding: "8px 16px 32px", flexWrap: "wrap", opacity: loading ? 0.5 : 1, pointerEvents: loading ? "none" : "auto", transition: "opacity 0.2s" }}>
+          {loading && (
+            <span style={{ fontSize: 12, color: "#8a7a68", fontFamily: "'Inter'" }}>Chargement…</span>
           )}
+          {!loading && (
+            <>
+              {/* Précédent */}
+              <button
+                onClick={() => { startTransition(() => setPage(p => Math.max(1, p - 1))); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+                disabled={page === 1}
+                style={{ padding: "9px 16px", borderRadius: 999, fontSize: 13, fontFamily: "'Inter'", fontWeight: 500, cursor: page === 1 ? "default" : "pointer", background: "transparent", color: page === 1 ? "#ccc" : "#1a1a1a", border: `1px solid ${page === 1 ? "#eee" : "rgba(26,26,26,0.2)"}`, transition: "all 0.15s" }}
+                aria-label="Page précédente"
+              >
+                ← Précédent
+              </button>
 
-          {/* Suivant */}
-          <button
-            onClick={() => { startTransition(() => setPage(p => Math.min(totalPages, p + 1))); window.scrollTo({ top: 0, behavior: "smooth" }); }}
-            disabled={page === totalPages}
-            style={{ padding: "9px 16px", borderRadius: 999, fontSize: 13, fontFamily: "'Inter'", fontWeight: 500, cursor: page === totalPages ? "default" : "pointer", background: page === totalPages ? "transparent" : "#1a1a1a", color: page === totalPages ? "#ccc" : "#fff", border: `1px solid ${page === totalPages ? "#eee" : "#1a1a1a"}`, transition: "all 0.15s" }}
-            aria-label="Page suivante"
-          >
-            Suivant →
-          </button>
+              {/* Numéros de pages */}
+              {pageNumbers.map((n, i) =>
+                n === "…" ? (
+                  <span key={`dots-${i}`} style={{ padding: "9px 4px", color: "#aaa", fontSize: 13 }}>…</span>
+                ) : (
+                  <button
+                    key={n}
+                    onClick={() => { startTransition(() => setPage(n as number)); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+                    style={{
+                      width: 38, height: 38, borderRadius: "50%", fontSize: 13,
+                      fontFamily: "'Inter'", fontWeight: page === n ? 700 : 500,
+                      cursor: "pointer",
+                      background: page === n ? "#1a1a1a" : "transparent",
+                      color: page === n ? "#fff" : "#1a1a1a",
+                      border: `1px solid ${page === n ? "#1a1a1a" : "rgba(26,26,26,0.2)"}`,
+                      transition: "all 0.15s",
+                    }}
+                    aria-label={`Page ${n}`}
+                    aria-current={page === n ? "page" : undefined}
+                  >
+                    {n}
+                  </button>
+                )
+              )}
+
+              {/* Suivant */}
+              <button
+                onClick={() => { startTransition(() => setPage(p => Math.min(totalPages, p + 1))); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+                disabled={page === totalPages}
+                style={{ padding: "9px 16px", borderRadius: 999, fontSize: 13, fontFamily: "'Inter'", fontWeight: 500, cursor: page === totalPages ? "default" : "pointer", background: page === totalPages ? "transparent" : "#1a1a1a", color: page === totalPages ? "#ccc" : "#fff", border: `1px solid ${page === totalPages ? "#eee" : "#1a1a1a"}`, transition: "all 0.15s" }}
+                aria-label="Page suivante"
+              >
+                Suivant →
+              </button>
+            </>
+          )}
         </div>
       )}
 
