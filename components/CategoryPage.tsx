@@ -11,6 +11,11 @@ import type { ProduitAwin } from "@/lib/schema";
 import { formatProductPrice } from "@/lib/priceFormat";
 import { dictionaryMinimal } from "@/lib/data-client";
 import { deltaEHex, DELTA_E_LOOSE } from "@/lib/colorDistance";
+import { groupProducts } from "@/lib/groupProducts";
+import { GroupedProductCard } from "@/components/GroupedProductCard";
+import { getMatchingPalettes } from "@/lib/getMatchingPalettes";
+import { SOURCE_LABEL } from "@/lib/SOURCE_LABEL";
+import { HeartIcon } from "@/components/HeartIcon";
 /* Brief 2026-06-09 — système de filtres complet (sidebar 11 filtres +
    filtre Palette Sanzō Wada). Cf. lib/categoryFilters + components/category. */
 import {
@@ -40,42 +45,6 @@ function seedFilters(initGenre?: string, initStyle?: string): CategoryFilters {
   return f;
 }
 
-/* ── Palettes WADA correspondant à un produit (marqueur unique WADA) ──
-   Brief « Pages catégorie V2 premium » §3-5 : sous chaque produit, des
-   pastilles indiquent dans quelles palettes Sanzō Wada la pièce s'intègre.
-   Calculé CÔTÉ CLIENT depuis le hex dominant du produit vs les couleurs
-   du dictionnaire (deltaE2000) — pas de champ backend ni de ré-ingestion.
-   Résultat mémoïsé par hex (un produit = un hex → calcul une seule fois). */
-interface MatchPalette { number: string; name: string; swatch: string; colors: string[]; culture?: string }
-const _paletteMatchCache = new Map<string, MatchPalette[]>();
-function getMatchingPalettes(hex?: string): MatchPalette[] {
-  if (!hex || !/^#[0-9a-f]{6}$/i.test(hex)) return [];
-  const cached = _paletteMatchCache.get(hex);
-  if (cached) return cached;
-  const matches: Array<MatchPalette & { dE: number }> = [];
-  for (const pal of dictionaryMinimal) {
-    let best = Infinity;
-    let bestHex = pal.colors[0]?.hex || "#999";
-    for (const c of pal.colors) {
-      const dE = deltaEHex(hex, c.hex);
-      if (dE < best) { best = dE; bestHex = c.hex; }
-    }
-    if (best < DELTA_E_LOOSE) {
-      matches.push({
-        number: pal.number,
-        name: pal.name,
-        swatch: bestHex,
-        colors: pal.colors.map((c) => c.hex),
-        culture: pal.culture,
-        dE: best,
-      });
-    }
-  }
-  matches.sort((a, b) => a.dE - b.dE);
-  const result = matches.map(({ number, name, swatch, colors, culture }) => ({ number, name, swatch, colors, culture }));
-  _paletteMatchCache.set(hex, result);
-  return result;
-}
 
 interface BreadcrumbItem { label: string; href: string; }
 interface Props {
@@ -89,13 +58,6 @@ interface Props {
 }
 
 const BORDEAUX = "#6B3A32";
-const SOURCE_LABEL: Record<string, string> = {
-  "muji-france": "MUJI France",
-  "the-business-fashion": "The Business Fashion",
-  "suitable-fr": "Suitable FR",
-  "new-era": "New Era",
-  "kastner-ohler": "Kastner & Öhler",
-};
 
 /* Garde anti-crash : vrai uniquement pour une URL http(s) bien formée.
    Empêche href="undefined"/"" de produire un clic vers une route cassée. */
@@ -109,18 +71,6 @@ function isValidHttpUrl(u?: string | null): u is string {
   }
 }
 
-/* ── Icône cœur ── */
-function HeartIcon({ filled }: { filled: boolean }) {
-  return (
-    <svg width="17" height="17" viewBox="0 0 24 24" aria-hidden
-      fill={filled ? BORDEAUX : "none"}
-      stroke={filled ? BORDEAUX : "#5a5a5a"} strokeWidth={1.8}
-      strokeLinecap="round" strokeLinejoin="round"
-      style={{ transition: "transform 0.2s cubic-bezier(.22,1.4,.36,1), fill 0.2s, stroke 0.2s", transform: filled ? "scale(1.12)" : "scale(1)" }}>
-      <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z" />
-    </svg>
-  );
-}
 
 /* ── Quick View Modal V2 « premium » (brief WADA-quickview-produit-V2) ──
    Adaptée au stack réel : inline styles + SVG inline (pas de lucide), données
@@ -610,10 +560,10 @@ export default function CategoryPage({ title, breadcrumb, slot, q, genre: initGe
             </div>
           ) : (
             <div className="wada-shop-grid" style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 16 }}>
-              {products.map((p) => (
-                <ProductCard key={p.id} p={p} onClick={(e) => {
+              {groupProducts(products).map((g) => (
+                <GroupedProductCard key={g.key} g={g} onClick={(e) => {
                   setClickPosition({ x: e.clientX, y: e.clientY });
-                  setSelected(p);
+                  setSelected(g.primary);
                 }} />
               ))}
             </div>
