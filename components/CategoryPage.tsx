@@ -135,7 +135,7 @@ function CheckIcon() {
   );
 }
 
-function ProductModal({ product: p, onClose }: { product: ProduitAwin; onClose: () => void }) {
+function ProductModal({ product: p, onClose, clickPosition }: { product: ProduitAwin; onClose: () => void; clickPosition: { x: number; y: number } | null }) {
   const source = SOURCE_LABEL[p.marchandSlug || ""] || p.marchand;
   const [liked, setLiked] = useState(false);
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
@@ -158,9 +158,30 @@ function ProductModal({ product: p, onClose }: { product: ProduitAwin; onClose: 
     return () => { document.removeEventListener("keydown", onKey); document.body.style.overflow = ""; };
   }, [onClose]);
 
+  /* Calcul position dynamique de la modal près du clic */
+  const getModalPosition = () => {
+    if (!clickPosition) return { top: "50%", left: "50%", transform: "translate(-50%, -50%)" };
+
+    const modalWidth = 940;
+    const modalHeight = 600;
+    const offset = 20;
+    let top = clickPosition.y - modalHeight / 2;
+    let left = clickPosition.x - modalWidth / 2;
+
+    /* Ajuste si la modal sort de l'écran */
+    if (left < offset) left = offset;
+    if (left + modalWidth > window.innerWidth - offset) left = window.innerWidth - modalWidth - offset;
+    if (top < offset) top = offset;
+    if (top + modalHeight > window.innerHeight - offset) top = window.innerHeight - modalHeight - offset;
+
+    return { top: `${top}px`, left: `${left}px`, position: "fixed" as const };
+  };
+
+  const modalPos = getModalPosition();
+
   return (
     <div onClick={onClose} className="wada-qv-backdrop" style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,0.45)", backdropFilter: "blur(3px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
-      <div onClick={(e) => e.stopPropagation()} className="wada-qv-modal wada-modal-grid" style={{ background: "#fff", width: "100%", maxWidth: 940, maxHeight: "88vh", borderRadius: 24, overflow: "hidden", display: "grid", gridTemplateColumns: "1.1fr 1fr", position: "relative" }}>
+      <div onClick={(e) => e.stopPropagation()} className="wada-qv-modal wada-modal-grid" style={{ background: "#fff", width: "100%", maxWidth: 940, maxHeight: "88vh", borderRadius: 24, overflow: "hidden", display: "grid", gridTemplateColumns: "1.1fr 1fr", position: "relative", ...modalPos, pointerEvents: "auto" }}>
         <button onClick={onClose} style={{ position: "absolute", top: 14, right: 14, zIndex: 10, width: 34, height: 34, borderRadius: "50%", background: "rgba(255,255,255,0.92)", boxShadow: "0 1px 6px rgba(0,0,0,0.12)", border: "none", cursor: "pointer", fontSize: 16, fontWeight: 300, display: "flex", alignItems: "center", justifyContent: "center" }} aria-label="Fermer">✕</button>
 
         {/* ── CÔTÉ IMAGE (gauche) — CAROUSEL ── */}
@@ -325,9 +346,9 @@ function ProductModal({ product: p, onClose }: { product: ProduitAwin; onClose: 
 
       <style>{`
         .wada-qv-backdrop { animation: wadaQvFade 0.2s ease-out; }
-        .wada-qv-modal { animation: wadaQvScale 0.25s cubic-bezier(0.16, 1, 0.3, 1); }
+        .wada-qv-modal { animation: wadaQvPopIn 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
         @keyframes wadaQvFade { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes wadaQvScale { from { opacity: 0; transform: scale(0.94); } to { opacity: 1; transform: scale(1); } }
+        @keyframes wadaQvPopIn { from { opacity: 0; transform: scale(0.85) translateY(-20px); } to { opacity: 1; transform: scale(1) translateY(0); } }
         @media (max-width: 768px) {
           .wada-qv-backdrop { padding: 0 !important; align-items: stretch !important; }
           .wada-modal-grid { grid-template-columns: 1fr !important; max-width: 100% !important; max-height: 100% !important; height: 100%; border-radius: 0 !important; }
@@ -344,7 +365,7 @@ function ProductModal({ product: p, onClose }: { product: ProduitAwin; onClose: 
    - Pastilles des palettes WADA correspondantes (haut gauche)
    - Compteur « X palettes » en bordeaux (polyvalence)
    - Hover : soulèvement + léger zoom image + overlay "Voir détails" */
-function ProductCard({ p, onClick }: { p: ProduitAwin; onClick: () => void }) {
+function ProductCard({ p, onClick }: { p: ProduitAwin; onClick: (e: React.MouseEvent) => void }) {
   const [liked, setLiked] = useState(false);
   const [hovering, setHovering] = useState(false);
   const source = SOURCE_LABEL[p.marchandSlug || ""] || p.marchand;
@@ -354,7 +375,7 @@ function ProductCard({ p, onClick }: { p: ProduitAwin; onClick: () => void }) {
   const bgGradient = `linear-gradient(180deg, #fff 0%, ${dom}30 100%)`;
   return (
     <article style={{ position: "relative", cursor: "pointer" }}>
-      <div onClick={onClick}>
+      <div onClick={(e) => onClick(e)}>
         <div style={{ background: bgGradient, borderRadius: 14, overflow: "hidden", aspectRatio: "3/4", position: "relative", marginBottom: 10, boxShadow: "0 2px 10px rgba(0,0,0,0.05)", transition: "box-shadow 0.25s, transform 0.25s" }}
           onMouseEnter={(e) => { setHovering(true); e.currentTarget.style.boxShadow = "0 10px 26px rgba(0,0,0,0.14)"; e.currentTarget.style.transform = "translateY(-3px)"; const img = e.currentTarget.querySelector("img"); if (img) (img as HTMLImageElement).style.transform = "scale(1.05)"; }}
           onMouseLeave={(e) => { setHovering(false); e.currentTarget.style.boxShadow = "0 2px 10px rgba(0,0,0,0.05)"; e.currentTarget.style.transform = "translateY(0)"; const img = e.currentTarget.querySelector("img"); if (img) (img as HTMLImageElement).style.transform = "scale(1)"; }}>
@@ -431,6 +452,7 @@ export default function CategoryPage({ title, breadcrumb, slot, q, genre: initGe
 
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<ProduitAwin | null>(null);
+  const [clickPosition, setClickPosition] = useState<{ x: number; y: number } | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [, startTransition] = useTransition();
 
@@ -580,7 +602,10 @@ export default function CategoryPage({ title, breadcrumb, slot, q, genre: initGe
           ) : (
             <div className="wada-shop-grid" style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 16 }}>
               {products.map((p) => (
-                <ProductCard key={p.id} p={p} onClick={() => setSelected(p)} />
+                <ProductCard key={p.id} p={p} onClick={(e) => {
+                  setClickPosition({ x: e.clientX, y: e.clientY });
+                  setSelected(p);
+                }} />
               ))}
             </div>
           )}
@@ -646,7 +671,7 @@ export default function CategoryPage({ title, breadcrumb, slot, q, genre: initGe
         </Link>
       </div>
 
-      {selected && <ProductModal product={selected} onClose={() => setSelected(null)} />}
+      {selected && <ProductModal product={selected} onClose={() => setSelected(null)} clickPosition={clickPosition} />}
 
       {/* ── Drawer mobile plein écran ── */}
       {drawerOpen && (
