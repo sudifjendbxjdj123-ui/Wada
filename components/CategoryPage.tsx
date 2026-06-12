@@ -407,6 +407,10 @@ function ProductModal({ product: p, onClose, clickPosition, allProducts }: { pro
                       <p style={{ fontSize: 10, color: "#8a7a68", margin: "2px 0 0", fontFamily: "'Inter'" }}>
                         {formatProductPrice(related.prix, related.marchandSlug, related.devise)}
                       </p>
+                      {/* Social proof by gender */}
+                      <p style={{ fontSize: 8, color: "#c5b9a8", margin: "4px 0 0", fontFamily: "'Inter'", fontStyle: "italic" }}>
+                        {p.genre === "femme" ? "👗 Aimé par 1.2k femmes" : "👔 Aimé par 900 hommes"}
+                      </p>
                     </button>
                   ))}
               </div>
@@ -775,9 +779,14 @@ export default function CategoryPage({ title, breadcrumb, slot, q, genre: initGe
           {/* Section Tendances — 4 produits populaires */}
           {!loading && products.length > 0 && activeFilterCount(filters) === 0 && (
             <div style={{ marginBottom: 32 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
-                <span style={{ fontSize: 18 }}>🔥</span>
-                <h2 style={{ fontFamily: "'Fredoka'", fontSize: 20, fontWeight: 500, margin: 0, color: "#1a1a1a" }}>À la une cette semaine</h2>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ fontSize: 18 }}>🔥</span>
+                  <h2 style={{ fontFamily: "'Fredoka'", fontSize: 20, fontWeight: 500, margin: 0, color: "#1a1a1a" }}>À la une cette semaine</h2>
+                </div>
+                <span style={{ fontSize: 11, color: "#8a7a68", fontFamily: "'Inter'" }}>
+                  {initGenre === "femme" ? "👗 Tendance femmes" : initGenre === "homme" ? "👔 Tendance hommes" : "⭐ Plus vendus"}
+                </span>
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16 }}>
                 {sortProducts([...products].sort((a, b) => (b.popularite || 0) - (a.popularite || 0)), "relevance").slice(0, 4).map((p) => (
