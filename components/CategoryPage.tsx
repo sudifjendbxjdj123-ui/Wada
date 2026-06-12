@@ -16,6 +16,7 @@ import { GroupedProductCard } from "@/components/GroupedProductCard";
 import { getMatchingPalettes } from "@/lib/getMatchingPalettes";
 import { SOURCE_LABEL } from "@/lib/SOURCE_LABEL";
 import { HeartIcon } from "@/components/HeartIcon";
+import { SortDropdown, type SortOption } from "@/components/category/SortDropdown";
 /* Brief 2026-06-09 — système de filtres complet (sidebar 11 filtres +
    filtre Palette Sanzō Wada). Cf. lib/categoryFilters + components/category. */
 import {
@@ -398,6 +399,25 @@ export default function CategoryPage({ title, breadcrumb, slot, q, genre: initGe
 
   const category = useMemo(() => deriveCategory(slot, title), [slot, title]);
 
+  /* Fonction de tri des produits */
+  const sortProducts = (items: ProduitAwin[], sortBy: SortOption): ProduitAwin[] => {
+    const sorted = [...items];
+    switch (sortBy) {
+      case "price-low":
+        return sorted.sort((a, b) => a.prix - b.prix);
+      case "price-high":
+        return sorted.sort((a, b) => b.prix - a.prix);
+      case "newest":
+        // Simulation: tri par popularité comme proxy pour nouveaux
+        return sorted.sort((a, b) => (b.popularite || 0) - (a.popularite || 0));
+      case "popular":
+        return sorted.sort((a, b) => (b.popularite || 0) - (a.popularite || 0));
+      case "relevance":
+      default:
+        return sorted;
+    }
+  };
+
   /* État UNIQUE des 11 filtres. Seed SSR-safe (props), puis hydraté depuis
      l'URL (+ localStorage en fallback) au montage → pas de mismatch SSR. */
   const [filters, setFilters] = useState<CategoryFilters>(() => seedFilters(initGenre, initStyle));
@@ -407,6 +427,15 @@ export default function CategoryPage({ title, breadcrumb, slot, q, genre: initGe
   const [selected, setSelected] = useState<ProduitAwin | null>(null);
   const [clickPosition, setClickPosition] = useState<{ x: number; y: number } | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [sort, setSort] = useState<SortOption>(() => {
+    if (typeof window === "undefined") return "relevance";
+    try {
+      const stored = localStorage.getItem("wada-sort-pref");
+      return (stored as SortOption) || "relevance";
+    } catch {
+      return "relevance";
+    }
+  });
   const [, startTransition] = useTransition();
 
   /* ── Hydratation : URL > localStorage > seed props (au montage client) ── */
@@ -542,7 +571,21 @@ export default function CategoryPage({ title, breadcrumb, slot, q, genre: initGe
             <MobileFilterButton filters={filters} resultCount={total} onClick={() => setDrawerOpen(true)} />
           </div>
 
-          <ActiveFilters filters={filters} onChange={updateFilters} />
+          {/* Barre de contrôle : filtres actifs + tri */}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 16, flexWrap: "wrap" }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <ActiveFilters filters={filters} onChange={updateFilters} />
+            </div>
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <span style={{ fontSize: 12, color: "#8a7a68", whiteSpace: "nowrap" }}>Trier par:</span>
+              <SortDropdown value={sort} onChange={(newSort) => {
+                setSort(newSort);
+                try {
+                  localStorage.setItem("wada-sort-pref", newSort);
+                } catch {}
+              }} />
+            </div>
+          </div>
 
           {/* Grille produits */}
           {loading ? (
@@ -560,7 +603,7 @@ export default function CategoryPage({ title, breadcrumb, slot, q, genre: initGe
             </div>
           ) : (
             <div className="wada-shop-grid" style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 16 }}>
-              {groupProducts(products).map((g) => (
+              {groupProducts(sortProducts(products, sort)).map((g) => (
                 <GroupedProductCard key={g.key} g={g} onClick={(e) => {
                   setClickPosition({ x: e.clientX, y: e.clientY });
                   setSelected(g.primary);
