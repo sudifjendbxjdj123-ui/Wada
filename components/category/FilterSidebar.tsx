@@ -355,17 +355,98 @@ export function ActiveFilters({ filters, onChange }: { filters: CategoryFilters;
   if (filters.priceMin > PRICE_MIN || filters.priceMax < PRICE_MAX) pills.push({ id: "price", label: `${filters.priceMin}–${filters.priceMax >= PRICE_MAX ? PRICE_MAX + "+" : filters.priceMax} €`, remove: () => set({ priceMin: PRICE_MIN, priceMax: PRICE_MAX }) });
 
   if (pills.length === 0) return null;
+
+  // Couleurs par type de filtre
+  const getBadgeStyle = (id: string) => {
+    const bgColors: Record<string, { bg: string; border: string; text: string }> = {
+      "pal": { bg: "#fef3e8", border: "#f5d4a8", text: "#8a5a2a" },
+      "genre": { bg: "#ede9f6", border: "#c5b9e8", text: "#5a3f8f" },
+      "price": { bg: "#f0e8f5", border: "#d9c8e8", text: "#6a4a8a" },
+      "style": { bg: "#e8f3f5", border: "#b8dce8", text: "#3a6a8a" },
+      "type": { bg: "#f0f5e8", border: "#d4e8b8", text: "#5a8a3a" },
+      "size": { bg: "#f5f0e8", border: "#e8dcc8", text: "#8a7a5a" },
+      "mat": { bg: "#f5eee8", border: "#e8d8c8", text: "#8a6a5a" },
+      "sale": { bg: "#ffe8e8", border: "#f5c8c8", text: "#8a3a3a" },
+      "color": { bg: "#f0ebe8", border: "#d8ccc0", text: "#7a6a5a" },
+    };
+    const prefix = id.split("-")[0];
+    return bgColors[prefix] || { bg: C.white, border: C.chip, text: C.ink };
+  };
+
   return (
-    <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 14, alignItems: "center" }}>
-      {pills.map((p) => (
-        <button key={p.id} type="button" onClick={p.remove} style={{ display: "inline-flex", alignItems: "center", gap: 6, background: C.white, border: `1px solid ${C.chip}`, padding: "5px 10px", borderRadius: 999, fontSize: 11.5, cursor: "pointer", fontFamily: "'Inter', sans-serif", color: C.ink }}>
-          {p.swatches && <span style={{ display: "flex", height: 9, width: 16, borderRadius: 2, overflow: "hidden" }}>{p.swatches.map((c, i) => <span key={i} style={{ flex: 1, background: c }} />)}</span>}
-          {p.label}
-          <span aria-hidden style={{ color: C.muted, fontSize: 13 }}>×</span>
+    <div style={{ marginBottom: 16 }}>
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center", marginBottom: pills.length > 0 ? 10 : 0 }}>
+        {pills.map((p) => {
+          const style = getBadgeStyle(p.id);
+          return (
+            <button
+              key={p.id}
+              type="button"
+              onClick={p.remove}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                background: style.bg,
+                border: `1px solid ${style.border}`,
+                padding: "6px 12px",
+                borderRadius: 999,
+                fontSize: 11.5,
+                cursor: "pointer",
+                fontFamily: "'Inter', sans-serif",
+                color: style.text,
+                fontWeight: 500,
+                transition: "all 0.2s",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = "translateY(-2px)";
+                e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.08)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = "translateY(0)";
+                e.currentTarget.style.boxShadow = "none";
+              }}
+            >
+              {p.swatches && (
+                <span style={{ display: "flex", height: 11, width: 18, borderRadius: 2, overflow: "hidden" }}>
+                  {p.swatches.map((c, i) => (
+                    <span key={i} style={{ flex: 1, background: c }} />
+                  ))}
+                </span>
+              )}
+              {p.label}
+              <span aria-hidden style={{ fontSize: 13, opacity: 0.6 }}>×</span>
+            </button>
+          );
+        })}
+      </div>
+      {pills.length > 0 && (
+        <button
+          type="button"
+          onClick={() => onChange(getDefaultFilters())}
+          style={{
+            background: "#1a1a1a",
+            color: "#fff",
+            border: "none",
+            padding: "8px 16px",
+            borderRadius: 6,
+            fontSize: 11.5,
+            fontWeight: 600,
+            cursor: "pointer",
+            fontFamily: "'Inter', sans-serif",
+            transition: "all 0.2s",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = "#2a2a2a";
+            e.currentTarget.style.transform = "scale(1.02)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = "#1a1a1a";
+            e.currentTarget.style.transform = "scale(1)";
+          }}
+        >
+          Réinitialiser tous les filtres
         </button>
-      ))}
-      {pills.length > 1 && (
-        <button type="button" onClick={() => onChange(getDefaultFilters())} style={{ background: "none", border: "none", color: C.bordeaux, fontSize: 11.5, cursor: "pointer", textDecoration: "underline", fontFamily: "'Inter', sans-serif" }}>Tout effacer</button>
       )}
     </div>
   );
