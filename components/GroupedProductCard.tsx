@@ -326,6 +326,37 @@ export function GroupedProductCard({ g, onClick }: Props) {
           )}
         </div>
 
+        {/* Reviews placeholder */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            marginBottom: 8,
+            fontSize: 11,
+            fontFamily: "'Inter'",
+          }}
+        >
+          <span style={{ color: "#f59e0b" }}>★★★★☆</span>
+          <span style={{ color: "#8a7a68" }}>4.5 (248 avis)</span>
+        </div>
+
+        {/* Shipping info */}
+        <p
+          style={{
+            margin: "0 0 8px",
+            fontSize: 10,
+            color: "#10b981",
+            fontFamily: "'Inter'",
+            fontWeight: 500,
+            display: "flex",
+            alignItems: "center",
+            gap: 4,
+          }}
+        >
+          ✓ Livraison gratuite dès {currentVariant.devise === "CHF" ? "CHF" : "€"}50
+        </p>
+
         {/* Source */}
         <p
           style={{

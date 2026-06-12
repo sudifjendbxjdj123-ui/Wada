@@ -648,8 +648,12 @@ export default function CategoryPage({ title, breadcrumb, slot, q, genre: initGe
       )}
 
       <style>{`
-        @media (min-width: 901px)  { .wada-shop-grid { grid-template-columns: repeat(3,1fr) !important; } }
-        @media (min-width: 1200px) { .wada-shop-grid { grid-template-columns: repeat(4,1fr) !important; } }
+        /* Grid responsive — colonnes par taille écran */
+        @media (max-width: 480px) { .wada-shop-grid { grid-template-columns: repeat(1, 1fr) !important; gap: 12px !important; } }
+        @media (min-width: 481px) and (max-width: 768px) { .wada-shop-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 14px !important; } }
+        @media (min-width: 769px) and (max-width: 900px) { .wada-shop-grid { grid-template-columns: repeat(2, 1fr) !important; } }
+        @media (min-width: 901px)  { .wada-shop-grid { grid-template-columns: repeat(3, 1fr) !important; } }
+        @media (min-width: 1200px) { .wada-shop-grid { grid-template-columns: repeat(4, 1fr) !important; } }
         /* Sidebar desktop / bouton mobile — bascule à 900px (brief 2026-06-09). */
         @media (max-width: 900px) { .wada-cat-sidebar { display: none !important; } }
         @media (min-width: 901px) { .wada-cat-mobilebar { display: none !important; } }
