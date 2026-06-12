@@ -23,6 +23,7 @@ import { SizeGuideModal } from "@/components/SizeGuideModal";
 import { CartSidebar } from "@/components/CartSidebar";
 import { getCartCount } from "@/lib/cart";
 import { NewsletterBanner } from "@/components/NewsletterBanner";
+import { MobileNav } from "@/components/MobileNav";
 /* Brief 2026-06-09 — système de filtres complet (sidebar 11 filtres +
    filtre Palette Sanzō Wada). Cf. lib/categoryFilters + components/category. */
 import {
@@ -948,6 +949,9 @@ export default function CategoryPage({ title, breadcrumb, slot, q, genre: initGe
 
       {/* Newsletter Banner */}
       <NewsletterBanner />
+
+      {/* Mobile nav — sticky bottom */}
+      <MobileNav onCartClick={() => setCartOpen(true)} />
 
       {/* ── Drawer mobile plein écran ── */}
       {drawerOpen && (

@@ -611,6 +611,7 @@ export function GroupedProductCard({ g, onClick }: Props) {
             fontFamily: "'Inter'",
             cursor: "pointer",
             transition: "all 0.2s",
+            marginBottom: 12,
           }}
           onMouseEnter={(e) => {
             e.currentTarget.style.background = "#52261f";
@@ -625,6 +626,42 @@ export function GroupedProductCard({ g, onClick }: Props) {
         >
           Ajouter au panier
         </button>
+
+        {/* Complétez votre look — Outfit recommendation */}
+        <div style={{ background: "#fef8f2", padding: 12, borderRadius: 8, textAlign: "center" }}>
+          <p style={{ fontSize: 10, fontWeight: 600, color: "#8a7a68", margin: "0 0 8px", fontFamily: "'Inter'", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+            ✦ Complétez votre look
+          </p>
+          <p style={{ fontSize: 11, color: "#5a5a5a", margin: 0, fontFamily: "'Inter'" }}>
+            Découvrez une tenue assortie à cette pièce
+          </p>
+          <button
+            onClick={() => window.location.href = `/stylist?color=${currentVariant.hex.slice(1)}`}
+            style={{
+              marginTop: 8,
+              padding: "8px 14px",
+              background: "transparent",
+              border: "1px solid #8a7a68",
+              borderRadius: 6,
+              color: "#1a1a1a",
+              fontSize: 11,
+              fontWeight: 600,
+              fontFamily: "'Inter'",
+              cursor: "pointer",
+              transition: "all 0.2s",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = "#8a7a68";
+              e.currentTarget.style.color = "#fff";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = "transparent";
+              e.currentTarget.style.color = "#1a1a1a";
+            }}
+          >
+            Composer une tenue →
+          </button>
+        </div>
       </div>
 
       {/* Bouton favori */}
