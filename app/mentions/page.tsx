@@ -53,7 +53,7 @@ export default function MentionsPage() {
             <p style={{ color: textSecondary, marginBottom: 16 }}>
               Le site est hébergé par <strong>Vercel Inc.</strong><br/>
               440 N Barranca Ave #4133, Covina, CA 91723, États-Unis<br/>
-              <a href="https://vercel.com" target="_blank" rel="noopener" style={{ color: ink }}>vercel.com</a>
+              <a href="https://vercel.com" target="_blank" rel="noopener noreferrer" style={{ color: ink }}>vercel.com</a>
             </p>
 
             <h2 style={{ fontSize: 24, margin: "32px 0 16px" }}>Paiements</h2>
