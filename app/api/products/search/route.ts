@@ -94,7 +94,9 @@ export async function POST(req: Request) {
   /* Application des filtres + tri. */
   const filtered = sortProducts(applyCategoryFilters(pool, filters, category), filters.sort);
 
-  /* Dédup par nom de base (variantes couleur/taille) — aligné /api/products. */
+  /* Dédup par marque + nom + couleur (PAS par marque + nom seul).
+     Raison : deux variantes couleur du même modèle = deux produits séparés
+     à afficher, pas des doublons. Ex: Boots 1460 noir vs Boots 1460 brun. */
   const seen = new Set<string>();
   const deduped: ProduitAwin[] = [];
   for (const p of filtered) {
@@ -102,7 +104,9 @@ export async function POST(req: Request) {
       .replace(/\s+(taille|size)\s+\S+$/i, "")
       .replace(/\s+(XS|S|M|L|XL|XXL|XXXL|W\d+|H\d+|\d{2,3}\s*cm)$/i, "")
       .toLowerCase().trim();
-    const key = `${(p.marque || "").toLowerCase().slice(0, 20)}-${base.slice(0, 40)}`;
+    /* Inclure la couleur dans la clé pour distinguer les variantes */
+    const color = (p.couleurNom || p.hex || "").toLowerCase().slice(0, 20);
+    const key = `${(p.marque || "").toLowerCase().slice(0, 20)}-${base.slice(0, 40)}-${color}`;
     if (!seen.has(key)) { seen.add(key); deduped.push(p); }
   }
 
