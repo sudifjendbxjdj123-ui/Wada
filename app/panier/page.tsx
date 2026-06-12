@@ -232,17 +232,40 @@ export default function PanierPage() {
               <div
                 style={{
                   display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  flexWrap: "wrap",
-                  gap: 12,
+                  flexDirection: "column",
+                  gap: 16,
                 }}
               >
-                <p style={{ fontSize: 13, color: palette.inkSoft, maxWidth: "46ch", margin: 0 }}>
+                <p style={{ fontSize: 13, color: palette.inkSoft, margin: 0 }}>
                   {cart.length} {cart.length > 1 ? "pièces" : "pièce"}. Le prix réel s'affiche sur
                   chaque pièce et sur le site du marchand. Les liens partenaires sont trackés
                   (affiliation, sans surcoût pour vous).
                 </p>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    paddingTop: 12,
+                    borderTop: `1px solid ${palette.line}`,
+                  }}
+                >
+                  <span style={{ fontSize: 13, color: palette.inkSoft }}>
+                    Prix total : voir sur les sites marchands →
+                  </span>
+                </div>
+              </div>
+
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  flexWrap: "wrap",
+                  gap: 12,
+                  marginTop: 8,
+                }}
+              >
                 <button
                   onClick={openAll}
                   style={{

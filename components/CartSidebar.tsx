@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { getCart, removeFromCart } from "@/lib/cart";
+import { showToast } from "@/lib/toast";
 
 export function CartSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const [cart, setCart] = useState(() => getCart());
@@ -16,8 +17,17 @@ export function CartSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
   }, []);
 
   const handleRemove = (cartItemId: string) => {
+    const itemToRemove = cart.find((item) => item.id === cartItemId);
     removeFromCart(cartItemId);
     setCart(getCart());
+
+    // Show toast notification
+    if (itemToRemove) {
+      showToast(`✓ ${itemToRemove.item} retiré du panier`, {
+        variant: "success",
+        duration: 3000,
+      });
+    }
   };
 
   return (

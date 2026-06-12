@@ -147,7 +147,7 @@ function ProductModal({ product: p, onClose, clickPosition, allProducts, onProdu
 
   return (
     <div onClick={onClose} className="wada-qv-backdrop" style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,0.45)", backdropFilter: "blur(3px)", display: "block", overflow: "auto", padding: 24 }}>
-      <div onClick={(e) => e.stopPropagation()} className="wada-qv-modal wada-modal-grid" style={{ background: "#fff", width: "100%", maxWidth: 940, maxHeight: "88vh", borderRadius: 24, overflow: "hidden", display: "grid", gridTemplateColumns: "1.1fr 1fr", position: "fixed", ...modalPos, pointerEvents: "auto" }}>
+      <div onClick={(e) => e.stopPropagation()} className="wada-qv-modal wada-modal-grid" style={{ background: "#fff", width: "100%", maxWidth: 940, maxHeight: "88vh", borderRadius: 24, overflow: "hidden", display: "grid", gridTemplateColumns: "1.1fr 1fr", position: "fixed", ...modalPos, pointerEvents: "auto", "@media (max-width: 768px)": { gridTemplateColumns: "1fr", maxWidth: "95vw", maxHeight: "95vh" } } as any}>
         <button onClick={onClose} style={{ position: "absolute", top: 14, right: 14, zIndex: 10, width: 34, height: 34, borderRadius: "50%", background: "rgba(255,255,255,0.92)", boxShadow: "0 1px 6px rgba(0,0,0,0.12)", border: "none", cursor: "pointer", fontSize: 16, fontWeight: 300, display: "flex", alignItems: "center", justifyContent: "center" }} aria-label="Fermer">✕</button>
 
         {/* ── CÔTÉ IMAGE (gauche) — CAROUSEL STYLE LYST ── */}

@@ -281,12 +281,18 @@ export default function ScannerPage() {
           {cameraError && (
             <>
               <p style={{
-                color: "rgba(255,255,255,0.7)", fontFamily: fonts.sans,
-                fontSize: 13.5, lineHeight: 1.5, textAlign: "center",
-                margin: 0, maxWidth: "30ch",
+                color: "#fff", fontFamily: fonts.sans,
+                fontSize: 14, lineHeight: 1.6, textAlign: "center",
+                margin: 0, maxWidth: "32ch", fontWeight: 500,
               }}>
-                Autorisez l’accès à la caméra dans votre navigateur, ou
-                importez une photo de votre galerie.
+                ✓ Autorisez l’accès à la caméra dans les paramètres de votre navigateur
+              </p>
+              <p style={{
+                color: "rgba(255,255,255,0.75)", fontFamily: fonts.sans,
+                fontSize: 13, lineHeight: 1.5, textAlign: "center",
+                margin: "8px 0 0", maxWidth: "30ch",
+              }}>
+                Ou importez une photo depuis votre galerie
               </p>
               <button
                 type="button"

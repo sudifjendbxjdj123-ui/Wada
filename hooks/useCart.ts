@@ -44,7 +44,13 @@ export function useCart() {
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
         window.dispatchEvent(new StorageEvent("storage", { key: STORAGE_KEY, newValue: JSON.stringify(updated) }));
-      } catch {}
+      } catch (e) {
+        // Handle quota exceeded error
+        if (e instanceof DOMException && e.name === "QuotaExceededError") {
+          console.error("localStorage plein: impossible de sauvegarder le panier");
+          // Could dispatch a toast notification here if needed
+        }
+      }
       return updated;
     });
   }, []);
