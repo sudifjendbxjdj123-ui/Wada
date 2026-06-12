@@ -1,5 +1,5 @@
 "use client";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import { GroupedProduct } from "@/lib/groupProducts";
 import { formatProductPrice } from "@/lib/priceFormat";
@@ -8,6 +8,7 @@ import { SOURCE_LABEL } from "@/lib/SOURCE_LABEL";
 import { HeartIcon } from "./HeartIcon";
 import { addToCart } from "@/lib/cart";
 import { showToast } from "@/lib/toast";
+import { useLiked } from "@/hooks/useLiked";
 
 const BORDEAUX = "#6B3A32";
 
@@ -17,11 +18,16 @@ interface Props {
 }
 
 export function GroupedProductCard({ g, onClick }: Props) {
-  const [liked, setLiked] = useState(false);
+  const [liked, setLiked] = useLiked(g.key);
   const [hovering, setHovering] = useState(false);
   const [quickView, setQuickView] = useState(false);
   const [selectedColorHex, setSelectedColorHex] = useState(g.primary.hex);
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
+
+  // Reset selectedSize when product changes (g.key)
+  useEffect(() => {
+    setSelectedSize(null);
+  }, [g.key]);
 
   // Trouver le produit selon la couleur sélectionnée
   const currentVariant = useMemo(() => {
@@ -39,14 +45,15 @@ export function GroupedProductCard({ g, onClick }: Props) {
   const dom = /^#[0-9a-f]{6}$/i.test(currentVariant.hex || "") ? currentVariant.hex : "#ede4d4";
   const bgGradient = `linear-gradient(180deg, #fff 0%, ${dom}30 100%)`;
 
-  // Déterminer les badges
+  // Déterminer les badges — DETERMINISTIC basé sur product ID, pas random
   const badges: Array<{ label: string; icon: string; bg: string; text: string }> = [];
 
-  // "NOUVEAU" — heuristique: produit avec ID récent (simulation)
-  if (Math.random() < 0.4) {
-    const daysAgo = Math.floor(Math.random() * 7) + 1;
+  // "NOUVEAU" — heuristique: hash du produit ID déterministe (40% des produits)
+  const isNew = (g.key.charCodeAt(0) + g.key.charCodeAt(g.key.length - 1)) % 10 < 4;
+  if (isNew) {
+    const daysSeed = Math.abs(g.key.charCodeAt(0)) % 7 + 1;
     badges.push({
-      label: `NOUVEAU · Il y a ${daysAgo}j`,
+      label: `NOUVEAU · Il y a ${daysSeed}j`,
       icon: "✨",
       bg: "#fef2f2",
       text: "#991b1b"
@@ -464,6 +471,7 @@ export function GroupedProductCard({ g, onClick }: Props) {
                     background: c.hex,
                     cursor: "pointer",
                     transition: "all 0.2s",
+                    boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.08)",
                   }}
                   aria-label={`Couleur ${c.nom || c.hex}`}
                 />
@@ -664,7 +672,7 @@ export function GroupedProductCard({ g, onClick }: Props) {
         </div>
       </div>
 
-      {/* Bouton favori */}
+      {/* Bouton favori — accessible 44px touch target (WCAG) */}
       <button
         onClick={(e) => {
           e.stopPropagation();
@@ -674,10 +682,10 @@ export function GroupedProductCard({ g, onClick }: Props) {
         aria-pressed={liked}
         style={{
           position: "absolute",
-          top: 10,
-          right: 10,
-          width: 34,
-          height: 34,
+          top: 8,
+          right: 8,
+          width: 44,
+          height: 44,
           background: "rgba(255,255,255,0.92)",
           backdropFilter: "blur(4px)",
           border: "none",

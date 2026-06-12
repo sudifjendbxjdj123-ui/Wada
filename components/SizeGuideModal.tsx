@@ -53,7 +53,7 @@ export function SizeGuideModal({
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        zIndex: 300,
+        zIndex: 10000,
         padding: 20,
       }}
     >
