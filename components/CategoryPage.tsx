@@ -265,11 +265,39 @@ function ProductModal({ product: p, onClose, clickPosition }: { product: Produit
             )}
           </div>
 
-          {/* ── Réassurance Awin ── */}
-          <div style={{ background: "#faf6ee", padding: 12, borderRadius: 10, marginBottom: 18, display: "flex", flexDirection: "column", gap: 6 }}>
-            <p style={{ margin: 0, fontSize: 11, color: "#1a1a1a", fontFamily: "'Inter'", display: "flex", alignItems: "center", gap: 6 }}><CheckIcon /> Lien partenaire Awin · prix identique chez le marchand</p>
-            <p style={{ margin: 0, fontSize: 11, color: "#1a1a1a", fontFamily: "'Inter'", display: "flex", alignItems: "center", gap: 6 }}><CheckIcon /> Paiement sécurisé sur {source}</p>
-            <p style={{ margin: 0, fontSize: 11, color: "#1a1a1a", fontFamily: "'Inter'", display: "flex", alignItems: "center", gap: 6 }}><CheckIcon /> Livraison 2-5 jours · retours selon le marchand</p>
+          {/* ── Trust Signals ── */}
+          <div style={{ marginBottom: 18 }}>
+            <p style={{ fontSize: 9, letterSpacing: "0.18em", textTransform: "uppercase", color: "#8a7a68", fontWeight: 600, margin: "0 0 10px", fontFamily: "'Inter'" }}>Vous pouvez acheter en confiance</p>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              <div style={{ background: "#fef8f2", padding: 12, borderRadius: 10, display: "flex", flexDirection: "column", gap: 8 }}>
+                <div style={{ fontSize: 18 }}>🔄</div>
+                <div>
+                  <p style={{ margin: 0, fontSize: 10, fontWeight: 600, color: "#1a1a1a", fontFamily: "'Inter'" }}>Retour gratuit</p>
+                  <p style={{ margin: "2px 0 0", fontSize: 9, color: "#8a7a68", fontFamily: "'Inter'" }}>30 jours</p>
+                </div>
+              </div>
+              <div style={{ background: "#f5faf8", padding: 12, borderRadius: 10, display: "flex", flexDirection: "column", gap: 8 }}>
+                <div style={{ fontSize: 18 }}>🛡️</div>
+                <div>
+                  <p style={{ margin: 0, fontSize: 10, fontWeight: 600, color: "#1a1a1a", fontFamily: "'Inter'" }}>Paiement sécurisé</p>
+                  <p style={{ margin: "2px 0 0", fontSize: 9, color: "#8a7a68", fontFamily: "'Inter'" }}>Stripe certifié</p>
+                </div>
+              </div>
+              <div style={{ background: "#faf8f5", padding: 12, borderRadius: 10, display: "flex", flexDirection: "column", gap: 8 }}>
+                <div style={{ fontSize: 18 }}>📦</div>
+                <div>
+                  <p style={{ margin: 0, fontSize: 10, fontWeight: 600, color: "#1a1a1a", fontFamily: "'Inter'" }}>Livraison rapide</p>
+                  <p style={{ margin: "2px 0 0", fontSize: 9, color: "#8a7a68", fontFamily: "'Inter'" }}>2-5 jours</p>
+                </div>
+              </div>
+              <div style={{ background: "#f8faf9", padding: 12, borderRadius: 10, display: "flex", flexDirection: "column", gap: 8 }}>
+                <div style={{ fontSize: 18 }}>✓</div>
+                <div>
+                  <p style={{ margin: 0, fontSize: 10, fontWeight: 600, color: "#1a1a1a", fontFamily: "'Inter'" }}>Marque officielle</p>
+                  <p style={{ margin: "2px 0 0", fontSize: 9, color: "#8a7a68", fontFamily: "'Inter'" }}>{source}</p>
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* ── Composer une tenue autour de cette pièce (funnel WADA) ── */}
