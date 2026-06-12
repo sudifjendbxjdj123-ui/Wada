@@ -19,6 +19,28 @@
  *      (garde STRICT par couleur de slot avant tout pick)
  */
 
+export type Role = "Haut" | "Bas" | "Veste" | "Chaussures" | "Accent";
+
+/** OutfitPiece — représente une pièce d'une tenue composée. */
+export interface OutfitPiece {
+  /** Badge en haut de la card (« Proposé », « Signature », etc.). */
+  badge?: string;
+  /** Rôle canonique : Haut, Bas, Veste, Chaussures, Accent. */
+  role: Role;
+  /** Type FR (« Chemise oxford », « Pantalon droit »…). */
+  type: string;
+  /** Couleur hex de la pièce. */
+  hex: string;
+  /** Nom de la couleur pour l'affichage. */
+  couleurNom: string;
+  /** True si c'est la pièce existante de l'utilisateur. */
+  ancre: boolean;
+  /** Genre du slot (femme/homme/unisexe). */
+  genre?: string;
+  /** Mot-clé de type pour recherche MUJI (chemise, blazer, etc.). */
+  typeKeyword?: string;
+}
+
 /* ─── DÉTECTION DE MICRO-TYPE depuis product_name ─── */
 
 export type MicroType =

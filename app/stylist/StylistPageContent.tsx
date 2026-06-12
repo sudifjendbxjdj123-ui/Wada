@@ -42,6 +42,7 @@ import { OutfitLayout } from "./OutfitLayout";
 import { OutfitSlotCard } from "./OutfitSlotCard";
 import { OutfitExplainer } from "./OutfitExplainer";
 import { OutfitAdjustBar } from "./OutfitAdjustBar";
+import type { OutfitPiece, Role } from "@/lib/composer/microTypes";
 
 /** Hook qui fetch un vrai produit MUJI pour ce slot+couleur via /api/products.
  *  Brief 2026-05-28 : aligne /stylist sur /ma-tenue → vraies photos MUJI
@@ -406,33 +407,6 @@ function pourquoiFor(couleur: string | null): string {
    Types et bulles
    ────────────────────────────────────────────────────────────────────── */
 type Mode = "anchor" | "full" | null;
-type Role = "Haut" | "Bas" | "Chaussures" | "Veste" | "Accent";
-
-interface OutfitPiece {
-  /** Étiquette en haut de la card (« Proposé », « Signature », « Touche », « Votre pièce »). */
-  badge: string;
-  /** Rôle canonique de la pièce dans la silhouette. */
-  role: Role;
-  /** Type FR (« Chemise oxford », « Pantalon droit »…). */
-  type: string;
-  /** Couleur hex de la pièce. */
-  hex: string;
-  /** Nom de la couleur pour l'affichage et la search query. */
-  couleurNom: string;
-  /** True si c'est la pièce existante du client (« à vous ✓ »). */
-  ancre: boolean;
-  /** Brief 2026-05-26 « gender consistency » : genre du slot (femme/homme
-   *  /unisexe). Vient du LLM via composed_outfit.slots[].genre. Passé à
-   *  useMujiForSlot pour filtrer correctement les produits MUJI et éviter
-   *  les mismatches « T-shirt homme + pantalon femme » dans la même tenue. */
-  genre?: string;
-  /** Brief 2026-05-26 « matching description ↔ produit » : mot-clé de type
-   *  extrait du libellé LLM (« chemise », « blazer », « sneakers »…) côté
-   *  serveur. Passé à /api/products comme q= → filtre full-text restreint
-   *  aux produits dont le nom contient ce mot. Évite que « Chemise fluide
-   *  beige » du LLM renvoie un Pull. */
-  typeKeyword?: string;
-}
 
 /* Brief V3 (2026-05-26) — `transient` permet d'afficher un placeholder
    « Le styliste réfléchit… » pendant l'appel LLM, qu'on retire au moment
