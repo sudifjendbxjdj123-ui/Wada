@@ -92,8 +92,12 @@ export async function POST(req: Request) {
       headers: req.headers,
     });
     const res = await productsGET(internalReq);
-    const data = (await res.json()) as { products?: unknown[] };
-    return (data.products?.[0] as Record<string, unknown> | undefined) || null;
+    const data = (await res.json()) as unknown;
+    if (!data || typeof data !== "object" || !Array.isArray((data as any).products)) {
+      console.error(`[/api/outfit] Invalid products API response:`, data);
+      return null;
+    }
+    return ((data as any).products[0] as Record<string, unknown> | undefined) || null;
   }
 
   const results: Array<{ slot: string; product: Record<string, unknown> | null }> = [];
@@ -123,7 +127,9 @@ export async function POST(req: Request) {
     results.push({ slot: s.slot, product });
 
     if (product) {
-      const type = typeof product.type === "string" && product.type ? product.type : (product.nom as string) || "";
+      const type = typeof product.type === "string" && product.type
+        ? product.type
+        : typeof product.nom === "string" ? product.nom : "";
       if (type) selectedNames.push(type);
       const id = product.id as string | undefined;
       if (id) excludeIds.push(id);

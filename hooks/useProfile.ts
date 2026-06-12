@@ -168,11 +168,17 @@ export function useProfile() {
   const save = useCallback((partial: Partial<Profile>) => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      const prev: Profile = raw && isValidProfile(JSON.parse(raw))
-        ? JSON.parse(raw)
-        : DEFAULT_PROFILE;
+      let prev: Profile = DEFAULT_PROFILE;
+      if (raw) {
+        try {
+          const parsed = JSON.parse(raw);
+          if (isValidProfile(parsed)) prev = parsed;
+        } catch {
+          // Invalid JSON in localStorage; use DEFAULT_PROFILE
+        }
+      }
       const next: Profile = { ...prev, ...partial };
-      if (!isValidProfile(next)) return; // sécurité, ne devrait jamais arriver
+      if (!isValidProfile(next)) return;
       localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
       setProfile(next);
     } catch {}

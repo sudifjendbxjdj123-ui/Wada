@@ -404,8 +404,16 @@ function MaTenueContent() {
     try {
       const raw = sessionStorage.getItem("wada.anchor");
       if (!raw) return;
-      const parsed = JSON.parse(raw) as AnchorData;
-      if (parsed?.slot && parsed?.type) setAnchor(parsed);
+      const parsed = JSON.parse(raw);
+      // Validate anchor data structure
+      if (
+        parsed &&
+        typeof parsed.slot === "string" &&
+        typeof parsed.type === "string" &&
+        typeof parsed.couleur === "string"
+      ) {
+        setAnchor(parsed as AnchorData);
+      }
     } catch {}
   }, [searchParams]);
 
@@ -1475,22 +1483,25 @@ function MaTenueContent() {
                 // Ajoute les 5 pièces de la tenue au panier localStorage
                 try {
                   const raw = localStorage.getItem("wada-cart") || "[]";
-                  const cart = JSON.parse(raw);
-                  for (const piece of composition) {
+                  const existing = JSON.parse(raw) as unknown[];
+                  const cart = Array.isArray(existing) ? existing : [];
+
+                  const newItems = composition.map((piece) => {
                     const slot = piece._slot;
-                    const color = slot?.color || entry.colors[0];
-                    cart.push({
+                    const color = slot?.color || (entry.colors?.[0] ?? { name: "Unknown", hex: "#000000" });
+                    return {
                       id: `${entry.number}-${piece.piece}-${Date.now()}`,
                       piece: piece.piece,
                       item: piece.item,
-                      colorName: color.name,
-                      colorHex: color.hex,
+                      colorName: color.name ?? "Unknown",
+                      colorHex: color.hex ?? "#000000",
                       query: slot?.searchKeywords || piece.item,
                       fromEntry: entry.number,
                       addedAt: Date.now(),
-                    });
-                  }
-                  localStorage.setItem("wada-cart", JSON.stringify(cart));
+                    };
+                  });
+
+                  localStorage.setItem("wada-cart", JSON.stringify([...cart, ...newItems]));
                   window.dispatchEvent(new Event("storage"));
                   alert(`${composition.length} pièces ajoutées à votre panier.`);
                 } catch (err) {

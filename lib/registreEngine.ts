@@ -230,13 +230,25 @@ function pickColors(entry: DictionaryEntry): Record<SlotKey, { hex: string; name
   const fallback = { hex: "#1E1E1E", name: "ink" };
   const cols = entry.colors.length ? entry.colors : [fallback];
   // Couleur la plus vive = pop (accent). Le reste = neutres, triés clair→foncé.
-  const bySaturation = [...cols].sort((a, b) => chroma(b.hex) - chroma(a.hex));
-  const pop = bySaturation[0];
+  const bySaturation = [...cols].sort((a, b) => {
+    try {
+      return (chroma(b.hex) as any) - (chroma(a.hex) as any);
+    } catch {
+      return 0;
+    }
+  });
+  const pop = bySaturation[0] ?? fallback;
   const neutrals = (bySaturation.length > 1 ? bySaturation.slice(1) : cols)
     .slice()
-    .sort((a, b) => luminance(b.hex) - luminance(a.hex)); // clair → foncé
-  const light = neutrals[0] || pop;
-  const dark = neutrals[neutrals.length - 1] || light;
+    .sort((a, b) => {
+      try {
+        return luminance(b.hex) - luminance(a.hex);
+      } catch {
+        return 0;
+      }
+    });
+  const light = neutrals[0] ?? pop ?? fallback;
+  const dark = neutrals[neutrals.length - 1] ?? light ?? fallback;
   return {
     haut:       light,   // clair en haut
     veste:      light,   // veste neutre (ton du haut)

@@ -639,7 +639,11 @@ export async function GET(req: Request) {
      pool pré-tierCap (mieux une pièce un peu chère qu'un slot vide). */
   if (tierCap !== null) {
     const underTier = filtered.filter((p) => p.prix <= tierCap);
-    if (underTier.length > 0) filtered = underTier;
+    if (underTier.length > 0) {
+      filtered = underTier;
+    } else {
+      console.log(`[/api/products] tierCap=${tierCap} would empty pool, keeping pre-tierCap pool (${filtered.length} products)`);
+    }
   }
 
   /* Filtre couleur famille (boutique) */
@@ -703,7 +707,7 @@ export async function GET(req: Request) {
     if (paletteColors.length === 0) return null;
     const c0 = paletteColors[0];
     const c1 = paletteColors[1] || c0;
-    const c2 = paletteColors[2] || c1;
+    const c2 = paletteColors[2] || c0;
     switch (slot) {
       case "haut":       return c0;
       case "bas":        return c1;
@@ -962,7 +966,7 @@ export async function GET(req: Request) {
       const swapIndex = finalList.findIndex((p, i) => {
         if (i === 0) return false;
         if (isLikelyBackView(p)) return false;
-        return isMuji(p) === wantsMuji;
+        return isMuji(p) !== isMuji(head);
       });
       if (swapIndex > 0) {
         const swap = finalList[swapIndex];
@@ -1021,8 +1025,8 @@ export async function GET(req: Request) {
 
   const products: ProduitAwin[] = deduped.slice(offset, offset + limit).map((p) => ({
     ...p,
-    image: p.imageLocal ? p.imageLocal : proxyImageUrl(p.image),
-    largeImage: p.imageLocal ? p.imageLocal : proxyImageUrl(p.largeImage || p.image),
+    image: p.imageLocal != null ? p.imageLocal : proxyImageUrl(p.image || ""),
+    largeImage: p.imageLocal != null ? p.imageLocal : proxyImageUrl((p.largeImage || p.image) || ""),
   }));
 
   return Response.json(

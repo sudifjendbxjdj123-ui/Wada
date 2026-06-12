@@ -1142,28 +1142,37 @@ export function StylistPageContent() {
          useProfile gère wada.profile côté UI ; ici on lit directement
          pour ne pas violer les rules-of-hooks (helper appelé hors render). */
       const profileRaw = localStorage.getItem("wada.profile");
-      const profile = profileRaw ? JSON.parse(profileRaw) : null;
+      let profile = null;
+      try {
+        profile = profileRaw ? JSON.parse(profileRaw) : null;
+      } catch {
+        console.error("[StylistPageContent] Failed to parse wada.profile from localStorage");
+      }
 
-      const prefs = JSON.parse(localStorage.getItem("wada-prefs") || "{}");
+      let prefs: Record<string, any> = {};
+      try {
+        prefs = JSON.parse(localStorage.getItem("wada-prefs") || "{}");
+      } catch {
+        console.error("[StylistPageContent] Failed to parse wada-prefs from localStorage");
+      }
       const genderRaw = localStorage.getItem("wada-gender");
       const genderLegacy = (genderRaw === "femme" || genderRaw === "homme" || genderRaw === "unisexe")
         ? genderRaw
         : null;
 
       /* Genre : profile prime → legacy → state. */
-      const profileGender = profile?.genre === "Femme" ? "femme"
-        : profile?.genre === "Homme" ? "homme"
+      const profileGender = typeof profile?.genre === "string"
+        ? (profile.genre === "Femme" ? "femme" : profile.genre === "Homme" ? "homme" : null)
         : null;
 
       /* Style : profile prime → state local → prefs legacy. */
-      const profileStyle = profile?.style; // "Minimaliste"|"Classique"|"Streetwear"|"Décontracté"
+      const profileStyle = typeof profile?.style === "string" ? profile.style : undefined; // "Minimaliste"|"Classique"|"Streetwear"|"Décontracté"
 
       /* Budget : on convertit le profile label en seuil numérique pour
          que le LLM continue de comprendre. < 150€ → 150, 150-400€ →
          400, Premium → 2000. Sert d'indicateur, pas de filtre strict. */
-      const profileBudgetNumeric = profile?.budget === "< 150€" ? 150
-        : profile?.budget === "150–400€" ? 400
-        : profile?.budget === "Premium" ? 2000
+      const profileBudgetNumeric = typeof profile?.budget === "string"
+        ? (profile.budget === "< 150€" ? 150 : profile.budget === "150–400€" ? 400 : profile.budget === "Premium" ? 2000 : undefined)
         : undefined;
 
       /* Vision Pt A (2026-05-31) — Mapping morphologie label → clé legacy

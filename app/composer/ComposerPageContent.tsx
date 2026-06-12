@@ -433,13 +433,15 @@ export function ComposerPageContent() {
     try {
       if (photoThumb) {
         const v = vision.phase === "garment" ? vision.data : null;
+        const couleurValue = v?.couleur_principale;
+        const couleurHex = typeof couleurValue === "string" ? couleurValue : (couleurValue?.hex || detected.hex);
         sessionStorage.setItem("wada.anchor", JSON.stringify({
           thumb: photoThumb,
           slot: v?.slot || pickedSlot,
           type: v?.type || pickedStyle || "",
           marque: v?.marque || "",
           modele: v?.modele || "",
-          couleur: v?.couleur_principale || detected.hex,
+          couleur: couleurHex,
           registre: v?.registre || register,
           piecePicked: pickedStyle,
           detectedHex: detected.hex,

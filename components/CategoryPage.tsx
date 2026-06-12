@@ -153,6 +153,12 @@ function ProductModal({ product: p, onClose, clickPosition }: { product: Produit
   const gradient = `linear-gradient(180deg, #fff 0%, ${dom}25 100%)`;
 
   useEffect(() => {
+    if (imgIndex >= images.length && images.length > 0) {
+      setImgIndex(0);
+    }
+  }, [images.length, imgIndex]);
+
+  useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     document.addEventListener("keydown", onKey);
     document.body.style.overflow = "hidden";
