@@ -17,6 +17,7 @@ import { getMatchingPalettes } from "@/lib/getMatchingPalettes";
 import { SOURCE_LABEL } from "@/lib/SOURCE_LABEL";
 import { HeartIcon } from "@/components/HeartIcon";
 import { SortDropdown, type SortOption } from "@/components/category/SortDropdown";
+import { BackToTopButton } from "@/components/BackToTopButton";
 /* Brief 2026-06-09 — système de filtres complet (sidebar 11 filtres +
    filtre Palette Sanzō Wada). Cf. lib/categoryFilters + components/category. */
 import {
@@ -702,6 +703,9 @@ export default function CategoryPage({ title, breadcrumb, slot, q, genre: initGe
       </div>
 
       {selected && <ProductModal product={selected} onClose={() => setSelected(null)} clickPosition={clickPosition} />}
+
+      {/* Back to top button */}
+      <BackToTopButton />
 
       {/* ── Drawer mobile plein écran ── */}
       {drawerOpen && (
