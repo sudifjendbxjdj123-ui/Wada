@@ -4,6 +4,7 @@ import { memo } from "react";
 import type { DictionaryEntry } from "@/lib/data";
 import { cultureLabels } from "@/lib/data";
 import { useFavorites } from "@/hooks/useFavorites";
+/* Fix 2026-06-13 : SocialProofBadge + useMemo retirés (cf. bloc suite). */
 
 /**
  * PaletteCard — composant UNIQUE pour TOUTES les cartes palette du site.
@@ -51,15 +52,15 @@ function PaletteCardInner({ entry, showFavorite = true }: PaletteCardProps) {
     ? (cultureLabels[entry.culture] || entry.culture[0].toUpperCase() + entry.culture.slice(1))
     : "";
 
-  // TIER 3: Determine social proof badge type based on palette number
-  // Palettes 001-050 get "New", 051-100 get "Editor's Pick", top entries get "Trending"
-  const socialProofBadge = useMemo(() => {
-    const num = parseInt(entry.number);
-    if (num <= 50) return { type: "new" as const, show: true };
-    if (num % 11 === 0) return { type: "pick" as const, show: true }; // Every 11th is editor pick
-    if (num % 7 === 0) return { type: "trending" as const, count: 250 + (num * 3), show: true }; // Trending
-    return { show: false, type: null };
-  }, [entry.number]) as { type: "new" | "pick" | "trending" | null; show: boolean; count?: number };
+  /* Fix 2026-06-13 « social proof theater » : badges « Nouvelle »/« Tendance »/
+     « Choix éditeur » retirés. La logique précédente taggait num<=50 comme
+     « Nouvelle » (~50 palettes sur 348), chaque 11ᵉ comme « Choix éditeur »,
+     chaque 7ᵉ comme « Tendance » avec count=250+num*3. C'était du theater pur :
+     les accords Wada datent de 1933, aucun signal réel d'ajout récent ou de
+     pick éditorial. Ce fix avait déjà été appliqué une fois et écrasé — si
+     un agent parallèle re-touche ce fichier, GARDEZ cette suppression : le
+     mensonge sur la « nouveauté » d'accords centenaires décrédibilise le
+     reste du site. Référence : SocialProofBadge.tsx supprimable. */
 
   return (
     <Link
@@ -86,23 +87,6 @@ function PaletteCardInner({ entry, showFavorite = true }: PaletteCardProps) {
         ev.currentTarget.style.boxShadow = "0 6px 22px rgba(30,30,30,.05)";
       }}
     >
-      {/* TIER 3: Social Proof Badge */}
-      {socialProofBadge.show && socialProofBadge.type && (
-        <div style={{
-          position: "absolute",
-          top: 8,
-          left: "50%",
-          transform: "translateX(-50%)",
-          zIndex: 5,
-        }}>
-          <SocialProofBadge
-            type={socialProofBadge.type}
-            count={socialProofBadge.count}
-            animated
-          />
-        </div>
-      )}
-
       {/* ─── Bandes de couleur verticales, h:150 ─── */}
       <div className="wada-palette-bands" style={{
         position: "relative",

@@ -25,8 +25,7 @@ import { CartSidebar } from "@/components/CartSidebar";
 import { getCartCount } from "@/lib/cart";
 import { NewsletterBanner } from "@/components/NewsletterBanner";
 import { MobileNav } from "@/components/MobileNav";
-import { BrandShowcaseStrip } from "@/components/BrandShowcaseStrip";
-import { BrandBannerShowcase } from "@/components/BrandBannerShowcase";
+import { BrandShowcaseCompact } from "@/components/BrandShowcaseCompact";
 /* Brief 2026-06-09 — système de filtres complet (sidebar 11 filtres +
    filtre Palette Sanzō Wada). Cf. lib/categoryFilters + components/category. */
 import {
@@ -294,39 +293,23 @@ function ProductModal({ product: p, onClose, clickPosition, allProducts, onProdu
             )}
           </div>
 
-          {/* ── Trust Signals ── */}
-          <div style={{ marginBottom: 18 }}>
-            <p style={{ fontSize: 9, letterSpacing: "0.18em", textTransform: "uppercase", color: "#8a7a68", fontWeight: 600, margin: "0 0 10px", fontFamily: "'Inter'" }}>Vous pouvez acheter en confiance</p>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-              <div style={{ background: "#fef8f2", padding: 12, borderRadius: 10, display: "flex", flexDirection: "column", gap: 8 }}>
-                <div style={{ fontSize: 18 }}>🔄</div>
-                <div>
-                  <p style={{ margin: 0, fontSize: 10, fontWeight: 600, color: "#1a1a1a", fontFamily: "'Inter'" }}>Retour gratuit</p>
-                  <p style={{ margin: "2px 0 0", fontSize: 9, color: "#8a7a68", fontFamily: "'Inter'" }}>30 jours</p>
-                </div>
-              </div>
-              <div style={{ background: "#f5faf8", padding: 12, borderRadius: 10, display: "flex", flexDirection: "column", gap: 8 }}>
-                <div style={{ fontSize: 18 }}>🛡️</div>
-                <div>
-                  <p style={{ margin: 0, fontSize: 10, fontWeight: 600, color: "#1a1a1a", fontFamily: "'Inter'" }}>Paiement sécurisé</p>
-                  <p style={{ margin: "2px 0 0", fontSize: 9, color: "#8a7a68", fontFamily: "'Inter'" }}>Stripe certifié</p>
-                </div>
-              </div>
-              <div style={{ background: "#faf8f5", padding: 12, borderRadius: 10, display: "flex", flexDirection: "column", gap: 8 }}>
-                <div style={{ fontSize: 18 }}>📦</div>
-                <div>
-                  <p style={{ margin: 0, fontSize: 10, fontWeight: 600, color: "#1a1a1a", fontFamily: "'Inter'" }}>Livraison rapide</p>
-                  <p style={{ margin: "2px 0 0", fontSize: 9, color: "#8a7a68", fontFamily: "'Inter'" }}>2-5 jours</p>
-                </div>
-              </div>
-              <div style={{ background: "#f8faf9", padding: 12, borderRadius: 10, display: "flex", flexDirection: "column", gap: 8 }}>
-                <div style={{ fontSize: 18 }}>✓</div>
-                <div>
-                  <p style={{ margin: 0, fontSize: 10, fontWeight: 600, color: "#1a1a1a", fontFamily: "'Inter'" }}>Marque officielle</p>
-                  <p style={{ margin: "2px 0 0", fontSize: 9, color: "#8a7a68", fontFamily: "'Inter'" }}>{source}</p>
-                </div>
-              </div>
-            </div>
+          {/* ── Mention affiliée honnête ──
+              Fix 2026-06-13 « fabriqué = supprimé » : remplacé le bloc « Vous
+              pouvez acheter en confiance » qui inventait 4 promesses (retour
+              gratuit 30j, Stripe certifié, livraison 2-5j, marque officielle)
+              identiques pour les 64 marchands. WADA est un site d'affiliation
+              et ne peut garantir ni le retour, ni la livraison, ni le moyen
+              de paiement du marchand. On annonce ce qu'on est vraiment :
+              un lien partenaire vers {source}, conditions chez le marchand.
+              Si un agent parallèle re-touche ce fichier, GARDEZ cette
+              version honnête. */}
+          <div style={{ marginBottom: 18, background: "#faf6ee", padding: 12, borderRadius: 10, display: "flex", flexDirection: "column", gap: 6 }}>
+            <p style={{ margin: 0, fontSize: 11, color: "#1a1a1a", fontFamily: "'Inter'", display: "flex", alignItems: "center", gap: 6 }}>
+              <CheckIcon /> Lien partenaire Awin — prix identique chez le marchand
+            </p>
+            <p style={{ margin: 0, fontSize: 11, color: "#1a1a1a", fontFamily: "'Inter'", display: "flex", alignItems: "center", gap: 6 }}>
+              <CheckIcon /> Vente, paiement, livraison et retours assurés par {source}
+            </p>
           </div>
 
           {/* ── Composer une tenue autour de cette pièce (funnel WADA) ── */}
@@ -964,13 +947,9 @@ export default function CategoryPage({ title, breadcrumb, slot, q, genre: initGe
       {/* Back to top button */}
       <BackToTopButton />
 
-      {/* Fill dead spaces - Brand showcases */}
+      {/* Fill dead spaces - Compact brand showcase */}
       <div style={{ maxWidth: 1200, margin: "40px auto", width: "100%", padding: "0 20px" }}>
-        <BrandBannerShowcase layout="full-width" maxBanners={2} />
-      </div>
-
-      <div style={{ maxWidth: 1200, margin: "40px auto", width: "100%", padding: "0 20px" }}>
-        <BrandShowcaseStrip cols={4} title="Continuez votre shopping" />
+        <BrandShowcaseCompact maxProducts={6} cols={3} />
       </div>
 
       {/* Newsletter Banner */}

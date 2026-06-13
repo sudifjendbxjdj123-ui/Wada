@@ -47,32 +47,14 @@ export function GroupedProductCard({ g, onClick }: Props) {
   const dom = /^#[0-9a-f]{6}$/i.test(currentVariant.hex || "") ? currentVariant.hex : "#ede4d4";
   const bgGradient = `linear-gradient(180deg, #fff 0%, ${dom}30 100%)`;
 
-  // Déterminer les badges — DETERMINISTIC basé sur product ID, pas random
-  const badges: Array<{ label: string; icon: string; bg: string; text: string }> = [];
-
-  // "NOUVEAU" — heuristique: hash du produit ID déterministe (40% des produits)
-  const isNew = (g.key.charCodeAt(0) + g.key.charCodeAt(g.key.length - 1)) % 10 < 4;
-  if (isNew) {
-    const daysSeed = Math.abs(g.key.charCodeAt(0)) % 7 + 1;
-    badges.push({
-      label: `NOUVEAU · Il y a ${daysSeed}j`,
-      icon: "✨",
-      bg: "#fef2f2",
-      text: "#991b1b"
-    });
-  }
-
-  if ((currentVariant.popularite || 0) > 0.7) {
-    badges.push({ label: "POPULAIRE", icon: "🔥", bg: "#fff3e0", text: "#d97706" });
-  }
-  // Heuristique: prix bas = possible sale
-  if (currentVariant.prix < 50) {
-    badges.push({ label: "PROMO", icon: "⚡", bg: "#fee2e2", text: "#dc2626" });
-  }
-  // Heuristique: prix moyen = best value
-  if (currentVariant.prix >= 50 && currentVariant.prix < 150) {
-    badges.push({ label: "✓ MEILLEUR PRIX", icon: "💎", bg: "#f0fdf4", text: "#16a34a" });
-  }
+  /* Fix 2026-06-13 « fabriqué = supprimé » : retiré les 4 badges
+     NOUVEAU/POPULAIRE/PROMO/MEILLEUR PRIX. Ils étaient calculés depuis
+     charCodeAt du product ID (NOUVEAU « Il y a 3j » sur ~40% des cartes,
+     déterministe-mais-faux) et des seuils de prix hardcodés (PROMO si
+     prix<50, MEILLEUR PRIX si 50≤prix<150). WADA est un site d'affiliation :
+     on n'invente pas d'âge produit, ni de promo, ni de statut « best price »
+     qu'on ne peut pas vérifier auprès du marchand. Si un agent parallèle
+     re-touche ce fichier, GARDEZ cette suppression. */
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -185,41 +167,8 @@ export function GroupedProductCard({ g, onClick }: Props) {
             </div>
           )}
 
-          {/* Product badges (POPULAIRE, PROMO) */}
-          {badges.length > 0 && (
-            <div
-              style={{
-                position: "absolute",
-                top: 10,
-                right: 10,
-                display: "flex",
-                flexDirection: "column",
-                gap: 6,
-              }}
-            >
-              {badges.map((badge, i) => (
-                <div
-                  key={i}
-                  style={{
-                    background: badge.bg,
-                    color: badge.text,
-                    padding: "4px 10px",
-                    borderRadius: 6,
-                    fontSize: 10,
-                    fontWeight: 700,
-                    fontFamily: "'Inter'",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 4,
-                    letterSpacing: "0.05em",
-                  }}
-                >
-                  <span>{badge.icon}</span>
-                  {badge.label}
-                </div>
-              ))}
-            </div>
-          )}
+          {/* Fix 2026-06-13 : bloc badges fabriqués (POPULAIRE/PROMO/MEILLEUR
+              PRIX/NOUVEAU) retiré — voir explication dans la déclaration. */}
 
           {/* Palette badges — clickable & enhanced */}
           {matches.length > 0 && (
@@ -581,36 +530,11 @@ export function GroupedProductCard({ g, onClick }: Props) {
           )}
         </div>
 
-        {/* Reviews placeholder */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 6,
-            marginBottom: 8,
-            fontSize: 11,
-            fontFamily: "'Inter'",
-          }}
-        >
-          <span style={{ color: "#f59e0b" }}>★★★★☆</span>
-          <span style={{ color: "#8a7a68" }}>4.5 (248 avis)</span>
-        </div>
-
-        {/* Shipping info */}
-        <p
-          style={{
-            margin: "0 0 8px",
-            fontSize: 10,
-            color: "#10b981",
-            fontFamily: "'Inter'",
-            fontWeight: 500,
-            display: "flex",
-            alignItems: "center",
-            gap: 4,
-          }}
-        >
-          ✓ Livraison gratuite dès {currentVariant.devise === "CHF" ? "CHF" : "€"}50
-        </p>
+        {/* Fix 2026-06-13 « fabriqué = supprimé » : retiré la note
+            « ★★★★☆ 4.5 (248 avis) » 100% hardcodée — WADA n'a pas de
+            reviews. Retiré « Livraison gratuite dès €50 » qui prétendait
+            fixer une règle universelle alors que chaque marchand a ses
+            propres conditions. */}
 
         {/* Source */}
         <p
