@@ -56,8 +56,11 @@ export function macroCompatibilityScore(styles: MacroStyle[]): number {
   let total = 0, pairs = 0;
   for (let i = 0; i < styles.length; i++) {
     for (let j = i + 1; j < styles.length; j++) {
-      total += STYLE_COMPATIBILITY[styles[i]][styles[j]];
-      pairs++;
+      const score = STYLE_COMPATIBILITY[styles[i]]?.[styles[j]];
+      if (typeof score === "number") {
+        total += score;
+        pairs++;
+      }
     }
   }
   return pairs > 0 ? total / pairs : 1.0;
