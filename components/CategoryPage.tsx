@@ -624,7 +624,10 @@ export default function CategoryPage({ title, breadcrumb, slot, q, genre: initGe
         body: JSON.stringify({ slot, category, filters, limit: PER_PAGE, offset: (page - 1) * PER_PAGE }),
         signal: ctrl.signal,
       })
-        .then((r) => r.json())
+        .then((r) => {
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+          return r.json();
+        })
         .then((d) => {
           setProducts(d.products ?? []);
           setTotal(d.total ?? 0);
