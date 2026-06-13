@@ -517,7 +517,7 @@ function ProductCard({ p, onClick }: { p: ProduitAwin; onClick: (e: React.MouseE
 /* ════════════════════════════════════════════
    PAGE PRINCIPALE
    ════════════════════════════════════════════ */
-export default function CategoryPage({ title, breadcrumb, slot, q, genre: initGenre, style: initStyle }: Props) {
+export default function CategoryPage({ title, breadcrumb, slot, q, genre: initGenre, style: initStyle, page: initialPage }: Props) {
   const [products, setProducts] = useState<ProduitAwin[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -551,7 +551,10 @@ export default function CategoryPage({ title, breadcrumb, slot, q, genre: initGe
   const [filters, setFilters] = useState<CategoryFilters>(() => seedFilters(initGenre, initStyle));
   const [hydrated, setHydrated] = useState(false);
 
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState(() => {
+    const p = initialPage || 1;
+    return !isNaN(p) && p > 0 ? Math.floor(p) : 1;
+  });
   const [selected, setSelected] = useState<ProduitAwin | null>(null);
   const [clickPosition, setClickPosition] = useState<{ x: number; y: number } | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
