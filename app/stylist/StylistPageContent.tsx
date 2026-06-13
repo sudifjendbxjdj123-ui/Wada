@@ -564,6 +564,7 @@ export function StylistPageContent() {
      Cap à 20 entries par catégorie pour éviter l'inflation infinie. */
   useEffect(() => {
     try {
+      if (typeof window === "undefined") return;
       const raw = localStorage.getItem("wada-avoid");
       if (!raw) return;
       const stored = JSON.parse(raw);
@@ -581,6 +582,7 @@ export function StylistPageContent() {
 
   /** Persiste l'avoid list dans localStorage à chaque update. */
   function persistAvoid(avoid: { colors: string[]; pieces: string[] }) {
+    if (typeof window === "undefined") return;
     try {
       localStorage.setItem("wada-avoid", JSON.stringify(avoid));
     } catch { /* silent */ }
@@ -1143,7 +1145,7 @@ export function StylistPageContent() {
          users qui ont configuré avant le nouvel onboarding. Le hook
          useProfile gère wada.profile côté UI ; ici on lit directement
          pour ne pas violer les rules-of-hooks (helper appelé hors render). */
-      const profileRaw = localStorage.getItem("wada.profile");
+      const profileRaw = typeof window !== "undefined" ? localStorage.getItem("wada.profile") : null;
       let profile = null;
       try {
         profile = profileRaw ? JSON.parse(profileRaw) : null;
@@ -1153,11 +1155,12 @@ export function StylistPageContent() {
 
       let prefs: Record<string, any> = {};
       try {
-        prefs = JSON.parse(localStorage.getItem("wada-prefs") || "{}");
+        const prefRaw = typeof window !== "undefined" ? localStorage.getItem("wada-prefs") : null;
+        prefs = JSON.parse(prefRaw || "{}");
       } catch {
         console.error("[StylistPageContent] Failed to parse wada-prefs from localStorage");
       }
-      const genderRaw = localStorage.getItem("wada-gender");
+      const genderRaw = typeof window !== "undefined" ? localStorage.getItem("wada-gender") : null;
       const genderLegacy = (genderRaw === "femme" || genderRaw === "homme" || genderRaw === "unisexe")
         ? genderRaw
         : null;
@@ -1580,7 +1583,7 @@ export function StylistPageContent() {
        adapte la tenue au moment, pas seulement à la personne. */
     let moodOfDay = {};
     try {
-      const raw = localStorage.getItem("wada.mood");
+      const raw = typeof window !== "undefined" ? localStorage.getItem("wada.mood") : null;
       if (raw) {
         const parsed = JSON.parse(raw);
         const today = new Date().toISOString().slice(0, 10);
