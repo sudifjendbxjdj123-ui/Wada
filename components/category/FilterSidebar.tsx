@@ -87,7 +87,13 @@ export function FilterSidebar({ category, filters, onChange, facets, resultCount
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/palettes/popular").then((r) => r.json()).then((d) => { if (!cancelled) setPopular(d); }).catch(() => {});
+    fetch("/api/palettes/popular")
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
+      .then((d) => { if (!cancelled) setPopular(d); })
+      .catch(() => {});
     return () => { cancelled = true; };
   }, []);
 
