@@ -101,6 +101,14 @@ export async function POST(req: Request) {
         { status: 400 },
       );
     }
+    // Limite la taille des données URL pour éviter les DOS
+    const MAX_IMAGE_SIZE = 20 * 1024 * 1024; // 20 MB
+    if (image.length > MAX_IMAGE_SIZE) {
+      return NextResponse.json(
+        { error: "bad_request", raison: "Image trop volumineuse (max 20 MB)" },
+        { status: 413 },
+      );
+    }
 
     /* Limite garde-fou : ~5 Mo en base64 (≈3.75 Mo réels). Si l'image est
        plus grande, on refuse — le client doit re-compresser. Évite les
