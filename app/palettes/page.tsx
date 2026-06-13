@@ -188,7 +188,7 @@ export default function PalettesPage() {
           <div>
             <h1 style={{
               fontFamily: fonts.display, fontWeight: 700,
-              fontSize: "clamp(28px, 5vw, 44px)",
+              fontSize: "clamp(32px, 4vw, 44px)",
               letterSpacing: "-0.01em",
               margin: 0,
             }}>
@@ -217,13 +217,13 @@ export default function PalettesPage() {
         <div style={{
           position: "sticky",
           top: 0,
-          zIndex: 19, // sous la nav (z:20) mais au-dessus du contenu
-          background: "rgba(244, 239, 231, .82)",
-          backdropFilter: "blur(10px)",
-          WebkitBackdropFilter: "blur(10px)",
+          zIndex: 19,
+          background: "rgba(240, 230, 215, .95)",
+          backdropFilter: "blur(20px)",
+          WebkitBackdropFilter: "blur(20px)",
           margin: "0 -26px",
           padding: "8px 26px 4px",
-          borderBottom: `1px solid ${palette.line}`,
+          borderBottom: `1.5px solid ${palette.line}`,
         }}>
         {/* SEARCH + SORT */}
         <div style={{ display: "flex", gap: 12, margin: "12px 0 12px", flexWrap: "wrap" }}>
@@ -273,14 +273,27 @@ export default function PalettesPage() {
                 type="button"
                 onClick={() => setFilter(f)}
                 style={{
-                  fontSize: 13.5, padding: "9px 17px",
+                  fontSize: 13.5, padding: "10px 18px",
                   borderRadius: 999,
-                  border: `1px solid ${filter === f ? palette.ink : palette.line}`,
-                  background: filter === f ? palette.ink : palette.card,
-                  color: filter === f ? "#fff" : palette.inkSoft,
+                  border: `1.5px solid ${filter === f ? palette.bordeaux : palette.line}`,
+                  background: filter === f ? palette.bordeaux : "transparent",
+                  color: filter === f ? "#fff" : palette.ink,
                   cursor: "pointer",
                   fontFamily: fonts.sans,
-                  transition: "all 0.22s ease",
+                  transition: "all 0.2s ease",
+                  fontWeight: filter === f ? 600 : 500,
+                }}
+                onMouseEnter={(e) => {
+                  if (filter !== f) {
+                    e.currentTarget.style.borderColor = palette.bordeaux;
+                    e.currentTarget.style.background = "rgba(107, 58, 50, 0.06)";
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (filter !== f) {
+                    e.currentTarget.style.borderColor = palette.line;
+                    e.currentTarget.style.background = "transparent";
+                  }
                 }}
               >
                 {FAMILY_LABELS[f]}
@@ -308,16 +321,20 @@ export default function PalettesPage() {
             <button
               type="button"
               onClick={() => setView("large")}
-              style={vBtnStyle(view === "large")}
+              style={{...vBtnStyle(view === "large"), minWidth: 48, minHeight: 48}}
               aria-label="Vue large"
+              onMouseEnter={(e) => e.currentTarget.style.opacity = "0.8"}
+              onMouseLeave={(e) => e.currentTarget.style.opacity = "1"}
             >
               ▦
             </button>
             <button
               type="button"
               onClick={() => setView("compact")}
-              style={vBtnStyle(view === "compact")}
+              style={{...vBtnStyle(view === "compact"), minWidth: 48, minHeight: 48}}
               aria-label="Vue compacte"
+              onMouseEnter={(e) => e.currentTarget.style.opacity = "0.8"}
+              onMouseLeave={(e) => e.currentTarget.style.opacity = "1"}
             >
               ▥
             </button>
@@ -325,23 +342,63 @@ export default function PalettesPage() {
         </div>
         </div>{/* /sticky filter bar (brief 2026-05-26) */}
 
-        {/* GRID */}
+        {/* GRID / CAROUSEL */}
         {filtered.length === 0 ? (
-          <p style={{
-            textAlign: "center", color: palette.inkSoft,
-            padding: "50px 0", fontFamily: fonts.serif, fontStyle: "italic",
+          <div style={{
+            textAlign: "center", padding: "60px 30px",
+            display: "flex", flexDirection: "column", alignItems: "center", gap: 24,
           }}>
-            Aucune palette ne correspond — essayez une autre teinte.
-          </p>
+            <svg width={80} height={80} viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle cx={40} cy={40} r={36} stroke={palette.line} strokeWidth={2} />
+              <circle cx={40} cy={32} r={8} fill={palette.inkFaint} opacity={0.4} />
+              <path d="M 40 42 L 45 52 L 35 52 Z" fill={palette.inkFaint} opacity={0.4} />
+            </svg>
+            <div>
+              <h3 style={{
+                fontFamily: fonts.sans, fontSize: 18, fontWeight: 600,
+                color: palette.ink, margin: 0, marginBottom: 8,
+              }}>
+                Aucune palette ne correspond
+              </h3>
+              <p style={{
+                fontFamily: fonts.sans, fontSize: 14, color: palette.inkSoft,
+                margin: 0, marginBottom: 20,
+              }}>
+                Essayez une autre teinte ou supprimez un filtre pour découvrir plus de couleurs.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setFilter("toutes");
+                setQuery("");
+              }}
+              style={{
+                fontFamily: fonts.sans, fontSize: 14, fontWeight: 600,
+                padding: "12px 24px",
+                background: palette.ink,
+                color: "#fff",
+                border: "none",
+                borderRadius: 8,
+                cursor: "pointer",
+                transition: "all 0.2s ease",
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = "#3a2725")}
+              onMouseLeave={(e) => (e.currentTarget.style.background = palette.ink)}
+            >
+              Réinitialiser les filtres
+            </button>
+          </div>
         ) : (
           <>
-            <div style={{
-              display: "grid",
-              gridTemplateColumns: view === "large"
-                ? "repeat(auto-fill, minmax(220px, 1fr))"
-                : "repeat(auto-fill, minmax(180px, 1fr))",
-              gap: view === "large" ? 20 : 16,
-            }}>
+            <div className={`wada-palettes-carousel ${view === "compact" ? "compact" : ""}`}
+              style={{
+                display: "grid",
+                gridTemplateColumns: view === "large"
+                  ? "repeat(auto-fill, minmax(220px, 1fr))"
+                  : "repeat(auto-fill, minmax(180px, 1fr))",
+                gap: view === "large" ? 20 : 16,
+              }}>
               {filtered.slice(0, pageCount).map(({ entry }) => (
                 <PaletteCard key={entry.number} entry={entry} />
               ))}
@@ -359,13 +416,23 @@ export default function PalettesPage() {
                     gap: 10,
                     fontFamily: fonts.sans,
                     fontSize: 14,
-                    fontWeight: 500,
-                    padding: "13px 28px",
+                    fontWeight: 600,
+                    padding: "14px 32px",
                     background: palette.ink,
                     color: palette.bg,
                     border: "none",
                     borderRadius: 999,
                     cursor: "pointer",
+                    minHeight: 48,
+                    transition: "all 0.2s ease",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = "#3a2725";
+                    e.currentTarget.style.transform = "translateY(-2px)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = palette.ink;
+                    e.currentTarget.style.transform = "translateY(0)";
                   }}
                 >
                   Voir plus
@@ -415,16 +482,31 @@ export default function PalettesPage() {
             <PromoFeat icon="⤬" label="Polyvalence" desc="Facile à associer au quotidien" />
             <PromoFeat icon="⚙" label="Saisons" desc="Adaptées à toutes les saisons" />
           </div>
-          <Link href="/composer" style={{
-            background: palette.ink, color: "#fff",
-            border: "none", borderRadius: 12,
-            padding: "14px 22px",
-            fontFamily: fonts.sans, fontSize: 14, fontWeight: 500,
-            cursor: "pointer", whiteSpace: "nowrap",
-            textDecoration: "none",
-          }}>
+          <button
+            type="button"
+            onClick={() => {
+              window.location.href = "/composer";
+            }}
+            style={{
+              background: palette.ink, color: "#fff",
+              border: "none", borderRadius: 12,
+              padding: "14px 24px",
+              fontFamily: fonts.sans, fontSize: 14, fontWeight: 600,
+              cursor: "pointer", whiteSpace: "nowrap",
+              minHeight: 48,
+              transition: "all 0.2s ease",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = "#3a2725";
+              e.currentTarget.style.transform = "translateY(-2px)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = palette.ink;
+              e.currentTarget.style.transform = "translateY(0)";
+            }}
+          >
             Découvrir ma palette sur mesure →
-          </Link>
+          </button>
         </div>
       </div>
 

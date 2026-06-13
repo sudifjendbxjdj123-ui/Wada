@@ -413,21 +413,51 @@ main, nav, footer {
   animation: wada-blur-in 0.8s ease-out backwards;
 }
 
-/* Cards — hover plus présent avec ombre douce */
+/* ═════════════════════════════════════════════════════════════════
+   UNIFIED CARD STYLES — cohérence hover + borders + shadows (TIER 2)
+   ═════════════════════════════════════════════════════════════════
+   Tous les cards utilisent les mêmes transitions et effets pour une
+   expérience visuelle cohérente à travers le site. */
+
+/* Base card — border douce + shadow subtile */
+.wada-card,
+.wada-card-base {
+  border: 1px solid rgba(30, 30, 30, 0.08);
+  box-shadow: 0 4px 12px rgba(30, 30, 30, 0.04);
+  border-radius: 14px;
+  transition: all 0.2s ease;
+}
+
+/* Lift effect — remontée + shadow renforcée */
 .wada-lift {
-  transition: transform 0.45s cubic-bezier(0.2, 0.7, 0.2, 1),
-              box-shadow 0.45s cubic-bezier(0.2, 0.7, 0.2, 1);
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1),
+              box-shadow 0.2s ease,
+              border-color 0.2s ease;
 }
 .wada-lift:hover {
   transform: translateY(-4px);
-  box-shadow: 0 12px 32px rgba(31, 27, 22, 0.10);
+  box-shadow: 0 12px 32px rgba(31, 27, 22, 0.12);
+  border-color: rgba(107, 58, 50, 0.15);
 }
+
+/* Lift small — pour cards plus petites */
 .wada-lift-sm {
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
 }
 .wada-lift-sm:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 18px rgba(31, 27, 22, 0.08);
+  box-shadow: 0 8px 20px rgba(31, 27, 22, 0.08);
+  border-color: rgba(107, 58, 50, 0.12);
+}
+
+/* Soft card — minimal border, shadow très subtle */
+.wada-card-soft {
+  border: 1px solid rgba(30, 30, 30, 0.05);
+  box-shadow: 0 2px 8px rgba(30, 30, 30, 0.02);
+}
+.wada-card-soft:hover {
+  border-color: rgba(30, 30, 30, 0.10);
+  box-shadow: 0 6px 16px rgba(30, 30, 30, 0.06);
 }
 
 /* Palette bands — élargissent légèrement la bande survolée */
@@ -643,6 +673,79 @@ body::after {
 }
 @media (prefers-reduced-motion: reduce) {
   .wada-thinking-dots > span { animation: none; opacity: 0.6; }
+}
+
+/* ═════════════════════════════════════════════════════════════════
+   LOADING STATES — spinners + messages cohérents (TIER 2)
+   ═════════════════════════════════════════════════════════════════
+   États de chargement cohérents partout: spinner animé + message. */
+
+/* Spinner classique — ring qui tourne */
+.wada-loader-ring {
+  display: inline-block;
+  width: 40px;
+  height: 40px;
+  border: 3px solid rgba(107, 58, 50, 0.2);
+  border-top-color: #6B3A32;
+  border-radius: 50%;
+  animation: wada-loader-spin 0.8s linear infinite;
+}
+.wada-loader-ring-sm {
+  width: 24px;
+  height: 24px;
+  border: 2px solid rgba(107, 58, 50, 0.15);
+  border-top-color: #6B3A32;
+}
+@keyframes wada-loader-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Loading container avec message */
+.wada-loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 40px 24px;
+  text-align: center;
+}
+.wada-loading-state-message {
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  color: #6a6259;
+  font-weight: 500;
+}
+
+/* Loading bar — pour les progrès visibles */
+.wada-loader-bar {
+  width: 100%;
+  height: 2px;
+  background: rgba(107, 58, 50, 0.1);
+  border-radius: 1px;
+  overflow: hidden;
+}
+.wada-loader-bar > div {
+  height: 100%;
+  background: linear-gradient(90deg, transparent, #6B3A32, transparent);
+  background-size: 200% 100%;
+  animation: wada-loader-bar-flow 1.5s ease-in-out infinite;
+}
+@keyframes wada-loader-bar-flow {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Respect prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  .wada-loader-ring,
+  .wada-loader-ring-sm {
+    animation: none;
+    border-top-color: transparent;
+  }
+  .wada-loader-bar > div {
+    animation: none;
+    background: rgba(107, 58, 50, 0.2);
+  }
 }
 
 /* ───────────────────────────────────────────────────────────
@@ -1062,30 +1165,68 @@ textarea:focus-visible,
    ═════════════════════════════════════════════════════════════════
    Brief 2026-05-22 « États d'interface » : préférer le skeleton à une
    page blanche. Utiliser `.wada-skeleton` sur un bloc pour montrer son
-   emplacement pendant le fetch. */
+   emplacement pendant le fetch.
+
+   TIER 2 improvement: meilleure animation + variantes pour différents
+   types de contenu (text line, image, card, etc). */
 .wada-skeleton {
   background: linear-gradient(
     90deg,
-    rgba(30,30,30,.06) 0%,
-    rgba(30,30,30,.10) 50%,
-    rgba(30,30,30,.06) 100%
+    rgba(30,30,30,.05) 0%,
+    rgba(30,30,30,.12) 25%,
+    rgba(30,30,30,.05) 50%,
+    rgba(30,30,30,.12) 75%,
+    rgba(30,30,30,.05) 100%
   );
-  background-size: 200% 100%;
-  animation: wada-skeleton-shimmer 1.4s ease-in-out infinite;
+  background-size: 300% 100%;
+  animation: wada-skeleton-shimmer 1.8s cubic-bezier(.4, 0, .2, 1) infinite;
   border-radius: 12px;
-}
-@keyframes wada-skeleton-shimmer {
-  0%   { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
-}
-/* Optimize: use transform instead of background-position for better performance */
-.wada-skeleton {
   will-change: background-position;
   backface-visibility: hidden;
 }
+@keyframes wada-skeleton-shimmer {
+  0%   { background-position: 300% 0; }
+  100% { background-position: -300% 0; }
+}
+
+/* Variantes de skeleton pour différents types */
+.wada-skeleton-line {
+  height: 12px;
+  border-radius: 6px;
+  margin-bottom: 8px;
+}
+.wada-skeleton-line:last-child {
+  margin-bottom: 0;
+}
+.wada-skeleton-text {
+  height: 16px;
+  border-radius: 8px;
+  margin-bottom: 12px;
+}
+.wada-skeleton-image {
+  height: 200px;
+  border-radius: 14px;
+  margin-bottom: 12px;
+}
+.wada-skeleton-card {
+  border-radius: 16px;
+  padding: 16px;
+  background: linear-gradient(
+    90deg,
+    rgba(30,30,30,.04) 0%,
+    rgba(30,30,30,.08) 25%,
+    rgba(30,30,30,.04) 50%,
+    rgba(30,30,30,.08) 75%,
+    rgba(30,30,30,.04) 100%
+  );
+  background-size: 300% 100%;
+  animation: wada-skeleton-shimmer 1.8s cubic-bezier(.4, 0, .2, 1) infinite;
+}
+
 /* Respect prefers-reduced-motion : skeleton statique sans animation */
 @media (prefers-reduced-motion: reduce) {
-  .wada-skeleton {
+  .wada-skeleton,
+  .wada-skeleton-card {
     animation: none;
     background: rgba(30,30,30,.08);
   }
@@ -1126,8 +1267,35 @@ input::placeholder {
   font-style: italic;
 }
 
-button, a {
+/* ═════════════════════════════════════════════════════════════════
+   STANDARDIZED TRANSITIONS — cohérence animation globale (TIER 2)
+   ═════════════════════════════════════════════════════════════════
+   Toutes les transitions utilisent les mêmes timings pour une UX
+   fluide et prévisible. */
+
+/* Transition rapide — micro-interactions (hover, focus) */
+.wada-transition-fast {
+  transition: all 0.15s ease;
+}
+
+/* Transition standard — la plupart des cas (buttons, cards) */
+button, a, [role="button"] {
   transition: all 0.2s ease;
+}
+
+/* Transition medium — plus lent pour les changements visibles */
+.wada-transition-medium {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Transition slow — pour les apparitions/disparitions */
+.wada-transition-slow {
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Transition spring — pour les bounces/animations */
+.wada-transition-spring {
+  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 a:hover {
@@ -1449,6 +1617,61 @@ input[type="range"]:hover::-moz-range-thumb { background: #1B4A6B; box-shadow: 0
 .wada-footer .wada-container,
 .wada-footer-grid {
   max-width: 100%;
+}
+
+/* ═════════════════════════════════════════════════════════════════
+   MOBILE CAROUSEL — palettes horizontales scroll sur mobile (TIER 2)
+   ═════════════════════════════════════════════════════════════════
+   Sur <768px: grille responsive → carousel horizontal avec scroll-snap.
+   Permet de voir plus de palettes avec un simple swipe sur mobile. */
+.wada-palettes-carousel {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 20px;
+  width: 100%;
+}
+@media (max-width: 768px) {
+  .wada-palettes-carousel {
+    display: flex;
+    overflow-x: auto;
+    overflow-y: hidden;
+    gap: 14px;
+    padding: 0 0 16px 0;
+    margin: 0 -26px;
+    padding-left: 26px;
+    padding-right: 26px;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+  }
+  .wada-palettes-carousel > * {
+    flex: 0 0 min(280px, 85vw);
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
+  }
+  /* Scrollbar stylisée */
+  .wada-palettes-carousel::-webkit-scrollbar {
+    height: 6px;
+  }
+  .wada-palettes-carousel::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .wada-palettes-carousel::-webkit-scrollbar-thumb {
+    background: rgba(107, 58, 50, 0.2);
+    border-radius: 3px;
+  }
+  .wada-palettes-carousel::-webkit-scrollbar-thumb:hover {
+    background: rgba(107, 58, 50, 0.4);
+  }
+}
+@media (max-width: 768px) {
+  /* Compact view carousel */
+  .wada-palettes-carousel.compact {
+    gap: 12px;
+  }
+  .wada-palettes-carousel.compact > * {
+    flex: 0 0 min(240px, 75vw);
+  }
 }
 
 /* ═════════════════════════════════════════════════════════════════

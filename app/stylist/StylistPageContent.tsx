@@ -1824,16 +1824,37 @@ export function StylistPageContent() {
                   key={i}
                   style={{
                     alignSelf: "flex-end",
+                    display: "flex",
+                    gap: 10,
                     maxWidth: "82%",
-                    padding: "13px 17px",
-                    fontSize: 15, lineHeight: 1.5,
-                    borderRadius: 18,
-                    borderBottomRightRadius: 5,
-                    background: palette.bordeaux,
-                    color: "#FAF8F4",
+                    alignItems: "flex-end",
                   }}
                 >
-                  {b.text}
+                  <div
+                    style={{
+                      padding: "13px 18px",
+                      fontSize: 15, lineHeight: 1.5,
+                      borderRadius: 18,
+                      borderBottomRightRadius: 5,
+                      background: palette.bordeaux,
+                      color: "#FAF8F4",
+                      boxShadow: "0 2px 8px rgba(107, 58, 50, 0.2)",
+                    }}
+                  >
+                    {b.text}
+                  </div>
+                  <div
+                    style={{
+                      width: 36, height: 36, borderRadius: "50%",
+                      background: palette.bordeaux,
+                      color: "#FAF8F4",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      fontSize: 12, fontWeight: 600,
+                      flexShrink: 0,
+                    }}
+                  >
+                    MOI
+                  </div>
                 </div>
               );
             }
@@ -1842,24 +1863,38 @@ export function StylistPageContent() {
                 key={i}
                 style={{
                   alignSelf: "flex-start",
+                  display: "flex",
+                  gap: 10,
                   maxWidth: "82%",
-                  padding: "13px 17px",
-                  fontSize: 15, lineHeight: 1.5,
-                  borderRadius: 18,
-                  borderBottomLeftRadius: 5,
-                  background: palette.cream,
-                  border: `1px solid ${palette.line}`,
-                  color: palette.ink,
+                  alignItems: "flex-start",
                 }}
               >
-                <div style={{
-                  fontSize: 10, letterSpacing: "0.16em",
-                  textTransform: "uppercase", color: palette.olive,
-                  marginBottom: 4, fontWeight: 600,
-                }}>
-                  WADA
+                <div
+                  style={{
+                    width: 36, height: 36, borderRadius: "50%",
+                    background: palette.olive,
+                    color: "#fff",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    fontSize: 12, fontWeight: 600,
+                    flexShrink: 0,
+                  }}
+                >
+                  ✦
                 </div>
-                <div dangerouslySetInnerHTML={{ __html: b.html }} />
+                <div
+                  style={{
+                    padding: "13px 18px",
+                    fontSize: 15, lineHeight: 1.5,
+                    borderRadius: 18,
+                    borderBottomLeftRadius: 5,
+                    background: palette.cream,
+                    border: `1.5px solid ${palette.line}`,
+                    color: palette.ink,
+                    boxShadow: "0 2px 8px rgba(30,30,30,.08)",
+                  }}
+                >
+                  <div dangerouslySetInnerHTML={{ __html: b.html }} />
+                </div>
               </div>
             );
           })}
@@ -1878,29 +1913,37 @@ export function StylistPageContent() {
                 type="button"
                 onClick={() => onChip(c.label)}
                 style={{
-                  fontFamily: fonts.sans, fontSize: 14,
-                  padding: "10px 16px",
+                  fontFamily: fonts.sans, fontSize: 14, fontWeight: c.primary ? 600 : 500,
+                  padding: "11px 18px",
                   borderRadius: 999,
-                  border: `1px solid ${c.primary ? palette.bordeaux : palette.line}`,
+                  border: `1.5px solid ${c.primary ? palette.bordeaux : palette.line}`,
                   background: c.primary ? palette.bordeaux : palette.cream,
                   color: c.primary ? "#FAF8F4" : palette.ink,
                   cursor: "pointer",
-                  transition: "all .2s ease",
+                  transition: "all 0.2s ease",
+                  minHeight: 44,
+                  boxShadow: c.primary ? "0 2px 6px rgba(107, 58, 50, 0.15)" : "none",
                 }}
                 onMouseEnter={(ev) => {
                   if (c.primary) {
                     ev.currentTarget.style.background = "#5a3029";
+                    ev.currentTarget.style.boxShadow = "0 4px 12px rgba(107, 58, 50, 0.25)";
+                    ev.currentTarget.style.transform = "translateY(-2px)";
                   } else {
                     ev.currentTarget.style.background = "#fff";
                     ev.currentTarget.style.borderColor = palette.olive;
+                    ev.currentTarget.style.boxShadow = "0 2px 8px rgba(168, 178, 154, 0.15)";
                   }
                 }}
                 onMouseLeave={(ev) => {
                   if (c.primary) {
                     ev.currentTarget.style.background = palette.bordeaux;
+                    ev.currentTarget.style.boxShadow = "0 2px 6px rgba(107, 58, 50, 0.15)";
+                    ev.currentTarget.style.transform = "translateY(0)";
                   } else {
                     ev.currentTarget.style.background = palette.cream;
                     ev.currentTarget.style.borderColor = palette.line;
+                    ev.currentTarget.style.boxShadow = "none";
                   }
                 }}
               >
@@ -1939,8 +1982,18 @@ export function StylistPageContent() {
               fontSize: 13, letterSpacing: "0.1em", textTransform: "uppercase",
               background: palette.ink, color: palette.cream,
               border: "none", borderRadius: 999,
-              padding: "10px 18px", cursor: "pointer",
-              fontFamily: fonts.sans, fontWeight: 600,
+              padding: "12px 20px", cursor: "pointer",
+              fontFamily: fonts.sans, fontWeight: 700,
+              minHeight: 48,
+              transition: "all 0.2s ease",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = "#3a2725";
+              e.currentTarget.style.transform = "translateY(-2px)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = palette.ink;
+              e.currentTarget.style.transform = "translateY(0)";
             }}
           >
             Envoyer
@@ -1953,11 +2006,27 @@ export function StylistPageContent() {
             type="button"
             onClick={start}
             style={{
-              marginTop: 14,
-              fontSize: 13, color: palette.bordeaux,
-              background: "none", border: "none",
-              cursor: "pointer", textDecoration: "underline",
+              marginTop: 18,
+              fontSize: 13, fontWeight: 600,
+              color: palette.bordeaux,
+              background: "transparent",
+              border: `1.5px solid ${palette.bordeaux}`,
+              borderRadius: 8,
+              padding: "10px 16px",
+              cursor: "pointer",
               fontFamily: fonts.sans,
+              transition: "all 0.2s ease",
+              minHeight: 44,
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = "rgba(107, 58, 50, 0.08)";
+              e.currentTarget.style.borderColor = "#5a3029";
+              e.currentTarget.style.color = "#5a3029";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = "transparent";
+              e.currentTarget.style.borderColor = palette.bordeaux;
+              e.currentTarget.style.color = palette.bordeaux;
             }}
           >
             ↺ Recommencer

@@ -324,14 +324,21 @@ export default function ScannerPage() {
           href="/"
           aria-label="Fermer"
           style={{
-            width: 38, height: 38, borderRadius: "50%",
+            width: 48, height: 48, borderRadius: "50%",
             background: "rgba(0,0,0,0.4)",
             backdropFilter: "blur(8px)",
             WebkitBackdropFilter: "blur(8px)",
             display: "inline-flex", alignItems: "center", justifyContent: "center",
             color: "#fff", textDecoration: "none",
-            fontSize: 22, lineHeight: 1,
+            fontSize: 24, lineHeight: 1,
             border: "1px solid rgba(255,255,255,0.12)",
+            transition: "all 0.2s ease",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = "rgba(0,0,0,0.6)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = "rgba(0,0,0,0.4)";
           }}
         >
           ×
@@ -345,13 +352,24 @@ export default function ScannerPage() {
             onClick={toggleFlash}
             aria-label={flashOn ? "Éteindre le flash" : "Allumer le flash"}
             style={{
-              width: 38, height: 38, borderRadius: "50%",
+              width: 48, height: 48, borderRadius: "50%",
               background: flashOn ? "rgba(255,220,100,0.85)" : "rgba(0,0,0,0.4)",
               backdropFilter: "blur(8px)",
               WebkitBackdropFilter: "blur(8px)",
               display: "inline-flex", alignItems: "center", justifyContent: "center",
               color: "#fff", border: "1px solid rgba(255,255,255,0.12)",
-              cursor: "pointer", fontSize: 16, lineHeight: 1,
+              cursor: "pointer", fontSize: 18, lineHeight: 1,
+              transition: "all 0.2s ease",
+            }}
+            onMouseEnter={(e) => {
+              if (flashOn) {
+                e.currentTarget.style.background = "rgba(255,220,100,1)";
+              } else {
+                e.currentTarget.style.background = "rgba(0,0,0,0.6)";
+              }
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = flashOn ? "rgba(255,220,100,0.85)" : "rgba(0,0,0,0.4)";
             }}
           >
             ⚡
@@ -388,19 +406,30 @@ export default function ScannerPage() {
 
       {/* HINT TEXTE */}
       {cameraReady && !detected && (
-        <div style={{
-          position: "absolute",
-          top: "calc(50% + 130px)",
-          left: 0, right: 0,
-          textAlign: "center",
-          color: "#fff", fontSize: 14,
-          textShadow: "0 1px 6px rgba(0,0,0,0.7)",
-          fontFamily: fonts.display, fontWeight: 500,
-          letterSpacing: "0.02em",
-          zIndex: 18,
-        }}>
-          Visez la couleur
-        </div>
+        <>
+          <div style={{
+            position: "absolute",
+            top: "calc(50% + 110px)",
+            left: 0, right: 0,
+            height: 80,
+            background: "linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,0.6) 100%)",
+            pointerEvents: "none",
+            zIndex: 17,
+          }} />
+          <div style={{
+            position: "absolute",
+            top: "calc(50% + 130px)",
+            left: 0, right: 0,
+            textAlign: "center",
+            color: "#fff", fontSize: 16,
+            textShadow: "0 2px 8px rgba(0,0,0,0.8)",
+            fontFamily: fonts.display, fontWeight: 600,
+            letterSpacing: "0.02em",
+            zIndex: 18,
+          }}>
+            Visez la couleur
+          </div>
+        </>
       )}
 
       {/* BOTTOM BAR : toggle + capture + galerie + flash */}
@@ -434,10 +463,18 @@ export default function ScannerPage() {
               onClick={() => router.push("/composer")}
               style={{
                 background: "transparent", color: palette.inkSoft,
-                border: "none", padding: "8px 16px",
+                border: "none", padding: "10px 18px",
                 borderRadius: 999,
-                fontFamily: fonts.display, fontSize: 13, fontWeight: 500,
+                fontFamily: fonts.display, fontSize: 14, fontWeight: 500,
                 cursor: "pointer",
+                minHeight: 44,
+                transition: "all 0.2s ease",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "rgba(255,255,255,0.3)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "transparent";
               }}
             >
               ◇ Un vêtement
@@ -446,11 +483,19 @@ export default function ScannerPage() {
               type="button"
               style={{
                 background: "#fff", color: palette.bordeaux,
-                boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
-                border: "none", padding: "8px 16px",
+                boxShadow: "0 2px 6px rgba(0,0,0,0.15)",
+                border: "none", padding: "10px 18px",
                 borderRadius: 999,
-                fontFamily: fonts.display, fontSize: 13, fontWeight: 500,
+                fontFamily: fonts.display, fontSize: 14, fontWeight: 600,
                 cursor: "pointer",
+                minHeight: 44,
+                transition: "all 0.2s ease",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.boxShadow = "0 4px 12px rgba(0,0,0,0.2)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.boxShadow = "0 2px 6px rgba(0,0,0,0.15)";
               }}
             >
               ⦿ Une couleur
@@ -468,14 +513,22 @@ export default function ScannerPage() {
               onClick={() => fileInputRef.current?.click()}
               aria-label="Ouvrir la galerie"
               style={{
-                width: 44, height: 44, borderRadius: 10,
-                background: "rgba(255,255,255,0.18)",
+                width: 48, height: 48, borderRadius: 12,
+                background: "rgba(255,255,255,0.25)",
                 backdropFilter: "blur(10px)",
                 WebkitBackdropFilter: "blur(10px)",
                 color: "#fff",
-                border: "none", cursor: "pointer",
+                border: "1px solid rgba(255,255,255,0.3)",
+                cursor: "pointer",
                 display: "inline-flex", alignItems: "center", justifyContent: "center",
-                fontSize: 18,
+                fontSize: 20,
+                transition: "all 0.2s ease",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "rgba(255,255,255,0.35)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "rgba(255,255,255,0.25)";
               }}
             >
               🖼
@@ -531,12 +584,12 @@ export default function ScannerPage() {
           <div style={{
             position: "absolute",
             left: 10, right: 10,
-            bottom: "max(10px, env(safe-area-inset-bottom, 10px))",
-            background: "#fff",
-            borderRadius: 22,
-            padding: "18px 20px 22px",
+            bottom: "max(14px, env(safe-area-inset-bottom, 14px))",
+            background: "#faf8f4",
+            borderRadius: 24,
+            padding: "22px 24px 28px",
             zIndex: 35,
-            boxShadow: "0 -10px 30px -10px rgba(0,0,0,0.3)",
+            boxShadow: "0 -12px 40px -8px rgba(0,0,0,0.25)",
             animation: "wada-sheet-slide 0.3s cubic-bezier(.22,1,.36,1)",
           }}>
             <div style={{
@@ -616,20 +669,37 @@ export default function ScannerPage() {
                   ))}
                 </div>
 
-                <Link
-                  href={`/palette/${detected.matches[0].number}`}
+                <button
+                  type="button"
+                  onClick={() => window.location.href = `/palette/${detected.matches[0].number}`}
                   style={{
                     display: "block",
-                    background: palette.bordeaux, color: palette.cream,
-                    border: "none", borderRadius: 12,
-                    padding: "14px",
+                    width: "100%",
+                    background: palette.bordeaux,
+                    color: palette.cream,
+                    border: "none",
+                    borderRadius: 12,
+                    padding: "15px 18px",
                     textAlign: "center",
                     textDecoration: "none",
-                    fontFamily: fonts.display, fontSize: 14.5, fontWeight: 500,
+                    fontFamily: fonts.display,
+                    fontSize: 15,
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    minHeight: 48,
+                    transition: "all 0.2s ease",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = "#5a3029";
+                    e.currentTarget.style.transform = "translateY(-2px)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = palette.bordeaux;
+                    e.currentTarget.style.transform = "translateY(0)";
                   }}
                 >
                   Voir la palette & ma tenue&nbsp;→
-                </Link>
+                </button>
               </>
             )}
             {detected.matches.length === 0 && (
