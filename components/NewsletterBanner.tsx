@@ -25,10 +25,10 @@ export function NewsletterBanner() {
         setEmail("");
       } else {
         const err = await res.json().catch(() => ({ error: "Erreur serveur" }));
-        showToast(err.error || "Erreur lors de l'inscription", { variant: "error" });
+        showToast(err.error || "Erreur lors de l'inscription", { variant: "info" });
       }
     } catch (error) {
-      showToast("Erreur de connexion", { variant: "error" });
+      showToast("Erreur de connexion", { variant: "info" });
     } finally {
       setLoading(false);
     }
