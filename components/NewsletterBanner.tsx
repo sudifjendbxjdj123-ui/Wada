@@ -8,8 +8,13 @@ export function NewsletterBanner() {
 
   const handleSubscribe = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email) {
+    const trimmed = email.trim().toLowerCase();
+    if (!trimmed) {
       showToast("Entrez votre email", { variant: "info" });
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+      showToast("Email invalide (ex. vous@exemple.com)", { variant: "info" });
       return;
     }
 
