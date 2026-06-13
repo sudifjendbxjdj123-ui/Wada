@@ -19,6 +19,13 @@ export async function POST(req: Request) {
 
     const { plan } = await req.json(); // "monthly" or "yearly"
 
+    if (plan !== "yearly" && plan !== "monthly") {
+      return Response.json(
+        { error: "Invalid plan: must be 'monthly' or 'yearly'" },
+        { status: 400 }
+      );
+    }
+
     const priceId =
       plan === "yearly"
         ? process.env.STRIPE_PRICE_YEARLY
@@ -72,10 +79,11 @@ export async function POST(req: Request) {
     }
 
     return Response.json({ url: session.url });
-  } catch (error: any) {
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
     console.error("[stripe/checkout] Error:", error);
     return Response.json(
-      { error: error?.message || "Unknown error" },
+      { error: errorMessage || "Unknown error" },
       { status: 500 }
     );
   }

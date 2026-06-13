@@ -955,10 +955,17 @@ function mergeExcluded(
 }
 
 export async function POST(req: Request) {
+  let body: unknown;
   try {
-    const body = await req.json();
-    const query: string = body.query;
-    const userPrefs: UserPrefs = body.userPrefs || {};
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: "invalid_json" }, { status: 400 });
+  }
+
+  try {
+    const bodyObj = body as Record<string, unknown>;
+    const query: string = bodyObj.query as string;
+    const userPrefs: UserPrefs = (bodyObj.userPrefs as Partial<UserPrefs>) || {};
     // Brief conversationnel 2026-05-23 : le client peut envoyer l'état de
     // collecte accumulé (piece/couleur/style/occasion) pour que le LLM
     // sache ce qui a déjà été demandé et ne repose pas la question.
@@ -974,14 +981,14 @@ export async function POST(req: Request) {
       accord?: { ref?: string; nom?: string } | null;
       avoid?: { colors?: string[]; pieces?: string[] };
       recent_pieces?: string[];
-    } = body.collecte || {};
+    } = (bodyObj.collecte as any) || {};
     /* Brief 2026-05-26 « ameliore le encore » : historique conversationnel.
        Le client envoie les N derniers tours (user + assistant) pour que le
        LLM ait la mémoire des échanges précédents. Indispensable pour les
        ajustements (« sans la veste », « plus chaud ») qui n'ont de sens
        qu'avec le contexte du tour précédent. Filtré + capé pour éviter
        l'explosion de tokens. */
-    const rawHistory: Array<{ role?: string; content?: string }> = Array.isArray(body.history) ? body.history : [];
+    const rawHistory: Array<{ role?: string; content?: string }> = Array.isArray(bodyObj.history) ? (bodyObj.history as any) : [];
     const history = rawHistory
       .filter((m) => (m.role === "user" || m.role === "assistant") && typeof m.content === "string" && m.content.length > 0)
       .slice(-12) // 12 derniers messages max (6 tours user+assistant)
@@ -1041,7 +1048,7 @@ export async function POST(req: Request) {
        Le client envoie { perception, humeur, objectif } depuis MoodChips
        qui stockent la sélection avec une expiration à minuit. Le LLM
        reçoit ce contexte comme « envie ponctuelle » distincte du profil. */
-    const moodOfDay: { perception?: string; humeur?: string; objectif?: string } = body.moodOfDay || {};
+    const moodOfDay: { perception?: string; humeur?: string; objectif?: string } = (bodyObj.moodOfDay as Partial<{ perception?: string; humeur?: string; objectif?: string }>) || {};
     const moodBlock = (moodOfDay.perception || moodOfDay.humeur || moodOfDay.objectif)
       ? `ENVIE DU JOUR (à intégrer dans la tenue, c'est l'humeur ponctuelle de l'utilisateur — pas son style permanent) :
 ${moodOfDay.perception ? `- Veut être perçu·e comme : ${moodOfDay.perception}\n` : ""}${moodOfDay.humeur ? `- Humeur : ${moodOfDay.humeur}\n` : ""}${moodOfDay.objectif ? `- Objectif aujourd'hui : ${moodOfDay.objectif}` : ""}`.trim()
@@ -1058,7 +1065,7 @@ ${moodOfDay.perception ? `- Veut être perçu·e comme : ${moodOfDay.perception}
       dislikedCuts?: string[];
       likedBrands?: string[];
       likedColors?: string[];
-    } = body.styleSignals || {};
+    } = (bodyObj.styleSignals as Partial<{ dislikedColors?: string[]; dislikedBrands?: string[]; dislikedCuts?: string[]; likedBrands?: string[]; likedColors?: string[] }>) || {};
     const hasSignals = !!(
       styleSignals.dislikedColors?.length ||
       styleSignals.dislikedBrands?.length ||

@@ -93,11 +93,16 @@ export async function POST(req: Request) {
     });
     const res = await productsGET(internalReq);
     const data = (await res.json()) as unknown;
-    if (!data || typeof data !== "object" || !Array.isArray((data as any).products)) {
+    if (!data || typeof data !== "object") {
       console.error(`[/api/outfit] Invalid products API response:`, data);
       return null;
     }
-    return ((data as any).products[0] as Record<string, unknown> | undefined) || null;
+    const dataObj = data as Record<string, unknown>;
+    if (!Array.isArray(dataObj.products)) {
+      console.error(`[/api/outfit] Invalid products API response:`, data);
+      return null;
+    }
+    return (dataObj.products[0] as Record<string, unknown> | undefined) || null;
   }
 
   const results: Array<{ slot: string; product: Record<string, unknown> | null }> = [];

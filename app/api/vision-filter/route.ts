@@ -48,7 +48,10 @@ ok=false: back view, close-up detail only, partial body cut-off, extreme lifesty
       }],
       response_format: { type: "json_object" },
     });
-    const data = JSON.parse(res.choices[0].message.content || "{}");
+    if (!res.choices || !res.choices[0] || !res.choices[0].message || !res.choices[0].message.content) {
+      return true;
+    }
+    const data = JSON.parse(res.choices[0].message.content);
     return !!data.ok;
   } catch {
     return true; // fail-open
@@ -65,7 +68,15 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  const { batch = 0, batchSize = 50 } = await req.json().catch(() => ({}));
+  let batch = 0;
+  let batchSize = 50;
+  try {
+    const parsed = await req.json();
+    if (typeof parsed.batch === "number" && parsed.batch >= 0) batch = Math.floor(parsed.batch);
+    if (typeof parsed.batchSize === "number" && parsed.batchSize > 0) batchSize = Math.floor(parsed.batchSize);
+  } catch {
+    // Use defaults
+  }
 
   const all = await readAllProducts();
   const start = batch * batchSize;

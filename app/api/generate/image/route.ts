@@ -16,7 +16,14 @@ export async function POST(req: Request) {
       );
     }
 
-    const { prompt } = await req.json();
+    let body: unknown;
+    try {
+      body = await req.json();
+    } catch {
+      return Response.json({ error: "invalid_json" }, { status: 400 });
+    }
+
+    const { prompt } = (body as Record<string, unknown>);
 
     if (!prompt || typeof prompt !== "string") {
       return Response.json(
@@ -67,8 +74,9 @@ export async function POST(req: Request) {
           continue;
         }
 
-        if (item && typeof (item as any).url === "function") {
-          const url = (item as any).url();
+        const itemObj = item as Record<string, unknown>;
+        if (item && typeof itemObj.url === "function") {
+          const url = (itemObj.url as () => unknown)();
           images.push(url instanceof URL ? url.toString() : String(url));
           continue;
         }
