@@ -1,10 +1,9 @@
 "use client";
 import Link from "next/link";
-import { memo, useMemo } from "react";
+import { memo } from "react";
 import type { DictionaryEntry } from "@/lib/data";
 import { cultureLabels } from "@/lib/data";
 import { useFavorites } from "@/hooks/useFavorites";
-import SocialProofBadge from "@/components/SocialProofBadge";
 
 /**
  * PaletteCard — composant UNIQUE pour TOUTES les cartes palette du site.
