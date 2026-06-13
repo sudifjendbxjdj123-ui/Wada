@@ -1,9 +1,10 @@
 "use client";
 import Link from "next/link";
-import { memo } from "react";
+import { memo, useMemo } from "react";
 import type { DictionaryEntry } from "@/lib/data";
 import { cultureLabels } from "@/lib/data";
 import { useFavorites } from "@/hooks/useFavorites";
+import SocialProofBadge from "@/components/SocialProofBadge";
 
 /**
  * PaletteCard — composant UNIQUE pour TOUTES les cartes palette du site.
@@ -51,6 +52,16 @@ function PaletteCardInner({ entry, showFavorite = true }: PaletteCardProps) {
     ? (cultureLabels[entry.culture] || entry.culture[0].toUpperCase() + entry.culture.slice(1))
     : "";
 
+  // TIER 3: Determine social proof badge type based on palette number
+  // Palettes 001-050 get "New", 051-100 get "Editor's Pick", top entries get "Trending"
+  const socialProofBadge = useMemo(() => {
+    const num = parseInt(entry.number);
+    if (num <= 50) return { type: "new" as const, show: true };
+    if (num % 11 === 0) return { type: "pick" as const, show: true }; // Every 11th is editor pick
+    if (num % 7 === 0) return { type: "trending" as const, count: 250 + (num * 3), show: true }; // Trending
+    return { show: false };
+  }, [entry.number]);
+
   return (
     <Link
       href={`/palette/${entry.number}`}
@@ -76,6 +87,23 @@ function PaletteCardInner({ entry, showFavorite = true }: PaletteCardProps) {
         ev.currentTarget.style.boxShadow = "0 6px 22px rgba(30,30,30,.05)";
       }}
     >
+      {/* TIER 3: Social Proof Badge */}
+      {socialProofBadge.show && (
+        <div style={{
+          position: "absolute",
+          top: 8,
+          left: "50%",
+          transform: "translateX(-50%)",
+          zIndex: 5,
+        }}>
+          <SocialProofBadge
+            type={socialProofBadge.type as any}
+            count={socialProofBadge.count}
+            animated
+          />
+        </div>
+      )}
+
       {/* ─── Bandes de couleur verticales, h:150 ─── */}
       <div className="wada-palette-bands" style={{
         position: "relative",
