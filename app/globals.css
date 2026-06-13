@@ -361,6 +361,102 @@ main,
   100% { opacity: 1; }
 }
 
+/* ═════════════════════════════════════════════════════════════════
+   ADVANCED ANIMATIONS — TIER 3 premium polish
+   ═════════════════════════════════════════════════════════════════
+   Animations sophistiquées pour l'expérience premium: reveal sequences,
+   parallax, confetti, bounce effects, et micro-interactions. */
+
+/* Reveal — cascade d'apparition pour les listes */
+@keyframes wada-reveal-up {
+  0%   { opacity: 0; transform: translateY(20px) scale(0.95); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+.wada-reveal-item {
+  animation: wada-reveal-up 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.wada-reveal-item:nth-child(1) { animation-delay: 0.05s; }
+.wada-reveal-item:nth-child(2) { animation-delay: 0.10s; }
+.wada-reveal-item:nth-child(3) { animation-delay: 0.15s; }
+.wada-reveal-item:nth-child(4) { animation-delay: 0.20s; }
+.wada-reveal-item:nth-child(5) { animation-delay: 0.25s; }
+
+/* Parallax scroll — subtle depth effect */
+.wada-parallax {
+  transform-style: preserve-3d;
+  perspective: 1000px;
+}
+
+/* Bounce — pour les CTA important */
+@keyframes wada-bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+.wada-bounce {
+  animation: wada-bounce 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Pulse — pour attirer l'attention (badges, notifications) */
+@keyframes wada-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+.wada-pulse {
+  animation: wada-pulse 2s ease-in-out infinite;
+}
+
+/* Confetti burst — pour les célébrations */
+@keyframes wada-confetti-fall {
+  0% {
+    transform: translateY(-10px) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(100px) rotate(180deg);
+    opacity: 0;
+  }
+}
+.wada-confetti {
+  animation: wada-confetti-fall 1.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}
+
+/* Wiggle — micro-animation fun */
+@keyframes wada-wiggle {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(-1deg); }
+  75% { transform: rotate(1deg); }
+}
+.wada-wiggle {
+  animation: wada-wiggle 0.3s ease-in-out;
+}
+
+/* Float — léger flottement */
+@keyframes wada-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+.wada-float {
+  animation: wada-float 3s ease-in-out infinite;
+}
+
+/* Glow — halo lumineux pour mise en avant */
+@keyframes wada-glow {
+  0%, 100% { box-shadow: 0 0 10px rgba(107, 58, 50, 0.3); }
+  50% { box-shadow: 0 0 20px rgba(107, 58, 50, 0.6); }
+}
+.wada-glow {
+  animation: wada-glow 2s ease-in-out infinite;
+}
+
+/* Scale pulse — pour les modals/attention-grabbers */
+@keyframes wada-scale-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+.wada-scale-pulse {
+  animation: wada-scale-pulse 1s cubic-bezier(0.34, 1.56, 0.64, 1) infinite;
+}
+
 /* SketchUnderline qui se dessine au scroll-in */
 .wada-ambient-swatch,
 .wada-ambient-kanji {
