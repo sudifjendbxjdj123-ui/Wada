@@ -35,6 +35,8 @@ import { formatProductPrice } from "@/lib/priceFormat";
 import OutfitFeedback from "@/components/OutfitFeedback";
 import { useSavedOutfits, type SavedOutfit } from "@/hooks/useSavedOutfits";
 import { showToast } from "@/lib/toast";
+/* TIER 3: Undo/redo history */
+import { useHistory } from "@/hooks/useHistory";
 import { dictionary, type DictionaryEntry } from "@/lib/data";
 import { analyzeColor } from "@/lib/colorEngine";
 /* Refonte 2026-06-12 — nouveaux composants structure de tenue */

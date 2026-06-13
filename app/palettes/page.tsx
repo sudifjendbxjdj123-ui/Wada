@@ -17,7 +17,7 @@
  * pour les noms de cards = équilibre cohérence brand + lisibilité).
  */
 import Link from "next/link";
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { dictionary, type DictionaryEntry } from "@/lib/data";
 import { colorFamily } from "@/lib/outfitComposer";
 import { scoreOutfit } from "@/lib/colorEngine";
@@ -28,6 +28,7 @@ import BackButton from "@/components/BackButton";
    partagé qui sert maintenant TOUTES les pages. */
 import PaletteCard from "@/components/PaletteCard";
 import { useFavorites } from "@/hooks/useFavorites";
+import { useGestures } from "@/hooks/useGestures";
 
 const palette = {
   bg: "#EFEBE3",
@@ -137,6 +138,21 @@ export default function PalettesPage() {
   useEffect(() => {
     setPageCount(PAGE_SIZE);
   }, [filter, query, sortMode]);
+
+  // TIER 3: Gesture support pour mobile carousel
+  const carouselRef = useRef<HTMLDivElement>(null);
+  useGestures(carouselRef.current, {
+    onSwipeLeft: () => {
+      if (carouselRef.current) {
+        carouselRef.current.scrollBy({ left: 280, behavior: "smooth" });
+      }
+    },
+    onSwipeRight: () => {
+      if (carouselRef.current) {
+        carouselRef.current.scrollBy({ left: -280, behavior: "smooth" });
+      }
+    },
+  });
 
   /* Annote chaque palette avec familles + harmony % — memoisé pour les 348 */
   const annotated = useMemo(() => {
@@ -391,7 +407,9 @@ export default function PalettesPage() {
           </div>
         ) : (
           <>
-            <div className={`wada-palettes-carousel ${view === "compact" ? "compact" : ""}`}
+            <div
+              ref={carouselRef}
+              className={`wada-palettes-carousel ${view === "compact" ? "compact" : ""}`}
               style={{
                 display: "grid",
                 gridTemplateColumns: view === "large"
@@ -400,7 +418,9 @@ export default function PalettesPage() {
                 gap: view === "large" ? 20 : 16,
               }}>
               {filtered.slice(0, pageCount).map(({ entry }) => (
-                <PaletteCard key={entry.number} entry={entry} />
+                <div key={entry.number} className="wada-reveal-item">
+                  <PaletteCard entry={entry} />
+                </div>
               ))}
             </div>
             {/* « Voir plus » — affiche +24 palettes à chaque clic, jusqu'à

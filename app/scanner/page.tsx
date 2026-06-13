@@ -27,6 +27,7 @@ import { useRouter } from "next/navigation";
 import { dictionary, findPalettesByColor, type DictionaryEntry } from "@/lib/data";
 import { wadaRefCode as refCode } from "@/lib/utils";
 import { isNative, takeNativePhoto, hapticMedium } from "@/lib/native";
+import ARPreviewMock from "@/components/ARPreviewMock";
 
 const palette = {
   bordeaux: "#6B3A32",
@@ -667,6 +668,16 @@ export default function ScannerPage() {
                       }}
                     />
                   ))}
+                </div>
+
+                {/* TIER 3: AR Preview Mock */}
+                <div style={{ marginBottom: 14 }}>
+                  <ARPreviewMock
+                    colors={detected.matches[0].colors}
+                    paletteNo={detected.matches[0].number}
+                    paletteName={detected.matches[0].name}
+                    mode="palette"
+                  />
                 </div>
 
                 <button
