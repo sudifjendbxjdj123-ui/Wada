@@ -27,12 +27,18 @@ export function HomeNouveautes() {
           .then((r) => r.json()).then((d) => d.products ?? []).catch(() => []),
       ),
     ).then((results) => {
-      const all: ProduitAwin[] = results.flat().filter((p) => p.image || p.largeImage);
-      for (let i = all.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [all[i], all[j]] = [all[j], all[i]];
+      try {
+        const all: ProduitAwin[] = results.flat().filter((p) => p.image || p.largeImage);
+        for (let i = all.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [all[i], all[j]] = [all[j], all[i]];
+        }
+        setProducts(all.slice(0, 8));
+      } finally {
+        setLoading(false);
       }
-      setProducts(all.slice(0, 8));
+    }).catch((err) => {
+      console.error("[HomeNouveautes] error:", err);
       setLoading(false);
     });
   }, []);

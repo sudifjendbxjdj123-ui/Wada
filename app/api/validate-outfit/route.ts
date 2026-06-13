@@ -86,7 +86,17 @@ export async function POST(req: Request) {
       return NextResponse.json({ verdict: "COHERENT", raison: "", piece_la_plus_problematique: null, _fallback: "no_api_key" });
     }
 
-    const body = await req.json().catch(() => null) as ValidateBody | null;
+    let bodyData: unknown;
+    try {
+      bodyData = await req.json();
+    } catch {
+      return NextResponse.json(
+        { verdict: "INCOHERENT", raison: "Requête invalide (JSON mal formé).", piece_la_plus_problematique: null },
+        { status: 400 },
+      );
+    }
+
+    const body = bodyData as ValidateBody;
     if (!body?.tenue || !Array.isArray(body.tenue) || body.tenue.length < 3) {
       return NextResponse.json(
         { verdict: "INCOHERENT", raison: "Tenue incomplète (< 3 pièces).", piece_la_plus_problematique: null },
