@@ -3,6 +3,7 @@ import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import { GroupedProduct } from "@/lib/groupProducts";
 import { formatProductPrice } from "@/lib/priceFormat";
+import { getDisplayImageUrl } from "@/lib/image-utils";
 import { getMatchingPalettes } from "@/lib/getMatchingPalettes";
 import { SOURCE_LABEL } from "@/lib/SOURCE_LABEL";
 import { HeartIcon } from "./HeartIcon";
@@ -148,7 +149,7 @@ export function GroupedProductCard({ g, onClick }: Props) {
                 />
               )}
               <img
-                src={currentVariant.image || currentVariant.largeImage}
+                src={getDisplayImageUrl(currentVariant.image, currentVariant.largeImage)}
                 alt={g.nom || g.marque || "Produit"}
                 loading="lazy"
                 style={{

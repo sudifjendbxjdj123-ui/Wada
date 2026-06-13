@@ -7,6 +7,7 @@
 import { useState, useEffect, useCallback, useMemo, useTransition } from "react";
 import Link from "next/link";
 import BackButton from "@/components/BackButton";
+import { getDisplayImageUrl } from "@/lib/image-utils";
 import type { ProduitAwin } from "@/lib/schema";
 import { formatProductPrice } from "@/lib/priceFormat";
 import { dictionaryMinimal } from "@/lib/data-client";
@@ -462,7 +463,7 @@ function ProductCard({ p, onClick }: { p: ProduitAwin; onClick: (e: React.MouseE
           onMouseEnter={(e) => { setHovering(true); e.currentTarget.style.boxShadow = "0 10px 26px rgba(0,0,0,0.14)"; e.currentTarget.style.transform = "translateY(-3px)"; const img = e.currentTarget.querySelector("img"); if (img) (img as HTMLImageElement).style.transform = "scale(1.05)"; }}
           onMouseLeave={(e) => { setHovering(false); e.currentTarget.style.boxShadow = "0 2px 10px rgba(0,0,0,0.05)"; e.currentTarget.style.transform = "translateY(0)"; const img = e.currentTarget.querySelector("img"); if (img) (img as HTMLImageElement).style.transform = "scale(1)"; }}>
           {(p.image || p.largeImage) ? (
-            <img src={p.image || p.largeImage} alt={p.nom || p.marque || "Produit"} loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center", transition: "transform 0.4s cubic-bezier(.22,1,.36,1)" }}
+            <img src={getDisplayImageUrl(p.image, p.largeImage)} alt={p.nom || p.marque || "Produit"} loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center", transition: "transform 0.4s cubic-bezier(.22,1,.36,1)" }}
               onError={(e) => { /* image marchand morte/hotlink → tuile neutre au lieu de l'icône cassée */ const img = e.currentTarget; img.style.display = "none"; if (img.parentElement) img.parentElement.style.background = "#F4EFE7"; }} />
           ) : (
             <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#c5b9a8", fontSize: 28 }}>◻</div>

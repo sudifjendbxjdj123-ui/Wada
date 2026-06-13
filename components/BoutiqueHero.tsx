@@ -7,6 +7,7 @@
  */
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { getDisplayImageUrl } from "@/lib/image-utils";
 
 const CREAM = "#FAF8F4";
 const BORDEAUX = "#6B3A32";
@@ -79,7 +80,9 @@ export function BoutiqueHero() {
       );
       const imgs: string[] = results.flatMap((r) =>
         (r.products ?? [])
-          .map((p: { image?: string; largeImage?: string }) => p.image || p.largeImage)
+          .map((p: { image?: string; largeImage?: string }) =>
+            getDisplayImageUrl(p.image, p.largeImage),
+          )
           .filter(Boolean),
       );
       const uniq = Array.from(new Set(imgs)).slice(0, CACHE_MAX);

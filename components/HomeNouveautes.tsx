@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { ProduitAwin } from "@/lib/schema";
 import { formatProductPrice } from "@/lib/priceFormat";
+import { getDisplayImageUrl } from "@/lib/image-utils";
 
 const SOURCE_LABEL: Record<string, string> = {
   "muji-france": "MUJI France",
@@ -77,7 +78,7 @@ export function HomeNouveautes() {
                     background: "#f5f1eb", borderRadius: 12, overflow: "hidden",
                     aspectRatio: "3/4", position: "relative", marginBottom: 9,
                   }}>
-                    <img src={p.image || p.largeImage} alt={p.nom} loading="lazy"
+                    <img src={getDisplayImageUrl(p.image, p.largeImage)} alt={p.nom} loading="lazy"
                       style={{ width: "100%", height: "100%", objectFit: "contain", padding: 8 }}
                       onError={(e) => { const img = e.currentTarget; img.style.display = "none"; if (img.parentElement) img.parentElement.style.background = "#F4EFE7"; }} />
                     <span style={{
