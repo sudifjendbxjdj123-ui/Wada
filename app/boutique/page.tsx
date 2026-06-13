@@ -9,9 +9,7 @@
  */
 import BackButton from "@/components/BackButton";
 import { BoutiqueHero } from "@/components/BoutiqueHero";
-import { BrandBannerShowcase } from "@/components/BrandBannerShowcase";
-import { BrandShowcaseStrip } from "@/components/BrandShowcaseStrip";
-import { SidebarBrandShowcase } from "@/components/SidebarBrandShowcase";
+import { BrandShowcaseCompact } from "@/components/BrandShowcaseCompact";
 
 export default function BoutiquePage() {
   return (
@@ -29,19 +27,9 @@ export default function BoutiquePage() {
       </div>
       <BoutiqueHero />
 
-      {/* Featured brands showcase - Fill dead spaces */}
+      {/* Fill dead spaces - Compact brand showcase */}
       <div style={{ maxWidth: 1200, margin: "40px auto", width: "100%", padding: "0 20px" }}>
-        <BrandShowcaseStrip cols={4} title="Marques phares" />
-      </div>
-
-      {/* Banner section - Between content */}
-      <div style={{ maxWidth: 1200, margin: "40px auto", width: "100%", padding: "0 20px" }}>
-        <BrandBannerShowcase layout="full-width" maxBanners={3} />
-      </div>
-
-      {/* Another showcase strip */}
-      <div style={{ maxWidth: 1200, margin: "40px auto", width: "100%", padding: "0 20px" }}>
-        <BrandShowcaseStrip cols={6} title="Découvrez nos partenaires" />
+        <BrandShowcaseCompact maxProducts={6} cols={3} />
       </div>
     </main>
   );
