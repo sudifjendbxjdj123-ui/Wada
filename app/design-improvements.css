@@ -1,0 +1,246 @@
+/**
+ * WADA Design Improvements v2 - Premium Polish
+ *
+ * Tier 1: Visual Hierarchy & Impact improvements
+ * - Enhanced shadows and depth
+ * - Improved hover states
+ * - Better text contrast with shadows
+ */
+
+/* ═══════════════════════════════════════════════════════════
+   SHADOW SYSTEM — Consistent elevation levels
+   ═══════════════════════════════════════════════════════════ */
+
+/* Elevation 1: Subtle, for subtle cards/containers */
+.wada-shadow-1 {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+/* Elevation 2: Standard cards and components */
+.wada-shadow-2 {
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.07), 0 2px 4px rgba(0, 0, 0, 0.04);
+}
+
+/* Elevation 3: Prominent cards, popovers */
+.wada-shadow-3 {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1), 0 4px 6px rgba(0, 0, 0, 0.05);
+}
+
+/* Elevation 4: Modals, dropdowns */
+.wada-shadow-4 {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12), 0 8px 12px rgba(0, 0, 0, 0.08);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   HEADING ENHANCEMENTS — Text shadows for depth & contrast
+   ═══════════════════════════════════════════════════════════ */
+
+/* Light mode heading shadows */
+[data-theme="light"] h1,
+[data-theme="light"] h2,
+[data-theme="light"] h3,
+[data-theme="jour"] h1,
+[data-theme="jour"] h2,
+[data-theme="jour"] h3 {
+  text-shadow: 0 1px 2px rgba(31, 27, 22, 0.08);
+  letter-spacing: -0.01em;
+}
+
+/* Dark mode heading shadows */
+[data-theme="dark"] h1,
+[data-theme="dark"] h2,
+[data-theme="dark"] h3,
+[data-theme="nuit"] h1,
+[data-theme="nuit"] h2,
+[data-theme="nuit"] h3 {
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  letter-spacing: -0.01em;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   BUTTON ENHANCEMENTS — Premium interaction feedback
+   ═══════════════════════════════════════════════════════════ */
+
+button, [role="button"], a[class*="btn"], a[class*="button"] {
+  transition: all 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Hover lift effect */
+button:hover:not(:disabled),
+[role="button"]:hover:not([aria-disabled="true"]),
+a[class*="btn"]:hover,
+a[class*="button"]:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+}
+
+/* Click feedback */
+button:active:not(:disabled),
+[role="button"]:active:not([aria-disabled="true"]),
+a[class*="btn"]:active,
+a[class*="button"]:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+/* Focus ring - keyboard navigation */
+button:focus-visible,
+[role="button"]:focus-visible,
+a:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   CARD ENHANCEMENTS — Depth and hover effects
+   ═══════════════════════════════════════════════════════════ */
+
+[class*="card"],
+[class*="Card"],
+article:not(.wada-qv-modal),
+[role="article"] {
+  transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+  background-clip: padding-box;
+}
+
+[class*="card"]:hover,
+[class*="Card"]:hover,
+article:not(.wada-qv-modal):hover,
+[role="article"]:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.15);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   LINK ENHANCEMENTS — Better visual feedback
+   ═══════════════════════════════════════════════════════════ */
+
+a:not([class*="btn"]):not([class*="button"]):not(.logo):not([role="button"]) {
+  position: relative;
+  transition: color 0.2s ease;
+}
+
+a:not([class*="btn"]):not([class*="button"]):not(.logo):not([role="button"]):after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background-color: currentColor;
+  opacity: 0.5;
+  transition: width 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+a:not([class*="btn"]):not([class*="button"]):not(.logo):not([role="button"]):hover:after {
+  width: 100%;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   INPUT ENHANCEMENTS — Focus and interaction states
+   ═══════════════════════════════════════════════════════════ */
+
+input, textarea, select {
+  transition: all 0.2s ease;
+}
+
+input:focus, textarea:focus, select:focus {
+  box-shadow: 0 0 0 3px rgba(107, 58, 50, 0.1);
+}
+
+[data-theme="dark"] input:focus,
+[data-theme="dark"] textarea:focus,
+[data-theme="dark"] select:focus,
+[data-theme="nuit"] input:focus,
+[data-theme="nuit"] textarea:focus,
+[data-theme="nuit"] select:focus {
+  box-shadow: 0 0 0 3px rgba(200, 168, 140, 0.15);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   IMAGE ENHANCEMENTS — Subtle border and loading states
+   ═══════════════════════════════════════════════════════════ */
+
+img {
+  transition: opacity 0.3s ease;
+  border-radius: 0.375rem;
+}
+
+img:not([alt]),
+img[alt=""] {
+  outline: 2px dashed rgba(0, 0, 0, 0.2);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   SECTION ENHANCEMENTS — Visual separation
+   ═══════════════════════════════════════════════════════════ */
+
+section {
+  transition: all 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Fade in on intersection */
+[class*="fade-in-on-scroll"],
+[data-scroll-animation="fadeIn"] {
+  opacity: 0;
+  transform: translateY(20px);
+  animation: wada-fade-in-scroll 0.6s ease-out forwards;
+}
+
+@keyframes wada-fade-in-scroll {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   GLASS MORPHISM — Premium effect for overlays
+   ═══════════════════════════════════════════════════════════ */
+
+.wada-glass,
+[class*="glass"] {
+  backdrop-filter: blur(10px);
+  background-color: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   ACCESSIBILITY — Enhanced focus for keyboard navigation
+   ═══════════════════════════════════════════════════════════ */
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: more) {
+  button, [role="button"] {
+    border: 1px solid currentColor;
+  }
+
+  a {
+    text-decoration: underline;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   RESPONSIVE ADJUSTMENTS
+   ═══════════════════════════════════════════════════════════ */
+
+@media (max-width: 640px) {
+  /* Reduce elevation on mobile */
+  [class*="card"],
+  [class*="Card"] {
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  }
+
+  [class*="card"]:hover,
+  [class*="Card"]:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  }
+}
