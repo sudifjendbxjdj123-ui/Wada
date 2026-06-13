@@ -195,7 +195,8 @@ export async function GET(req: Request) {
      du /stylist) alors que l'API attendait « femme »/« homme ». Résultat :
      le test `genre === "homme"` échouait → AUCUN filtre genre appliqué.
      Fix défensif : on normalise systématiquement en lowercase. */
-  const genre = url.searchParams.get("genre")?.toLowerCase().trim() || null;
+  const genreRaw = url.searchParams.get("genre")?.toLowerCase().trim();
+  const genre = genreRaw && (genreRaw === "homme" || genreRaw === "femme") ? genreRaw : null;
   const style = url.searchParams.get("style");
   const q = url.searchParams.get("q");
   const merchant = url.searchParams.get("merchant");

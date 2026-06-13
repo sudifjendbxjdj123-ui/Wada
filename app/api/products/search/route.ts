@@ -58,9 +58,11 @@ export async function POST(req: Request) {
 
   const filters: CategoryFilters = { ...getDefaultFilters(), ...(body.filters || {}) };
   const category = body.category || "";
-  const slots = (body.slot || "").split(",").map((s) => s.trim()).filter(Boolean);
-  const limit = Math.min(body.limit ?? 48, MAX_LIMIT);
-  const offset = Math.max(0, body.offset ?? 0);
+  const slots = (body.slot || "").split(",").map((s) => s.trim()).filter((s) => s.length > 0);
+  const limitRaw = typeof body.limit === "number" && Number.isFinite(body.limit) ? body.limit : 48;
+  const limit = Math.min(Math.max(limitRaw, 1), MAX_LIMIT);
+  const offsetRaw = typeof body.offset === "number" && Number.isFinite(body.offset) ? body.offset : 0;
+  const offset = Math.max(offsetRaw, 0);
 
   /* Visibilité géo (2026-06-09) : K&Ö = CH uniquement (x-vercel-ip-country). */
   const country = visitorCountry(req.headers);
