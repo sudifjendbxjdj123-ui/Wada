@@ -50,21 +50,26 @@ export default function InstallPrompt() {
     const ios = /iPad|iPhone|iPod/.test(ua) && !(window as Window & { MSStream?: unknown }).MSStream;
     setIsIOS(ios);
 
+    const timers: NodeJS.Timeout[] = [];
+
     // Listener pour Chrome/Edge/Android
     const onBIP = (e: Event) => {
       e.preventDefault();
       setBipEvent(e as BIPEvent);
       // Attendre 30s avant d'afficher pour ne pas être intrusif
-      setTimeout(() => setVisible(true), 30_000);
+      timers.push(setTimeout(() => setVisible(true), 30_000));
     };
     window.addEventListener("beforeinstallprompt", onBIP);
 
     // iOS : afficher après 30s même sans BIP
     if (ios) {
-      setTimeout(() => setVisible(true), 30_000);
+      timers.push(setTimeout(() => setVisible(true), 30_000));
     }
 
-    return () => window.removeEventListener("beforeinstallprompt", onBIP);
+    return () => {
+      window.removeEventListener("beforeinstallprompt", onBIP);
+      timers.forEach(t => clearTimeout(t));
+    };
   }, []);
 
   const handleInstall = async () => {
