@@ -22,7 +22,7 @@ export default async function BrandPage({ params, searchParams }: Props) {
         { label: "Marques", href: "/marques" },
         { label: brandName, href: `/marques/${slug}` },
       ]}
-      slot="haut"
+      slot="haut,bas,veste,chaussures,accent"
       q={brandName}
       genre={sp.genre}
       style={sp.style}
