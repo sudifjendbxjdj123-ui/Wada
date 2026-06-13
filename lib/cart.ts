@@ -50,7 +50,10 @@ export function removeFromCart(cartItemId: string) {
 
 export function clearCart() {
   if (typeof window === "undefined") return;
-  localStorage.removeItem(CART_KEY);
+  try {
+    localStorage.removeItem(CART_KEY);
+    window.dispatchEvent(new Event("storage"));
+  } catch {}
 }
 
 export function getCartCount(): number {
