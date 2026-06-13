@@ -59,8 +59,8 @@ function PaletteCardInner({ entry, showFavorite = true }: PaletteCardProps) {
     if (num <= 50) return { type: "new" as const, show: true };
     if (num % 11 === 0) return { type: "pick" as const, show: true }; // Every 11th is editor pick
     if (num % 7 === 0) return { type: "trending" as const, count: 250 + (num * 3), show: true }; // Trending
-    return { show: false };
-  }, [entry.number]);
+    return { show: false, type: null };
+  }, [entry.number]) as { type: "new" | "pick" | "trending" | null; show: boolean; count?: number };
 
   return (
     <Link
@@ -88,7 +88,7 @@ function PaletteCardInner({ entry, showFavorite = true }: PaletteCardProps) {
       }}
     >
       {/* TIER 3: Social Proof Badge */}
-      {socialProofBadge.show && (
+      {socialProofBadge.show && socialProofBadge.type && (
         <div style={{
           position: "absolute",
           top: 8,
@@ -97,7 +97,7 @@ function PaletteCardInner({ entry, showFavorite = true }: PaletteCardProps) {
           zIndex: 5,
         }}>
           <SocialProofBadge
-            type={socialProofBadge.type as any}
+            type={socialProofBadge.type}
             count={socialProofBadge.count}
             animated
           />
