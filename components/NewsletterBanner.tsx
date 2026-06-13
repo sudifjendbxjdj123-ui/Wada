@@ -14,12 +14,24 @@ export function NewsletterBanner() {
     }
 
     setLoading(true);
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-
-    showToast("✓ Merci! Bienvenue à bord 🎨", { variant: "success", duration: 3000 });
-    setEmail("");
-    setLoading(false);
+    try {
+      const res = await fetch("/api/newsletter/subscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      if (res.ok) {
+        showToast("✓ Merci! Vérifiez votre email 🎨", { variant: "success", duration: 3000 });
+        setEmail("");
+      } else {
+        const err = await res.json().catch(() => ({ error: "Erreur serveur" }));
+        showToast(err.error || "Erreur lors de l'inscription", { variant: "error" });
+      }
+    } catch (error) {
+      showToast("Erreur de connexion", { variant: "error" });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
