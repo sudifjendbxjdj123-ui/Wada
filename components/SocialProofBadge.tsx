@@ -17,28 +17,28 @@ interface SocialProofBadgeProps {
 const badgeConfig = {
   loved: {
     icon: "❤️",
-    label: (count: number) => `${count}+ aimée`,
+    label: ((count: number) => `${count}+ aimée`) as ((count: number) => string) | string,
     bg: "rgba(107, 58, 50, 0.08)",
     borderColor: "#6B3A32",
     textColor: "#6B3A32",
   },
   trending: {
     icon: "🔥",
-    label: "Tendance",
+    label: "Tendance" as ((count: number) => string) | string,
     bg: "rgba(242, 201, 76, 0.10)",
     borderColor: "#F2C94C",
     textColor: "#D4A72B",
   },
   pick: {
     icon: "✦",
-    label: "Choix éditeur",
+    label: "Choix éditeur" as ((count: number) => string) | string,
     bg: "rgba(168, 178, 154, 0.08)",
     borderColor: "#A8B29A",
     textColor: "#848C7A",
   },
   new: {
     icon: "⭐",
-    label: "Nouvelle",
+    label: "Nouvelle" as ((count: number) => string) | string,
     bg: "rgba(107, 58, 50, 0.06)",
     borderColor: "#D4A574",
     textColor: "#6B3A32",
@@ -74,7 +74,13 @@ export default function SocialProofBadge({
       }}
     >
       <span style={{ fontSize: 12, lineHeight: 1 }}>{config.icon}</span>
-      <span>{type === "loved" ? config.label(count) : config.label}</span>
+      <span>
+        {type === "loved" && typeof config.label === "function"
+          ? config.label(count)
+          : typeof config.label === "string"
+            ? config.label
+            : ""}
+      </span>
       <style jsx>{`
         @keyframes wada-badge-float {
           0%, 100% {
