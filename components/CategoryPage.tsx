@@ -47,10 +47,16 @@ function deriveCategory(slot: string, title: string): string {
 }
 
 /** Seed SSR-safe : genre/style préselectionnés via props (pas d'URL ici). */
-function seedFilters(initGenre?: string, initStyle?: string): CategoryFilters {
+function seedFilters(initGenre?: string, initStyle?: string, initBrand?: string): CategoryFilters {
   const f = getDefaultFilters();
   if (initGenre === "homme" || initGenre === "femme") f.genres = [initGenre];
   if (initStyle) f.styles = [initStyle.toLowerCase()];
+  /* Fix 2026-06-14 « /marques/[slug] montrait New Era partout » : quand la
+     page est ouverte depuis /marques/adidas-originals, on seed le filtre
+     brand pour vraiment restreindre le catalogue à cette marque. Sans ça
+     le body du POST /api/products/search ne contenait AUCUN filtre marque
+     et retournait le catalogue global, dominé par New Era (~5.5k items). */
+  if (initBrand) f.brands = [initBrand];
   return f;
 }
 
@@ -63,6 +69,10 @@ interface Props {
   q?: string;
   genre?: string;
   style?: string;
+  /* Brief 2026-06-14 : nom EXACT de marque (préservant la casse KV, ex.
+     « Adidas Originals ») pour pré-cocher le filtre brand. À passer depuis
+     /marques/[slug] après lookup KV. */
+  brand?: string;
   page?: number;
 }
 
@@ -578,7 +588,7 @@ function ProductCard({ p, onClick }: { p: ProduitAwin; onClick: (e: React.MouseE
 /* ════════════════════════════════════════════
    PAGE PRINCIPALE
    ════════════════════════════════════════════ */
-export default function CategoryPage({ title, breadcrumb, slot, q, genre: initGenre, style: initStyle, page: initialPage }: Props) {
+export default function CategoryPage({ title, breadcrumb, slot, q, genre: initGenre, style: initStyle, brand: initBrand, page: initialPage }: Props) {
   const [products, setProducts] = useState<ProduitAwin[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -609,7 +619,7 @@ export default function CategoryPage({ title, breadcrumb, slot, q, genre: initGe
 
   /* État UNIQUE des 11 filtres. Seed SSR-safe (props), puis hydraté depuis
      l'URL (+ localStorage en fallback) au montage → pas de mismatch SSR. */
-  const [filters, setFilters] = useState<CategoryFilters>(() => seedFilters(initGenre, initStyle));
+  const [filters, setFilters] = useState<CategoryFilters>(() => seedFilters(initGenre, initStyle, initBrand));
   const [hydrated, setHydrated] = useState(false);
 
   const [page, setPage] = useState(() => {
@@ -640,13 +650,16 @@ export default function CategoryPage({ title, breadcrumb, slot, q, genre: initGe
       next = paramsToFilters(sp);
       /* Préselections de route (ex. /vetements/homme) toujours respectées. */
       if (initGenre === "homme" || initGenre === "femme") next.genres = [initGenre];
+      /* Idem pour la marque : si on arrive sur /marques/adidas-originals avec
+         des params URL, on garde la restriction marque de la route. */
+      if (initBrand && !next.brands.includes(initBrand)) next.brands = [initBrand];
     } else {
       let stored: CategoryFilters | null = null;
       try {
         const raw = localStorage.getItem(`${FILTERS_STORAGE_KEY}:${category}`);
         if (raw) stored = JSON.parse(raw);
       } catch {}
-      next = stored || seedFilters(initGenre, initStyle);
+      next = stored || seedFilters(initGenre, initStyle, initBrand);
     }
     setFilters(next);
     setHydrated(true);

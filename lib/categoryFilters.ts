@@ -314,7 +314,13 @@ export function applyCategoryFilters(
   return products.filter((p) => {
     if (filters.priceMin > PRICE_MIN && (p.prix ?? 0) < filters.priceMin) return false;
     if (filters.priceMax < PRICE_MAX && (p.prix ?? 0) > filters.priceMax) return false;
-    if (filters.brands.length && !filters.brands.includes((p.marque || p.marchand || "").trim())) return false;
+    /* Fix 2026-06-14 : match marque case-insensitive. Les feeds Awin ont des
+       casings inconsistants (« adidas Originals » vs « Adidas Originals »)
+       et le seed depuis /marques/[slug] peut passer une variante. */
+    if (filters.brands.length) {
+      const pBrand = (p.marque || p.marchand || "").trim().toLowerCase();
+      if (!filters.brands.some((b) => b.toLowerCase() === pBrand)) return false;
+    }
     if (filters.sizes.length && !(p.tailles || []).some((t) => filters.sizes.includes(t))) return false;
     if (!matchGenre(p, filters.genres)) return false;
     if (!matchType(p, category, filters.types)) return false;
