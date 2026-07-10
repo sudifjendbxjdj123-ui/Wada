@@ -26,7 +26,7 @@ function StylistLoadingState(): ReactNode {
           style={{
             fontSize: 24,
             marginBottom: 16,
-            animation: "pulse 1.5s ease-in-out infinite",
+            animation: "wada-stylist-load-pulse 1.5s ease-in-out infinite",
           }}
         >
           ◉
@@ -35,7 +35,7 @@ function StylistLoadingState(): ReactNode {
           Chargement du styliste...
         </p>
         <style>{`
-          @keyframes pulse {
+          @keyframes wada-stylist-load-pulse {
             0%, 100% { opacity: 0.6; }
             50% { opacity: 1; }
           }

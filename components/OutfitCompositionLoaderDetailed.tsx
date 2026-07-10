@@ -285,7 +285,7 @@ export function OutfitCompositionLoaderDetailed() {
                                 height: 8,
                                 borderRadius: "50%",
                                 background: "#fff",
-                                animation: "pulse 1.5s ease-in-out infinite",
+                                animation: "wada-ocld-pulse 1.5s ease-in-out infinite",
                               }}
                             />
                           ) : (
@@ -372,7 +372,7 @@ export function OutfitCompositionLoaderDetailed() {
                 background: hex,
                 boxShadow:
                   "inset 0 0 0 1px rgba(30,30,30,.08), 0 6px 16px -10px rgba(30,30,30,.4)",
-                animation: `pulse-swatch 1.4s ease-in-out infinite`,
+                animation: `wada-ocld-pulse-swatch 1.4s ease-in-out infinite`,
                 animationDelay: `${i * 0.13}s`,
               }}
             />
@@ -381,11 +381,13 @@ export function OutfitCompositionLoaderDetailed() {
       </div>
 
       <style>{`
-        @keyframes pulse {
+        /* Fix 2026-06-14 « keyframes conflict » : préfixé wada-ocld- pour
+           éviter le clash avec OutfitCompositionLoader. */
+        @keyframes wada-ocld-pulse {
           0%, 100% { opacity: 0.4; }
           50% { opacity: 1; }
         }
-        @keyframes pulse-swatch {
+        @keyframes wada-ocld-pulse-swatch {
           0%, 100% { opacity: 0.4; transform: translateY(0); }
           50% { opacity: 1; transform: translateY(-6px); }
         }

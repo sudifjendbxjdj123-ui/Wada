@@ -26,7 +26,7 @@ function ComposerLoadingState(): ReactNode {
           style={{
             fontSize: 24,
             marginBottom: 16,
-            animation: "pulse 1.5s ease-in-out infinite",
+            animation: "wada-composer-load-pulse 1.5s ease-in-out infinite",
           }}
         >
           ◉
@@ -35,7 +35,7 @@ function ComposerLoadingState(): ReactNode {
           Activation de la caméra...
         </p>
         <style>{`
-          @keyframes pulse {
+          @keyframes wada-composer-load-pulse {
             0%, 100% { opacity: 0.6; }
             50% { opacity: 1; }
           }

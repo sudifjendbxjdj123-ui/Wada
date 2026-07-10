@@ -167,7 +167,7 @@ export function OutfitCompositionLoader({ currentStep = "analyze" }: { currentSt
                         height: 12,
                         borderRadius: "50%",
                         background: "#fff",
-                        animation: "pulse 1.5s ease-in-out infinite",
+                        animation: "wada-ocl-pulse 1.5s ease-in-out infinite",
                       }}
                     />
                   ) : (
@@ -221,7 +221,7 @@ export function OutfitCompositionLoader({ currentStep = "analyze" }: { currentSt
                 borderRadius: 12,
                 background: hex,
                 boxShadow: "inset 0 0 0 1px rgba(30,30,30,.08), 0 8px 20px -12px rgba(30,30,30,.5)",
-                animation: `pulse-swatch 1.4s ease-in-out infinite`,
+                animation: `wada-ocl-pulse-swatch 1.4s ease-in-out infinite`,
                 animationDelay: `${i * 0.13}s`,
               }}
             />
@@ -230,11 +230,14 @@ export function OutfitCompositionLoader({ currentStep = "analyze" }: { currentSt
       </div>
 
       <style>{`
-        @keyframes pulse {
+        /* Fix 2026-06-14 « keyframes conflict » : préfixé wada-ocl- pour
+           éviter le clash avec OutfitCompositionLoaderDetailed qui définit
+           les mêmes noms globaux (dernier mounté gagnait sinon). */
+        @keyframes wada-ocl-pulse {
           0%, 100% { opacity: 0.4; }
           50% { opacity: 1; }
         }
-        @keyframes pulse-swatch {
+        @keyframes wada-ocl-pulse-swatch {
           0%, 100% { opacity: 0.4; transform: translateY(0); }
           50% { opacity: 1; transform: translateY(-8px); }
         }

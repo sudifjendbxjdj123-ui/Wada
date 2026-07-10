@@ -684,34 +684,3 @@ function FactCard(props: { kicker: string; title: string; body: string }) {
   );
 }
 
-function TestimonialV2(props: { quote: string; name: string; role: string; accentColor: string }) {
-  return (
-    <article style={{ textAlign: "center", padding: "0 16px" }}>
-      <p style={{
-        fontFamily: fontHeading,
-        fontSize: 24, fontStyle: "italic", fontWeight: 500,
-        lineHeight: 1.45, color: ink, margin: "0 0 36px",
-        letterSpacing: "-0.005em",
-      }}>
-        « {props.quote} »
-      </p>
-      <div style={{
-        width: 56, height: 56, borderRadius: "50%",
-        background: props.accentColor, color: paper,
-        display: "flex", alignItems: "center", justifyContent: "center",
-        margin: "0 auto 14px",
-        fontFamily: fontHeading, fontSize: 22, fontStyle: "italic", fontWeight: 500,
-        border: `2px solid ${border}`,
-      }}>
-        {props.name.charAt(0)}
-      </div>
-      <p style={{ fontFamily: fontLabel, fontSize: 13, fontWeight: 600, margin: 0, color: ink, letterSpacing: "0.02em" }}>
-        {props.name}
-      </p>
-      <p style={{ fontFamily: fontBody, fontSize: 13, color: subtle, margin: "2px 0 0", fontStyle: "italic" }}>
-        {props.role}
-      </p>
-    </article>
-  );
-}
-

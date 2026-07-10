@@ -42,7 +42,7 @@ export function StylistLoadingIndicator({
         right: 32,
         maxWidth: 500,
         zIndex: 999,
-        animation: "slideUp 0.3s ease-out",
+        animation: "wada-stylist-loading-slideUp 0.3s ease-out",
       }}
     >
       {/* Card */}
@@ -110,8 +110,11 @@ export function StylistLoadingIndicator({
         </p>
       </div>
 
+      {/* Fix 2026-06-14 « keyframes conflict » : préfixé wada-stylist-loading-
+          pour éviter le clash avec StylistErrorHandler qui définissait un
+          slideUp différent (translateY 10px au lieu de 20px). */}
       <style>{`
-        @keyframes slideUp {
+        @keyframes wada-stylist-loading-slideUp {
           from {
             opacity: 0;
             transform: translateY(20px);

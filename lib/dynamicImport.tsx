@@ -43,14 +43,14 @@ function DynamicComponentLoader() {
           style={{
             fontSize: 24,
             marginBottom: 16,
-            animation: "pulse 1.5s ease-in-out infinite",
+            animation: "wada-dyn-pulse 1.5s ease-in-out infinite",
           }}
         >
           ◉
         </div>
         <p style={{ fontSize: 14, margin: 0 }}>Chargement du compositeur...</p>
         <style>{`
-          @keyframes pulse {
+          @keyframes wada-dyn-pulse {
             0%, 100% { opacity: 0.6; }
             50% { opacity: 1; }
           }

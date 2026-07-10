@@ -127,7 +127,7 @@ function ErrorToast({ error, onDismiss, onRetry }: ErrorToastProps) {
         boxShadow: "0 10px 30px rgba(30,30,30,.15)",
         animation: isExiting
           ? "fadeOut 0.3s ease-out"
-          : "slideUp 0.3s ease-out",
+          : "wada-stylist-error-slideUp 0.3s ease-out",
         display: "flex",
         gap: 12,
         alignItems: "flex-start",
@@ -242,8 +242,11 @@ function ErrorToast({ error, onDismiss, onRetry }: ErrorToastProps) {
         </button>
       )}
 
+      {/* Fix 2026-06-14 « keyframes conflict » : préfixé wada-stylist-error-
+          pour éviter le clash avec StylistLoadingIndicator (translateY 20px
+          au lieu de 10px ici). */}
       <style>{`
-        @keyframes slideUp {
+        @keyframes wada-stylist-error-slideUp {
           from {
             opacity: 0;
             transform: translateY(10px);
