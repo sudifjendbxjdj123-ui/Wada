@@ -101,12 +101,20 @@ function ProductModal({ product: p, onClose, clickPosition, allProducts, onProdu
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
   const [imgIndex, setImgIndex] = useState(0);
   const [sizeGuideOpen, setSizeGuideOpen] = useState(false);
+  /* Rails style Zalando (2026-06-14) : « La collection {marque} » + « Autre
+     couleur, même palette Wada ». Fetch via /api/products avec merchant= et
+     palette= puis exclusion du produit courant. Se refetch dès que le user
+     clique un item du rail (onProductChange remonte un p différent → useEffect
+     re-tire une nouvelle liste correspondant au nouveau contexte). */
+  const [brandItems, setBrandItems] = useState<ProduitAwin[]>([]);
+  const [paletteItems, setPaletteItems] = useState<ProduitAwin[]>([]);
 
   /* Galerie d'images : largeImage + image + thumb si disponibles */
   const images = [p.largeImage, p.image, p.thumb].filter(Boolean);
   const currentImg = images[imgIndex] || p.largeImage || p.image;
 
   const matches = useMemo(() => getMatchingPalettes(p.hex), [p.hex]);
+  const primaryPalette = matches[0]?.number || null;
   const sizes = (p.tailles || []).filter(Boolean);
   const sizeLabel = p.categorie === "chaussures" ? "Pointure" : "Taille";
   const dom = /^#[0-9a-f]{6}$/i.test(p.hex || "") ? p.hex : "#ede4d4";
@@ -124,6 +132,48 @@ function ProductModal({ product: p, onClose, clickPosition, allProducts, onProdu
     document.body.style.overflow = "hidden";
     return () => { document.removeEventListener("keydown", onKey); document.body.style.overflow = ""; };
   }, [onClose]);
+
+  /* Fetch « La collection {marque} » — autres produits du même marchand. */
+  useEffect(() => {
+    if (!p.marchandSlug) { setBrandItems([]); return; }
+    const ac = new AbortController();
+    const params = new URLSearchParams({
+      merchant: p.marchandSlug,
+      excludeIds: p.id,
+      limit: "10",
+    });
+    fetch(`/api/products?${params}`, { signal: ac.signal })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (d?.products) setBrandItems(d.products); })
+      .catch(() => { /* silent — rail juste caché si le fetch fail */ });
+    return () => ac.abort();
+  }, [p.id, p.marchandSlug]);
+
+  /* Fetch « Autre couleur, même palette Wada » — produits qui matchent la
+     même palette dominante que la pièce courante (ex. N°037), tous marchands
+     et couleurs confondus. Filtre côté client : on écarte les produits qui
+     ont EXACTEMENT le même hex que le produit courant, pour vraiment offrir
+     une autre teinte. */
+  useEffect(() => {
+    if (!primaryPalette) { setPaletteItems([]); return; }
+    const ac = new AbortController();
+    const params = new URLSearchParams({
+      palette: primaryPalette,
+      excludeIds: p.id,
+      limit: "16",
+    });
+    fetch(`/api/products?${params}`, { signal: ac.signal })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (!d?.products) return;
+        const filtered = (d.products as ProduitAwin[])
+          .filter((it) => (it.hex || "").toLowerCase() !== (p.hex || "").toLowerCase())
+          .slice(0, 10);
+        setPaletteItems(filtered);
+      })
+      .catch(() => { /* silent */ });
+    return () => ac.abort();
+  }, [p.id, p.hex, primaryPalette]);
 
   /* Calcul position dynamique de la modal près du clic */
   const getModalPosition = () => {
@@ -335,73 +385,99 @@ function ProductModal({ product: p, onClose, clickPosition, allProducts, onProdu
             </div>
           )}
 
-          {/* Vous aimerez aussi — Related products */}
-          {allProducts.length > 0 && (
+          {/* Rails Zalando-style (2026-06-14) — remplace l'ancien « Vous aimerez
+              aussi » qui filtrait juste par catégorie sur `allProducts` (limité
+              à la page courante) et affichait un fake « Aimé par 1.2k femmes »
+              hardcodé selon le genre. Maintenant 2 rails scroll-horizontaux
+              alimentés par /api/products (vrai data KV) :
+                1. La collection {marque}    — merchant={p.marchandSlug}
+                2. Autre couleur, même palette {N°037 — Pluie de Tokyo}
+              Chaque carte re-swape la modale sur le produit cliqué. */}
+          {brandItems.length > 0 && (
             <div style={{ marginTop: 24, paddingTop: 24, borderTop: "1px solid #e8dfd0" }}>
               <p style={{ fontSize: 9, letterSpacing: "0.18em", textTransform: "uppercase", color: "#8a7a68", fontWeight: 600, margin: "0 0 12px", fontFamily: "'Inter'" }}>
-                Vous aimerez aussi
+                La collection {p.marque}
               </p>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                {allProducts
-                  .filter((pr) => pr.categorie === p.categorie && pr.id !== p.id)
-                  .slice(0, 4)
-                  .map((related) => (
-                    <button
-                      key={related.id}
-                      onClick={() => {
-                        onProductChange?.(related);
-                        window.scrollTo({ top: 0, behavior: "smooth" });
-                      }}
-                      style={{
-                        background: "#faf6ee",
-                        border: "1px solid #e8dfd0",
-                        borderRadius: 10,
-                        padding: 8,
-                        cursor: "pointer",
-                        transition: "all 0.2s",
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.borderColor = "#d4ccc0";
-                        e.currentTarget.style.background = "#f5ede2";
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.borderColor = "#e8dfd0";
-                        e.currentTarget.style.background = "#faf6ee";
-                      }}
-                    >
-                      <div
-                        style={{
-                          width: "100%",
-                          aspectRatio: "1",
-                          background: `linear-gradient(180deg, #fff 0%, ${/^#[0-9a-f]{6}$/i.test(related.hex || "") ? related.hex : "#ede4d4"}30 100%)`,
-                          borderRadius: 6,
-                          marginBottom: 6,
-                          overflow: "hidden",
-                        }}
-                      >
-                        {related.image && (
-                          <img
-                            src={related.image}
-                            alt={related.nom}
-                            style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                            onError={(e) => {
-                              (e.currentTarget as any).style.display = "none";
-                            }}
-                          />
-                        )}
-                      </div>
-                      <p style={{ fontSize: 9, fontWeight: 600, color: "#1a1a1a", margin: 0, fontFamily: "'Inter'", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {related.nom}
-                      </p>
-                      <p style={{ fontSize: 10, color: "#8a7a68", margin: "2px 0 0", fontFamily: "'Inter'" }}>
-                        {formatProductPrice(related.prix, related.marchandSlug, related.devise)}
-                      </p>
-                      {/* Social proof by gender */}
-                      <p style={{ fontSize: 8, color: "#c5b9a8", margin: "4px 0 0", fontFamily: "'Inter'", fontStyle: "italic" }}>
-                        {p.genre === "femme" ? "👗 Aimé par 1.2k femmes" : "👔 Aimé par 900 hommes"}
-                      </p>
-                    </button>
-                  ))}
+              <div style={{ display: "flex", gap: 10, overflowX: "auto", paddingBottom: 4, scrollSnapType: "x mandatory", scrollbarWidth: "thin" }}>
+                {brandItems.map((related) => (
+                  <button
+                    key={related.id}
+                    onClick={() => {
+                      onProductChange?.(related);
+                      window.scrollTo({ top: 0, behavior: "smooth" });
+                    }}
+                    style={{
+                      flex: "0 0 132px",
+                      scrollSnapAlign: "start",
+                      background: "#faf6ee",
+                      border: "1px solid #e8dfd0",
+                      borderRadius: 10,
+                      padding: 8,
+                      cursor: "pointer",
+                      textAlign: "left",
+                      transition: "all 0.2s",
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#d4ccc0"; e.currentTarget.style.background = "#f5ede2"; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = "#e8dfd0"; e.currentTarget.style.background = "#faf6ee"; }}
+                  >
+                    <div style={{ width: "100%", aspectRatio: "3/4", background: `linear-gradient(180deg, #fff 0%, ${/^#[0-9a-f]{6}$/i.test(related.hex || "") ? related.hex : "#ede4d4"}30 100%)`, borderRadius: 6, marginBottom: 6, overflow: "hidden" }}>
+                      {(related.image || related.largeImage) && (
+                        <img src={related.image || related.largeImage} alt={related.nom || related.marque} loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={(e) => { (e.currentTarget as any).style.display = "none"; }} />
+                      )}
+                    </div>
+                    <p style={{ fontSize: 9, fontWeight: 600, color: "#1a1a1a", margin: 0, fontFamily: "'Inter'", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{related.nom}</p>
+                    <p style={{ fontSize: 10, color: "#8a7a68", margin: "2px 0 0", fontFamily: "'Inter'" }}>{formatProductPrice(related.prix, related.marchandSlug, related.devise)}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {paletteItems.length > 0 && matches[0] && (
+            <div style={{ marginTop: 24, paddingTop: 24, borderTop: "1px solid #e8dfd0" }}>
+              <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 12, gap: 8 }}>
+                <p style={{ fontSize: 9, letterSpacing: "0.18em", textTransform: "uppercase", color: "#8a7a68", fontWeight: 600, margin: 0, fontFamily: "'Inter'" }}>
+                  Autre couleur, même palette
+                </p>
+                <Link href={`/palette/${matches[0].number}`} style={{ fontSize: 10, color: BORDEAUX, textDecoration: "none", fontFamily: "'Inter'", fontWeight: 500, whiteSpace: "nowrap" }}>
+                  N°{matches[0].number} · {matches[0].name} →
+                </Link>
+              </div>
+              <div style={{ display: "flex", gap: 10, overflowX: "auto", paddingBottom: 4, scrollSnapType: "x mandatory", scrollbarWidth: "thin" }}>
+                {paletteItems.map((related) => (
+                  <button
+                    key={related.id}
+                    onClick={() => {
+                      onProductChange?.(related);
+                      window.scrollTo({ top: 0, behavior: "smooth" });
+                    }}
+                    style={{
+                      flex: "0 0 132px",
+                      scrollSnapAlign: "start",
+                      background: "#faf6ee",
+                      border: "1px solid #e8dfd0",
+                      borderRadius: 10,
+                      padding: 8,
+                      cursor: "pointer",
+                      textAlign: "left",
+                      transition: "all 0.2s",
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#d4ccc0"; e.currentTarget.style.background = "#f5ede2"; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = "#e8dfd0"; e.currentTarget.style.background = "#faf6ee"; }}
+                  >
+                    <div style={{ width: "100%", aspectRatio: "3/4", background: `linear-gradient(180deg, #fff 0%, ${/^#[0-9a-f]{6}$/i.test(related.hex || "") ? related.hex : "#ede4d4"}30 100%)`, borderRadius: 6, marginBottom: 6, overflow: "hidden", position: "relative" }}>
+                      {(related.image || related.largeImage) && (
+                        <img src={related.image || related.largeImage} alt={related.nom || related.marque} loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={(e) => { (e.currentTarget as any).style.display = "none"; }} />
+                      )}
+                      {/^#[0-9a-f]{6}$/i.test(related.hex || "") && (
+                        <span title={related.couleurNom || related.hex} style={{ position: "absolute", bottom: 6, left: 6, width: 12, height: 12, borderRadius: "50%", background: related.hex, border: "2px solid #fff", boxShadow: "0 1px 3px rgba(0,0,0,0.15)" }} />
+                      )}
+                    </div>
+                    <p style={{ fontSize: 9, fontWeight: 700, color: "#8a7a68", margin: 0, fontFamily: "'Inter'", letterSpacing: "0.06em", textTransform: "uppercase" }}>{related.marque}</p>
+                    <p style={{ fontSize: 9, fontWeight: 600, color: "#1a1a1a", margin: "1px 0 0", fontFamily: "'Inter'", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{related.nom}</p>
+                    <p style={{ fontSize: 10, color: "#8a7a68", margin: "2px 0 0", fontFamily: "'Inter'" }}>{formatProductPrice(related.prix, related.marchandSlug, related.devise)}</p>
+                  </button>
+                ))}
               </div>
             </div>
           )}
