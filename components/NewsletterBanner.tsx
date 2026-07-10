@@ -40,16 +40,17 @@ export function NewsletterBanner() {
   };
 
   return (
+    /* Fix 2026-06-13 « positionnement banner » : retiré position:fixed +
+       bottom:calc(80px+safe-area) qui figeait le banner sur le viewport et
+       écrasait pagination + CTAs. Maintenant in-flow : il s'insère naturellement
+       en bas de la page, juste avant le footer / au-dessus de la MobileNav. */
     <div
       style={{
-        position: "fixed",
-        bottom: "calc(80px + env(safe-area-inset-bottom, 0px))",
-        left: 0,
-        right: 0,
+        width: "100%",
         background: "linear-gradient(135deg, #1a1a1a 0%, #2a241f 100%)",
-        padding: "16px 20px",
-        zIndex: 45,
-        boxShadow: "0 -4px 20px rgba(0,0,0,0.15)",
+        padding: "20px 20px",
+        marginTop: 40,
+        boxShadow: "0 -4px 20px rgba(0,0,0,0.05)",
       }}
     >
       <div

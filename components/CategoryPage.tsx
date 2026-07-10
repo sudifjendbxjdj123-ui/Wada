@@ -25,7 +25,6 @@ import { CartSidebar } from "@/components/CartSidebar";
 import { getCartCount } from "@/lib/cart";
 import { NewsletterBanner } from "@/components/NewsletterBanner";
 import { MobileNav } from "@/components/MobileNav";
-import { BrandShowcaseCompact } from "@/components/BrandShowcaseCompact";
 /* Brief 2026-06-09 — système de filtres complet (sidebar 11 filtres +
    filtre Palette Sanzō Wada). Cf. lib/categoryFilters + components/category. */
 import {
@@ -946,11 +945,6 @@ export default function CategoryPage({ title, breadcrumb, slot, q, genre: initGe
 
       {/* Back to top button */}
       <BackToTopButton />
-
-      {/* Fill dead spaces - Compact brand showcase */}
-      <div style={{ maxWidth: 1200, margin: "40px auto", width: "100%", padding: "0 20px" }}>
-        <BrandShowcaseCompact maxProducts={6} cols={3} />
-      </div>
 
       {/* Newsletter Banner */}
       <NewsletterBanner />
