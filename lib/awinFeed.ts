@@ -630,9 +630,14 @@ export function normalizeAwinProduct(raw: RawAwinProduct): ProduitAwin | null {
      rempli par produit (contrairement à K&Ö qui le remplit aussi ↔ /marques
      groupe déjà correctement par marque). Slug canonique « la-redoute ». */
   const isLaRedoute = /la[\s-]?redoute/i.test(raw.merchant_name || "");
+  /* Brief Spartoo 2026-07-16 — pure player FR chaussures + apparel léger.
+     Catalogue français, EUR, livraison FR. brand_name = marque produit
+     (Nike, Adidas, Timberland…). Slug canonique « spartoo ». */
+  const isSpartoo = /\bspartoo\b/i.test(raw.merchant_name || "");
   const merchantSlug = isNewEra ? "new-era"
     : isKO ? "kastner-ohler"
     : isLaRedoute ? "la-redoute"
+    : isSpartoo ? "spartoo"
     : slugMerchant(raw.merchant_name);
 
   /* K&Ö : 42% du flux est is_for_sale=0 (invendable, 31k lignes). On drop
@@ -655,14 +660,16 @@ export function normalizeAwinProduct(raw: RawAwinProduct): ProduitAwin | null {
      figé (grand magasin multi-catégories → colonnes riches). On teste
      l'exclusion sur TOUTES les colonnes catégorie disponibles pour ne pas
      laisser passer un canapé ou un aspirateur si l'une est renseignée et
-     pas l'autre. Coût : une passe supplémentaire par produit — négligeable. */
-  if (isLaRedoute) {
-    const lrCatSources = [
+     pas l'autre. Coût : une passe supplémentaire par produit — négligeable.
+     Brief Spartoo 2026-07-16 : même logique — surtout pour drop les rubriques
+     enfant/bébé/chaussures de sécurité qui existent dans le catalogue. */
+  if (isLaRedoute || isSpartoo) {
+    const catSources = [
       raw.category_name,
       raw.merchant_product_category_path,
       (raw as RawAwinProduct & { merchant_category?: string }).merchant_category,
     ];
-    for (const src of lrCatSources) {
+    for (const src of catSources) {
       if (isExcludedCategory(src)) return null;
     }
   }
@@ -758,6 +765,22 @@ export function normalizeAwinProduct(raw: RawAwinProduct): ProduitAwin | null {
     category =
       parseCategory(raw.category_name)
       || parseCategory(lrMerchantCat)
+      || parseCategory(raw.merchant_product_category_path);
+    if (!category) {
+      category = inferCategoryFromProductName(raw.product_name);
+    }
+  } else if (isSpartoo) {
+    /* Brief Spartoo 2026-07-16 : catalogue majoritairement chaussures,
+       aussi apparel léger + sacs. Catégories FR type « Chaussures homme >
+       Baskets », « Vêtements femme > Robes », « Sacs à main ». Résolution
+       identique à La Redoute puis fallback nom. Le catalogue étant très
+       « shoes-heavy », un défaut `chaussures` serait tentant mais dangereux
+       (perte de tri fin sur le textile) → on garde le fallback par nom qui
+       marche sur 100% des libellés courants. */
+    const spMerchantCat = (raw as RawAwinProduct & { merchant_category?: string }).merchant_category;
+    category =
+      parseCategory(raw.category_name)
+      || parseCategory(spMerchantCat)
       || parseCategory(raw.merchant_product_category_path);
     if (!category) {
       category = inferCategoryFromProductName(raw.product_name);

@@ -8,4 +8,8 @@ export const SOURCE_LABEL: Record<string, string> = {
      Adidas, Puma, Hugo Boss, Levi's…) via Awin. Livraison FR, EUR.
      Ajoute la profondeur brand qui manquait au catalogue hors-CH. */
   "la-redoute": "La Redoute",
+  /* Brief Spartoo 2026-07-16 — pure player FR shoes-first, aussi textile
+     et sacs (Nike, Adidas, Puma, Levi's, Timberland, Dr. Martens, Vans…).
+     Approbation Awin plus rapide que La Redoute, EUR + FR + retour 100j. */
+  "spartoo": "Spartoo",
 };

@@ -27,6 +27,10 @@ export const WHITELIST_SOURCES = new Set<string>([
      Adidas, Puma, Hugo Boss, Levi's, Superdry… Ouvre l'accès à ces marques
      que K&Ö propose déjà mais uniquement pour la Suisse (geo-gate CHF). */
   "la-redoute",
+  /* Brief Spartoo 2026-07-16 — pure player FR chaussures + apparel léger.
+     Complète La Redoute côté chaussures et lifestyle (Vans, Dr. Martens,
+     Timberland…). Approbation Awin plus rapide → sert de plan B rapide. */
+  "spartoo",
   /* À ajouter quand intégrés : "the-shirt-company", "armor-lux", … */
 ]);
 
