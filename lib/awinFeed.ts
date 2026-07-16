@@ -292,6 +292,24 @@ const EXCLUDED_CATEGORIES = new Set([
   "bademode", "bikini", "badeanzug",
   "socken", "strümpfe", "struempfe", "strumpfhosen",
   "kinder", "baby", "kids",
+  /* ─── La Redoute ─── Brief 2026-06-14. La Redoute est un grand magasin
+     multi-catégories (mode + maison + déco + puériculture + jardin). On
+     n'ingère QUE la mode adulte — le reste est hors périmètre WADA. Les
+     libellés sont en français, on match par sous-chaîne sur `category_name`
+     et `merchant_product_category_path`. Sport ambigu (Nike/Adidas
+     sportswear légitime) → on ne l'exclut PAS ; on garde la logique par
+     nom/slot pour trier ce qui est vêtement vs matériel. */
+  "maison", "meubles", "meuble", "salon", "chambre", "cuisine", "salle de bain", "salle à manger",
+  "déco", "deco", "décoration", "decoration", "linge de maison", "linge de lit", "linge de bain",
+  "rideaux", "tapis", "luminaire", "luminaires", "art de la table", "vaisselle",
+  "électroménager", "electromenager", "appareils", "gros électroménager", "petit électroménager",
+  "high-tech", "high tech", "informatique", "téléphonie", "telephonie", "tv & son", "tv et son",
+  "puériculture", "puericulture", "bébé", "bebe",
+  "jardin", "outillage", "bricolage", "auto", "moto", "camping",
+  "jouets", "jouet", "jeux",
+  "papeterie", "loisirs créatifs", "loisirs creatifs",
+  "animalerie", "animal",
+  "hygiène", "hygiene",
 ]);
 
 function isExcludedCategory(categoryName?: string): boolean {
@@ -606,7 +624,16 @@ export function normalizeAwinProduct(raw: RawAwinProduct): ProduitAwin | null {
      marque affichée reste brand_name (Polo Ralph Lauren, Boss…), donc
      /marques liste bien les 520 marques (groupées par `marque`). */
   const isKO = /kastner|öhler|oehler|ohler/i.test(raw.merchant_name || "");
-  const merchantSlug = isNewEra ? "new-era" : isKO ? "kastner-ohler" : slugMerchant(raw.merchant_name);
+  /* Brief La Redoute 2026-06-14 — grand magasin FR multi-marques (Nike,
+     Adidas, Puma, Hugo Boss, Levi's, Superdry, Only, Vero Moda, La Redoute
+     Collections…). Flux Awin en français, EUR, livraison FR. brand_name est
+     rempli par produit (contrairement à K&Ö qui le remplit aussi ↔ /marques
+     groupe déjà correctement par marque). Slug canonique « la-redoute ». */
+  const isLaRedoute = /la[\s-]?redoute/i.test(raw.merchant_name || "");
+  const merchantSlug = isNewEra ? "new-era"
+    : isKO ? "kastner-ohler"
+    : isLaRedoute ? "la-redoute"
+    : slugMerchant(raw.merchant_name);
 
   /* K&Ö : 42% du flux est is_for_sale=0 (invendable, 31k lignes). On drop
      dès l'ingestion pour ne pas gonfler le KV de produits non achetables. */
@@ -624,6 +651,21 @@ export function normalizeAwinProduct(raw: RawAwinProduct): ProduitAwin | null {
       ? raw.merchant_product_category_path
       : raw.category_name;
   if (isExcludedCategory(categorySourceForExclusion)) return null;
+  /* Brief La Redoute 2026-06-14 : le layout exact du flux Awin n'est pas
+     figé (grand magasin multi-catégories → colonnes riches). On teste
+     l'exclusion sur TOUTES les colonnes catégorie disponibles pour ne pas
+     laisser passer un canapé ou un aspirateur si l'une est renseignée et
+     pas l'autre. Coût : une passe supplémentaire par produit — négligeable. */
+  if (isLaRedoute) {
+    const lrCatSources = [
+      raw.category_name,
+      raw.merchant_product_category_path,
+      (raw as RawAwinProduct & { merchant_category?: string }).merchant_category,
+    ];
+    for (const src of lrCatSources) {
+      if (isExcludedCategory(src)) return null;
+    }
+  }
 
   /* Brief TBF 2026-05-29 — slot par inférence depuis product_name :
      TBF a `category_name = "Home Accessories"` MENSONGER pour TOUS les
@@ -703,6 +745,20 @@ export function normalizeAwinProduct(raw: RawAwinProduct): ProduitAwin | null {
   } else if (merchantSlug === "suitable-fr") {
     const merchantCat = (raw as RawAwinProduct & { merchant_category?: string }).merchant_category;
     category = parseCategory(merchantCat) || parseCategory(raw.category_name);
+    if (!category) {
+      category = inferCategoryFromProductName(raw.product_name);
+    }
+  } else if (isLaRedoute) {
+    /* Brief La Redoute 2026-06-14 : catégories en français. On tente les 3
+       colonnes classiques (category_name, merchant_category, path) dans
+       l'ordre, puis fallback inférence par nom. Les libellés FR sont déjà
+       dans CATEGORY_MAPPING (chemises, pantalons, vestes, chaussures,
+       ceintures, sacs, etc. — ajoutés via Suitable). */
+    const lrMerchantCat = (raw as RawAwinProduct & { merchant_category?: string }).merchant_category;
+    category =
+      parseCategory(raw.category_name)
+      || parseCategory(lrMerchantCat)
+      || parseCategory(raw.merchant_product_category_path);
     if (!category) {
       category = inferCategoryFromProductName(raw.product_name);
     }

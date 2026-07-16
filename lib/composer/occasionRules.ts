@@ -23,6 +23,10 @@ export const WHITELIST_SOURCES = new Set<string>([
   "suitable-fr",
   "new-era", // Brief New Era 2026-06-09 — ~5 500 casquettes/textile
   "kastner-ohler", // Brief K&Ö 2026-06-09 — ~30k produits, 520 marques premium
+  /* Brief La Redoute 2026-06-14 — grand magasin FR multi-marques : Nike,
+     Adidas, Puma, Hugo Boss, Levi's, Superdry… Ouvre l'accès à ces marques
+     que K&Ö propose déjà mais uniquement pour la Suisse (geo-gate CHF). */
+  "la-redoute",
   /* À ajouter quand intégrés : "the-shirt-company", "armor-lux", … */
 ]);
 
