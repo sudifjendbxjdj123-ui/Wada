@@ -889,6 +889,12 @@ body.wada-home-immersive {
   height: 100svh;
   min-height: 100svh;
   overflow: hidden;
+  /* Le padding-bottom global (56px) est plus court que la tab bar (78px) :
+     le bas de la photo — la traîne du kimono et le tatami — disparaissait
+     derrière la barre. On réserve ici sa hauteur réelle pour que le hero
+     s'arrête pile sur son bord. Scopé à l'accueil : les autres pages gardent
+     leur padding actuel. */
+  padding-bottom: var(--wada-tabbar-h);
 }
 
 /* Cadrage de la photo / vidéo du hero.
@@ -2412,7 +2418,18 @@ a[data-wada-btn="ghost"]:hover {
    ═══════════════════════════════════════════════════════════ */
 .wada-tabbar { display: none; }
 
+/* Hauteur RÉELLE de la tab bar — 6px de padding haut + 66px de contenu + 6px
+   de padding bas + safe-area. Les 66px viennent de la bulle « Scanner »
+   surélevée, plus haute que les autres onglets ; c'est pour ça que la barre
+   mesure 78px et non les ~45px estimés plus bas dans ce fichier, où le
+   padding-bottom du body a été calé à 56px. Tout le contenu passe donc de
+   22px sous la barre. La variable sert à caler le hero de l'accueil pile
+   au-dessus ; à garder synchronisée avec le bloc .wada-tabbar ci-dessous. */
+:root { --wada-tabbar-h: 0px; }
+
 @media (max-width: 880px) {
+  :root { --wada-tabbar-h: calc(78px + env(safe-area-inset-bottom, 0px)); }
+
   .wada-tabbar {
     display: flex;
     position: fixed;
