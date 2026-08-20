@@ -867,6 +867,52 @@ body.wada-home-immersive::after {
   display: none !important;
 }
 
+/* ═══════════════════════════════════════════════════════════════════════
+   ACCUEIL — cadrage du hero (fix 2026-08-20)
+   ═══════════════════════════════════════════════════════════════════════
+   La home est un écran unique, sans scroll : bandeau crème (WADA + Abonnement)
+   en haut, photo entre le bandeau et la tab bar. Le <main> prend la place
+   restante via flex (cf. app/page.tsx) ; ici on verrouille la hauteur du body
+   pour qu'aucun scroll parasite ne puisse repousser le bandeau hors de l'écran.
+   La classe est posée sur <body> par la home uniquement. */
+body.wada-home-immersive {
+  /* Le <body> porte bien `flex flex-col` en classes Tailwind, mais ces
+     utilitaires ne sont pas générés dans ce projet (`.flex` calcule
+     display:block) — le hero en `flex:1` restait donc écrasé à la hauteur
+     de son contenu. On pose la colonne flex explicitement, et seulement
+     ici : sur l'accueil, les seuls enfants du body encore dans le flux sont
+     le bandeau crème et le hero (tab bar, bannière cookies et compagnie sont
+     tous en position:fixed), donc le hero récupère exactement la hauteur
+     restante. */
+  display: flex;
+  flex-direction: column;
+  height: 100svh;
+  min-height: 100svh;
+  overflow: hidden;
+}
+
+/* Cadrage de la photo / vidéo du hero.
+   L'image source est un portrait très haut (2160×4096) : le sujet est assis,
+   masque Hannya vers 40 % de la hauteur, kimono déployé et tatami jusqu'en bas.
+
+   Mobile — le cadre est lui aussi portrait, donc on peut montrer presque toute
+   la photo. On l'ancre EN BAS : le personnage est visible en entier, kimono et
+   tatami compris, et c'est le vide de shoji au-dessus qui est rogné. C'est le
+   cadrage demandé.
+
+   Desktop — le cadre est paysage large, seule une tranche d'environ 30 % de la
+   photo tient dedans. Ancrer en bas n'y montrerait que le bas du kimono, sans
+   visage : on garde donc `center 60 %`, qui cale le masque comme point focal. */
+.wada-hero-media {
+  object-position: center 60%;
+}
+
+@media (max-width: 880px) {
+  .wada-hero-media {
+    object-position: center bottom;
+  }
+}
+
 /* Display headlines — Fredoka : chubby rond mais POSÉ (pas exagéré comme
    Bagel Fat One). Le brief client demande la chubby comme voix de marque
    « différenciante mais premium, pas enfantin ». Style normal, un seul
