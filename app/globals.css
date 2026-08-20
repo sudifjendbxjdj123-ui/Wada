@@ -2427,6 +2427,14 @@ a[data-wada-btn="ghost"]:hover {
    au-dessus ; à garder synchronisée avec le bloc .wada-tabbar ci-dessous. */
 :root { --wada-tabbar-h: 0px; }
 
+/* Hauteur du bandeau crème (components/Nav.tsx, sticky en haut du flux) :
+   18px de padding bas + 40px de contenu + un padding haut de
+   max(18px, safe-area-inset-top). Soit 76px sur un écran sans encoche et
+   ~105px sur iPhone. Toute section qui veut tenir dans un écran doit la
+   soustraire : `min-height: 100svh` seul déborde d'autant, puisque la section
+   démarre SOUS le bandeau. À garder synchronisée avec le style du <nav>. */
+:root { --wada-nav-h: calc(58px + max(18px, env(safe-area-inset-top, 0px))); }
+
 @media (max-width: 880px) {
   :root { --wada-tabbar-h: calc(78px + env(safe-area-inset-bottom, 0px)); }
 

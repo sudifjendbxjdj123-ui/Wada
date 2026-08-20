@@ -43,20 +43,19 @@ export function BrandShowcaseCompact({
 
     (async () => {
       try {
-        const slots = ["haut", "bas"];
-        const results = await Promise.all(
-          slots.map((slot) =>
-            fetch(`/api/products?slot=${slot}&limit=20`)
-              .then((r) => r.json())
-              .catch(() => ({ products: [] })),
-          ),
-        );
+        /* Fix 2026-08-20 « la boutique met trop de temps » : deux requêtes
+           (slot=haut, slot=bas) de 20 produits pour n'en afficher que 6.
+           Chaque appel rebalaie tout le catalogue KV côté serveur, et on
+           attendait les deux avant d'afficher quoi que ce soit. Le paramètre
+           `slot` ne sert qu'à des exclusions : une seule requête suffit à
+           remplir cette vitrine. */
+        const r = await fetch(`/api/products?limit=${Math.max(12, maxProducts * 3)}`);
+        const data = r.ok ? await r.json() : { products: [] };
 
         /* On n'affiche que des tuiles réellement cliquables : une image ET
            un deep-link marchand. Sans ce garde-fou la grille affichait des
            vignettes inertes. */
-        const allProducts: Product[] = results
-          .flatMap((r) => r.products || [])
+        const allProducts: Product[] = (data.products || [])
           .filter((p: any) => (p.image || p.largeImage) && typeof p.urlProduit === "string" && /^https?:\/\//.test(p.urlProduit))
           .slice(0, maxProducts);
 
