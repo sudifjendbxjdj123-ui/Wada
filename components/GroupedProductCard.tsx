@@ -1,6 +1,7 @@
 "use client";
 import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { GroupedProduct } from "@/lib/groupProducts";
 import { formatProductPrice } from "@/lib/priceFormat";
 import { getDisplayImageUrl } from "@/lib/image-utils";
@@ -19,6 +20,7 @@ interface Props {
 }
 
 export function GroupedProductCard({ g, onClick }: Props) {
+  const router = useRouter();
   const [liked, setLiked] = useLiked(g.key);
   const [hovering, setHovering] = useState(false);
   const [quickView, setQuickView] = useState(false);
@@ -59,15 +61,23 @@ export function GroupedProductCard({ g, onClick }: Props) {
   const handleAddToCart = (e: React.MouseEvent) => {
     e.stopPropagation();
 
-    if (!selectedSize) {
-      showToast("Veuillez sélectionner une taille", { variant: "info" });
-      return;
-    }
-
-    // Vérifier que la taille est en stock pour la couleur sélectionnée
-    if (!availableSizes.includes(selectedSize)) {
-      showToast("Cette taille n'est pas disponible", { variant: "info" });
-      return;
+    /* Fix 2026-08-20 « impossible d'ajouter un bijou au panier » : on exigeait
+       une taille pour TOUS les produits. Or bijoux, sacs et une grande partie
+       des accessoires arrivent sans `tailles` : aucun sélecteur n'était affiché,
+       donc aucune taille ne pouvait être choisie, et le bouton répondait
+       indéfiniment « Veuillez sélectionner une taille ». Le panier était
+       purement et simplement inaccessible sur ces catégories. La taille n'est
+       désormais requise que si le produit en propose. */
+    if (availableSizes.length > 0) {
+      if (!selectedSize) {
+        showToast("Veuillez sélectionner une taille", { variant: "info" });
+        return;
+      }
+      // Vérifier que la taille est en stock pour la couleur sélectionnée
+      if (!availableSizes.includes(selectedSize)) {
+        showToast("Cette taille n'est pas disponible", { variant: "info" });
+        return;
+      }
     }
 
     // Vérifier que le produit est en stock
@@ -271,6 +281,13 @@ export function GroupedProductCard({ g, onClick }: Props) {
           {/* Quick view overlay — Color + Size selectors */}
           {quickView && (
             <div
+              /* Fix 2026-08-20 « clics fantômes » : cet overlay est imbriqué
+                 dans le <div onClick> qui ouvre la fiche produit. Ni les pastilles
+                 couleur, ni les tailles, ni la croix de fermeture n'arrêtaient la
+                 propagation : chaque clic dans la Quick view rouvrait la grande
+                 modale par-dessus. On coupe la remontée au niveau de l'overlay,
+                 ce qui couvre tous ses enfants d'un coup. */
+              onClick={(e) => e.stopPropagation()}
               style={{
                 position: "absolute",
                 inset: 0,
@@ -591,7 +608,20 @@ export function GroupedProductCard({ g, onClick }: Props) {
             Découvrez une tenue assortie à cette pièce
           </p>
           <button
-            onClick={() => window.location.href = `/stylist?color=${currentVariant.hex.slice(1)}`}
+            /* Fix 2026-08-20 : trois problèmes sur un seul bouton —
+               (1) pas de stopPropagation, donc le clic ouvrait aussi la fiche
+                   produit avant de naviguer ;
+               (2) window.location.href forçait un rechargement complet de
+                   l'app au lieu d'une navigation client ;
+               (3) hex.slice(1) plantait sur un produit sans couleur (`hex`
+                   absent du flux marchand) → écran d'erreur boutique. */
+            onClick={(e) => {
+              e.stopPropagation();
+              const hex = /^#[0-9a-f]{6}$/i.test(currentVariant.hex || "")
+                ? `?color=${currentVariant.hex.slice(1)}`
+                : "";
+              router.push(`/stylist${hex}`);
+            }}
             style={{
               marginTop: 8,
               padding: "8px 14px",

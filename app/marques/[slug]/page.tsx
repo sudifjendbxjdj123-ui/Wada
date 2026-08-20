@@ -55,7 +55,7 @@ export default async function BrandPage({ params, searchParams }: Props) {
       brand={brandName}
       genre={sp.genre}
       style={sp.style}
-      page={parseInt(sp.page ?? "1")}
+      page={parseInt(sp.page ?? "1", 10)}
     />
   );
 }

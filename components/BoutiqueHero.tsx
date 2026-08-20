@@ -52,12 +52,23 @@ function writeCachedImages(imgs: string[]) {
 }
 
 export function BoutiqueHero() {
-  /* Hydrate synchroniquement depuis localStorage pour que la 1re paint
-     contienne déjà le mur — pas d'attente de useEffect. Sur SSR/1re visite
-     ça retombe sur [], et le fetch en useEffect rempli ~1s plus tard. */
-  const [images, setImages] = useState<string[]>(() => readCachedImages());
+  /* Fix 2026-08-20 « hydratation » : l'initialiseur lisait localStorage
+     PENDANT le render. Le serveur rend alors les 24 placeholders SVG et le
+     client rend les URLs en cache → les <img src> divergent et React jette
+     une erreur d'hydratation (mur qui clignote / se re-monte au chargement).
+     On part donc du MÊME état des deux côtés (les placeholders), puis on
+     remplace par le cache dans un effet, avant le fetch réseau. Le mur reste
+     visible à la 1re paint, sans divergence SSR/client. */
+  const [images, setImages] = useState<string[]>(FALLBACK_IMAGES);
+
   const [cols, setCols] = useState(4);
   const [genre, setGenre] = useState<"femme" | "homme">("femme");
+
+  /* Cache localStorage appliqué après hydratation (effet ⇒ client only). */
+  useEffect(() => {
+    const cached = readCachedImages();
+    if (cached !== FALLBACK_IMAGES) setImages(cached);
+  }, []);
 
   /* Nombre de colonnes adapté à la largeur (≈1 colonne / 260px). */
   useEffect(() => {
@@ -147,22 +158,14 @@ export function BoutiqueHero() {
           {/* Toggle Femme / Homme */}
           <div className="wada-bh-toggle" role="group" aria-label="Genre">
             <button
-              className="wada-bh-tog"
-              style={genre === "femme"
-                ? { background: BORDEAUX, color: "#fff", boxShadow: "0 2px 10px rgba(0,0,0,0.35)" }
-                : { background: "transparent", color: "rgba(255,255,255,0.72)" }
-              }
+              className={`wada-bh-tog${genre === "femme" ? " wada-bh-tog--active" : ""}`}
               onClick={() => setGenre("femme")}
               aria-pressed={genre === "femme"}
             >
               Femme
             </button>
             <button
-              className="wada-bh-tog"
-              style={genre === "homme"
-                ? { background: BORDEAUX, color: "#fff", boxShadow: "0 2px 10px rgba(0,0,0,0.35)" }
-                : { background: "transparent", color: "rgba(255,255,255,0.72)" }
-              }
+              className={`wada-bh-tog${genre === "homme" ? " wada-bh-tog--active" : ""}`}
               onClick={() => setGenre("homme")}
               aria-pressed={genre === "homme"}
             >
@@ -293,6 +296,11 @@ export function BoutiqueHero() {
           color: rgba(255,255,255,0.72);
           transition: background 0.22s ease, color 0.22s ease;
         }
+        /* Fix 2026-08-20 : cette classe existait mais n'était JAMAIS posée —
+           l'état actif était appliqué en style inline, qui l'emporte sur toute
+           règle CSS. Conséquence : la règle :hover ci-dessous ciblait aussi le
+           pill actif (sans effet visible) et le halo actif ne pouvait pas être
+           thémé depuis la feuille. On pose désormais la classe. */
         .wada-bh-tog--active {
           background: ${BORDEAUX};
           color: #fff;

@@ -1,17 +1,22 @@
 "use client";
 import Link from "next/link";
 import { useState, useEffect } from "react";
-import { getCart, removeFromCart } from "@/lib/cart";
+import { getCart, removeFromCart, type CartItem } from "@/lib/cart";
 import { showToast } from "@/lib/toast";
 
 export function CartSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
-  const [cart, setCart] = useState(() => getCart());
+  /* Fix 2026-08-20 « hydratation » : getCart() lisait localStorage pendant le
+     render. Le serveur rendait « panier vide » et le client la vraie liste →
+     divergence d'hydratation. On démarre vide des deux côtés et on charge le
+     panier dans l'effet de synchronisation (qui tourne déjà au montage). */
+  const [cart, setCart] = useState<CartItem[]>([]);
 
   // Sync with localStorage changes (from other tabs/components)
   useEffect(() => {
     const handleStorageChange = () => {
       setCart(getCart());
     };
+    handleStorageChange();
     window.addEventListener("storage", handleStorageChange);
     return () => window.removeEventListener("storage", handleStorageChange);
   }, []);
