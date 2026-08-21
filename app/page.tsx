@@ -281,20 +281,27 @@ export default function Home() {
               ev.currentTarget.style.boxShadow = "0 14px 40px rgba(0,0,0,.35)";
             }}
           >
-            <span
+            {/* Icône « bonhomme » plutôt que le sigle WADA 和田 (client
+                2026-08-23). Le sigle est déjà écrit deux fois plus haut dans
+                l'en-tête : sur le bouton il n'indiquait pas ce que le bouton
+                fait. Une silhouette dit « compte » sans un mot, dans toutes
+                les langues. */}
+            <svg
+              width="19"
+              height="19"
+              viewBox="0 0 24 24"
               aria-hidden
-              style={{
-                fontFamily: "'Fredoka', sans-serif",
-                fontWeight: 700,
-                fontSize: 17,
-                letterSpacing: "0.02em",
-                lineHeight: 1,
-              }}
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.9"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              style={{ flexShrink: 0 }}
             >
-              WADA<span style={{ marginLeft: 3 }}>和田</span>
-            </span>
+              <circle cx="12" cy="8" r="3.6" />
+              <path d="M4.6 20a7.4 7.4 0 0 1 14.8 0" />
+            </svg>
             <span>Se connecter</span>
-            <span aria-hidden style={{ fontSize: 17 }}>→</span>
           </Link>
 
           <Link
