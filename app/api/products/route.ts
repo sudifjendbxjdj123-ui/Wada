@@ -1087,7 +1087,65 @@ export async function GET(req: Request) {
     }
   }
 
-  const products: ProduitAwin[] = deduped.slice(offset, offset + limit).map((p) => ({
+  /* ── MÉLANGE DES MARQUES (client 2026-08-22) ────────────────────────────
+     « Je ne veux pas une seule marque par marque, je veux du mélange, je veux
+     avoir une rotation. »
+
+     La déduplication ci-dessus supprime les VARIANTES d'un même produit
+     (même marque + même nom de base). Elle ne dit rien du nombre de produits
+     qu'une marque peut occuper. Résultat constaté sur /boutique : quatre des
+     six vignettes étaient des casquettes New Era — la marque la plus dense
+     du catalogue sur cette couleur raflait la page.
+
+     On répartit donc en tourniquet : les produits sont groupés par marque, en
+     conservant l'ordre de pertinence À L'INTÉRIEUR de chaque groupe, puis on
+     pioche un produit dans chaque marque à tour de rôle. Le meilleur produit
+     de chaque marque arrive donc en premier, et deux vignettes voisines ne
+     sont jamais de la même marque tant qu'il reste d'autres marques.
+
+     Rotation : l'ordre de passage des marques pivote — selon le `seed` s'il
+     est fourni, sinon selon le jour. Sans ça, la même marque ouvrirait la
+     page indéfiniment.
+
+     Uniquement pour les LISTES. À limit=1, on sert un slot de tenue : c'est
+     le classement par couleur qui doit décider, pas l'équité entre marques. */
+  let ordonne = deduped;
+  if (limit > 1 && deduped.length > 1) {
+    const parMarque = new Map<string, typeof deduped>();
+    for (const p of deduped) {
+      const cle = (p.marque || p.marchand || "?").toLowerCase().trim();
+      const groupe = parMarque.get(cle);
+      if (groupe) groupe.push(p);
+      else parMarque.set(cle, [p]);
+    }
+
+    const groupes = [...parMarque.values()];
+    if (groupes.length > 1) {
+      /* Décalage de départ : le seed s'il existe, sinon le quantième du jour.
+         Déterministe des deux côtés — pas de Math.random(), qui donnerait un
+         ordre différent à chaque rendu et ferait sauter les vignettes. */
+      let pivot = 0;
+      if (seed) {
+        let hash = 0;
+        for (let i = 0; i < seed.length; i++) hash = (hash * 31 + seed.charCodeAt(i)) | 0;
+        pivot = Math.abs(hash) % groupes.length;
+      } else {
+        pivot = Math.floor(Date.now() / 86400000) % groupes.length;
+      }
+      const tournee = [...groupes.slice(pivot), ...groupes.slice(0, pivot)];
+
+      const melange: typeof deduped = [];
+      const maxParMarque = Math.max(...tournee.map((g) => g.length));
+      for (let rang = 0; rang < maxParMarque; rang++) {
+        for (const groupe of tournee) {
+          if (rang < groupe.length) melange.push(groupe[rang]);
+        }
+      }
+      ordonne = melange;
+    }
+  }
+
+  const products: ProduitAwin[] = ordonne.slice(offset, offset + limit).map((p) => ({
     ...p,
     image: p.imageLocal != null ? p.imageLocal : proxyImageUrl(p.image || ""),
     largeImage: p.imageLocal != null ? p.imageLocal : proxyImageUrl((p.largeImage || p.image) || ""),
@@ -1096,7 +1154,7 @@ export async function GET(req: Request) {
   return Response.json(
     {
       products,
-      total: deduped.length,
+      total: ordonne.length,
       source: "kv",
       filters_applied: {
         slot, palette, genre, style, merchant,
