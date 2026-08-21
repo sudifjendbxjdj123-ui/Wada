@@ -41,7 +41,7 @@ export interface CategoryFilters {
       une liste NON filtrée : le paramètre `q` existait dans les props de
       CategoryPage mais n'était utilisé nulle part. */
   q: string;
-  sort: string;         // "" | "prix-asc" | "prix-desc" | "nouveau"
+  sort: string;         // "" | "prix-asc" | "prix-desc" | "nouveau" | "remise"
 }
 
 export const PRICE_MIN = 0;
@@ -142,6 +142,12 @@ export const COLOR_FAMILIES: { name: string; hex: string; kws: RegExp }[] = [
   { name: "Rouge", hex: "#b23a2e", kws: /rouge|red|brique|tomate|carmin|écarlate/i },
   { name: "Rose", hex: "#d99aa6", kws: /rose|pink|blush|poudré|fuchsia/i },
   { name: "Jaune", hex: "#d8b54a", kws: /jaune|yellow|moutarde|or |doré|dore|ocre|safran/i },
+  /* Orange et Violet manquaient ici alors que /api/products les filtre depuis
+     toujours (COULEUR_KEYWORDS). Les deux côtés du site proposaient donc des
+     familles différentes, et une pastille « Orange » ouvrait un catalogue
+     vide sur les pages catégorie. */
+  { name: "Orange", hex: "#b4643c", kws: /orange|rouille|rust|terre cuite|cannelle|roux|cuivre|paprika|abricot/i },
+  { name: "Violet", hex: "#6b5378", kws: /violet|purple|mauve|lilas|aubergine|lavande|prune|parme|améthyste|amethyste/i },
 ];
 
 /** Matières + regex de détection. */
@@ -371,6 +377,16 @@ export function sortProducts(products: ProduitAwin[], sort: string): ProduitAwin
      c'est une approximation, et la meilleure dont on dispose.
      Les produits sans date passent en dernier plutôt que d'être traités
      comme très anciens ou très récents au hasard. */
+  /* « remise » : le pourcentage réellement retiré, pas le montant. Un
+     manteau à −100 € sur 900 € est une moins bonne affaire qu'un t-shirt à
+     −20 € sur 40 €. Les articles sans prix barré sortent en dernier. */
+  else if (sort === "remise") {
+    const pc = (p: ProduitAwin) =>
+      typeof p.prixOriginal === "number" && typeof p.prix === "number" && p.prixOriginal > p.prix
+        ? 1 - p.prix / p.prixOriginal
+        : -1;
+    out.sort((a, b) => pc(b) - pc(a));
+  }
   else if (sort === "nouveau") {
     out.sort((a, b) => {
       const ta = a.dateMaj ? Date.parse(a.dateMaj) : NaN;

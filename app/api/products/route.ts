@@ -35,6 +35,10 @@ import { deltaEHex, hexToLab } from "@/lib/colorDistance";
 import { dictionary } from "@/lib/data";
 import { styleToRegistre, brandToRegistreOrFallback } from "@/lib/brandRegistre";
 import { detectSeason, isSeasonCompatible } from "@/lib/seasonDetect";
+/* Source unique du tri : la même fonction que les pages catégorie. Dupliquer
+   la logique ici, c'était garantir que « Prix croissant » finisse par ne pas
+   vouloir dire la même chose des deux côtés du site. */
+import { sortProducts } from "@/lib/categoryFilters";
 /* Brief URGENT 2026-06-01 Nemanja — Règle 3 : occasion → FORBIDDEN_TYPES
    + whitelist source affiliée. Module lib/composer/occasionRules.ts. */
 import { isAffiliated, isProductOkForOccasion } from "@/lib/composer/occasionRules";
@@ -186,6 +190,14 @@ function getBasePool(catalog: ProduitAwin[], country: string | null): BasePool {
    ROUTE
    ────────────────────────────────────────────────────────────────────── */
 
+/** Clé de comparaison d'une marque : minuscules, sans accents ni ponctuation.
+    « Adidas Originals », « adidas originals » et « ADIDAS-ORIGINALS » doivent
+    désigner la même maison. */
+function normaliserMarque(v: string): string {
+  return v.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, " ").trim();
+}
+
 export async function GET(req: Request) {
   const url = new URL(req.url);
   const slot = url.searchParams.get("slot");
@@ -279,6 +291,15 @@ export async function GET(req: Request) {
 
   /* Filtres boutique : famille couleur + fourchette prix */
   const couleurFamille = url.searchParams.get("couleurFamille")?.toLowerCase().trim() || null;
+  /* Tri explicite demandé par l'utilisateur. Il l'emporte sur le tourniquet
+     des marques plus bas : quand on clique « Prix croissant », on veut le
+     moins cher en premier, pas l'équité entre marques. */
+  const sortDemande = url.searchParams.get("sort")?.trim() || "";
+  /* Filtre marque (CSV, insensible à la casse et aux accents). Le catalogue
+     compte ~586 marques : sans ce paramètre, la seule façon d'en isoler une
+     était de quitter la page pour /marques/[slug]. */
+  const marquesVoulues = (url.searchParams.get("marques") || "")
+    .split(",").map((m) => normaliserMarque(m)).filter(Boolean);
   const prixMinRaw = parseFloat(url.searchParams.get("prixMin") || "");
   const prixMaxRaw = parseFloat(url.searchParams.get("prixMax") || "");
   const prixMin = Number.isFinite(prixMinRaw) && prixMinRaw >= 0 ? prixMinRaw : null;
@@ -1157,6 +1178,33 @@ export async function GET(req: Request) {
     }
   }
 
+  /* ── Marques disponibles (facettes) ─────────────────────────────────────
+     Calculées AVANT le filtre marque : sinon, dès qu'on coche « Nike », la
+     liste se réduirait à « Nike » et on ne pourrait plus en ajouter une
+     seconde. Trente suffisent pour un panneau ; le reste est sur /marques. */
+  const compteParMarque = new Map<string, { nom: string; n: number }>();
+  for (const p of ordonne) {
+    const nom = (p.marque || p.marchand || "").trim();
+    if (nom.length < 2) continue;
+    const cle = normaliserMarque(nom);
+    const e = compteParMarque.get(cle);
+    if (e) e.n++;
+    else compteParMarque.set(cle, { nom, n: 1 });
+  }
+  const marquesDisponibles = [...compteParMarque.values()]
+    .sort((a, b) => b.n - a.n || a.nom.localeCompare(b.nom))
+    .slice(0, 30);
+
+  if (marquesVoulues.length > 0) {
+    ordonne = ordonne.filter((p) =>
+      marquesVoulues.includes(normaliserMarque(p.marque || p.marchand || "")));
+  }
+
+  /* Tri explicite en DERNIER, sur le pool entier et avant la pagination.
+     Trier après le découpage ne trierait que la page affichée — le bug
+     corrigé sur les pages catégorie le 20/08. */
+  if (sortDemande) ordonne = sortProducts(ordonne, sortDemande);
+
   const products: ProduitAwin[] = ordonne.slice(offset, offset + limit).map((p) => ({
     ...p,
     image: p.imageLocal != null ? p.imageLocal : proxyImageUrl(p.image || ""),
@@ -1167,6 +1215,9 @@ export async function GET(req: Request) {
     {
       products,
       total: ordonne.length,
+      /* Marques présentes dans ce résultat, pour alimenter un vrai panneau
+         de filtre côté client. */
+      marquesDisponibles,
       source: "kv",
       filters_applied: {
         slot, palette, genre, style, merchant,

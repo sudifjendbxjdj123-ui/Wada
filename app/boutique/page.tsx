@@ -9,6 +9,7 @@
  */
 import { useCallback, useState } from "react";
 import type { DictionaryEntry } from "@/lib/data";
+import { type FiltresBoutique, FILTRES_VIDES } from "@/lib/filtresBoutique";
 import BackButton from "@/components/BackButton";
 import BoutiqueEntete from "@/components/BoutiqueEntete";
 import CataloguePalette from "@/components/CataloguePalette";
@@ -20,12 +21,25 @@ export default function BoutiquePage() {
   const [contexte, setContexte] = useState<{
     palette: DictionaryEntry | null;
     genre: string;
-  }>({ palette: null, genre: "femme" });
+    filtres: FiltresBoutique;
+  }>({ palette: null, genre: "femme", filtres: FILTRES_VIDES });
+
+  /* Les marques du résultat courant font l'aller-retour : le catalogue les
+     découvre en interrogeant l'API, l'en-tête s'en sert pour peupler son
+     panneau « Marques ». Le catalogue est le seul à parler à l'API — une
+     seconde requête depuis l'en-tête aurait doublé la charge pour la même
+     information. */
+  const [marques, setMarques] = useState<Array<{ nom: string; n: number }>>([]);
 
   /* useCallback : sans lui, une nouvelle fonction à chaque rendu relancerait
      l'effet de l'en-tête en boucle. */
   const majContexte = useCallback(
-    (ctx: { palette: DictionaryEntry | null; genre: string }) => setContexte(ctx),
+    (ctx: { palette: DictionaryEntry | null; genre: string; filtres: FiltresBoutique }) =>
+      setContexte(ctx),
+    [],
+  );
+  const majMarques = useCallback(
+    (m: Array<{ nom: string; n: number }>) => setMarques(m),
     [],
   );
 
@@ -52,7 +66,7 @@ export default function BoutiquePage() {
           lisible : titre, genre, catégories, filtres, couleurs, palette du
           jour. Un mur d'images qui bouge est une belle porte d'entrée, mais
           une mauvaise page de courses. */}
-      <BoutiqueEntete onContexte={majContexte} />
+      <BoutiqueEntete onContexte={majContexte} marquesDisponibles={marques} />
 
       {/* Vrai catalogue produits (client 2026-08-22 : « je remplacerais
           complètement À découvrir par un vrai catalogue produits, comme un
@@ -71,6 +85,8 @@ export default function BoutiquePage() {
         <CataloguePalette
           palette={contexte.palette}
           genre={contexte.genre}
+          filtres={contexte.filtres}
+          onMarques={majMarques}
           limit={24}
         />
       </div>

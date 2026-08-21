@@ -1,10 +1,13 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { DictionaryEntry } from "@/lib/data";
 import { getDisplayImageUrl } from "@/lib/image-utils";
 import { formatPrixCatalogue } from "@/lib/priceFormat";
 import { deltaEHex } from "@/lib/colorDistance";
 import { useLiked } from "@/hooks/useLiked";
+import {
+  type FiltresBoutique, FILTRES_VIDES, filtresVersParams, nombreFiltresActifs,
+} from "@/lib/filtresBoutique";
 import {
   ink, border, textSecondary, mojo,
   fontBody, fontLabel,
@@ -262,52 +265,125 @@ function CarteProduit({
   );
 }
 
+/** Ne garde que les produits réellement achetables : une image ET un lien
+    marchand. Une vignette inerte dans un catalogue donne l'impression d'un
+    site cassé. */
+function achetables(liste: Produit[]): Produit[] {
+  return liste.filter(
+    (p) =>
+      (p.image || p.largeImage || p.imageLocal) &&
+      typeof p.urlProduit === "string" && /^https?:\/\//.test(p.urlProduit),
+  );
+}
+
 export default function CataloguePalette({
   palette,
   genre,
+  filtres = FILTRES_VIDES,
+  onMarques,
   limit = 24,
 }: {
   /** Palette active — filtre le catalogue et alimente les pastilles. */
   palette?: DictionaryEntry | null;
   genre?: string | null;
+  /** Filtres réglés par l'en-tête (couleur, prix, promo, marques, tri). */
+  filtres?: FiltresBoutique;
+  /** Remonte les marques présentes dans le résultat, pour le panneau
+      « Marques » de l'en-tête. */
+  onMarques?: (m: Array<{ nom: string; n: number }>) => void;
   limit?: number;
 }) {
   const [produits, setProduits] = useState<Produit[]>([]);
   const [total, setTotal] = useState<number | null>(null);
   const [etat, setEtat] = useState<"charge" | "pret" | "vide">("charge");
+  /** Chargement de la page suivante, distinct du chargement initial : il ne
+      doit pas remplacer la grille par des squelettes. */
+  const [chargeSuite, setChargeSuite] = useState(false);
 
   const couleurs = useMemo(() => palette?.colors ?? [], [palette]);
+
+  /* Signature des filtres : un objet neuf à chaque rendu du parent relancerait
+     la requête en boucle. On dépend de sa forme sérialisée, pas de sa
+     référence. */
+  const cleFiltres = JSON.stringify(filtres);
+
+  /** Construit la requête. Tous les filtres partent au SERVEUR : filtrer les
+      24 produits déjà chargés côté client aurait donné « le moins cher de
+      cette page » au lieu du moins cher du catalogue. */
+  const requete = useCallback((offset: number) => {
+    const sp = filtresVersParams(filtres);
+    sp.set("limit", String(limit));
+    if (offset > 0) sp.set("offset", String(offset));
+    if (palette?.number) sp.set("palette", palette.number);
+    if (genre) sp.set("genre", genre.toLowerCase());
+    return `/api/products?${sp}`;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cleFiltres, palette?.number, genre, limit]);
 
   useEffect(() => {
     const ac = new AbortController();
     setEtat("charge");
     (async () => {
       try {
-        const sp = new URLSearchParams({ limit: String(limit) });
-        if (palette?.number) sp.set("palette", palette.number);
-        if (genre) sp.set("genre", genre.toLowerCase());
-        const r = await fetch(`/api/products?${sp}`, { signal: ac.signal });
+        const r = await fetch(requete(0), { signal: ac.signal });
         if (!r.ok) { setEtat("vide"); return; }
         const d = await r.json();
-        /* On n'affiche que des produits réellement achetables : une image ET
-           un lien marchand. Une vignette inerte dans un catalogue donne
-           l'impression d'un site cassé. */
-        const liste: Produit[] = (d.products ?? []).filter(
-          (p: Produit) =>
-            (p.image || p.largeImage || p.imageLocal) &&
-            typeof p.urlProduit === "string" && /^https?:\/\//.test(p.urlProduit),
-        );
+        const liste = achetables(d.products ?? []);
         setProduits(liste);
         setTotal(typeof d.total === "number" ? d.total : liste.length);
         setEtat(liste.length ? "pret" : "vide");
+        if (Array.isArray(d.marquesDisponibles)) onMarques?.(d.marquesDisponibles);
       } catch {
         /* Abort au démontage, ou réseau : on ne casse pas la page. */
       }
     })();
     return () => ac.abort();
-  }, [palette?.number, genre, limit]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [requete]);
 
-  if (etat === "vide") return null;
+  /** « Voir plus » — pagination par offset côté serveur.
+   *
+   *  Avant, la grille affichait 24 articles, annonçait « 1 240 articles » et
+   *  s'arrêtait là : aucun moyen d'atteindre les 1 216 autres depuis cette
+   *  page. Un catalogue qui compte ce qu'il ne montre pas est une impasse. */
+  const voirPlus = async () => {
+    if (chargeSuite) return;
+    setChargeSuite(true);
+    try {
+      const r = await fetch(requete(produits.length));
+      if (r.ok) {
+        const d = await r.json();
+        const suite = achetables(d.products ?? []);
+        /* Dédoublonnage : le tourniquet des marques et la pagination par
+           offset peuvent se recouvrir sur une même clé. */
+        setProduits((prec) => {
+          const vus = new Set(prec.map((p) => p.id || p.urlProduit));
+          return [...prec, ...suite.filter((p) => !vus.has(p.id || p.urlProduit))];
+        });
+      }
+    } catch { /* réseau : le bouton reste disponible */ }
+    setChargeSuite(false);
+  };
+
+  if (etat === "vide") {
+    /* Sans filtre actif, un catalogue vide veut dire que le KV est
+       injoignable : on n'affiche rien, comme avant. Avec des filtres, c'est
+       un résultat — et il faut pouvoir en sortir. */
+    if (nombreFiltresActifs(filtres) === 0) return null;
+    return (
+      <section style={{
+        maxWidth: 1200, margin: "0 auto", width: "100%", padding: "26px 0",
+        textAlign: "center",
+      }}>
+        <p style={{ fontFamily: fontBody, fontSize: 15, color: ink, margin: 0 }}>
+          Aucun article ne correspond à cette sélection.
+        </p>
+        <p style={{ fontFamily: fontBody, fontSize: 13.5, color: textSecondary, margin: "6px 0 0" }}>
+          Essayez une autre couleur ou une fourchette de prix plus large.
+        </p>
+      </section>
+    );
+  }
 
   return (
     <section style={{ maxWidth: 1200, margin: "0 auto", width: "100%" }}>
@@ -319,7 +395,11 @@ export default function CataloguePalette({
           fontFamily: fontLabel, fontSize: 11, letterSpacing: ".14em",
           textTransform: "uppercase", color: ink, fontWeight: 600, margin: 0,
         }}>
-          {palette ? "Pièces pour cette palette" : "Pièces sélectionnées"}
+          {/* Dès qu'un filtre est actif, le titre ne peut plus dire « pièces
+              pour cette palette » : ce n'est plus ce qu'on montre. */}
+          {nombreFiltresActifs(filtres) > 0
+            ? "Résultats"
+            : palette ? "Pièces pour cette palette" : "Pièces sélectionnées"}
         </h2>
         {total !== null && total > 0 && (
           <span style={{ fontFamily: fontBody, fontSize: 13, color: textSecondary, whiteSpace: "nowrap" }}>
@@ -351,6 +431,30 @@ export default function CataloguePalette({
           {produits.map((p, i) => (
             <CarteProduit key={p.id || p.urlProduit || i} produit={p} couleurs={couleurs} />
           ))}
+        </div>
+      )}
+
+      {/* ── Voir plus ───────────────────────────────────────────────────
+          N'apparaît que s'il reste vraiment quelque chose à charger. */}
+      {etat === "pret" && total !== null && produits.length < total && (
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, marginTop: 22 }}>
+          <button
+            type="button"
+            onClick={voirPlus}
+            disabled={chargeSuite}
+            style={{
+              padding: "13px 30px", borderRadius: 999,
+              border: `1px solid ${border}`, background: "#FFFDFA",
+              cursor: chargeSuite ? "default" : "pointer",
+              fontFamily: fontBody, fontSize: 14, color: ink,
+              opacity: chargeSuite ? .6 : 1,
+            }}
+          >
+            {chargeSuite ? "Chargement…" : "Voir plus d'articles"}
+          </button>
+          <span style={{ fontFamily: fontBody, fontSize: 12.5, color: textSecondary }}>
+            {produits.length} sur {total}
+          </span>
         </div>
       )}
     </section>

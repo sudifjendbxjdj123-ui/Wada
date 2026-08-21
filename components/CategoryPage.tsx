@@ -783,13 +783,31 @@ export default function CategoryPage({ title, breadcrumb, slot, q, onSale, genre
       /* Idem pour la marque : si on arrive sur /marques/adidas-originals avec
          des params URL, on garde la restriction marque de la route. */
       if (initBrand && !next.brands.includes(initBrand)) next.brands = [initBrand];
+      /* Fix : cette branche se déclenche dès qu'il y a UN paramètre d'URL,
+         quel qu'il soit — et seedFilters() n'est alors jamais appelé. Le
+         mot-clé de la sous-catégorie et l'ouverture « soldes », qui arrivent
+         par les props de la route et non par l'URL, étaient donc perdus :
+         /vetements/chemises?genre=femme rendait le catalogue entier, alors
+         que /vetements/chemises seul filtrait bien. On les réapplique, sans
+         écraser une valeur explicitement présente dans l'URL. */
+      if (q && !sp.get("q")) next.q = q;
+      if (onSale && sp.get("onSale") !== "1") next.onSale = true;
+      if (initStyle && !sp.get("styles")) next.styles = [initStyle.toLowerCase()];
     } else {
       let stored: CategoryFilters | null = null;
       try {
         const raw = localStorage.getItem(`${FILTERS_STORAGE_KEY}:${category}`);
         if (raw) stored = JSON.parse(raw);
       } catch {}
-      next = stored || seedFilters(initGenre, initStyle, initBrand);
+      next = stored || seedFilters(initGenre, initStyle, initBrand, q, onSale);
+      /* Même raison que ci-dessus, pour l'autre branche : des filtres
+         mémorisés d'une visite précédente ne connaissent pas le mot-clé de la
+         route. Sans ça, revenir sur /vetements/chemises après avoir filtré
+         une autre catégorie rendait tous les vêtements. */
+      if (stored) {
+        if (q) next.q = q;
+        if (onSale) next.onSale = true;
+      }
     }
     setFilters(next);
     setHydrated(true);
