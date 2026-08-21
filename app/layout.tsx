@@ -248,10 +248,26 @@ export default function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap"
         />
 
-        {/* Load non-critical font (Noto Serif JP) with optional strategy - no render blocking */}
+        {/* Noto Serif JP — sous-ensemble des 4 SEULS caractères japonais du site.
+            Fix 2026-08-21 (PageSpeed : « Requêtes de blocage du rendu — 2 820 ms ») :
+            cette feuille pesait 347 Ko et bloquait le rendu 1 960 ms à elle seule.
+            Le commentaire précédent affirmait que `display=optional` évitait le
+            blocage : c'est faux. `font-display` ne régit que le comportement du
+            FICHIER de police une fois le CSS chargé ; un <link rel="stylesheet">
+            bloque le rendu dans tous les cas.
+
+            Le poids venait de la nature de la police : Noto Serif JP couvre tout
+            le japonais, que Google découpe en 372 blocs @font-face avec autant de
+            plages unicode. Or le site n'affiche QUE quatre glyphes — 和 et 田 dans
+            le wordmark, 色 et 彩 dans EditorialPoster (inventaire exhaustif du
+            dépôt). Le paramètre `text=` demande à Google de ne servir que
+            ceux-là : 347 031 → 930 octets, 372 → 3 blocs @font-face.
+
+            Si un nouveau caractère japonais apparaît dans l'interface, il faut
+            l'AJOUTER ici, sinon il s'affichera dans la police de repli. */}
         <link
           rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;500;700&display=optional"
+          href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;500;700&display=optional&text=%E5%92%8C%E7%94%B0%E8%89%B2%E5%BD%A9"
         />
         {/* Awin publisher domain verification — wada.style claim.
             Token fourni par Awin (2026-05-20). Le format exact du tag Awin
