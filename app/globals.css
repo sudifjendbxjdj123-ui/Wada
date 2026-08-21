@@ -13,9 +13,22 @@
  * - Fredoka, Inter: display=swap (show fallback while loading, critical for UX)
  * - Noto Serif JP: display=optional (Japanese kanji only, non-critical)
  * - Result: Text visible immediately, no layout shift when fonts arrive
+ *
+ * Fix 2026-08-21 — les deux @import url(...) vers Google Fonts ont été retirés
+ * d'ici. Ils DOUBLONNAIENT les <link rel="stylesheet"> d'app/layout.tsx, et le
+ * faisaient de la pire façon possible : un @import distant n'est découvert
+ * qu'APRÈS le téléchargement et l'analyse de cette feuille, alors qu'un <link>
+ * dans le <head> est vu immédiatement par le preload scanner du navigateur.
+ * Le chargement se déroulait donc en chaîne — HTML, puis ce CSS (330 ms), puis
+ * seulement le CSS Google, puis les fichiers de police — ce que PageSpeed
+ * signalait sous « Arborescence du réseau ».
+ *
+ * Le doublon annulait en prime le sous-ensemble de glyphes posé dans
+ * layout.tsx : cette ligne redemandait le Noto Serif JP COMPLET (347 Ko).
+ *
+ * Les polices se chargent désormais uniquement depuis <head> (app/layout.tsx).
+ * Ne pas réintroduire d'@import distant ici.
  */
-@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;500;700&display=optional');
 @import './design-improvements.css';
 
 /* Merriweather Sans — chargé localement (woff2 dans /public/fonts/)
