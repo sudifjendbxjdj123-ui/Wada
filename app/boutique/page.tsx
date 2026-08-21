@@ -8,7 +8,7 @@
  * être invalidé par /api/cron, pas par l'utilisateur qui ouvre la page.
  */
 import BackButton from "@/components/BackButton";
-import { BoutiqueHero } from "@/components/BoutiqueHero";
+import BoutiqueEntete from "@/components/BoutiqueEntete";
 import { BrandShowcaseCompact } from "@/components/BrandShowcaseCompact";
 
 export default function BoutiquePage() {
@@ -33,10 +33,15 @@ export default function BoutiquePage() {
       <div style={{ position: "absolute", top: 0, left: 0, right: 0, zIndex: 10 }}>
         <BackButton fallback="/" />
       </div>
-      <BoutiqueHero />
+      {/* Le mur de vêtements défilant est parti sur l'accueil (client
+          2026-08-22). La boutique reçoit à la place une entrée de catalogue
+          lisible : titre, genre, catégories, filtres, couleurs, palette du
+          jour. Un mur d'images qui bouge est une belle porte d'entrée, mais
+          une mauvaise page de courses. */}
+      <BoutiqueEntete />
 
       {/* Fill dead spaces - Compact brand showcase */}
-      <div style={{ maxWidth: 1200, margin: "40px auto", width: "100%", padding: "0 20px" }}>
+      <div style={{ maxWidth: 1200, margin: "28px auto 40px", width: "100%", padding: "0 20px" }}>
         <BrandShowcaseCompact maxProducts={6} cols={3} />
       </div>
     </main>

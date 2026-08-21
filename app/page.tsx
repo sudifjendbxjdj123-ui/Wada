@@ -1,4 +1,5 @@
 "use client";
+import MurDeVetements from "@/components/MurDeVetements";
 import { useEffect, useRef, useState } from "react";
 /* Brief 2026-05-31 (user demande verbatim « supprime cette option ») :
    bande « REPRENDRE — {palette} » retirée. Le composant ResumeBanner
@@ -73,113 +74,14 @@ export default function Home() {
      Retries identiques à v41 : backoff, canplay, visibilitychange,
      pageshow, first-tap. Le « cap d'échec gracieux » est désormais
      impossible à percevoir côté visiteur. */
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const [videoReady, setVideoReady] = useState(false);
-  /* Fix 2026-08-21 « LCP 7,1 s » : la source vidéo (21,6 Mo) n'est plus dans
-     le HTML. Elle est attachée seulement quand deux conditions sont réunies :
-     la page a fini de charger — l'image du hero, qui EST l'élément LCP, a donc
-     eu la bande passante pour elle — et la connexion peut l'encaisser. */
-  const [videoSrc, setVideoSrc] = useState<string | null>(null);
-
-  useEffect(() => {
-    /* Connexion lente ou mode économie de données : on s'en tient à l'image.
-       Le hero reste parfaitement présentable — c'est le principe de la couche 1,
-       et 21,6 Mo sur un forfait mobile serait de toute façon indéfendable.
-       navigator.connection n'existe pas sur Safari : sans information, on
-       charge (comportement d'avant ce correctif). */
-    const conn = (navigator as unknown as {
-      connection?: { saveData?: boolean; effectiveType?: string };
-    }).connection;
-    if (conn?.saveData) return;
-    if (conn?.effectiveType && /^(slow-2g|2g|3g)$/.test(conn.effectiveType)) return;
-
-    let cancelled = false;
-    const attach = () => {
-      if (cancelled) return;
-      setVideoSrc("/hero/femme-wada-bg.mp4");
-    };
-    /* Après l'évènement `load`, puis en temps mort du navigateur.
-       requestIdleCallback est absent des vieux Safari → repli sur setTimeout. */
-    const schedule = () => {
-      const ric = (window as unknown as {
-        requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => void;
-      }).requestIdleCallback;
-      if (ric) ric(attach, { timeout: 3000 });
-      else window.setTimeout(attach, 600);
-    };
-
-    if (document.readyState === "complete") schedule();
-    else window.addEventListener("load", schedule, { once: true });
-
-    return () => {
-      cancelled = true;
-      window.removeEventListener("load", schedule);
-    };
-  }, []);
-
-  useEffect(() => {
-    const v = videoRef.current;
-    if (!v || !videoSrc) return;
-
-    const tryPlay = () => {
-      if (!v.paused) return;
-      const p = v.play();
-      if (p && typeof p.catch === "function") p.catch(() => {});
-    };
-
-    /* `playing` event = la vidéo a vraiment commencé à jouer (pas juste
-       chargée). C'est le signal qui déclenche le fade-in par-dessus
-       l'image. Si jamais reçu → l'image reste visible (pas de bug). */
-    const onPlaying = () => setVideoReady(true);
-    v.addEventListener("playing", onPlaying);
-
-    /* La source vient d'être attachée en JS sur un élément en preload="none" :
-       on demande explicitement le chargement avant de tenter la lecture.
-       Safari iOS ne rafraîchit pas toujours la source tout seul. */
-    v.load();
-    tryPlay();
-    const onCanPlay = () => tryPlay();
-    v.addEventListener("canplay", onCanPlay);
-    v.addEventListener("loadeddata", onCanPlay);
-    const onVisibility = () => {
-      if (document.visibilityState === "visible") tryPlay();
-    };
-    document.addEventListener("visibilitychange", onVisibility);
-    const onPageShow = (e: PageTransitionEvent) => {
-      if (e.persisted) tryPlay();
-    };
-    window.addEventListener("pageshow", onPageShow);
-
-    /* Backoff retry — 5 tentatives échelonnées pour cold start lent. */
-    const backoffDelays = [100, 300, 800, 2000, 5000];
-    const backoffTimers: number[] = [];
-    backoffDelays.forEach((ms) => {
-      const t = window.setTimeout(() => tryPlay(), ms);
-      backoffTimers.push(t);
-    });
-
-    /* First-tap fallback : iOS PWA débloque toujours play() après gesture. */
-    const onFirstGesture = () => {
-      tryPlay();
-      document.removeEventListener("pointerdown", onFirstGesture);
-      document.removeEventListener("touchstart", onFirstGesture);
-    };
-    document.addEventListener("pointerdown", onFirstGesture, { passive: true });
-    document.addEventListener("touchstart", onFirstGesture, { passive: true });
-
-    return () => {
-      v.removeEventListener("playing", onPlaying);
-      v.removeEventListener("canplay", onCanPlay);
-      v.removeEventListener("loadeddata", onCanPlay);
-      document.removeEventListener("visibilitychange", onVisibility);
-      window.removeEventListener("pageshow", onPageShow);
-      document.removeEventListener("pointerdown", onFirstGesture);
-      document.removeEventListener("touchstart", onFirstGesture);
-      backoffTimers.forEach((t) => clearTimeout(t));
-    };
-    /* Dépend de videoSrc : tant qu'aucune source n'est attachée, il n'y a rien
-       à lire ; l'effet se (re)lance dès qu'elle l'est. */
-  }, [videoSrc]);
+  /* La photo de fond et la vidéo de 21,6 Mo qui tenaient ce hero sont
+     retirées (client 2026-08-22 : « à la place du mannequin on va mettre le
+     fond qu'il y a dans boutique »). Avec elles disparaissent l'élément le
+     plus lourd du site, la logique de repli image→vidéo, et ses six
+     mécanismes de relance (backoff, canplay, visibilitychange, pageshow,
+     premier appui) — tout cela n'existait que pour qu'une vidéo qui refuse de
+     démarrer sur iOS ne laisse pas un écran noir. Le mur de vêtements n'a
+     aucun de ces problèmes : ce sont des <img>. */
 
   return (
     <main
@@ -223,79 +125,28 @@ export default function Home() {
           l'image reste affichée — aucun bug visible côté client.
           ════════════════════════════════════════════════════════════════ */}
 
-      {/* COUCHE 1 : image toujours présente, z-index 0 */}
-      <img
-        className="wada-hero-media"
-        /* Fix 2026-08-21 (PageSpeed : « Améliorer l'affichage des images —
-           116 Kio », et LCP à 7,1 s dont cette image est l'élément).
-           On servait un seul fichier de 1600 px de large (152 Ko) pour un
-           affichage d'environ 400 px CSS. Trois tailles sont désormais
-           proposées et le navigateur choisit selon la largeur d'écran et la
-           densité de pixels : 800 px (54 Ko) suffit à un téléphone en 2×,
-           1200 px couvre le 3×, 1600 px reste pour les grands écrans.
-           `fetchPriority=high` sort cette image de la file d'attente basse
-           par défaut — c'est l'élément LCP, il doit partir en premier
-           (audit « Détection de la requête LCP »). */
-        src="/hero/femme-wada-bg-photo-800.webp"
-        srcSet="/hero/femme-wada-bg-photo-800.webp 800w, /hero/femme-wada-bg-photo-1200.webp 1200w, /hero/femme-wada-bg-photo.webp 1600w"
-        sizes="100vw"
-        fetchPriority="high"
-        alt=""
-        aria-hidden="true"
-        decoding="async"
-        style={{
-          position: "absolute",
-          inset: 0,
-          width: "100%",
-          height: "100%",
-          objectFit: "cover",
-          /* Le cadrage (object-position) vit dans globals.css — il diffère
-             entre mobile et desktop, ce qu'un style inline ne peut pas
-             exprimer. Cf. `.wada-hero-media`. */
-          zIndex: 0,
-          pointerEvents: "none",
-        }}
-      />
+      {/* ════════════════════════════════════════════════════════════════
+          FOND — mur de vêtements défilant (client 2026-08-22)
+          ════════════════════════════════════════════════════════════════
+          Remplace la photo + la vidéo qui tenaient ce fond. Le client veut
+          voir des VÊTEMENTS sur l'accueil, pas un mannequin — et c'est aussi
+          l'occasion de supprimer un fichier vidéo de 21,6 Mo qui, même chargé
+          après coup, restait le plus gros téléchargement du site.
 
-      {/* COUCHE 2 : vidéo par-dessus, opacity 0→1 quand elle joue.
-          Tant que `playing` ne s'est pas déclenché, opacity reste 0 et
-          l'image en dessous fait le rendu — c'est la garantie zéro-bug. */}
-      <video
-        className="wada-hero-media"
-        ref={videoRef}
-        autoPlay
-        muted
-        loop
-        playsInline
-        disablePictureInPicture
-        controlsList="nodownload nofullscreen noremoteplayback"
-        /* Fix 2026-08-21 : `preload="auto"` sur un fichier de 21,6 Mo. Sur la
-           « 4G lente » du test PageSpeed, le navigateur se jetait dessus et
-           saturait le lien — l'image du hero, elle, attendait son tour. D'où
-           un Speed Index à 3,3 s (la page a l'air prête) mais un LCP à 7,1 s
-           (l'élément principal n'est peint que 4 s plus tard).
-           La source n'est plus posée dans le HTML : elle est attachée en JS
-           une fois la page chargée (cf. useEffect), et jamais sur connexion
-           lente. `poster` est retiré car inutile — la vidéo reste en
-           opacity:0 jusqu'à ce qu'elle joue, son poster n'a donc jamais été
-           visible, et l'image de la couche 1 fait déjà ce travail. */
-        preload="none"
+          Le mur est le même composant que la boutique utilisait : images du
+          catalogue, cache localStorage pour un premier rendu immédiat, une
+          seule requête réseau. Voile sombre conservé : le titre est en blanc.
+          ════════════════════════════════════════════════════════════════ */}
+      <div
         aria-hidden="true"
         style={{
-          position: "absolute",
-          inset: 0,
-          width: "100%",
-          height: "100%",
-          objectFit: "cover",
-          /* Même cadrage que l'image de fond (`.wada-hero-media`) pour une
-             transition image→vidéo sans saut. */
-          zIndex: 1,
-          pointerEvents: "none",
-          opacity: videoReady ? 1 : 0,
-          transition: "opacity 0.6s ease-out",
+          position: "absolute", inset: 0, zIndex: 0,
+          overflow: "hidden", pointerEvents: "none",
         }}
-        src={videoSrc ?? undefined}
-      />
+      >
+        <MurDeVetements />
+      </div>
+
 
       {/* ────────────────────────────────────────────────────────────────
           OVERLAY GRADIENT — assombrissement bas pour lisibilité du texte
