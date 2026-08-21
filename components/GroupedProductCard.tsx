@@ -1,15 +1,29 @@
 "use client";
-import { useState, useMemo, useEffect } from "react";
+/**
+ * GroupedProductCard — carte produit de la grille catégorie.
+ *
+ * Refonte 2026-08-21 (« comme sur Zalando ») : la carte embarquait un
+ * sélecteur de couleur, un sélecteur de taille, un bouton « Ajouter au
+ * panier », un bloc « Complétez votre look » et un overlay quick view.
+ * Résultat sur téléphone : UNE carte occupait tout l'écran, et la grille
+ * passait à une seule colonne — on ne comparait plus rien.
+ *
+ * Anatomie retenue, celle des grandes boutiques : image, marque, nom, prix.
+ * Rien d'autre au-dessus de la ligne de flottaison. Les tailles et l'ajout au
+ * panier vivent dans la fiche produit, qui les affichait déjà.
+ *
+ * Deux éléments propres à WADA sont conservés, parce qu'ils sont la raison
+ * d'être du site : les pastilles de palette Sanzō Wada sur l'image, et les
+ * nuances disponibles sous le prix.
+ */
+import { useState, useMemo } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { GroupedProduct } from "@/lib/groupProducts";
 import { formatProductPrice } from "@/lib/priceFormat";
 import { getDisplayImageUrl } from "@/lib/image-utils";
 import { getMatchingPalettes } from "@/lib/getMatchingPalettes";
 import { SOURCE_LABEL } from "@/lib/SOURCE_LABEL";
 import { HeartIcon } from "./HeartIcon";
-import { addToCart } from "@/lib/cart";
-import { showToast } from "@/lib/toast";
 import { useLiked } from "@/hooks/useLiked";
 
 const BORDEAUX = "#6B3A32";
@@ -20,138 +34,42 @@ interface Props {
 }
 
 export function GroupedProductCard({ g, onClick }: Props) {
-  const router = useRouter();
   const [liked, setLiked] = useLiked(g.key);
-  const [hovering, setHovering] = useState(false);
-  const [quickView, setQuickView] = useState(false);
   const [selectedColorHex, setSelectedColorHex] = useState(g.primary.hex);
-  const [selectedSize, setSelectedSize] = useState<string | null>(null);
   const [imgLoading, setImgLoading] = useState(true);
 
-  // Reset selectedSize when product changes (g.key)
-  useEffect(() => {
-    setSelectedSize(null);
-  }, [g.key]);
-
-  // Trouver le produit selon la couleur sélectionnée
-  const currentVariant = useMemo(() => {
-    const selected = g.variants.find((v) => v.hex === selectedColorHex);
-    return selected || g.primary;
-  }, [selectedColorHex, g.primary, g.variants]);
-
-  // Tailles disponibles pour la couleur sélectionnée
-  const availableSizes = useMemo(() => {
-    return currentVariant.tailles || [];
-  }, [currentVariant.tailles]);
+  const currentVariant = useMemo(
+    () => g.variants.find((v) => v.hex === selectedColorHex) || g.primary,
+    [selectedColorHex, g.primary, g.variants],
+  );
 
   const source = SOURCE_LABEL[currentVariant.marchandSlug || ""] || currentVariant.marchand;
-  const matches = useMemo(() => getMatchingPalettes(currentVariant.hex), [currentVariant.hex]);
   const dom = /^#[0-9a-f]{6}$/i.test(currentVariant.hex || "") ? currentVariant.hex : "#ede4d4";
-  const bgGradient = `linear-gradient(180deg, #fff 0%, ${dom}30 100%)`;
+  const bgGradient = `linear-gradient(180deg, #fff 0%, ${dom}22 100%)`;
 
-  /* Fix 2026-06-13 « fabriqué = supprimé » : retiré les 4 badges
-     NOUVEAU/POPULAIRE/PROMO/MEILLEUR PRIX. Ils étaient calculés depuis
-     charCodeAt du product ID (NOUVEAU « Il y a 3j » sur ~40% des cartes,
-     déterministe-mais-faux) et des seuils de prix hardcodés (PROMO si
-     prix<50, MEILLEUR PRIX si 50≤prix<150). WADA est un site d'affiliation :
-     on n'invente pas d'âge produit, ni de promo, ni de statut « best price »
-     qu'on ne peut pas vérifier auprès du marchand. Si un agent parallèle
-     re-touche ce fichier, GARDEZ cette suppression. */
-
-  const handleAddToCart = (e: React.MouseEvent) => {
-    e.stopPropagation();
-
-    /* Fix 2026-08-20 « impossible d'ajouter un bijou au panier » : on exigeait
-       une taille pour TOUS les produits. Or bijoux, sacs et une grande partie
-       des accessoires arrivent sans `tailles` : aucun sélecteur n'était affiché,
-       donc aucune taille ne pouvait être choisie, et le bouton répondait
-       indéfiniment « Veuillez sélectionner une taille ». Le panier était
-       purement et simplement inaccessible sur ces catégories. La taille n'est
-       désormais requise que si le produit en propose. */
-    if (availableSizes.length > 0) {
-      if (!selectedSize) {
-        showToast("Veuillez sélectionner une taille", { variant: "info" });
-        return;
-      }
-      // Vérifier que la taille est en stock pour la couleur sélectionnée
-      if (!availableSizes.includes(selectedSize)) {
-        showToast("Cette taille n'est pas disponible", { variant: "info" });
-        return;
-      }
-    }
-
-    // Vérifier que le produit est en stock
-    if (!currentVariant.enStock) {
-      showToast("Produit indisponible", { variant: "info" });
-      return;
-    }
-
-    addToCart({
-      piece: currentVariant.categorie || "accent",
-      item: g.nom,
-      colorName: currentVariant.couleurNom || currentVariant.hex,
-      colorHex: currentVariant.hex,
-      query: `${g.marque} ${g.nom}`,
-      fromEntry: currentVariant.id,
-    });
-
-    showToast(`✓ ${g.marque} ${g.nom} ajouté au panier`, { variant: "success", duration: 3000 });
-  };
+  /* Palettes correspondantes.
+     Fix 2026-08-21 : la carte affichait « 309 palettes ». getMatchingPalettes
+     retient tout ce qui tombe sous DELTA_E_LOOSE (25), le seuil « approchant » :
+     une teinte neutre est donc proche de presque tout le dictionnaire, et le
+     compteur n'apprenait rien à personne. On ne montre plus de décompte mais
+     les trois accords les PLUS proches, du plus fidèle au moins fidèle — c'est
+     l'information utile, et elle tient en trois pastilles. */
+  const matches = useMemo(() => getMatchingPalettes(currentVariant.hex), [currentVariant.hex]);
+  const topPalettes = matches.slice(0, 3);
 
   return (
-    <article style={{ position: "relative", cursor: "pointer" }}>
-      <div onClick={(e) => onClick?.(e)}>
-        {/* Image produit */}
-        <div
-          style={{
-            background: bgGradient,
-            borderRadius: 14,
-            overflow: "hidden",
-            aspectRatio: "3/4",
-            position: "relative",
-            marginBottom: 10,
-            boxShadow: "0 2px 10px rgba(0,0,0,0.05)",
-            transition: "box-shadow 0.25s, transform 0.25s",
-          }}
-          onMouseEnter={(e) => {
-            setHovering(true);
-            e.currentTarget.style.boxShadow = "0 10px 26px rgba(0,0,0,0.14)";
-            e.currentTarget.style.transform = "translateY(-3px)";
-            const img = e.currentTarget.querySelector("img");
-            if (img) (img as HTMLImageElement).style.transform = "scale(1.05)";
-          }}
-          onMouseLeave={(e) => {
-            setHovering(false);
-            e.currentTarget.style.boxShadow = "0 2px 10px rgba(0,0,0,0.05)";
-            e.currentTarget.style.transform = "translateY(0)";
-            const img = e.currentTarget.querySelector("img");
-            if (img) (img as HTMLImageElement).style.transform = "scale(1)";
-          }}
-        >
+    <article className="wada-card">
+      <div onClick={(e) => onClick?.(e)} style={{ cursor: "pointer" }}>
+        {/* ── Image ── */}
+        <div className="wada-card-media" style={{ background: bgGradient }}>
           {currentVariant.image || currentVariant.largeImage ? (
             <>
-              {imgLoading && (
-                <div
-                  style={{
-                    position: "absolute",
-                    inset: 0,
-                    background: "linear-gradient(110deg, rgba(0,0,0,0) 30%, rgba(255,255,255,.5) 50%, rgba(0,0,0,0) 70%)",
-                    animation: "wada-skel-shimmer 1.4s linear infinite",
-                  }}
-                />
-              )}
+              {imgLoading && <div className="wada-card-skel" aria-hidden />}
               <img
                 src={getDisplayImageUrl(currentVariant.image, currentVariant.largeImage)}
                 alt={g.nom || g.marque || "Produit"}
                 loading="lazy"
-                style={{
-                  width: "100%",
-                  height: "100%",
-                  objectFit: "cover",
-                  objectPosition: "center",
-                  transition: "transform 0.4s cubic-bezier(.22,1,.36,1)",
-                  opacity: imgLoading ? 0.7 : 1,
-                }}
+                decoding="async"
                 onLoad={() => setImgLoading(false)}
                 onError={(e) => {
                   const img = e.currentTarget;
@@ -162,517 +80,68 @@ export function GroupedProductCard({ g, onClick }: Props) {
               />
             </>
           ) : (
-            <div
-              style={{
-                width: "100%",
-                height: "100%",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: "#c5b9a8",
-                fontSize: 28,
-              }}
-            >
-              ◻
-            </div>
+            <div className="wada-card-noimg">◻</div>
           )}
 
-          {/* Fix 2026-06-13 : bloc badges fabriqués (POPULAIRE/PROMO/MEILLEUR
-              PRIX/NOUVEAU) retiré — voir explication dans la déclaration. */}
-
-          {/* Palette badges — clickable & enhanced */}
-          {matches.length > 0 && (
+          {/* Pastilles palette — signature WADA, discrètes, en bas à gauche.
+              Lien vers l'accord le plus proche ; stopPropagation pour ne pas
+              ouvrir la fiche produit par-dessus. */}
+          {topPalettes.length > 0 && (
             <Link
-              href={`/palette/${matches[0]?.number}`}
+              href={`/palette/${topPalettes[0]!.number}`}
               onClick={(e) => e.stopPropagation()}
-              style={{
-                position: "absolute",
-                top: 10,
-                left: 10,
-                background: "rgba(255,255,255,0.95)",
-                backdropFilter: "blur(8px)",
-                borderRadius: 8,
-                padding: "6px 10px",
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-                boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
-                cursor: "pointer",
-                transition: "all 0.2s",
-                textDecoration: "none",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = "translateY(-2px)";
-                e.currentTarget.style.boxShadow = "0 4px 12px rgba(0,0,0,0.2)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = "translateY(0)";
-                e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.15)";
-              }}
+              className="wada-card-pal"
+              title={`Accord le plus proche : n°${topPalettes[0]!.number} · ${topPalettes[0]!.name}`}
+              aria-label={`Palette n°${topPalettes[0]!.number}, ${topPalettes[0]!.name}`}
             >
-              <div style={{ display: "flex", gap: 3 }}>
-                {matches.slice(0, 3).map((m) => (
-                  <span
-                    key={m.number}
-                    title={`Palette n°${m.number} · ${m.name}\n(Cliquez pour explorer)`}
-                    style={{
-                      width: 14,
-                      height: 14,
-                      borderRadius: "50%",
-                      background: m.swatch,
-                      border: "1px solid rgba(0,0,0,0.1)",
-                      cursor: "pointer",
-                      transition: "transform 0.2s",
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.transform = "scale(1.3)";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.transform = "scale(1)";
-                    }}
-                  />
-                ))}
-              </div>
-              <span
-                style={{
-                  fontSize: 11,
-                  fontWeight: 600,
-                  color: "#6B3A32",
-                  fontFamily: "'Inter'",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                {matches.length} palette{matches.length > 1 ? "s" : ""}
-              </span>
+              {topPalettes.map((m) => (
+                <span key={m.number} style={{ background: m.swatch }} />
+              ))}
             </Link>
           )}
-
-          {/* Overlay au hover — Quick view ou Voir détails */}
-          {hovering && !quickView && (
-            <div
-              style={{
-                position: "absolute",
-                inset: 0,
-                background: "rgba(26,26,26,0.72)",
-                borderRadius: 14,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                backdropFilter: "blur(2px)",
-                cursor: "pointer",
-              }}
-              onClick={() => setQuickView(true)}
-            >
-              <div
-                style={{
-                  textAlign: "center",
-                  color: "#fff",
-                  fontFamily: "'Fredoka'",
-                  fontSize: 18,
-                  fontWeight: 500,
-                  letterSpacing: "-0.4px",
-                }}
-              >
-                Quick view ⚡
-              </div>
-            </div>
-          )}
-
-          {/* Quick view overlay — Color + Size selectors */}
-          {quickView && (
-            <div
-              /* Fix 2026-08-20 « clics fantômes » : cet overlay est imbriqué
-                 dans le <div onClick> qui ouvre la fiche produit. Ni les pastilles
-                 couleur, ni les tailles, ni la croix de fermeture n'arrêtaient la
-                 propagation : chaque clic dans la Quick view rouvrait la grande
-                 modale par-dessus. On coupe la remontée au niveau de l'overlay,
-                 ce qui couvre tous ses enfants d'un coup. */
-              onClick={(e) => e.stopPropagation()}
-              style={{
-                position: "absolute",
-                inset: 0,
-                background: "rgba(26,26,26,0.95)",
-                borderRadius: 14,
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "center",
-                backdropFilter: "blur(4px)",
-                padding: 16,
-                zIndex: 10,
-              }}
-            >
-              {/* Couleur */}
-              {g.uniqueColors.length > 1 && (
-                <div style={{ marginBottom: 14 }}>
-                  <div style={{ display: "flex", gap: 6, justifyContent: "center" }}>
-                    {g.uniqueColors.slice(0, 5).map((c) => (
-                      <button
-                        key={c.hex}
-                        onClick={() => setSelectedColorHex(c.hex)}
-                        style={{
-                          width: 28,
-                          height: 28,
-                          borderRadius: "50%",
-                          background: c.hex,
-                          border: selectedColorHex === c.hex ? "2px solid #fff" : "2px solid rgba(255,255,255,0.3)",
-                          cursor: "pointer",
-                        }}
-                      />
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Taille */}
-              {availableSizes.length > 0 && (
-                <div style={{ marginBottom: 14 }}>
-                  <div style={{ display: "flex", gap: 4, flexWrap: "wrap", justifyContent: "center" }}>
-                    {availableSizes.slice(0, 4).map((size) => (
-                      <button
-                        key={size}
-                        onClick={() => setSelectedSize(size)}
-                        style={{
-                          padding: "6px 10px",
-                          borderRadius: 4,
-                          border: selectedSize === size ? "2px solid #fff" : "1px solid rgba(255,255,255,0.3)",
-                          background: selectedSize === size ? "rgba(255,255,255,0.1)" : "transparent",
-                          color: "#fff",
-                          fontSize: 11,
-                          fontFamily: "'Inter'",
-                          fontWeight: 600,
-                          cursor: "pointer",
-                        }}
-                      >
-                        {size}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Quick add to cart */}
-              <button
-                onClick={(e) => {
-                  handleAddToCart(e);
-                  setQuickView(false);
-                }}
-                style={{
-                  padding: "10px 20px",
-                  borderRadius: 6,
-                  background: "#fff",
-                  color: "#1a1a1a",
-                  border: "none",
-                  fontSize: 12,
-                  fontWeight: 700,
-                  cursor: "pointer",
-                  fontFamily: "'Inter'",
-                  marginTop: 8,
-                }}
-              >
-                ✓ Ajouter
-              </button>
-
-              {/* Close button */}
-              <button
-                onClick={() => setQuickView(false)}
-                style={{
-                  position: "absolute",
-                  top: 10,
-                  right: 10,
-                  background: "none",
-                  border: "none",
-                  color: "#fff",
-                  fontSize: 20,
-                  cursor: "pointer",
-                  opacity: 0.6,
-                }}
-              >
-                ×
-              </button>
-            </div>
-          )}
         </div>
 
-        {/* Infos produit */}
-        <p
-          style={{
-            margin: "0 0 1px",
-            fontSize: 10,
-            fontWeight: 700,
-            letterSpacing: "0.12em",
-            textTransform: "uppercase",
-            color: "#8a7a68",
-            fontFamily: "'Inter'",
-          }}
-        >
-          {g.marque}
-        </p>
-        <p
-          style={{
-            margin: "0 0 8px",
-            fontSize: 13,
-            lineHeight: 1.35,
-            color: "#1a1a1a",
-            fontFamily: "'Inter'",
-            display: "-webkit-box",
-            WebkitLineClamp: 2,
-            WebkitBoxOrient: "vertical",
-            overflow: "hidden",
-          }}
-        >
-          {g.nom}
+        {/* ── Marque · nom · prix ── */}
+        <p className="wada-card-brand">{g.marque}</p>
+        <p className="wada-card-name">{g.nom}</p>
+        <p className="wada-card-price">
+          {formatProductPrice(currentVariant.prix, currentVariant.marchandSlug, currentVariant.devise)}
         </p>
 
-        {/* Sélecteur couleur */}
+        {/* ── Nuances disponibles ── */}
         {g.uniqueColors.length > 1 && (
-          <div style={{ marginBottom: 12 }}>
-            <p
-              style={{
-                margin: "0 0 6px",
-                fontSize: 11,
-                fontWeight: 600,
-                color: "#8a7a68",
-                fontFamily: "'Inter'",
-                textTransform: "uppercase",
-                letterSpacing: "0.04em",
-              }}
-            >
-              Couleur
-            </p>
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-              {g.uniqueColors.map((c) => (
-                <button
-                  key={c.hex}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSelectedColorHex(c.hex);
-                  }}
-                  title={c.nom || c.hex}
-                  style={{
-                    width: 32,
-                    height: 32,
-                    borderRadius: 6,
-                    border:
-                      selectedColorHex === c.hex
-                        ? `2px solid ${BORDEAUX}`
-                        : "2px solid rgba(0,0,0,0.1)",
-                    background: c.hex,
-                    cursor: "pointer",
-                    transition: "all 0.2s",
-                    boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.08)",
-                  }}
-                  aria-label={`Couleur ${c.nom || c.hex}`}
-                />
-              ))}
-            </div>
+          <div className="wada-card-colors">
+            {g.uniqueColors.slice(0, 4).map((c) => (
+              <button
+                key={c.hex}
+                onClick={(e) => { e.stopPropagation(); setSelectedColorHex(c.hex); }}
+                title={c.nom || c.hex}
+                aria-label={`Couleur ${c.nom || c.hex}`}
+                aria-pressed={selectedColorHex === c.hex}
+                style={{
+                  background: c.hex,
+                  outline: selectedColorHex === c.hex ? `1.5px solid ${BORDEAUX}` : "none",
+                  outlineOffset: 1.5,
+                }}
+              />
+            ))}
+            {g.uniqueColors.length > 4 && (
+              <span className="wada-card-colors-more">+{g.uniqueColors.length - 4}</span>
+            )}
           </div>
         )}
 
-        {/* Sélecteur taille */}
-        {availableSizes.length > 0 && (
-          <div style={{ marginBottom: 12 }}>
-            <p
-              style={{
-                margin: "0 0 6px",
-                fontSize: 11,
-                fontWeight: 600,
-                color: "#8a7a68",
-                fontFamily: "'Inter'",
-                textTransform: "uppercase",
-                letterSpacing: "0.04em",
-              }}
-            >
-              Taille
-            </p>
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-              {availableSizes.map((size) => (
-                <button
-                  key={size}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSelectedSize(size);
-                  }}
-                  style={{
-                    padding: "7px 14px",
-                    borderRadius: 6,
-                    border:
-                      selectedSize === size
-                        ? `2px solid ${BORDEAUX}`
-                        : "1px solid rgba(0,0,0,0.15)",
-                    background: selectedSize === size ? "rgba(26,26,26,0.05)" : "transparent",
-                    color: "#1a1a1a",
-                    fontSize: 12,
-                    fontFamily: "'Inter'",
-                    fontWeight: 500,
-                    cursor: "pointer",
-                    transition: "all 0.2s",
-                  }}
-                >
-                  {size}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Prix (BIG & BOLD) + palette count */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "baseline",
-            justifyContent: "space-between",
-            gap: 6,
-            marginBottom: 6,
-            padding: "8px 10px",
-            background: "#faf6ee",
-            borderRadius: 8,
-          }}
-        >
-          <p
-            style={{
-              margin: 0,
-              fontSize: 16,
-              fontWeight: 700,
-              color: "#6B3A32",
-              fontFamily: "'Inter'",
-            }}
-          >
-            {formatProductPrice(currentVariant.prix, currentVariant.marchandSlug, currentVariant.devise)}
-          </p>
-          {matches.length > 0 && (
-            <span style={{ fontSize: 9, color: "#8a7a68", fontFamily: "'Inter'", fontWeight: 500, whiteSpace: "nowrap" }}>
-              {matches.length}P
-            </span>
-          )}
-        </div>
-
-        {/* Fix 2026-06-13 « fabriqué = supprimé » : retiré la note
-            « ★★★★☆ 4.5 (248 avis) » 100% hardcodée — WADA n'a pas de
-            reviews. Retiré « Livraison gratuite dès €50 » qui prétendait
-            fixer une règle universelle alors que chaque marchand a ses
-            propres conditions. */}
-
-        {/* Source */}
-        <p
-          style={{
-            margin: "0 0 12px",
-            fontSize: 11,
-            color: "#a89880",
-            fontFamily: "'Inter'",
-            display: "flex",
-            alignItems: "center",
-            gap: 3,
-          }}
-        >
-          <span style={{ fontSize: 9 }}>↗</span> {source}
+        <p className="wada-card-source">
+          <span aria-hidden>↗</span> {source}
         </p>
-
-        {/* Add to Cart button */}
-        <button
-          onClick={handleAddToCart}
-          style={{
-            width: "100%",
-            padding: "12px 16px",
-            borderRadius: 8,
-            border: "none",
-            background: BORDEAUX,
-            color: "#fff",
-            fontSize: 13,
-            fontWeight: 600,
-            fontFamily: "'Inter'",
-            cursor: "pointer",
-            transition: "all 0.2s",
-            marginBottom: 12,
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = "#52261f";
-            e.currentTarget.style.transform = "translateY(-2px)";
-            e.currentTarget.style.boxShadow = "0 4px 12px rgba(107, 58, 50, 0.3)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = BORDEAUX;
-            e.currentTarget.style.transform = "translateY(0)";
-            e.currentTarget.style.boxShadow = "none";
-          }}
-        >
-          Ajouter au panier
-        </button>
-
-        {/* Complétez votre look — Outfit recommendation */}
-        <div style={{ background: "#fef8f2", padding: 12, borderRadius: 8, textAlign: "center" }}>
-          <p style={{ fontSize: 10, fontWeight: 600, color: "#8a7a68", margin: "0 0 8px", fontFamily: "'Inter'", textTransform: "uppercase", letterSpacing: "0.04em" }}>
-            ✦ Complétez votre look
-          </p>
-          <p style={{ fontSize: 11, color: "#5a5a5a", margin: 0, fontFamily: "'Inter'" }}>
-            Découvrez une tenue assortie à cette pièce
-          </p>
-          <button
-            /* Fix 2026-08-20 : trois problèmes sur un seul bouton —
-               (1) pas de stopPropagation, donc le clic ouvrait aussi la fiche
-                   produit avant de naviguer ;
-               (2) window.location.href forçait un rechargement complet de
-                   l'app au lieu d'une navigation client ;
-               (3) hex.slice(1) plantait sur un produit sans couleur (`hex`
-                   absent du flux marchand) → écran d'erreur boutique. */
-            onClick={(e) => {
-              e.stopPropagation();
-              const hex = /^#[0-9a-f]{6}$/i.test(currentVariant.hex || "")
-                ? `?color=${currentVariant.hex.slice(1)}`
-                : "";
-              router.push(`/stylist${hex}`);
-            }}
-            style={{
-              marginTop: 8,
-              padding: "8px 14px",
-              background: "transparent",
-              border: "1px solid #8a7a68",
-              borderRadius: 6,
-              color: "#1a1a1a",
-              fontSize: 11,
-              fontWeight: 600,
-              fontFamily: "'Inter'",
-              cursor: "pointer",
-              transition: "all 0.2s",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = "#8a7a68";
-              e.currentTarget.style.color = "#fff";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = "transparent";
-              e.currentTarget.style.color = "#1a1a1a";
-            }}
-          >
-            Composer une tenue →
-          </button>
-        </div>
       </div>
 
-      {/* Bouton favori — accessible 44px touch target (WCAG) */}
+      {/* ── Favori — cible tactile 44px (WCAG) ── */}
       <button
-        onClick={(e) => {
-          e.stopPropagation();
-          setLiked(!liked);
-        }}
+        onClick={(e) => { e.stopPropagation(); setLiked(!liked); }}
         aria-label={liked ? "Retirer des favoris" : "Ajouter aux favoris"}
         aria-pressed={liked}
-        style={{
-          position: "absolute",
-          top: 8,
-          right: 8,
-          width: 44,
-          height: 44,
-          background: "rgba(255,255,255,0.92)",
-          backdropFilter: "blur(4px)",
-          border: "none",
-          borderRadius: "50%",
-          cursor: "pointer",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          boxShadow: "0 1px 5px rgba(0,0,0,0.12)",
-        }}
+        className="wada-card-heart"
       >
         <HeartIcon filled={liked} />
       </button>

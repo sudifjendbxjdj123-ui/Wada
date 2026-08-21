@@ -1759,6 +1759,25 @@ input[type="range"]:hover::-moz-range-thumb { background: #1B4A6B; box-shadow: 0
     padding: 24px 18px 18px !important;
   }
 }
+
+/* Compactage de l'en-tête catégorie sur mobile (refonte 2026-08-21).
+   Entre le bandeau du site et le premier produit s'empilaient le bouton
+   Retour, le fil d'Ariane, un kicker « CATÉGORIE », un titre de 48px et une
+   phrase d'accroche : près d'un écran entier de décor avant la moindre
+   chaussure. On resserre, et on retire ce qui fait doublon — la phrase
+   répétait le nombre d'articles, affiché juste au-dessus de la grille. */
+@media (max-width: 900px) {
+  .wada-cat-blurb { display: none !important; }
+  .wada-cat-hero {
+    padding: 12px 16px 10px !important;
+  }
+  .wada-cat-title {
+    font-size: 26px !important;
+  }
+  /* Kicker « CATÉGORIE » : le titre juste en dessous dit déjà la même chose. */
+  .wada-cat-hero > p:first-child { display: none !important; }
+  .wada-cat-layout { padding: 10px 16px !important; }
+}
 @media (max-width: 480px) {
   .wada-piece-header h3 {
     font-size: 18px !important;
@@ -4072,3 +4091,260 @@ input[type="range"]:active {
   backface-visibility: hidden;
 }
 
+
+/* ═══════════════════════════════════════════════════════════════════════
+   CARTE PRODUIT — grille catégorie (refonte 2026-08-21)
+   ═══════════════════════════════════════════════════════════════════════
+   Anatomie des grandes boutiques : image, marque, nom, prix. La carte
+   embarquait auparavant sélecteurs couleur et taille, bouton panier et bloc
+   « Complétez votre look » ; sur téléphone elle occupait tout l'écran et la
+   grille tombait à une colonne. Tailles et panier vivent désormais dans la
+   fiche produit. */
+.wada-card {
+  position: relative;
+}
+.wada-card-media {
+  position: relative;
+  aspect-ratio: 3 / 4;
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 8px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+  transition: box-shadow 0.25s ease, transform 0.25s ease;
+}
+.wada-card-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  display: block;
+  transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+@media (hover: hover) and (pointer: fine) {
+  .wada-card:hover .wada-card-media {
+    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.12);
+    transform: translateY(-2px);
+  }
+  .wada-card:hover .wada-card-media img { transform: scale(1.04); }
+}
+.wada-card-skel {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(110deg, rgba(0,0,0,0) 30%, rgba(255,255,255,.5) 50%, rgba(0,0,0,0) 70%);
+  animation: wada-skel-shimmer 1.4s linear infinite;
+}
+.wada-card-noimg {
+  width: 100%; height: 100%;
+  display: flex; align-items: center; justify-content: center;
+  color: #c5b9a8; font-size: 26px;
+}
+
+/* Pastilles de palette — signature WADA, discrètes. */
+.wada-card-pal {
+  position: absolute;
+  left: 8px; bottom: 8px;
+  display: flex;
+  gap: 3px;
+  padding: 4px 5px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.14);
+  text-decoration: none;
+}
+.wada-card-pal span {
+  width: 9px; height: 9px;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.wada-card-brand {
+  margin: 0 0 1px;
+  font-family: 'Inter', sans-serif;
+  font-size: 11px; font-weight: 700;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  color: #1a1a1a;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.wada-card-name {
+  margin: 0 0 4px;
+  font-family: 'Inter', sans-serif;
+  font-size: 12.5px; line-height: 1.3;
+  color: #6b6257;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.wada-card-price {
+  margin: 0;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px; font-weight: 700;
+  color: #1a1a1a;
+}
+.wada-card-colors {
+  display: flex; align-items: center; gap: 5px;
+  margin-top: 7px;
+}
+.wada-card-colors button {
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  padding: 0; cursor: pointer;
+}
+.wada-card-colors-more {
+  font-family: 'Inter', sans-serif;
+  font-size: 10px; color: #8a7a68;
+}
+.wada-card-source {
+  margin: 6px 0 0;
+  font-family: 'Inter', sans-serif;
+  font-size: 10.5px; color: #a89880;
+  display: flex; align-items: center; gap: 3px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.wada-card-source span { font-size: 9px; }
+
+.wada-card-heart {
+  position: absolute;
+  top: 2px; right: 2px;
+  width: 40px; height: 40px;
+  background: none; border: none;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+.wada-card-heart::before {
+  content: "";
+  position: absolute;
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+}
+.wada-card-heart > * { position: relative; }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   BARRE DE CONTRÔLE CATÉGORIE (refonte 2026-08-21)
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* Onglets genre — segmenté, pleine largeur sur mobile. */
+.wada-genre-tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.wada-genre-tabs button {
+  flex: 1;
+  padding: 10px 0;
+  border-radius: 8px;
+  border: 1px solid #e4dccd;
+  background: #fff;
+  color: #6b6257;
+  font-family: 'Inter', sans-serif;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+.wada-genre-tabs button.is-active {
+  background: #1a1a1a;
+  border-color: #1a1a1a;
+  color: #fff;
+}
+
+/* Filtres rapides — rangée défilante, comme en boutique. */
+.wada-quickfilters {
+  display: flex;
+  gap: 7px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  margin-bottom: 12px;
+  scrollbar-width: none;
+}
+.wada-quickfilters::-webkit-scrollbar { display: none; }
+.wada-quickfilters button {
+  flex: 0 0 auto;
+  padding: 8px 15px;
+  border-radius: 999px;
+  border: 1px solid #e4dccd;
+  background: #fff;
+  color: #1a1a1a;
+  font-family: 'Inter', sans-serif;
+  font-size: 12.5px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.wada-quickfilters button.is-active {
+  border-color: var(--wada-bordeaux, #6B3A32);
+  color: var(--wada-bordeaux, #6B3A32);
+  font-weight: 600;
+}
+.wada-quickfilters-reset {
+  color: #8a7a68 !important;
+  text-decoration: underline;
+  border-color: transparent !important;
+  background: transparent !important;
+}
+
+/* Nombre d'articles + tri. */
+.wada-resultbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.wada-resultbar-count {
+  font-family: 'Inter', sans-serif;
+  font-size: 12.5px;
+  color: #6b6257;
+  white-space: nowrap;
+}
+
+/* La sidebar desktop porte déjà tous les filtres : les puces rapides et les
+   onglets genre y feraient doublon. */
+@media (min-width: 901px) {
+  .wada-quickfilters { display: none; }
+  .wada-genre-tabs { display: none; }
+}
+
+/* En-tête catégorie sur mobile — suite du compactage.
+   Le bouton Retour, la pastille Panier et le fil d'Ariane occupaient 240px
+   de pastilles noires avant le titre. On les ramène à leur poids réel :
+   une navigation secondaire. */
+@media (max-width: 900px) {
+  .wada-cat-crumbs {
+    padding: 8px 16px !important;
+    gap: 4px !important;
+  }
+  .wada-cat-crumbs a {
+    padding: 3px 7px !important;
+    font-size: 10.5px !important;
+    background: transparent !important;
+    color: #8a7a68 !important;
+    font-weight: 500 !important;
+  }
+  /* Dernier élément = page courante : on le garde lisible mais sans pavé. */
+  .wada-cat-crumbs > div:last-of-type a {
+    color: #1a1a1a !important;
+    font-weight: 600 !important;
+  }
+  .wada-cat-cart button {
+    padding: 7px 12px !important;
+    font-size: 12px !important;
+  }
+}
+
+/* Bouton Retour dans l'en-tête catégorie — resserré sur mobile.
+   Le composant est partagé par tout le site, on ne touche donc pas à sa
+   définition : on le contraint uniquement ici, où il entrait en concurrence
+   visuelle avec le titre de la page. */
+@media (max-width: 900px) {
+  .wada-cat-page .wada-back-button-wrap {
+    padding: 10px 16px 0 !important;
+  }
+  .wada-cat-page .wada-back-button {
+    padding: 6px 13px !important;
+    font-size: 11px !important;
+  }
+}
