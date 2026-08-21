@@ -101,6 +101,11 @@ export interface ProduitAwin {
   lab?: [number, number, number];
   /** Prix en numérique. */
   prix: number;
+  /** Prix de référence (RRP) quand le marchand le fournit ET qu'il est
+   *  supérieur au prix courant. Sert à afficher le prix barré et le badge
+   *  de remise. Absent chez la plupart des marchands : dans ce cas rien
+   *  n'est affiché — on ne déduit pas une promotion, on la relaie. */
+  prixOriginal?: number;
   /** Devise ISO. */
   devise: "EUR" | "CHF" | "USD" | "GBP";
   /** Tailles disponibles (« S »/« M »/« L »…). */

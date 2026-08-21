@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { DictionaryEntry } from "@/lib/data";
 import { getDisplayImageUrl } from "@/lib/image-utils";
-import { formatProductPrice } from "@/lib/priceFormat";
+import { formatPrixCatalogue } from "@/lib/priceFormat";
 import { deltaEHex } from "@/lib/colorDistance";
 import { useLiked } from "@/hooks/useLiked";
 import {
@@ -47,6 +47,8 @@ type Produit = {
   urlProduit?: string;
   couleurNom?: string;
   hex?: string;
+  /** Prix de référence quand le marchand le fournit (cf. lib/schema.ts). */
+  prixOriginal?: number;
 };
 
 /* Au-delà, dire « ce produit porte cette teinte » serait faux. 15 est le
@@ -64,21 +66,23 @@ function IconeCoeur({ plein }: { plein: boolean }) {
   );
 }
 
-/** Teinte de la palette que ce produit porte réellement, ou null. */
-function teintePalette(
+/** Teintes de la palette que ce produit porte réellement, les plus proches
+    d'abord. Vide si aucune n'est assez proche pour qu'on puisse l'affirmer.
+    Deux au maximum : au-delà, la ligne déborde d'une carte de 152 px. */
+function teintesPalette(
   hexProduit: string | undefined,
   couleurs: Array<{ hex: string; name: string }>,
-): { hex: string; name: string } | null {
-  if (!hexProduit || couleurs.length === 0) return null;
-  let meilleure: { hex: string; name: string } | null = null;
-  let meilleurEcart = Infinity;
+): Array<{ hex: string; name: string }> {
+  if (!hexProduit || couleurs.length === 0) return [];
+  const proches: Array<{ hex: string; name: string; ecart: number }> = [];
   for (const c of couleurs) {
     try {
       const d = deltaEHex(hexProduit, c.hex);
-      if (d < meilleurEcart) { meilleurEcart = d; meilleure = c; }
+      if (d <= DELTA_E_PASTILLE) proches.push({ ...c, ecart: d });
     } catch { /* hex illisible : on ignore cette teinte */ }
   }
-  return meilleurEcart <= DELTA_E_PASTILLE ? meilleure : null;
+  return proches.sort((a, b) => a.ecart - b.ecart).slice(0, 2)
+    .map(({ hex, name }) => ({ hex, name }));
 }
 
 function CarteProduit({
@@ -91,23 +95,44 @@ function CarteProduit({
   /* useLiked rend un tuple [valeur, setter], pas un objet. */
   const [liked, setLiked] = useLiked(id);
   const image = getDisplayImageUrl(produit.image, produit.largeImage);
-  const teinte = useMemo(() => teintePalette(produit.hex, couleurs), [produit.hex, couleurs]);
+  const teintes = useMemo(() => teintesPalette(produit.hex, couleurs), [produit.hex, couleurs]);
   const marque = (produit.marque || produit.marchand || "").trim();
 
+  /* Remise : seulement si le marchand fournit un prix de référence
+     supérieur. Rien n'est déduit — voir `prixOriginal` dans lib/schema.ts. */
+  const remise =
+    typeof produit.prixOriginal === "number" &&
+    typeof produit.prix === "number" &&
+    produit.prixOriginal > produit.prix
+      ? Math.round((1 - produit.prix / produit.prixOriginal) * 100)
+      : null;
+
   return (
-    <article style={{ position: "relative", minWidth: 0 }}>
+    <article style={{
+      /* UNE carte bordée qui contient l'image ET le texte, au lieu d'une
+         image nue suivie de lignes flottantes (maquette 2026-08-22). */
+      position: "relative", minWidth: 0,
+      background: "#FFFDFA", border: `1px solid ${border}`,
+      borderRadius: 14, overflow: "hidden",
+      display: "flex", flexDirection: "column",
+    }}>
       {/* Lien marchand externe : <a rel="sponsored">, pas next/link — la
           destination est hors du site et le lien est affilié. */}
       <a
         href={produit.urlProduit || "#"}
         target="_blank"
         rel="noopener noreferrer sponsored"
-        style={{ display: "block", textDecoration: "none", color: "inherit" }}
+        style={{
+          display: "flex", flexDirection: "column", flex: 1,
+          textDecoration: "none", color: "inherit",
+        }}
       >
         <span style={{
           display: "block", position: "relative",
-          aspectRatio: "3 / 4", borderRadius: 12, overflow: "hidden",
-          background: "#F2EEE7",
+          aspectRatio: "1 / 1",
+          /* Fond légèrement plus sourd que la carte : les packshots sur fond
+             blanc se détachent, et la limite image/texte se lit sans trait. */
+          background: "#F2EFE9",
         }}>
           {image && (
             // eslint-disable-next-line @next/next/no-img-element
@@ -116,77 +141,119 @@ function CarteProduit({
               style={{ width: "100%", height: "100%", objectFit: "cover" }}
             />
           )}
+          {remise !== null && (
+            <span style={{
+              position: "absolute", top: 8, left: 8,
+              padding: "3px 8px", borderRadius: 999,
+              background: "rgba(192,57,43,.12)", color: "#A33529",
+              fontFamily: fontLabel, fontSize: 11, fontWeight: 600,
+              lineHeight: 1.4,
+            }}>
+              −{remise}%
+            </span>
+          )}
         </span>
 
-        {marque && (
-          <span style={{
-            display: "block", marginTop: 9,
-            fontFamily: fontLabel, fontSize: 10.5, letterSpacing: ".08em",
-            textTransform: "uppercase", color: ink, fontWeight: 600,
-            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-          }}>
-            {marque}
-          </span>
-        )}
         <span style={{
-          display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical",
-          overflow: "hidden",
-          /* `ink` et non `seal` : ce dernier vaut #1B4A6B, un BLEU. Les noms
-             de produits sortaient donc en bleu, comme des liens, au milieu
-             d'une grille où tout est déjà cliquable. */
-          marginTop: 2, fontFamily: fontBody, fontSize: 13, color: ink,
-          lineHeight: 1.32,
+          display: "flex", flexDirection: "column", gap: 3,
+          padding: "10px 11px 12px", flex: 1,
         }}>
-          {produit.nom}
+          {marque && (
+            <span style={{
+              fontFamily: fontLabel, fontSize: 11, letterSpacing: ".07em",
+              textTransform: "uppercase", color: ink, fontWeight: 600,
+              overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+            }}>
+              {marque}
+            </span>
+          )}
+          <span style={{
+            display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical",
+            overflow: "hidden",
+            /* `ink` et non `seal` : ce dernier vaut #1B4A6B, un BLEU. Les noms
+               de produits sortaient en bleu, comme des liens, au milieu d'une
+               grille où tout est déjà cliquable. */
+            fontFamily: fontBody, fontSize: 12.5, color: ink, lineHeight: 1.3,
+            /* Deux lignes réservées même quand le nom en tient une : sinon la
+               ligne de couleur et le prix se décalent d'une carte à l'autre
+               et la grille a l'air bancale. */
+            minHeight: "2.6em",
+          }}>
+            {produit.nom}
+          </span>
+
+          {/* Une seule ligne de couleur, avec ses pastilles — la maquette ne
+              répète pas le nom du marchand ET la teinte de palette. Quand le
+              produit touche deux teintes de la palette, les deux pastilles
+              s'affichent (« ●● Sable / Vert émeraude »). */}
+          {teintes.length > 0 ? (
+            <span style={{
+              display: "flex", alignItems: "center", gap: 5,
+              fontFamily: fontBody, fontSize: 11.5, color: textSecondary,
+              overflow: "hidden", whiteSpace: "nowrap",
+            }}>
+              <span aria-hidden style={{ display: "inline-flex", flexShrink: 0 }}>
+                {teintes.map((t, i) => (
+                  <span key={t.hex} style={{
+                    width: 9, height: 9, borderRadius: "50%",
+                    background: t.hex, border: `1px solid ${border}`,
+                    marginLeft: i === 0 ? 0 : -3,
+                  }} />
+                ))}
+              </span>
+              <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>
+                {teintes.map((t) => t.name).join(" / ")}
+              </span>
+            </span>
+          ) : produit.couleurNom ? (
+            <span style={{
+              fontFamily: fontBody, fontSize: 11.5, color: textSecondary,
+              overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+              textTransform: "capitalize",
+            }}>
+              {produit.couleurNom}
+            </span>
+          ) : null}
+
+          {typeof produit.prix === "number" && (
+            <span style={{
+              display: "flex", alignItems: "baseline", gap: 7,
+              marginTop: "auto", paddingTop: 5, flexWrap: "wrap",
+            }}>
+              {remise !== null && (
+                <span style={{
+                  fontFamily: fontBody, fontSize: 11.5, color: textSecondary,
+                  textDecoration: "line-through",
+                }}>
+                  {formatPrixCatalogue(produit.prixOriginal, produit.devise)}
+                </span>
+              )}
+              <span style={{
+                fontFamily: fontLabel, fontSize: 13.5,
+                color: remise !== null ? "#A33529" : ink,
+              }}>
+                {formatPrixCatalogue(produit.prix, produit.devise)}
+              </span>
+            </span>
+          )}
         </span>
-        {produit.couleurNom && (
-          <span style={{
-            display: "block", marginTop: 2,
-            fontFamily: fontBody, fontSize: 12, color: textSecondary,
-            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-            textTransform: "capitalize",
-          }}>
-            {produit.couleurNom}
-          </span>
-        )}
-        {typeof produit.prix === "number" && (
-          <span style={{
-            display: "block", marginTop: 4,
-            fontFamily: fontLabel, fontSize: 13.5, color: ink,
-          }}>
-            {formatProductPrice(produit.prix, produit.devise || "EUR")}
-          </span>
-        )}
-        {teinte && (
-          <span style={{
-            display: "flex", alignItems: "center", gap: 5, marginTop: 5,
-            fontFamily: fontBody, fontSize: 11.5, color: textSecondary,
-            overflow: "hidden", whiteSpace: "nowrap",
-          }}>
-            <span aria-hidden style={{
-              width: 8, height: 8, borderRadius: "50%", flexShrink: 0,
-              background: teinte.hex, border: `1px solid ${border}`,
-            }} />
-            <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{teinte.name}</span>
-          </span>
-        )}
       </a>
 
       {/* Le cœur est HORS du lien : imbriquer un bouton dans un <a> est
-          invalide, et le clic partait chez le marchand au lieu de liker. */}
+          invalide, et le clic partait chez le marchand au lieu de liker.
+          Sans pastille blanche (maquette) : il est posé sur un fond clair,
+          un cercle de plus alourdirait la vignette. */}
       <button
         type="button"
         onClick={() => setLiked(!liked)}
         aria-pressed={liked}
         aria-label={liked ? `Retirer ${produit.nom} des favoris` : `Ajouter ${produit.nom} aux favoris`}
         style={{
-          position: "absolute", top: 8, right: 8,
+          position: "absolute", top: 6, right: 6,
           width: 32, height: 32, borderRadius: "50%",
-          border: "none", cursor: "pointer",
-          background: "rgba(255,255,255,.88)",
-          color: liked ? mojo : "rgba(30,30,30,.55)",
+          border: "none", background: "transparent", cursor: "pointer",
+          color: liked ? mojo : "rgba(30,30,30,.62)",
           display: "inline-flex", alignItems: "center", justifyContent: "center",
-          boxShadow: "0 2px 8px -4px rgba(30,30,30,.4)",
         }}
       >
         <IconeCoeur plein={liked} />

@@ -56,6 +56,10 @@ export interface RawAwinProduct {
   merchant_image_url?: string;
   search_price?: string;
   store_price?: string;
+  /** Prix public conseillé. Champ standard du flux Awin, que ce parseur ne
+   *  lisait pas — d'où l'absence de tout prix barré sur le site alors que
+   *  certains marchands le fournissent. */
+  rrp_price?: string;
   currency?: string;
   in_stock?: string;
   /** Signal alternatif (Muji feed) — `1` = à afficher. */
@@ -810,6 +814,17 @@ export function normalizeAwinProduct(raw: RawAwinProduct): ProduitAwin | null {
   const price = isGBP ? Math.round(rawPrice * 1.17 * 100) / 100
     : isCHF ? Math.round(rawPrice * 1.03 * 100) / 100
     : rawPrice;
+
+  /* Prix de référence, converti dans la même devise que le prix courant.
+     On ne le retient que s'il est STRICTEMENT supérieur : certains flux
+     recopient le prix de vente dans rrp_price, ce qui afficherait une
+     remise de 0 % barrée — pire que pas de remise du tout. */
+  const rawRrp = parseFloatSafe(raw.rrp_price);
+  const rrp = rawRrp === null ? null
+    : isGBP ? Math.round(rawRrp * 1.17 * 100) / 100
+    : isCHF ? Math.round(rawRrp * 1.03 * 100) / 100
+    : rawRrp;
+  const prixOriginal = rrp !== null && rrp > price ? rrp : undefined;
   /* Brief TBF 2026-05-30 — extraction couleur depuis product_name :
      TBF a `colour="-"` ou vide pour tous les produits. Sans hex valide,
      paletteRef tombe sur 094 (gris défaut) pour TOUT TBF → invisible
@@ -957,6 +972,7 @@ export function normalizeAwinProduct(raw: RawAwinProduct): ProduitAwin | null {
     couleurNom: resolvedColour || raw.colour,
     hex,
     prix: price,
+    prixOriginal,
     /* Brief TBF 2026-05-29 : si le flux était en GBP, on a converti le
        prix en EUR au-dessus → on tagge devise=EUR pour cohérence
        d'affichage. Autres devises restent comme telles. */

@@ -175,7 +175,7 @@ export default function ListePieces({
                 fontFamily: fontLabel, fontSize: 12.5, color: ink,
                 whiteSpace: "nowrap", flexShrink: 0,
               }}>
-                {formatProductPrice(produit.prix, produit.devise)}
+                {formatProductPrice(produit.prix, null, produit.devise)}
               </span>
 
               <button
