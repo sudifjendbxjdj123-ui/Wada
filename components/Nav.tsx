@@ -110,7 +110,12 @@ export default function Nav() {
      formait une « bande grise » qui mangeait le quart supérieur du
      visuel. À .60 le Nav reste lisible (backdrop-filter blur 12px assure
      le contraste texte) tout en laissant transparaître le hero. */
-  const bgColor = "rgba(255,255,255,0.60)";
+  /* Maquette client 2026-08-22, variante du haut : la barre devient une
+     CARTE flottante crème, détachée des bords, plutôt qu'un bandeau collé
+     bord à bord. Le fond passe donc de translucide (0,60) à quasi opaque —
+     une carte posée sur la page doit se lire comme un objet, pas comme un
+     voile. Le flou reste : il adoucit ce qui défile dessous. */
+  const bgColor = "rgba(250,246,241,0.92)";
 
   return (
     <>
@@ -120,6 +125,12 @@ export default function Nav() {
         style={{
           position: "sticky",
           top: 0,
+          /* Marges autour de la carte + coins arrondis. Le `top` est décalé
+             de la safe-area pour que la carte ne se glisse pas sous
+             l'encoche sur iPhone. */
+          margin: "max(8px, env(safe-area-inset-top)) 10px 0",
+          borderRadius: 22,
+          border: "1px solid rgba(30,30,30,.07)",
           background: bgColor,
           color: fgColor,
           backdropFilter: "blur(12px)",
@@ -132,18 +143,37 @@ export default function Nav() {
              Maintenant on prend max(28px, safe-area-inset-right) pour
              garantir une marge visible quel que soit le device. Pareil
              gauche par symétrie iPhone landscape. */
-          padding: "18px max(28px, env(safe-area-inset-right)) 18px max(28px, env(safe-area-inset-left))",
-          paddingTop: "max(18px, env(safe-area-inset-top))",
+          /* La carte porte sa propre marge : plus besoin de compenser la
+             safe-area horizontale à l'intérieur, elle est déjà dégagée. */
+          padding: "12px 14px",
           zIndex: 50,
-          display: "flex",
+          /* GRILLE et non flex. En flex, les deux groupes latéraux à
+             `flex: 1 1 0` se partageaient l'espace à parts égales : le
+             groupe droit, plus large que sa part, débordait par la gauche
+             et le bouton Abonnement recouvrait le 和田 du logo (mesuré en
+             393 px). Une grille `1fr auto 1fr` ne laisse pas les colonnes
+             se chevaucher — si la droite a besoin de plus, sa piste grandit
+             et le logo se décale un peu au lieu d'être mangé. */
+          display: "grid",
+          gridTemplateColumns: "1fr auto 1fr",
           alignItems: "center",
-          justifyContent: "space-between",
+          gap: 8,
           fontFamily: "'Merriweather Sans', 'Inter', sans-serif",
-          boxShadow: "0 1px 0 rgba(7,7,2,.08)",
+          boxShadow: "0 6px 22px -14px rgba(30,30,30,.30)",
         }}
       >
-        {/* ─── Gauche : hamburger mobile + LOGO + liens desktop ─── */}
-        <div style={{ display: "flex", alignItems: "center", gap: 28 }}>
+        {/* ─── Gauche : hamburger mobile + liens desktop ───
+             Le logo n'est plus dans ce groupe : la maquette le veut CENTRÉ
+             dans la barre. Tant qu'il était collé au hamburger, il se
+             décalait à gauche et le centre optique de la carte restait vide.
+             La barre est donc en trois colonnes — gauche | logo | droite —
+             et les colonnes latérales ont la même largeur de base (0) pour
+             que le logo tombe au milieu quelle que soit la longueur des
+             boutons. */}
+        <div style={{
+          display: "flex", alignItems: "center", gap: 28,
+          minWidth: 0,
+        }}>
           {/* Hamburger — visible uniquement ≤880px */}
           <button
             type="button"
@@ -156,12 +186,16 @@ export default function Nav() {
               display: "none",
               alignItems: "center",
               justifyContent: "center",
-              width: 44, height: 44,
+              width: 42, height: 42,
               padding: 0,
-              background: "transparent",
-              border: "none",
+              /* Encadré (maquette) : le hamburger nu flottait dans le vide et
+                 ne se lisait pas comme un bouton. */
+              background: "rgba(255,255,255,.55)",
+              border: "1px solid rgba(30,30,30,.08)",
+              borderRadius: 13,
               cursor: "pointer",
               color: fgColor,
+              flexShrink: 0,
             }}
           >
             <span aria-hidden style={{
@@ -176,25 +210,6 @@ export default function Nav() {
           {/* Brief refonte 2026-05-30 : logo passe À GAUCHE avec les liens,
               au lieu d'être centré absolument. La nav est plus claire à
               parcourir d'un coup d'œil. */}
-          <Link
-            href="/"
-            aria-label="Accueil WADA"
-            className="wada-nav-center"
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              textDecoration: "none",
-              color: fgColor,
-              fontFamily: "'Fredoka', sans-serif",
-              fontWeight: 700,
-              fontSize: "1.5rem",
-              letterSpacing: "0.02em",
-              lineHeight: 1,
-            }}
-          >
-            <span>WADA</span>
-            <span className="wada-jp" style={{ marginLeft: 4 }}>和田</span>
-          </Link>
 
           {/* Liens desktop — collés au logo, plus de gap absolu */}
           <div
@@ -225,37 +240,76 @@ export default function Nav() {
           </div>
         </div>
 
+        <Link
+            href="/"
+            aria-label="Accueil WADA"
+            className="wada-nav-center"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              textDecoration: "none",
+              color: fgColor,
+              fontFamily: "'Fredoka', sans-serif",
+              fontWeight: 700,
+              fontSize: "1.5rem",
+              letterSpacing: "0.02em",
+              lineHeight: 1,
+            }}
+          >
+            <span>WADA</span>
+            <span className="wada-jp" style={{ marginLeft: 4 }}>和田</span>
+        </Link>
+
         {/* ─── Droite : Favoris + Abonnement + ProfileMenu ─── */}
         <div
           className="wada-nav-right"
-          style={{ display: "flex", alignItems: "center", gap: 12 }}
+          style={{
+            display: "flex", alignItems: "center", justifyContent: "flex-end",
+            gap: 12,
+            /* PAS de `minWidth: 0` ici. Avec lui, la contribution minimale de
+               cette colonne tombait à zéro : la piste `1fr` restait à sa part
+               théorique (123 px) alors que le contenu en demandait 137, et le
+               bouton Abonnement débordait par la gauche, sur le logo. Mesuré
+               en 393 px, la place ne manque pourtant pas — 298 px requis pour
+               349 disponibles. Sans la contrainte, la piste s'élargit
+               d'elle-même et prend sur la colonne gauche, qui est vide. */
+          }}
         >
           <Link
             href="/tarifs"
             className="wada-nav-tarifs"
             style={{
+              /* Pilule PLEINE (maquette) et non plus en contour : c'est la
+                 seule action commerciale de la barre, elle doit se voir sans
+                 qu'on la survole. Le survol inversé d'avant la rendait
+                 invisible au repos sur mobile, où il n'y a pas de survol. */
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 7,
               fontFamily: "'Fredoka', sans-serif",
               fontSize: "0.9rem",
               fontWeight: 500,
-              color: PLUM,
+              color: "#FFFFFF",
               textDecoration: "none",
-              background: "transparent",
+              background: PLUM,
               border: `1px solid ${PLUM}`,
               borderRadius: "6.25rem",
-              padding: "9px 18px",
+              padding: "10px 15px",
               lineHeight: 1,
-              transition: "background .22s ease, color .22s ease",
+              transition: "filter .22s ease",
               whiteSpace: "nowrap",
+              flexShrink: 0,
             }}
-            onMouseEnter={(ev) => {
-              ev.currentTarget.style.background = PLUM;
-              ev.currentTarget.style.color = "#FFFFFF";
-            }}
-            onMouseLeave={(ev) => {
-              ev.currentTarget.style.background = "transparent";
-              ev.currentTarget.style.color = PLUM;
-            }}
+            onMouseEnter={(ev) => { ev.currentTarget.style.filter = "brightness(1.12)"; }}
+            onMouseLeave={(ev) => { ev.currentTarget.style.filter = "none"; }}
           >
+            {/* Étincelle à quatre branches — le repère « premium » de la
+                maquette, tracé plutôt qu'en emoji pour suivre la couleur du
+                texte et rester net à toute taille. */}
+            <svg width="15" height="15" viewBox="0 0 24 24" aria-hidden fill="currentColor">
+              <path d="M12 2.2 13.7 8.3 19.8 10 13.7 11.7 12 17.8 10.3 11.7 4.2 10 10.3 8.3 12 2.2Z" />
+              <path d="M18.6 15.4 19.4 18l2.6.8-2.6.8-.8 2.6-.8-2.6-2.6-.8 2.6-.8.8-2.6Z" />
+            </svg>
             Abonnement
           </Link>
 
