@@ -250,57 +250,12 @@ export default function BoutiqueEntete({
         )}
       </div>
 
-      {/* ── Palette du jour ────────────────────────────────────────────── */}
-      {palette && (
-        <button
-          type="button"
-          onClick={() => router.push(`/palette/${palette.number}`)}
-          style={{
-            width: "100%", display: "flex", alignItems: "center", gap: 12,
-            margin: "18px 0 0", padding: "13px 15px", borderRadius: 14,
-            border: `1px solid ${border}`, background: "#FFFDFA",
-            cursor: "pointer", textAlign: "left", font: "inherit", color: "inherit",
-          }}
-        >
-          <span style={{ flex: 1, minWidth: 0 }}>
-            <span style={{
-              display: "block", fontFamily: fontHeading, fontSize: 16, color: ink,
-              overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-            }}>
-              {palette.name}
-            </span>
-            <span style={{
-              display: "flex", alignItems: "center", gap: 7, marginTop: 4,
-              fontFamily: fontBody, fontSize: 12.5, color: textSecondary,
-              overflow: "hidden",
-            }}>
-              {palette.colors.slice(0, 3).map((c) => (
-                <span key={c.hex} style={{
-                  display: "inline-flex", alignItems: "center", gap: 5,
-                  whiteSpace: "nowrap",
-                }}>
-                  <span aria-hidden style={{
-                    width: 9, height: 9, borderRadius: "50%",
-                    background: c.hex, border: `1px solid ${border}`,
-                  }} />
-                  {c.name}
-                </span>
-              ))}
-            </span>
-          </span>
-          <span style={{
-            display: "inline-flex", alignItems: "center", gap: 6,
-            fontFamily: fontBody, fontSize: 13, color: textSecondary,
-            whiteSpace: "nowrap", flexShrink: 0,
-          }}>
-            Voir
-            <svg width="15" height="15" viewBox="0 0 24 24" aria-hidden fill="none"
-              stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="m9 6 6 6-6 6" />
-            </svg>
-          </span>
-        </button>
-      )}
+      {/* La carte « palette du jour » vivait ici. Elle est partie dans
+          VitrineBoutique (section « Shopper par palette WADA », maquette
+          client 2026-08-22), qui montre la MÊME palette 200 px plus bas avec
+          toutes ses teintes et un vrai bouton d'achat. Deux cartes pour une
+          seule palette sur le même écran, c'est une répétition, pas une mise
+          en avant. Le contexte remonté au parent est inchangé. */}
 
       <style>{`
         .wada-tabs-scroll { scrollbar-width: none; }

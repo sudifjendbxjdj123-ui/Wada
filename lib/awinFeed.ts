@@ -973,6 +973,15 @@ export function normalizeAwinProduct(raw: RawAwinProduct): ProduitAwin | null {
     hex,
     prix: price,
     prixOriginal,
+    /* Horodatage marchand, conservé pour trier les arrivages. Normalisé en
+       ISO quand la date est lisible ; ignoré sinon plutôt que de propager une
+       chaîne qu'aucun tri ne saura comparer. */
+    dateMaj: (() => {
+      const brut = (raw.last_updated || "").trim();
+      if (!brut) return undefined;
+      const d = new Date(brut);
+      return Number.isNaN(d.getTime()) ? undefined : d.toISOString();
+    })(),
     /* Brief TBF 2026-05-29 : si le flux était en GBP, on a converti le
        prix en EUR au-dessus → on tagge devise=EUR pour cohérence
        d'affichage. Autres devises restent comme telles. */

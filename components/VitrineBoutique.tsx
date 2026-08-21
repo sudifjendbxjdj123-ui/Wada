@@ -1,35 +1,39 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
+import type { DictionaryEntry } from "@/lib/data";
 import { getDisplayImageUrl } from "@/lib/image-utils";
+import { formatPrixCatalogue } from "@/lib/priceFormat";
+import { deltaEHex } from "@/lib/colorDistance";
+import { getCartCount } from "@/lib/cart";
+import { useLiked } from "@/hooks/useLiked";
 import {
   ink, border, textSecondary, mojo,
   fontHeading, fontBody, fontLabel,
 } from "@/lib/styles";
 
 /**
- * VitrineBoutique — le bandeau « jusqu'à −N% » et la rangée « Tendances
- * maintenant », entre les filtres et le catalogue de /boutique.
+ * VitrineBoutique — la page d'accueil de la boutique, section par section.
  *
- * Maquette client 2026-08-22 (« je veux EXACTEMENT ça »).
+ * Maquette client 2026-08-22 (« donne-moi exactement ça »). Neuf blocs :
+ * recherche, onglets, nouveautés, tendances, palette WADA, sélection été,
+ * sport, offres de marques, coups de cœur.
  *
- * Deux partis pris, tous les deux au service de l'honnêteté commerciale :
+ * Règle appliquée partout : AUCUN chiffre n'est écrit en dur. Les remises,
+ * les prix « dès X € » et les dates viennent du catalogue. Une section dont
+ * la donnée manque ne s'affiche pas, plutôt que d'afficher une valeur
+ * inventée que le premier clic démentirait.
  *
- *  1. Le pourcentage du bandeau est CALCULÉ sur les produits réellement
- *     soldés par les marchands (`prixOriginal` du flux Awin). Si aucun
- *     produit n'est en promotion, le bandeau ne s'affiche pas du tout —
- *     annoncer une remise qui n'existe pas serait de la publicité mensongère,
- *     et le client s'en apercevrait au premier clic.
+ * Deux écarts assumés avec la maquette, expliqués à leur emplacement :
+ *   - les marques sont en typographie, pas en logos (aucun fichier de logo
+ *     dans le dépôt, et fabriquer de faux logos serait douteux) ;
+ *   - « Les plus aimés » devient « Coups de cœur WADA » — il n'existe aucune
+ *     donnée de popularité, la renommer était plus honnête que l'inventer.
  *
- *  2. Les marques listées sont celles qui ont VRAIMENT une pièce soldée, pas
- *     une liste écrite en dur. Elles sont composées en typographie WADA et
- *     non en logos : le dépôt n'a aucun fichier de logo, et fabriquer de
- *     faux logos de marques serait à la fois laid et juridiquement douteux.
- *
- * Une seule salve de deux requêtes, lancées EN PARALLÈLE : le catalogue de la
- * page en fait déjà une, et empiler des appels séquentiels sur une route
- * serverless qui balaie le KV est précisément ce qui coûtait 5 s d'attente
- * sur /ma-tenue.
+ * Toutes les données viennent de DEUX requêtes lancées en parallèle. Empiler
+ * des appels séquentiels sur une route qui balaie le KV est exactement ce qui
+ * coûtait cinq secondes d'attente sur /ma-tenue.
  */
 
 type Produit = {
@@ -41,242 +45,677 @@ type Produit = {
   largeImage?: string;
   prix?: number;
   prixOriginal?: number;
+  devise?: string;
+  urlProduit?: string;
+  couleurNom?: string;
+  hex?: string;
   description?: string;
+  dateMaj?: string;
 };
 
-/* Thèmes de la rangée « Tendances maintenant ». Le `motif` sert à choisir une
-   photo réelle du catalogue pour la vignette ; le `q` est la recherche vers
-   laquelle la tuile emmène. Aucune image n'est stockée : les visuels viennent
-   des produits, donc ils suivent le catalogue sans maintenance. */
-const TENDANCES: Array<{ titre: string; sous: string; q: string; motif: RegExp }> = [
-  { titre: "Lin & naturel", sous: "Matières naturelles", q: "lin",
-    motif: /\blin\b|linen|coton|cotton|chanvre/i },
-  { titre: "Sneakers", sous: "Les incontournables", q: "sneakers",
-    motif: /sneaker|basket|trainer|running/i },
-  { titre: "Maille", sous: "Douceur et volume", q: "pull",
-    motif: /pull|maille|knit|sweat|cardigan/i },
-  { titre: "Tailoring", sous: "Lignes nettes", q: "blazer",
-    motif: /blazer|veste|manteau|costume|pinces/i },
-  { titre: "Denim", sous: "Le basique qui dure", q: "jean",
-    motif: /jean|denim/i },
-  { titre: "Accessoires", sous: "Le détail qui compte", q: "sac",
-    motif: /sac|ceinture|casquette|bonnet|lunettes|foulard/i },
-];
+/* ══════════════════════════════════════════════════════════════════════
+   PETITES BRIQUES
+   ══════════════════════════════════════════════════════════════════════ */
 
-function Fleche({ taille = 14 }: { taille?: number }) {
+function Fleche({ t = 14 }: { t?: number }) {
   return (
-    <svg width={taille} height={taille} viewBox="0 0 24 24" aria-hidden fill="none"
+    <svg width={t} height={t} viewBox="0 0 24 24" aria-hidden fill="none"
       stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="m9 6 6 6-6 6" />
     </svg>
   );
 }
 
-export default function VitrineBoutique({ genre }: { genre?: string | null }) {
+function Coeur({ plein, taille = 18 }: { plein: boolean; taille?: number }) {
+  return (
+    <svg width={taille} height={taille} viewBox="0 0 24 24" aria-hidden
+      fill={plein ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.8"
+      strokeLinecap="round" strokeLinejoin="round">
+      <path d="M20.8 5.6a5.2 5.2 0 0 0-7.4 0L12 7l-1.4-1.4a5.2 5.2 0 1 0-7.4 7.4l1.4 1.4L12 22l7.4-7.6 1.4-1.4a5.2 5.2 0 0 0 0-7.4Z" />
+    </svg>
+  );
+}
+
+/** Rangée qui défile horizontalement, débordant jusqu'aux bords de l'écran. */
+function Rangee({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="wada-vitrine-scroll" style={{
+      display: "flex", gap: 10, overflowX: "auto",
+      WebkitOverflowScrolling: "touch",
+      /* Marge négative + padding : les tuiles filent jusqu'au bord, comme
+         dans les carrousels d'applis marchandes, sans casser la gouttière
+         de la page. */
+      margin: "0 -5%", padding: "0 5% 2px",
+      scrollSnapType: "x proximity",
+    }}>
+      {children}
+    </div>
+  );
+}
+
+function TitreSection({
+  titre, href,
+}: { titre: string; href?: string }) {
+  return (
+    <div style={{
+      display: "flex", alignItems: "center", justifyContent: "space-between",
+      gap: 12, margin: "0 0 11px",
+    }}>
+      <h2 style={{
+        fontFamily: fontLabel, fontSize: 11, letterSpacing: ".14em",
+        textTransform: "uppercase", color: ink, fontWeight: 600, margin: 0,
+      }}>
+        {titre}
+      </h2>
+      {href && (
+        <Link href={href} style={{
+          display: "inline-flex", alignItems: "center", gap: 5,
+          fontFamily: fontBody, fontSize: 13, color: mojo,
+          textDecoration: "none", whiteSpace: "nowrap",
+        }}>
+          Voir tout
+          <Fleche />
+        </Link>
+      )}
+    </div>
+  );
+}
+
+/** Carte produit compacte des carrousels (nouveautés, coups de cœur). */
+function CarteProduit({ p }: { p: Produit }) {
+  const id = p.id || p.urlProduit || p.nom;
+  const [liked, setLiked] = useLiked(id);
+  const image = getDisplayImageUrl(p.image, p.largeImage);
+  const remise =
+    typeof p.prixOriginal === "number" && typeof p.prix === "number" && p.prixOriginal > p.prix
+      ? Math.round((1 - p.prix / p.prixOriginal) * 100)
+      : null;
+
+  return (
+    <article style={{
+      position: "relative", flex: "0 0 auto", width: 152,
+      background: "#FFFDFA", border: `1px solid ${border}`, borderRadius: 14,
+      overflow: "hidden", scrollSnapAlign: "start",
+      display: "flex", flexDirection: "column",
+    }}>
+      <a href={p.urlProduit || "#"} target="_blank" rel="noopener noreferrer sponsored"
+        style={{ display: "flex", flexDirection: "column", flex: 1, textDecoration: "none", color: "inherit" }}>
+        <span style={{ display: "block", position: "relative", aspectRatio: "1 / 1", background: "#F2EFE9" }}>
+          {image && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={image} alt={p.nom} loading="lazy" decoding="async"
+              style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+          )}
+          {remise !== null && (
+            <span style={{
+              position: "absolute", top: 7, left: 7, padding: "3px 8px", borderRadius: 999,
+              background: "rgba(192,57,43,.12)", color: "#A33529",
+              fontFamily: fontLabel, fontSize: 10.5, fontWeight: 600, lineHeight: 1.4,
+            }}>
+              −{remise}%
+            </span>
+          )}
+        </span>
+        <span style={{ display: "flex", flexDirection: "column", gap: 2, padding: "9px 10px 11px", flex: 1 }}>
+          {(p.marque || p.marchand) && (
+            <span style={{
+              fontFamily: fontLabel, fontSize: 10.5, letterSpacing: ".07em",
+              textTransform: "uppercase", color: ink, fontWeight: 600,
+              overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+            }}>
+              {p.marque || p.marchand}
+            </span>
+          )}
+          <span style={{
+            display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical",
+            overflow: "hidden", minHeight: "2.6em",
+            fontFamily: fontBody, fontSize: 12, color: ink, lineHeight: 1.3,
+          }}>
+            {p.nom}
+          </span>
+          {typeof p.prix === "number" && (
+            <span style={{ display: "flex", alignItems: "baseline", gap: 6, marginTop: "auto", paddingTop: 4, flexWrap: "wrap" }}>
+              {remise !== null && (
+                <span style={{ fontFamily: fontBody, fontSize: 11, color: textSecondary, textDecoration: "line-through" }}>
+                  {formatPrixCatalogue(p.prixOriginal, p.devise)}
+                </span>
+              )}
+              <span style={{ fontFamily: fontLabel, fontSize: 13, color: remise !== null ? "#A33529" : ink }}>
+                {formatPrixCatalogue(p.prix, p.devise)}
+              </span>
+            </span>
+          )}
+        </span>
+      </a>
+      {/* Hors du lien : un bouton dans un <a> est invalide, et le clic
+          partirait chez le marchand au lieu de liker. */}
+      <button type="button" onClick={() => setLiked(!liked)} aria-pressed={liked}
+        aria-label={liked ? `Retirer ${p.nom} des favoris` : `Ajouter ${p.nom} aux favoris`}
+        style={{
+          position: "absolute", top: 5, right: 5, width: 30, height: 30,
+          borderRadius: "50%", border: "none", background: "transparent", cursor: "pointer",
+          color: liked ? mojo : "rgba(30,30,30,.62)",
+          display: "inline-flex", alignItems: "center", justifyContent: "center",
+        }}>
+        <Coeur plein={liked} />
+      </button>
+    </article>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   THÈMES
+   ══════════════════════════════════════════════════════════════════════
+   Chaque thème sert à DEUX choses : choisir une photo réelle du catalogue
+   pour sa vignette, et construire la recherche vers laquelle elle emmène.
+   Aucune image n'est stockée : les visuels suivent le catalogue. */
+
+/* `exclut` retire les faux positifs que `motif` attrape par sous-chaîne.
+   Mesuré : « T-shirt imprimé » satisfait /shirt/ et se retrouvait en photo ET
+   en « dès X € » de la tuile « Chemises ajourées ». Une tuile qui montre un
+   t-shirt sous le mot « chemises » est un mensonge de vitrine. */
+type Theme = { titre: string; sous: string; q: string; motif: RegExp; exclut?: RegExp };
+
+const TENDANCES: Theme[] = [
+  { titre: "Blokecore", sous: "L'esprit football au quotidien", q: "maillot",
+    motif: /maillot|jersey|football|track|retro/i },
+  { titre: "Lin & naturel", sous: "Matières légères et respirantes", q: "lin",
+    motif: /\blin\b|linen|chanvre|coton bio/i },
+  { titre: "Sneakers", sous: "Les incontournables du moment", q: "sneakers",
+    motif: /sneaker|basket|trainer|running/i },
+  { titre: "Graphic tees", sous: "Styles & imprimés qui marquent", q: "t-shirt",
+    motif: /t[\s-]?shirt|tee\b|graphic|imprim/i },
+];
+
+const SELECTION_ETE: Theme[] = [
+  { titre: "Chemises ajourées", sous: "", q: "chemise",
+    motif: /chemise|chemisier|shirt/i, exclut: /t[\s-]?shirt|tee[\s-]?shirt|sweat[\s-]?shirt/i },
+  { titre: "Ensembles légers", sous: "", q: "ensemble", motif: /ensemble|set\b|coordonn/i },
+  { titre: "Shorts", sous: "", q: "short", motif: /short|bermuda/i },
+  { titre: "Débardeurs", sous: "", q: "débardeur", motif: /d[ée]bardeur|tank/i },
+  { titre: "Accessoires", sous: "", q: "casquette",
+    motif: /casquette|\bbobs?\b|lunettes|ceinture|\bsacs?\b|besace/i },
+];
+
+const SPORT: Theme[] = [
+  { titre: "Running", sous: "", q: "running", motif: /running|course|trail/i },
+  { titre: "Training", sous: "", q: "training", motif: /training|gym|fitness|sport/i },
+  { titre: "Football", sous: "", q: "football", motif: /football|foot\b|soccer/i },
+  { titre: "Outdoor", sous: "", q: "outdoor", motif: /outdoor|randonn|parka|coupe-vent/i },
+  { titre: "Basketball", sous: "", q: "basket", motif: /basketball|basket-ball|hoops/i },
+];
+
+/* Les onglets de la maquette. Six d'entre eux pointent vers une section
+   réellement présente sur la page. « Sneakers » n'en a pas : plutôt que de
+   le faire tomber sur une section qui parle d'autre chose — un onglet qui
+   ment sur sa destination —, il ouvre la recherche correspondante. */
+const ONGLETS: Array<{ label: string; ancre?: string; q?: string }> = [
+  { label: "Pour vous", ancre: "pour-vous" },
+  { label: "Nouveautés", ancre: "nouveautes" },
+  { label: "Tendances", ancre: "tendances" },
+  { label: "Été", ancre: "ete" },
+  { label: "Sport", ancre: "sport" },
+  { label: "Sneakers", q: "sneakers baskets" },
+  { label: "Promos", ancre: "offres" },
+];
+
+/* ══════════════════════════════════════════════════════════════════════
+   COMPOSANT
+   ══════════════════════════════════════════════════════════════════════ */
+
+export default function VitrineBoutique({
+  genre, palette,
+}: {
+  genre?: string | null;
+  palette?: DictionaryEntry | null;
+}) {
   const router = useRouter();
-  const [promos, setPromos] = useState<Produit[]>([]);
   const [pool, setPool] = useState<Produit[]>([]);
+  const [promos, setPromos] = useState<Produit[]>([]);
+  const [recherche, setRecherche] = useState("");
+  const [panier, setPanier] = useState(0);
+  const [ongletActif, setOngletActif] = useState("pour-vous");
+  const conteneur = useRef<HTMLDivElement>(null);
+
+  /* Compteur panier — lu au montage puis à chaque écriture d'un autre onglet. */
+  useEffect(() => {
+    const lire = () => setPanier(getCartCount());
+    lire();
+    window.addEventListener("storage", lire);
+    return () => window.removeEventListener("storage", lire);
+  }, []);
 
   useEffect(() => {
     const ac = new AbortController();
     const g = genre ? `&genre=${encodeURIComponent(genre.toLowerCase())}` : "";
     (async () => {
       try {
-        /* En parallèle : une salve, une latence. */
-        const [rPromo, rPool] = await Promise.all([
-          fetch(`/api/products?promo=1&limit=12${g}`, { signal: ac.signal }),
-          fetch(`/api/products?limit=48${g}`, { signal: ac.signal }),
+        const [rPool, rPromo] = await Promise.all([
+          fetch(`/api/products?limit=60${g}`, { signal: ac.signal }),
+          fetch(`/api/products?promo=1&limit=40${g}`, { signal: ac.signal }),
         ]);
-        if (rPromo.ok) {
-          const d = await rPromo.json();
-          setPromos(d.products ?? []);
-        }
-        if (rPool.ok) {
-          const d = await rPool.json();
-          setPool(d.products ?? []);
-        }
-      } catch { /* abort au démontage, ou réseau : la page reste utilisable */ }
+        if (rPool.ok) setPool((await rPool.json()).products ?? []);
+        if (rPromo.ok) setPromos((await rPromo.json()).products ?? []);
+      } catch { /* abort ou réseau : la page reste utilisable */ }
     })();
     return () => ac.abort();
   }, [genre]);
 
-  /* Remise maximale RÉELLE parmi les produits soldés rapportés. */
-  const remiseMax = promos.reduce((max, p) => {
-    if (typeof p.prixOriginal !== "number" || typeof p.prix !== "number") return max;
-    if (p.prixOriginal <= p.prix) return max;
-    return Math.max(max, Math.round((1 - p.prix / p.prixOriginal) * 100));
-  }, 0);
+  const achetables = useMemo(
+    () => pool.filter((p) => (p.image || p.largeImage) && p.urlProduit),
+    [pool],
+  );
 
-  /* Marques ayant vraiment une pièce soldée, sans doublon, cinq au plus. */
-  const marquesEnPromo = [...new Set(
-    promos.map((p) => (p.marque || p.marchand || "").trim()).filter(Boolean),
-  )].slice(0, 5);
+  /* ── Nouveautés : tri par date marchand (cf. `dateMaj`). Les produits sans
+     date passent en dernier au lieu d'être classés au hasard. */
+  const nouveautes = useMemo(() => {
+    return [...achetables].sort((a, b) => {
+      const ta = a.dateMaj ? Date.parse(a.dateMaj) : NaN;
+      const tb = b.dateMaj ? Date.parse(b.dateMaj) : NaN;
+      if (Number.isNaN(ta) && Number.isNaN(tb)) return 0;
+      if (Number.isNaN(ta)) return 1;
+      if (Number.isNaN(tb)) return -1;
+      return tb - ta;
+    }).slice(0, 10);
+  }, [achetables]);
 
-  const tuiles = TENDANCES.map((t) => {
-    const trouve = pool.find((p) => t.motif.test(`${p.nom} ${p.description ?? ""}`));
-    return { ...t, image: trouve ? getDisplayImageUrl(trouve.image, trouve.largeImage) : null };
-  }).filter((t) => t.image);
+  /* ── Coups de cœur : les pièces les plus proches de la palette du jour.
+     La maquette dit « Les plus aimés », mais AUCUNE donnée de popularité
+     n'existe (`popularite` n'est renseigné par aucun flux). Renommer était
+     plus honnête que de trier au hasard sous un titre qui promet une
+     préférence collective. Le critère retenu — la proximité couleur — est
+     calculé, vérifiable, et c'est la promesse de WADA. */
+  const coupsDeCoeur = useMemo(() => {
+    const couleurs = palette?.colors ?? [];
+    if (couleurs.length === 0) return achetables.slice(0, 10);
+    return [...achetables]
+      .map((p) => {
+        let ecart = Infinity;
+        for (const c of couleurs) {
+          try { ecart = Math.min(ecart, deltaEHex(p.hex || "", c.hex)); } catch { /* hex illisible */ }
+        }
+        return { p, ecart };
+      })
+      .filter((x) => Number.isFinite(x.ecart))
+      .sort((a, b) => a.ecart - b.ecart)
+      .slice(0, 10)
+      .map((x) => x.p);
+  }, [achetables, palette]);
+
+  /* ── Tuiles thématiques : photo réelle + prix mini réel. */
+  const tuiles = (themes: Theme[]) =>
+    themes.map((t) => {
+      const correspondants = achetables.filter((p) => {
+        const texte = `${p.nom} ${p.description ?? ""}`;
+        return t.motif.test(texte) && !(t.exclut && t.exclut.test(texte));
+      });
+      const prixMini = correspondants.reduce(
+        (min, p) => (typeof p.prix === "number" && p.prix < min ? p.prix : min),
+        Infinity,
+      );
+      const source = correspondants[0];
+      return {
+        ...t,
+        image: source ? getDisplayImageUrl(source.image, source.largeImage) : null,
+        prixMini: Number.isFinite(prixMini) ? prixMini : null,
+        devise: source?.devise,
+      };
+    }).filter((t) => t.image);
+
+  const tendances = useMemo(() => tuiles(TENDANCES), [achetables]);
+  const ete = useMemo(() => tuiles(SELECTION_ETE), [achetables]);
+  const sport = useMemo(() => tuiles(SPORT), [achetables]);
+
+  /* ── Offres par marque : remise MAXIMALE réellement constatée, marque par
+     marque. Rien n'est écrit en dur — une marque sans article soldé
+     n'apparaît pas. */
+  const offres = useMemo(() => {
+    const parMarque = new Map<string, number>();
+    for (const p of promos) {
+      const m = (p.marque || p.marchand || "").trim();
+      if (!m || typeof p.prix !== "number" || typeof p.prixOriginal !== "number") continue;
+      if (p.prixOriginal <= p.prix) continue;
+      const pc = Math.round((1 - p.prix / p.prixOriginal) * 100);
+      parMarque.set(m, Math.max(parMarque.get(m) ?? 0, pc));
+    }
+    return [...parMarque.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 6)
+      .map(([marque, pc]) => ({ marque, pc }));
+  }, [promos]);
+
+  const lienGenre = genre ? `&genre=${genre}` : "";
+  const versRecherche = (q: string) => `/vetements?q=${encodeURIComponent(q)}${lienGenre}`;
+
+  const allerA = (ancre: string) => {
+    setOngletActif(ancre);
+    /* `#pour-vous` est l'id du conteneur lui-même : un querySelector interne
+       ne le trouve jamais. On teste donc le conteneur avant ses descendants. */
+    const racine = conteneur.current;
+    const el = racine?.id === ancre ? racine : racine?.querySelector(`#${ancre}`);
+    el?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
 
   return (
-    <div style={{ maxWidth: 1200, margin: "0 auto", width: "100%" }}>
-      {/* ── Bandeau remises ─────────────────────────────────────────────
-          Affiché SEULEMENT si des produits sont réellement soldés. */}
-      {remiseMax > 0 && marquesEnPromo.length > 0 && (
-        <section style={{
-          background: "#FFFDFA", border: `1px solid ${border}`, borderRadius: 16,
-          padding: "14px 16px", margin: "0 0 22px",
-        }}>
-          <div style={{
-            display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap",
+    <div ref={conteneur} style={{ maxWidth: 1200, margin: "0 auto", width: "100%" }} id="pour-vous">
+      {/* ── Recherche + panier ─────────────────────────────────────────── */}
+      <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "0 0 14px" }}>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            const q = recherche.trim();
+            if (q) router.push(versRecherche(q));
+          }}
+          style={{
+            flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 9,
+            background: "#FFFDFA", border: `1px solid ${border}`, borderRadius: 14,
+            padding: "11px 14px",
+          }}
+        >
+          <span aria-hidden style={{ color: textSecondary, display: "inline-flex", flexShrink: 0 }}>
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" />
+            </svg>
+          </span>
+          <input
+            value={recherche}
+            onChange={(e) => setRecherche(e.target.value)}
+            placeholder="Rechercher une pièce, une marque…"
+            aria-label="Rechercher"
+            style={{
+              flex: 1, minWidth: 0, border: "none", background: "transparent", outline: "none",
+              fontFamily: fontBody, fontSize: 14, color: ink,
+            }}
+          />
+        </form>
+        <Link href="/panier" aria-label={`Panier — ${panier} article${panier > 1 ? "s" : ""}`}
+          style={{
+            position: "relative", width: 44, height: 44, borderRadius: 13, flexShrink: 0,
+            border: `1px solid ${border}`, background: "#FFFDFA", color: ink,
+            display: "inline-flex", alignItems: "center", justifyContent: "center",
+            textDecoration: "none",
           }}>
-            <div style={{ flexShrink: 0 }}>
-              <p style={{
-                fontFamily: fontLabel, fontSize: 10, letterSpacing: ".14em",
-                textTransform: "uppercase", color: mojo, margin: 0,
-              }}>
-                Jusqu&rsquo;à
-              </p>
-              <p style={{
-                fontFamily: fontHeading, fontSize: 30, color: mojo,
-                margin: "1px 0 0", lineHeight: 1,
-              }}>
-                −{remiseMax}%
-              </p>
-              <p style={{
-                fontFamily: fontBody, fontSize: 12.5, color: textSecondary,
-                margin: "4px 0 0", maxWidth: "16ch", lineHeight: 1.35,
-              }}>
-                sur une sélection de marques
-              </p>
-            </div>
+          <svg width="19" height="19" viewBox="0 0 24 24" aria-hidden fill="none" stroke="currentColor"
+            strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M4 8h16l-1 12H5L4 8Z" /><path d="M9 8V6a3 3 0 0 1 6 0v2" />
+          </svg>
+          {panier > 0 && (
+            <span style={{
+              position: "absolute", top: -5, right: -5, minWidth: 19, height: 19,
+              borderRadius: 999, background: mojo, color: "#fff",
+              fontFamily: fontLabel, fontSize: 11, lineHeight: "19px", textAlign: "center",
+              padding: "0 5px",
+            }}>
+              {panier}
+            </span>
+          )}
+        </Link>
+      </div>
 
-            {/* Marques en typographie, pas en logos — voir l'en-tête. */}
-            <ul style={{
-              flex: 1, minWidth: 0, listStyle: "none", padding: 0, margin: 0,
-              display: "flex", alignItems: "center", gap: 18,
-              overflowX: "auto", WebkitOverflowScrolling: "touch",
-            }} className="wada-vitrine-scroll">
-              {marquesEnPromo.map((m) => (
-                <li key={m} style={{
-                  fontFamily: fontHeading, fontSize: 14, color: ink,
-                  letterSpacing: ".04em", textTransform: "uppercase",
-                  whiteSpace: "nowrap", flexShrink: 0, opacity: .85,
+      {/* ── Onglets ────────────────────────────────────────────────────── */}
+      <nav aria-label="Sections" className="wada-vitrine-scroll" style={{
+        display: "flex", gap: 20, overflowX: "auto", WebkitOverflowScrolling: "touch",
+        borderBottom: `1px solid ${border}`, margin: "0 -5% 20px", padding: "0 5%",
+      }}>
+        {ONGLETS.map((o) => {
+          const actif = !!o.ancre && ongletActif === o.ancre;
+          return (
+            <button key={o.label} type="button"
+              onClick={() => (o.ancre ? allerA(o.ancre) : router.push(versRecherche(o.q!)))}
+              aria-current={actif ? "true" : undefined}
+              style={{
+                background: "none", border: "none", padding: "0 0 10px", cursor: "pointer",
+                whiteSpace: "nowrap", flexShrink: 0, marginBottom: -1,
+                fontFamily: fontBody, fontSize: 14,
+                color: actif ? mojo : textSecondary, fontWeight: actif ? 600 : 400,
+                borderBottom: `2px solid ${actif ? mojo : "transparent"}`,
+              }}>
+              {o.label}
+            </button>
+          );
+        })}
+      </nav>
+
+      {/* ── Nouveautés ─────────────────────────────────────────────────── */}
+      {nouveautes.length > 0 && (
+        <section id="nouveautes" style={{ margin: "0 0 26px", scrollMarginTop: 16 }}>
+          <TitreSection titre="Nouveautés" href={`/vetements?sort=nouveau${lienGenre}`} />
+          <Rangee>
+            {nouveautes.map((p, i) => <CarteProduit key={p.id || i} p={p} />)}
+          </Rangee>
+        </section>
+      )}
+
+      {/* ── Tendances du moment ────────────────────────────────────────── */}
+      {tendances.length > 0 && (
+        <section id="tendances" style={{ margin: "0 0 26px", scrollMarginTop: 16 }}>
+          <TitreSection titre="Tendances du moment" href={`/vetements${genre ? `?genre=${genre}` : ""}`} />
+          <Rangee>
+            {tendances.map((t) => (
+              <button key={t.titre} type="button" onClick={() => router.push(versRecherche(t.q))}
+                style={{
+                  flex: "0 0 auto", width: 186, padding: 0, border: "none", background: "none",
+                  cursor: "pointer", textAlign: "left", scrollSnapAlign: "start",
+                  position: "relative", borderRadius: 14, overflow: "hidden",
                 }}>
-                  {m}
-                </li>
-              ))}
-            </ul>
-          </div>
+                <span style={{ display: "block", aspectRatio: "4 / 5", background: "#E7E2D9" }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={t.image!} alt="" loading="lazy" decoding="async"
+                    style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                </span>
+                {/* Voile sombre : le titre est en blanc PAR-DESSUS la photo, il
+                    doit rester lisible quelle que soit l'image du catalogue. */}
+                <span aria-hidden style={{
+                  position: "absolute", inset: 0,
+                  background: "linear-gradient(180deg, rgba(20,16,12,.05) 40%, rgba(20,16,12,.72) 100%)",
+                }} />
+                <span style={{ position: "absolute", left: 12, right: 12, bottom: 12 }}>
+                  <span style={{
+                    display: "block", fontFamily: fontHeading, fontSize: 15, color: "#fff",
+                    letterSpacing: ".04em", textTransform: "uppercase", lineHeight: 1.2,
+                  }}>
+                    {t.titre}
+                  </span>
+                  <span style={{
+                    display: "block", marginTop: 3, fontFamily: fontBody, fontSize: 12,
+                    color: "rgba(255,255,255,.88)", lineHeight: 1.3,
+                  }}>
+                    {t.sous}
+                  </span>
+                </span>
+              </button>
+            ))}
+          </Rangee>
+        </section>
+      )}
 
+      {/* ── Shopper par palette WADA ───────────────────────────────────── */}
+      {palette && (
+        <section id="palette" style={{ margin: "0 0 26px", scrollMarginTop: 16 }}>
+          <TitreSection titre="Shopper par palette WADA" href="/palettes" />
           <div style={{
-            display: "flex", alignItems: "center", justifyContent: "space-between",
-            gap: 12, marginTop: 12,
+            display: "flex", gap: 14, alignItems: "stretch",
+            background: "#FFFDFA", border: `1px solid ${border}`, borderRadius: 16,
+            padding: 12, flexWrap: "wrap",
           }}>
-            <button
-              type="button"
-              onClick={() => router.push(`/vetements?onSale=1${genre ? `&genre=${genre}` : ""}`)}
-              style={{
-                padding: "9px 18px", borderRadius: 999, border: "none",
-                background: mojo, color: "#fff", cursor: "pointer",
-                fontFamily: fontBody, fontSize: 13, whiteSpace: "nowrap",
-              }}
-            >
-              Découvrir
-            </button>
-            <button
-              type="button"
-              onClick={() => router.push(`/marques${genre ? `?genre=${genre}` : ""}`)}
-              style={{
-                display: "inline-flex", alignItems: "center", gap: 5,
-                background: "none", border: "none", padding: 0, cursor: "pointer",
-                fontFamily: fontBody, fontSize: 13, color: mojo, whiteSpace: "nowrap",
-              }}
-            >
-              Voir tout
-              <Fleche />
-            </button>
+            <span aria-hidden style={{
+              display: "flex", width: 84, borderRadius: 10, overflow: "hidden", flexShrink: 0,
+            }}>
+              {palette.colors.map((c) => (
+                <span key={c.hex} style={{ flex: 1, background: c.hex, minHeight: 108 }} />
+              ))}
+            </span>
+            <div style={{ flex: "1 1 180px", minWidth: 0, display: "flex", flexDirection: "column" }}>
+              <p style={{ fontFamily: fontHeading, fontSize: 17, color: ink, margin: 0, lineHeight: 1.2 }}>
+                {palette.name}
+              </p>
+              <p style={{
+                display: "flex", flexWrap: "wrap", gap: "3px 10px", margin: "6px 0 0",
+                fontFamily: fontBody, fontSize: 12.5, color: textSecondary,
+              }}>
+                {palette.colors.map((c) => (
+                  <span key={c.hex} style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+                    <span aria-hidden style={{
+                      width: 8, height: 8, borderRadius: "50%", background: c.hex,
+                      border: `1px solid ${border}`,
+                    }} />
+                    {c.name}
+                  </span>
+                ))}
+              </p>
+              <Link href={`/ma-tenue?palette=${palette.number}`} style={{
+                display: "inline-flex", alignItems: "center", justifyContent: "center",
+                alignSelf: "flex-start", marginTop: "auto", paddingTop: 0,
+                padding: "10px 16px", borderRadius: 999, background: mojo, color: "#fff",
+                textDecoration: "none", fontFamily: fontBody, fontSize: 13,
+              }}>
+                Shopper cette palette
+              </Link>
+            </div>
           </div>
         </section>
       )}
 
-      {/* ── Tendances maintenant ────────────────────────────────────────── */}
-      {tuiles.length > 0 && (
-        <section style={{ margin: "0 0 24px" }}>
-          <div style={{
-            display: "flex", alignItems: "center", justifyContent: "space-between",
-            gap: 12, margin: "0 0 11px",
-          }}>
-            <h2 style={{
-              fontFamily: fontLabel, fontSize: 11, letterSpacing: ".14em",
-              textTransform: "uppercase", color: ink, fontWeight: 600, margin: 0,
-            }}>
-              Tendances maintenant
-            </h2>
-            <button
-              type="button"
-              onClick={() => router.push(`/vetements${genre ? `?genre=${genre}` : ""}`)}
-              style={{
-                display: "inline-flex", alignItems: "center", gap: 5,
-                background: "none", border: "none", padding: 0, cursor: "pointer",
-                fontFamily: fontBody, fontSize: 13, color: mojo, whiteSpace: "nowrap",
-              }}
-            >
-              Voir tout
-              <Fleche />
-            </button>
-          </div>
-
-          {/* Rangée qui défile horizontalement — les tuiles gardent une taille
-              lisible au lieu de rétrécir à quatre par écran. */}
-          <div
-            className="wada-vitrine-scroll"
-            style={{
-              display: "flex", gap: 10, overflowX: "auto",
-              WebkitOverflowScrolling: "touch",
-              /* Décalage négatif + padding : les tuiles filent jusqu'au bord
-                 de l'écran, comme dans les carrousels d'applis marchandes. */
-              margin: "0 -5%", padding: "0 5%",
-              scrollSnapType: "x proximity",
-            }}
-          >
-            {tuiles.map((t) => (
-              <button
-                key={t.titre}
-                type="button"
-                onClick={() => router.push(`/vetements?q=${encodeURIComponent(t.q)}${genre ? `&genre=${genre}` : ""}`)}
+      {/* ── Sélection été ──────────────────────────────────────────────── */}
+      {ete.length > 0 && (
+        <section id="ete" style={{ margin: "0 0 26px", scrollMarginTop: 16 }}>
+          <TitreSection titre="Sélection été" href={versRecherche("été")} />
+          <Rangee>
+            {ete.map((t) => (
+              <button key={t.titre} type="button" onClick={() => router.push(versRecherche(t.q))}
                 style={{
-                  flex: "0 0 auto", width: 148, padding: 0, border: "none",
-                  background: "none", cursor: "pointer", textAlign: "left",
-                  scrollSnapAlign: "start",
-                }}
-              >
+                  flex: "0 0 auto", width: 132, padding: 0, border: "none", background: "none",
+                  cursor: "pointer", textAlign: "left", scrollSnapAlign: "start",
+                }}>
                 <span style={{
-                  display: "block", aspectRatio: "4 / 5", borderRadius: 12,
-                  overflow: "hidden", background: "#F2EFE9",
-                  border: `1px solid ${border}`,
+                  display: "block", aspectRatio: "1 / 1", borderRadius: 12, overflow: "hidden",
+                  background: "#F2EFE9", border: `1px solid ${border}`,
                 }}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={t.image!} alt="" loading="lazy" decoding="async"
                     style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                 </span>
                 <span style={{
-                  display: "block", marginTop: 8,
-                  fontFamily: fontLabel, fontSize: 10.5, letterSpacing: ".08em",
+                  display: "block", marginTop: 7,
+                  fontFamily: fontLabel, fontSize: 10, letterSpacing: ".07em",
                   textTransform: "uppercase", color: ink, fontWeight: 600,
                   overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                 }}>
                   {t.titre}
                 </span>
+                {/* Prix mini RÉEL du thème, calculé sur les produits trouvés —
+                    pas un « dès 49 € » décoratif. */}
+                {t.prixMini !== null && (
+                  <span style={{
+                    display: "block", marginTop: 1,
+                    fontFamily: fontBody, fontSize: 12, color: textSecondary,
+                  }}>
+                    Dès {formatPrixCatalogue(t.prixMini, t.devise)}
+                  </span>
+                )}
+              </button>
+            ))}
+          </Rangee>
+        </section>
+      )}
+
+      {/* ── Sport & performance ────────────────────────────────────────── */}
+      {sport.length > 0 && (
+        <section id="sport" style={{ margin: "0 0 26px", scrollMarginTop: 16 }}>
+          <TitreSection titre="Sport & performance" href={versRecherche("sport")} />
+          <Rangee>
+            {sport.map((t) => (
+              <button key={t.titre} type="button" onClick={() => router.push(versRecherche(t.q))}
+                style={{
+                  flex: "0 0 auto", width: 132, padding: 0, border: "none", background: "none",
+                  cursor: "pointer", textAlign: "left", scrollSnapAlign: "start",
+                  position: "relative",
+                }}>
+                {/* La pastille est ancrée DANS l'image (position: relative sur
+                    la vignette), pas sur le bouton entier : calée sur la
+                    hauteur totale, elle retombait sur le bord de la tuile dès
+                    que le libellé changeait de hauteur. */}
                 <span style={{
-                  display: "block", marginTop: 1,
-                  fontFamily: fontBody, fontSize: 12, color: textSecondary,
+                  display: "block", position: "relative",
+                  aspectRatio: "1 / 1", borderRadius: 12, overflow: "hidden",
+                  background: "#F2EFE9", border: `1px solid ${border}`,
+                }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={t.image!} alt="" loading="lazy" decoding="async"
+                    style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  <span aria-hidden style={{
+                    position: "absolute", right: 8, bottom: 8,
+                    width: 28, height: 28, borderRadius: "50%",
+                    background: "rgba(255,255,255,.92)", color: ink,
+                    display: "inline-flex", alignItems: "center", justifyContent: "center",
+                    boxShadow: "0 2px 8px -4px rgba(30,30,30,.5)",
+                  }}>
+                    <Fleche t={13} />
+                  </span>
+                </span>
+                <span style={{
+                  display: "block", marginTop: 7,
+                  fontFamily: fontLabel, fontSize: 10, letterSpacing: ".07em",
+                  textTransform: "uppercase", color: ink, fontWeight: 600,
                   overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                 }}>
-                  {t.sous}
+                  {t.titre}
                 </span>
               </button>
             ))}
-          </div>
+          </Rangee>
+        </section>
+      )}
+
+      {/* ── Offres de nos marques ──────────────────────────────────────── */}
+      {offres.length > 0 && (
+        <section id="offres" style={{ margin: "0 0 26px", scrollMarginTop: 16 }}>
+          <TitreSection titre="Offres de nos marques" href={`/vetements?onSale=1${lienGenre}`} />
+          <Rangee>
+            {offres.map((o) => (
+              <button key={o.marque} type="button"
+                onClick={() => router.push(`/vetements?onSale=1&q=${encodeURIComponent(o.marque)}${lienGenre}`)}
+                style={{
+                  flex: "0 0 auto", width: 138, scrollSnapAlign: "start",
+                  background: "#FFFDFA", border: `1px solid ${border}`, borderRadius: 14,
+                  padding: "14px 12px", cursor: "pointer", textAlign: "center",
+                }}>
+                {/* Nom de marque en typographie, pas en logo : le dépôt n'a
+                    aucun fichier de logo, et fabriquer de faux logos serait à
+                    la fois laid et juridiquement douteux. */}
+                <span style={{
+                  display: "block", fontFamily: fontHeading, fontSize: 13, color: ink,
+                  letterSpacing: ".04em", textTransform: "uppercase",
+                  overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                }}>
+                  {o.marque}
+                </span>
+                <span style={{
+                  display: "block", marginTop: 9, fontFamily: fontHeading, fontSize: 22,
+                  color: mojo, lineHeight: 1,
+                }}>
+                  −{o.pc}%
+                </span>
+                <span style={{
+                  display: "block", marginTop: 4, fontFamily: fontBody, fontSize: 11.5,
+                  color: textSecondary,
+                }}>
+                  sur une sélection
+                </span>
+              </button>
+            ))}
+          </Rangee>
+        </section>
+      )}
+
+      {/* ── Coups de cœur WADA ─────────────────────────────────────────── */}
+      {coupsDeCoeur.length > 0 && (
+        <section id="coups-de-coeur" style={{ margin: "0 0 26px", scrollMarginTop: 16 }}>
+          <TitreSection titre="Coups de cœur WADA" href={`/vetements${genre ? `?genre=${genre}` : ""}`} />
+          <Rangee>
+            {coupsDeCoeur.map((p, i) => <CarteProduit key={p.id || `c${i}`} p={p} />)}
+          </Rangee>
         </section>
       )}
 

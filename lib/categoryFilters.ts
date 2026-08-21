@@ -364,7 +364,23 @@ export function sortProducts(products: ProduitAwin[], sort: string): ProduitAwin
      ne réordonnait que les 48 produits de la page courante. Il est désormais
      appliqué ici, sur tout le pool filtré, comme les tris prix. */
   else if (sort === "populaire") out.sort((a, b) => (b.popularite ?? 0) - (a.popularite ?? 0));
-  /* "nouveau" : pas d'horodatage produit fiable → ordre catalogue conservé. */
+  /* « nouveau » : le flux Awin fournit `last_updated`, que le parseur lisait
+     sans le conserver — d'où l'ancien commentaire « pas d'horodatage fiable ».
+     Il est désormais gardé (`dateMaj`) et sert ici. Ce qu'il date, c'est la
+     dernière MODIFICATION de la fiche marchand, pas la création du produit :
+     c'est une approximation, et la meilleure dont on dispose.
+     Les produits sans date passent en dernier plutôt que d'être traités
+     comme très anciens ou très récents au hasard. */
+  else if (sort === "nouveau") {
+    out.sort((a, b) => {
+      const ta = a.dateMaj ? Date.parse(a.dateMaj) : NaN;
+      const tb = b.dateMaj ? Date.parse(b.dateMaj) : NaN;
+      if (Number.isNaN(ta) && Number.isNaN(tb)) return 0;
+      if (Number.isNaN(ta)) return 1;
+      if (Number.isNaN(tb)) return -1;
+      return tb - ta;
+    });
+  }
   return out;
 }
 

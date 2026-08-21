@@ -131,8 +131,17 @@ export interface ProduitAwin {
   urlProduit: string;
   /** Tier de prix de la marque pour le filtre budget. */
   marqueTier?: ProductTier;
-  /** Score de popularité 0-1 (optionnel — alimente le ranking). */
+  /** Score de popularité 0-1 (optionnel — alimente le ranking).
+   *  ATTENTION : aucun flux ne le renseigne aujourd'hui. Tout tri « populaire »
+   *  retombe donc sur l'ordre du catalogue. */
   popularite?: number;
+  /** Date de dernière mise à jour chez le marchand (champ `last_updated` du
+   *  flux Awin), en ISO. Le parseur la lisait dans le CSV sans jamais la
+   *  conserver — d'où le commentaire « pas d'horodatage produit fiable » dans
+   *  le tri. C'est la meilleure approximation d'un « arrivage » dont on
+   *  dispose : elle date la dernière modification de la fiche marchand, pas
+   *  la création du produit. */
+  dateMaj?: string;
   /** Marque pour affichage carte (« MUJI », « COS », « Sézane »). Quand
    *  `brand_name` du flux est vide, on injecte le nom du marchand. */
   marque?: string;
