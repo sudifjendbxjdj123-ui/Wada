@@ -12,6 +12,7 @@ import type { DictionaryEntry } from "@/lib/data";
 import BackButton from "@/components/BackButton";
 import BoutiqueEntete from "@/components/BoutiqueEntete";
 import CataloguePalette from "@/components/CataloguePalette";
+import VitrineBoutique from "@/components/VitrineBoutique";
 
 export default function BoutiquePage() {
   /* Palette du jour et genre, remontés par l'en-tête. Le catalogue s'en sert
@@ -59,7 +60,12 @@ export default function BoutiquePage() {
           six vignettes dans un cadre blanc — une vitrine, pas une boutique.
           Pas de conteneur autour de la grille : les cartes sont posées sur le
           fond crème, comme sur Zalando ou BSTN. */}
-      <div style={{ width: "100%", padding: "26px 5% 46px" }}>
+      <div style={{ width: "100%", padding: "22px 5% 46px" }}>
+        {/* Bandeau remises + rangée « Tendances maintenant » (maquette
+            2026-08-22). Placés entre la palette du jour et le catalogue :
+            ils donnent une raison d'entrer avant la liste. */}
+        <VitrineBoutique genre={contexte.genre} />
+
         <CataloguePalette
           palette={contexte.palette}
           genre={contexte.genre}

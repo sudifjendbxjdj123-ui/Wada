@@ -215,6 +215,12 @@ export async function GET(req: Request) {
      des produits différents même pour des couleurs proches.
      ?excludeIds=<csv> — IDs produits à exclure (dedup intra-tenue). */
   const seed = url.searchParams.get("seed");
+  /* ?promo=1 — uniquement les produits que le MARCHAND solde, c'est-à-dire
+     ceux dont le flux Awin fournit un prix de référence supérieur au prix
+     courant (cf. `prixOriginal` dans lib/schema.ts). Sert au bandeau
+     « jusqu'à −N% » de /boutique : sans ce filtre, il faudrait ramener tout
+     le catalogue côté client pour y chercher les remises. */
+  const promoSeule = url.searchParams.get("promo") === "1";
   const excludeIdsRaw = url.searchParams.get("excludeIds");
   const excludeIds = excludeIdsRaw ? new Set(excludeIdsRaw.split(",").filter(Boolean)) : null;
   /* Brief 2026-06-01 MICRO_TYPES : noms des pièces déjà sélectionnées dans
@@ -1087,6 +1093,12 @@ export async function GET(req: Request) {
     }
   }
 
+  /* Remises seules, si demandé. Appliqué APRÈS la déduplication pour que
+     deux variantes du même article soldé ne comptent pas deux fois. */
+  const dedupePromo = promoSeule
+    ? deduped.filter((p) => typeof p.prixOriginal === "number" && p.prixOriginal > p.prix)
+    : deduped;
+
   /* ── MÉLANGE DES MARQUES (client 2026-08-22) ────────────────────────────
      « Je ne veux pas une seule marque par marque, je veux du mélange, je veux
      avoir une rotation. »
@@ -1109,10 +1121,10 @@ export async function GET(req: Request) {
 
      Uniquement pour les LISTES. À limit=1, on sert un slot de tenue : c'est
      le classement par couleur qui doit décider, pas l'équité entre marques. */
-  let ordonne = deduped;
-  if (limit > 1 && deduped.length > 1) {
-    const parMarque = new Map<string, typeof deduped>();
-    for (const p of deduped) {
+  let ordonne = dedupePromo;
+  if (limit > 1 && dedupePromo.length > 1) {
+    const parMarque = new Map<string, typeof dedupePromo>();
+    for (const p of dedupePromo) {
       const cle = (p.marque || p.marchand || "?").toLowerCase().trim();
       const groupe = parMarque.get(cle);
       if (groupe) groupe.push(p);
@@ -1134,7 +1146,7 @@ export async function GET(req: Request) {
       }
       const tournee = [...groupes.slice(pivot), ...groupes.slice(0, pivot)];
 
-      const melange: typeof deduped = [];
+      const melange: typeof dedupePromo = [];
       const maxParMarque = Math.max(...tournee.map((g) => g.length));
       for (let rang = 0; rang < maxParMarque; rang++) {
         for (const groupe of tournee) {

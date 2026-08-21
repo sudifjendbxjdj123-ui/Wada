@@ -49,10 +49,17 @@ function deriveCategory(slot: string, title: string): string {
 }
 
 /** Seed SSR-safe : genre/style préselectionnés via props (pas d'URL ici). */
-function seedFilters(initGenre?: string, initStyle?: string, initBrand?: string): CategoryFilters {
+function seedFilters(
+  initGenre?: string, initStyle?: string, initBrand?: string,
+  initQ?: string, initOnSale?: boolean,
+): CategoryFilters {
   const f = getDefaultFilters();
   if (initGenre === "homme" || initGenre === "femme") f.genres = [initGenre];
   if (initStyle) f.styles = [initStyle.toLowerCase()];
+  /* `q` était déclaré dans les props et jamais lu : une tuile « Sneakers »
+     ouvrait donc le catalogue entier. Il alimente maintenant le filtre. */
+  if (initQ) f.q = initQ;
+  if (initOnSale) f.onSale = true;
   /* Fix 2026-06-14 « /marques/[slug] montrait New Era partout » : quand la
      page est ouverte depuis /marques/adidas-originals, on seed le filtre
      brand pour vraiment restreindre le catalogue à cette marque. Sans ça
@@ -69,6 +76,8 @@ interface Props {
   breadcrumb: BreadcrumbItem[];
   slot: string;
   q?: string;
+  /** Ouvre la page sur les seuls articles soldés (bandeau « jusqu'à −N% »). */
+  onSale?: boolean;
   genre?: string;
   style?: string;
   /* Brief 2026-06-14 : nom EXACT de marque (préservant la casse KV, ex.
@@ -712,7 +721,7 @@ function ProductCard({ p, onClick }: { p: ProduitAwin; onClick: (e: React.MouseE
 /* ════════════════════════════════════════════
    PAGE PRINCIPALE
    ════════════════════════════════════════════ */
-export default function CategoryPage({ title, breadcrumb, slot, q, genre: initGenre, style: initStyle, brand: initBrand, page: initialPage }: Props) {
+export default function CategoryPage({ title, breadcrumb, slot, q, onSale, genre: initGenre, style: initStyle, brand: initBrand, page: initialPage }: Props) {
   const [products, setProducts] = useState<ProduitAwin[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -725,7 +734,7 @@ export default function CategoryPage({ title, breadcrumb, slot, q, genre: initGe
 
   /* État UNIQUE des 11 filtres. Seed SSR-safe (props), puis hydraté depuis
      l'URL (+ localStorage en fallback) au montage → pas de mismatch SSR. */
-  const [filters, setFilters] = useState<CategoryFilters>(() => seedFilters(initGenre, initStyle, initBrand));
+  const [filters, setFilters] = useState<CategoryFilters>(() => seedFilters(initGenre, initStyle, initBrand, q, onSale));
   const [hydrated, setHydrated] = useState(false);
 
   const [page, setPage] = useState(() => {
