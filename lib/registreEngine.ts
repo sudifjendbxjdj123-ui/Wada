@@ -54,12 +54,45 @@ export type RegistreOutfit = {
   reference: string;
 };
 
+export type Morphologie = "Rectangle" | "Triangle" | "Sablier" | "Rond" | "Athlétique";
+
 export type ProfileForRegistre = {
   style: string;
   fit: string;
   occasion_focus: string;
   gender: "femme" | "homme" | "unisexe" | null;
+  /** Optionnelle — ajuste la coupe SLOT PAR SLOT.
+      Accepte les DEUX vocabulaires du site (voir normaliserMorphologie) :
+      les libellés de /compte (« Sablier ») et les slugs du panneau de
+      personnalisation (« sablier », « poire »…). */
+  morphologie?: string | null;
 };
+
+/* Deux écrans demandent la morphologie avec deux vocabulaires différents :
+   /compte enregistre `wada.profile.morphologie` en libellés (« Rectangle »,
+   « Triangle », « Sablier », « Rond », « Athlétique ») et le panneau de
+   personnalisation enregistre `wada-prefs.morpho` en slugs (« droite »,
+   « poire », « ronde », « athletique »…). C'est la même information : on
+   ramène les deux à un seul jeu de valeurs plutôt que d'ignorer l'un ou
+   l'autre selon la page d'où vient le client.
+   « poire » = hanches plus larges que les épaules = Triangle. */
+const ALIAS_MORPHO: Record<string, Morphologie> = {
+  rectangle: "Rectangle", droite: "Rectangle",
+  triangle: "Triangle",   poire: "Triangle",
+  sablier: "Sablier",
+  rond: "Rond",           ronde: "Rond",
+  athletique: "Athlétique", athletique_: "Athlétique",
+};
+
+/** Ramène une morphologie écrite dans l'un ou l'autre vocabulaire à la
+    valeur canonique, ou null si la valeur est vide / inconnue. */
+export function normaliserMorphologie(raw?: string | null): Morphologie | null {
+  if (!raw || typeof raw !== "string") return null;
+  const cle = raw
+    .trim().toLowerCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "");   // « athlétique » → « athletique »
+  return ALIAS_MORPHO[cle] ?? null;
+}
 
 /* ──────────────────────────────────────────────────────────────────────
    VOCABULAIRE PAR REGISTRE — table de correspondance du brief §1
@@ -158,6 +191,47 @@ function normalizeSlot(rawPiece: string): SlotKey {
    COUPE → adjectif fit
    ────────────────────────────────────────────────────────────────────── */
 
+/* ── MORPHOLOGIE → coupe par pièce (2026-08-21) ──────────────────────────
+   Le champ `morphologie` était demandé au client sur /compte et n'était lu
+   nulle part : il n'entrait dans aucune décision de composition.
+
+   La difficulté est qu'une coupe ne se choisit pas globalement. La règle de
+   base de l'habillement est l'ÉQUILIBRE des volumes : on met du volume là où
+   la silhouette en manque, et on reste droit là où elle en a déjà. Une coupe
+   unique appliquée aux cinq pièces — ce que faisait le moteur — ne peut pas
+   exprimer ça : « ample » sur une carrure déjà large l'élargit encore.
+
+   Ce sont des principes d'habillement stables, pas des tendances de saison :
+     Triangle (hanches plus larges que les épaules)
+        volume et structure en haut, ligne droite et sobre en bas
+     Athlétique (épaules larges, taille peu marquée)
+        fluide en haut pour adoucir la carrure, un peu de volume en bas
+     Rectangle (peu de taille marquée)
+        marquer la taille : haut ajusté, veste cintrée
+     Sablier (taille marquée)
+        suivre la ligne : ajusté, l'ample efface justement ce qui fait la forme
+     Rond (volume sur le torse)
+        coupes droites et verticales ; ni ajusté sur le torse ni ample, qui
+        ajoutent l'un et l'autre du volume
+
+   La coupe choisie par le client reste la référence : la morphologie ne
+   s'applique QUE s'il n'a rien précisé (fit « standard »). S'il a demandé de
+   l'oversized, on ne le contredit pas. */
+const MORPHO_FIT: Record<Morphologie, Partial<Record<SlotKey, Fit>>> = {
+  Triangle:     { haut: "ample",    veste: "standard", bas: "standard" },
+  "Athlétique": { haut: "standard", veste: "standard", bas: "ample" },
+  Rectangle:    { haut: "ajuste",   veste: "ajuste",   bas: "standard" },
+  Sablier:      { haut: "ajuste",   veste: "ajuste",   bas: "ajuste" },
+  Rond:         { haut: "standard", veste: "standard", bas: "standard" },
+};
+
+/** Coupe retenue pour un slot donné, morphologie comprise. */
+function fitForSlot(fitKey: Fit, slot: SlotKey, morpho: Morphologie | null): Fit {
+  if (fitKey !== "standard") return fitKey;      // choix explicite du client
+  if (!morpho) return fitKey;
+  return MORPHO_FIT[morpho]?.[slot] ?? fitKey;
+}
+
 function fitAdjective(fitKey: string, registre: Registre): string {
   // Brief §3 : Streetwear cohérent = oversized ; Classique + ample = relaxed tailoring.
   if (fitKey === "ajuste")   return "ajustée";
@@ -226,13 +300,77 @@ function hexRgb(hex: string): [number, number, number] {
 function chroma(hex: string): number { const [r, g, b] = hexRgb(hex); return Math.max(r, g, b) - Math.min(r, g, b); }
 function luminance(hex: string): number { const [r, g, b] = hexRgb(hex); return 0.299 * r + 0.587 * g + 0.114 * b; }
 
+/* ── PLACEMENT DES COULEURS (refonte 2026-08-21) ─────────────────────────
+   Chaque palette du dictionnaire porte une `composition` écrite à la main :
+   cinq pièces, avec la couleur nommée dans le texte (« Cargo bleu ardoise »,
+   « Hoodie technique noir »). C'est le placement voulu par l'auteur de la
+   palette — la vraie proposition Wada.
+
+   Le moteur l'ignorait. Il rangeait mécaniquement les couleurs par clarté et
+   posait TOUJOURS la plus claire en haut, la plus foncée en bas. Mesuré sur
+   les 348 palettes du dictionnaire :
+     • haut       63 % de désaccord avec la composition d'origine
+     • bas        70 %
+     • veste      73 %
+     • 19 palettes sur 348 seulement étaient placées comme prévu
+     • et la veste reprenait EXACTEMENT la couleur du haut sur 348/348 —
+       un manteau de la teinte du pull qu'il recouvre, sur toutes les tenues.
+
+   On lit donc d'abord la composition. Les libellés « Top / Bottom / Outer »
+   donnent le slot, et le nom de couleur retrouvé dans le texte donne la
+   teinte. 282 palettes sur 348 (81 %) résolvent ainsi leurs trois vêtements ;
+   pour les autres, on retombe sur la règle claire-en-haut d'avant, corrigée
+   pour que la veste ne copie plus le haut.
+
+   Chaussures et accent restent hors composition : les compositions d'origine
+   n'y mettent quasiment jamais une couleur de la palette (10 fois sur 348
+   pour les chaussures) — l'auteur les laisse en noir, tan, ivoire. On garde
+   donc la règle du moteur : le ton le plus foncé ancre les chaussures, le
+   plus vif fait l'accent. */
+
+const PIECE_VERS_SLOT: Record<string, SlotKey> = {
+  Top: "haut", Shirt: "haut", Bottom: "bas", Outer: "veste",
+};
+
+/** Minuscules sans accents — « Gris givré » et « gris givre » doivent matcher. */
+function sansAccents(v: string): string {
+  return v.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
+
+/** Couleurs placées par l'auteur de la palette, slot par slot. Vide si la
+    composition ne nomme aucune couleur reconnaissable. */
+function couleursDeLaComposition(
+  entry: DictionaryEntry
+): Partial<Record<SlotKey, { hex: string; name: string }>> {
+  const out: Partial<Record<SlotKey, { hex: string; name: string }>> = {};
+  for (const piece of entry.composition ?? []) {
+    const slot = PIECE_VERS_SLOT[piece.piece];
+    /* Premier gagnant : « Top » prime sur « Shirt » quand les deux existent. */
+    if (!slot || out[slot]) continue;
+    const texte = sansAccents(piece.item || "");
+    if (!texte) continue;
+    const trouvee = entry.colors.find((c) => {
+      const nom = sansAccents(c.name || "");
+      if (!nom) return false;
+      /* Bornes de mot : sans elles, la couleur « Os » matcherait
+         « mocassins » et « Lin » matcherait « lin/ge ». */
+      const motif = new RegExp(
+        `(^|[^a-z0-9])${nom.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}([^a-z0-9]|$)`
+      );
+      return motif.test(texte);
+    });
+    if (trouvee) out[slot] = trouvee;
+  }
+  return out;
+}
+
 function pickColors(entry: DictionaryEntry): Record<SlotKey, { hex: string; name: string }> {
   const fallback = { hex: "#1E1E1E", name: "ink" };
   const cols = entry.colors.length ? entry.colors : [fallback];
   // Couleur la plus vive = pop (accent). Le reste = neutres, triés clair→foncé.
   const bySaturation = [...cols].sort((a, b) => {
     try {
-      return (chroma(b.hex) as any) - (chroma(a.hex) as any);
+      return chroma(b.hex) - chroma(a.hex);
     } catch {
       return 0;
     }
@@ -249,12 +387,58 @@ function pickColors(entry: DictionaryEntry): Record<SlotKey, { hex: string; name
     });
   const light = neutrals[0] ?? pop ?? fallback;
   const dark = neutrals[neutrals.length - 1] ?? light ?? fallback;
+
+  const curee = couleursDeLaComposition(entry);
+
+  /* On pose d'abord ce que l'auteur a décidé, PUIS on comble les trous avec
+     une teinte encore libre. Sans cette réservation, un slot non curé
+     reprenait la teinte d'un slot curé voisin : palette 037, l'auteur met le
+     cargo en bleu ardoise, le haut n'est pas curé (« hoodie noir », hors
+     palette) et le repli « le plus clair » retombait sur ce même bleu — haut
+     et bas identiques. */
+  const place: Partial<Record<SlotKey, { hex: string; name: string }>> = {};
+  const pris = new Set<string>();
+  for (const slot of ["haut", "bas", "veste"] as const) {
+    const c = curee[slot];
+    if (c) { place[slot] = c; pris.add(c.hex); }
+  }
+  /* Le pool de repli exclut la teinte vive : elle est réservée à l'accent,
+     seul point de couleur de la tenue. */
+  const trier = (sens: "clair" | "fonce") =>
+    [...neutrals].sort((a, b) => {
+      try {
+        return sens === "clair"
+          ? luminance(b.hex) - luminance(a.hex)
+          : luminance(a.hex) - luminance(b.hex);
+      } catch {
+        return 0;
+      }
+    });
+  const combler = (slot: SlotKey, sens: "clair" | "fonce", eviter?: string) => {
+    if (place[slot]) return;
+    const ordre = trier(sens);
+    /* Si toutes les neutres sont déjà portées (palette de 3 teintes dont une
+       est réservée à l'accent), on assume la reprise — mais pas n'importe
+       laquelle : un haut ton sur ton avec le bas est un ensemble tonal, une
+       veste ton sur ton avec le haut efface le haut qu'elle recouvre. D'où
+       `eviter`. */
+    place[slot] =
+      ordre.find((c) => !pris.has(c.hex)) ??
+      ordre.find((c) => c.hex !== eviter) ??
+      ordre[0] ??
+      fallback;
+    pris.add(place[slot]!.hex);
+  };
+  combler("haut", "clair");
+  combler("bas", "fonce");
+  combler("veste", "fonce", place.haut?.hex);
+
   return {
-    haut:       light,   // clair en haut
-    veste:      light,   // veste neutre (ton du haut)
-    bas:        dark,     // neutre plus foncé pour ancrer
-    chaussures: dark,     // chaussures = ton le plus foncé/neutre
-    accent:     pop,      // l'unique point de couleur vif
+    haut: place.haut ?? light,
+    veste: place.veste ?? dark,
+    bas: place.bas ?? dark,
+    chaussures: dark,   // ton le plus foncé : ancre la silhouette
+    accent: pop,        // l'unique point de couleur vif
   };
 }
 
@@ -310,6 +494,10 @@ export function composeOutfitFromProfile(
     if (nonKnit) baseTypes.veste = nonKnit;
   }
 
+  /* Une seule normalisation pour toute la tenue — les cinq slots lisent la
+     même valeur canonique. */
+  const morpho = normaliserMorphologie(profile.morphologie);
+
   const slots: RegistreSlot[] = SLOTS.map((slot) => {
     const finalType = applyOccasionModifier(slot, baseTypes[slot], registre, occasion);
     const paletteColor = colors[slot];
@@ -317,13 +505,18 @@ export function composeOutfitFromProfile(
     // de la palette Wada). « Crème » sur un hex camel devient « Camel ».
     const trueColorName = hexToPlainName(paletteColor.hex);
     const color = { hex: paletteColor.hex, name: trueColorName };
+    /* Coupe propre à CETTE pièce : la morphologie peut demander du volume en
+       haut et de la ligne droite en bas, ce qu'une coupe globale ne sait pas
+       dire. Chaussures et accent ne sont pas concernés — leur coupe ne joue
+       pas sur l'équilibre de la silhouette. */
+    const slotFitKey = fitForSlot(fitKey, slot, morpho);
     // Mots-clés de recherche marchand : type + couleur (hex-fidèle) + fit
-    const fitKw = fitKey === "ample" ? " oversized" : fitKey === "ajuste" ? " slim" : "";
+    const fitKw = slotFitKey === "ample" ? " oversized" : slotFitKey === "ajuste" ? " slim" : "";
     const searchKeywords = `${finalType}${fitKw} ${trueColorName}`.toLowerCase().replace(/\s+/g, " ").trim();
     return {
       slot,
       type: finalType,
-      fit,
+      fit: fitAdjective(slotFitKey, registre),
       color,
       materials: MATERIALS_BY_REGISTRE[registre],
       searchKeywords,
@@ -448,6 +641,20 @@ export function validateOutfit(outfit: RegistreOutfit): { ok: boolean; errors: s
     if (outfit.occasion === "bureau" && /\bcargo\b|chunky/.test(allTypes)) {
       errors.push("Streetwear + Bureau ne doit pas contenir cargo ni chunky");
     }
+  }
+
+  /* Règles ajoutées 2026-08-21 — filet de sécurité sur ce que le planificateur
+     garantit déjà. Si l'une saute, c'est une régression du planificateur, pas
+     une tenue à corriger après coup. */
+  if ((outfit.registre === "Classique" || outfit.registre === "Old money") &&
+      /sneakers?|baskets?|runners?/i.test(allTypes)) {
+    errors.push(`${outfit.registre} contient des sneakers`);
+  }
+  const haut = outfit.slots.find((s) => s.slot === "haut")?.type ?? "";
+  const veste = outfit.slots.find((s) => s.slot === "veste")?.type ?? "";
+  const maille = /pull|maille|tricot|knit|cardigan|sweat/i;
+  if (haut && veste && maille.test(haut) && maille.test(veste)) {
+    errors.push("Deux mailles superposées (haut + veste)");
   }
   return { ok: errors.length === 0, errors };
 }

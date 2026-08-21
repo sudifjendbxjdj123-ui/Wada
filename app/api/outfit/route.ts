@@ -44,6 +44,9 @@ type OutfitBody = {
   /* Ajout 2026-08-21 — questionnaire /palette/[number] : plafond de prix par
      pièce et exclusions (« une chose à éviter »). Relayés tels quels. */
   maxPrice?: string;
+  /* Budget TOTAL de la tenue, en euros (spec questionnaire 2026-08-21).
+     Distinct de maxPrice, qui est un plafond PAR PIÈCE. */
+  budgetTotal?: number;
   exclude?: string;
   anchorNames?: string[];
 };
@@ -54,9 +57,37 @@ const SLOT_KEYS = new Set(["haut", "bas", "veste", "chaussures", "accent"]);
    requête stricte ne renvoie rien, on retire d'abord occasion/season/envie/
    selectedNames, puis aussi style. Garantit qu'un slot n'est jamais vide
    quand un produit cohérent existe à contraintes assouplies. */
+/* ── Enveloppe budgétaire (fix 2026-08-21) ──────────────────────────────
+   Le questionnaire demande un « Budget TOTAL » et cette valeur partait en
+   `maxPrice`, qui est un plafond PAR PIÈCE — et que /api/products majore
+   encore de 50 % sur bas/veste/chaussures. Une tenue annoncée à 400 € pouvait
+   donc coûter 400 + 600 + 600 + 600 + 400 = 2 600 €. Le client demandait un
+   budget, on lui répondait par cinq budgets.
+
+   On répartit désormais le total entre les slots, au prorata de ce que chaque
+   pièce coûte réellement dans une tenue : un manteau pèse plus qu'une
+   ceinture. Le plafond est recalculé APRÈS chaque pièce à partir de ce qui
+   reste vraiment — un haut à 30 € au lieu des 80 € prévus rend ses 50 € aux
+   pièces suivantes.
+
+   La contrainte part en `tierCap` et non en `maxPrice` : c'est le canal de
+   plafond DUR, sans la majoration de 50 %. */
+const POIDS_BUDGET: Record<string, number> = {
+  haut: 0.2, bas: 0.22, veste: 0.3, chaussures: 0.22, accent: 0.06,
+};
+/* Plancher par pièce : en dessous, le plafond exclurait presque tout le
+   catalogue et la tenue sortirait vide. Il est lui-même plafonné à une part
+   égale du budget (voir plus bas) pour ne jamais faire déborder le total. */
+const PLANCHER_PAR_PIECE = 25;
+
 const RELAX_STAGES: string[][] = [
   ["occasion", "season", "envie", "selectedNames"],
   ["occasion", "season", "envie", "selectedNames", "style"],
+  /* Dernier recours : on lâche aussi le plafond de prix. Une pièce un peu
+     au-dessus du budget vaut mieux qu'un slot vide — le client verrait un
+     trou dans sa tenue sans comprendre pourquoi. Le dépassement reste visible
+     puisque le prix est affiché sur chaque carte. */
+  ["occasion", "season", "envie", "selectedNames", "style", "tierCap"],
 ];
 
 export async function POST(req: Request) {
@@ -116,8 +147,42 @@ export async function POST(req: Request) {
 
   const results: Array<{ slot: string; product: Record<string, unknown> | null }> = [];
 
+  /* Budget restant et poids des slots pas encore servis. */
+  const budgetTotal = typeof body.budgetTotal === "number" && body.budgetTotal > 0
+    ? body.budgetTotal : null;
+  let budgetRestant = budgetTotal;
+  let poidsRestant = slots.reduce((acc, sl) => acc + (POIDS_BUDGET[sl.slot] ?? 0.2), 0);
+  let servis = 0;
+
   for (const s of slots) {
     const base = new URLSearchParams({ slot: s.slot, limit: "1", ...shared });
+
+    const poidsSlot = POIDS_BUDGET[s.slot] ?? 0.2;
+    if (budgetRestant !== null && poidsRestant > 0) {
+      /* Les planchers des slots restants sont réservés AVANT de répartir le
+         reste au prorata. Sans cette réserve, l'accent — servi en dernier et
+         qui ne pèse que 6 % — tombait sous le plancher et le faisait remonter
+         à 25 €, faisant déborder le total : 166 € pour un budget de 150.
+         En réservant, la somme des plafonds reste bornée par le budget. */
+      const slotsRestants = slots.length - servis;
+      /* Le plancher lui-même ne peut pas dépasser une part égale du budget :
+         5 × 25 € = 125 €, alors que le curseur du questionnaire descend à
+         100 €. Sans ce garde-fou, un budget de 100 € produisait une tenue à
+         125 € — le seul cas où l'enveloppe débordait. */
+      const plancher = Math.min(PLANCHER_PAR_PIECE, Math.floor(budgetRestant / slotsRestants));
+      const reserve = plancher * slotsRestants;
+      const aRepartir = Math.max(0, budgetRestant - reserve);
+      const part = Math.round((aRepartir * poidsSlot) / poidsRestant);
+      const plafond = Math.max(1, plancher + part);
+      /* Un tierCap explicite (pièce outlier repérée par /ma-tenue) reste
+         prioritaire : c'est une contrainte de cohérence, pas de budget. */
+      const dejaPose = parseFloat(base.get("tierCap") || "");
+      base.set("tierCap", String(Number.isFinite(dejaPose) && dejaPose > 0
+        ? Math.min(dejaPose, plafond) : plafond));
+      /* maxPrice n'a plus de sens quand un budget total est fourni : il
+         ferait doublon avec une règle plus lâche. */
+      base.delete("maxPrice");
+    }
     if (s.color) base.set("color", s.color);
     if (s.seed) base.set("seed", s.seed);
     if (typeof s.tierCap === "number" && s.tierCap > 0) base.set("tierCap", String(Math.round(s.tierCap)));
@@ -138,9 +203,17 @@ export async function POST(req: Request) {
       }
     }
 
+    poidsRestant = Math.max(0, poidsRestant - poidsSlot);
+    servis += 1;
     results.push({ slot: s.slot, product });
 
     if (product) {
+      /* On retire le prix réellement dépensé, pas le plafond : les pièces
+         suivantes récupèrent ce qui n'a pas été consommé. */
+      if (budgetRestant !== null) {
+        const prix = typeof product.prix === "number" ? product.prix : 0;
+        budgetRestant = Math.max(0, budgetRestant - prix);
+      }
       const type = typeof product.type === "string" && product.type
         ? product.type
         : typeof product.nom === "string" ? product.nom : "";
