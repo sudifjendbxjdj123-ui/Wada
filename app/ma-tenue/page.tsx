@@ -33,6 +33,8 @@ import {
   composeOutfitFromProfile, validateOutfit,
   type RegistreOutfit, type RegistreSlot,
 } from "@/lib/registreEngine";
+import { scoreTenue } from "@/lib/composer/scoreTenue";
+import type { SaisonTendance } from "@/lib/tendances2026";
 import { merchantsForPiece } from "@/lib/merchantsForPiece";
 import { formatProductPrice } from "@/lib/priceFormat";
 import {
@@ -42,6 +44,7 @@ import {
 } from "@/lib/styles";
 import ExternalLink from "@/components/ExternalLink";
 import Reveal from "@/components/Reveal";
+import NoteComposition from "@/components/NoteComposition";
 /* Brief « appli efficace » §6 (2026-05-29) : repère « Ensuite : … ». */
 import NextStepHint from "@/components/NextStepHint";
 
@@ -303,6 +306,10 @@ function MaTenueContent() {
   const overrideExclude = searchParams.get("exclude");
 
   const [prefs, setPrefs] = useState<WadaPrefs>(DEFAULT_PREFS);
+  /* Saison déclarée par le client (questionnaire /palette/[number] ou
+     /compte). Lue une fois au mount avec le reste du profil ; sert à noter
+     la cohérence saisonnière des matières de la tenue. */
+  const [profileSaison, setProfileSaison] = useState<string | null>(null);
   const [matchIndex, setMatchIndex] = useState(0);
   const [hydrated, setHydrated] = useState(false);
   /* Fix 2026-05-31 (user screenshot « ~275€ » alors que somme = 2414€) :
@@ -484,6 +491,7 @@ function MaTenueContent() {
       if (!initial.morpho && typeof profile?.morphologie === "string") {
         initial.morpho = profile.morphologie;
       }
+      if (typeof profile?.saison === "string") setProfileSaison(profile.saison);
       // Overrides URL — gagnent sur localStorage pour cette session
       if (overrideStyle) initial.style = overrideStyle;
       if (overrideOccasion) initial.occasion_focus = overrideOccasion;
@@ -570,6 +578,20 @@ function MaTenueContent() {
     }
     return out;
   }, [entry, prefs.style, prefs.fit, prefs.occasion_focus, prefs.gender, prefs.morpho]);
+
+  /* Note de composition sur 100 (barème brief 2026-08-21). Elle juge le PLAN
+     de tenue — couleurs, proportions, styles, occasion, matières, saison,
+     accessoire — donc avant même d'aller chercher les produits marchands.
+     Affichée au client avec son point faible : une note sans explication ne
+     sert à rien. */
+  const noteTenue = useMemo(() => {
+    if (!registreOutfit) return null;
+    const saison: SaisonTendance | null =
+      profileSaison === "Hiver" ? "AH"
+      : profileSaison === "Été" ? "PE"
+      : null;   // « Mi-saison » et « Toute saison » ne tranchent pas
+    return scoreTenue(registreOutfit, { saison });
+  }, [registreOutfit, profileSaison]);
 
   // Composition utilisée pour le rendu = slots du registre engine,
   // mappés au format attendu par PieceLine (piece + item + color).
@@ -965,6 +987,20 @@ function MaTenueContent() {
               </div>
             </Reveal>
           </div>
+        </section>
+      )}
+
+      {/* ═══════════════════════════════════════════════════════════════
+          NOTE DE COMPOSITION — brief client 2026-08-21.
+          Placée après la phrase de direction artistique et AVANT les pièces :
+          le client lit d'abord l'intention, puis ce qu'elle vaut, puis le
+          détail des pièces.
+          ═══════════════════════════════════════════════════════════════ */}
+      {noteTenue && (
+        <section style={{ padding: "0 5% 24px" }}>
+          <Reveal>
+            <NoteComposition note={noteTenue} />
+          </Reveal>
         </section>
       )}
 
