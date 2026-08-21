@@ -60,7 +60,14 @@ function ComptePageInner() {
   const cameFromStart = params?.get("from") === "start";
 
   const [account, setAccount] = useState<Account | null>(null);
-  const [tab, setTab] = useState<Tab>("signup");
+  /* L'onglet peut être imposé par l'URL : `?tab=login`. Sans ça, la page
+     s'ouvrait toujours sur « Créer un compte », et le bouton de connexion de
+     l'accueil déposait un client déjà inscrit sur un formulaire d'inscription
+     — à lui de repérer le petit onglet en haut. Le défaut reste « signup »
+     pour toutes les autres entrées. */
+  const [tab, setTab] = useState<Tab>(
+    params?.get("tab") === "login" ? "login" : "signup",
+  );
   const [email, setEmail] = useState("");
   const [firstName, setFirstName] = useState("");
   const [password, setPassword] = useState("");

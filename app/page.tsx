@@ -244,8 +244,16 @@ export default function Home() {
             maxWidth: 320,
           }}
         >
+          {/* CTA principal — connexion (client 2026-08-22 : « remets le login
+              avec le logo à la place de Scanner une couleur »). Le scanner
+              reste accessible : c'est le bouton central de la barre d'onglets,
+              présent sur toutes les pages, alors que la connexion n'avait
+              aucune porte d'entrée depuis l'accueil.
+              `?tab=login` ouvre directement l'onglet Connexion de /compte —
+              sans ce paramètre la page s'ouvrait toujours sur « Créer un
+              compte », et un client déjà inscrit devait chercher l'onglet. */}
           <Link
-            href="/scanner"
+            href="/compte?tab=login"
             style={{
               display: "inline-flex",
               alignItems: "center",
@@ -273,7 +281,19 @@ export default function Home() {
               ev.currentTarget.style.boxShadow = "0 14px 40px rgba(0,0,0,.35)";
             }}
           >
-            <span>Scanner une couleur</span>
+            <span
+              aria-hidden
+              style={{
+                fontFamily: "'Fredoka', sans-serif",
+                fontWeight: 700,
+                fontSize: 17,
+                letterSpacing: "0.02em",
+                lineHeight: 1,
+              }}
+            >
+              WADA<span style={{ marginLeft: 3 }}>和田</span>
+            </span>
+            <span>Se connecter</span>
             <span aria-hidden style={{ fontSize: 17 }}>→</span>
           </Link>
 
