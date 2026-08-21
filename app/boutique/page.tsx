@@ -61,10 +61,12 @@ export default function BoutiquePage() {
           Pas de conteneur autour de la grille : les cartes sont posées sur le
           fond crème, comme sur Zalando ou BSTN. */}
       <div style={{ width: "100%", padding: "22px 5% 46px" }}>
-        {/* Bandeau remises + rangée « Tendances maintenant » (maquette
-            2026-08-22). Placés entre la palette du jour et le catalogue :
-            ils donnent une raison d'entrer avant la liste. */}
-        <VitrineBoutique genre={contexte.genre} />
+        {/* Vitrine complète (maquette client 2026-08-22, « donne-moi
+            exactement ça ») : recherche + panier, onglets, nouveautés,
+            tendances, palette WADA, sélection été, sport, offres de marques,
+            coups de cœur. Placée avant le catalogue : elle donne une raison
+            d'entrer avant la grande liste. */}
+        <VitrineBoutique genre={contexte.genre} palette={contexte.palette} />
 
         <CataloguePalette
           palette={contexte.palette}
