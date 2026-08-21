@@ -1194,6 +1194,10 @@ export async function GET(req: Request) {
   const marquesDisponibles = [...compteParMarque.values()]
     .sort((a, b) => b.n - a.n || a.nom.localeCompare(b.nom))
     .slice(0, 30);
+  /* Nombre TOTAL de marques du résultat, avant le plafond de trente. La
+     bannière de réassurance annonce « plus de N marques » : elle doit compter
+     le catalogue, pas la taille d'un panneau d'interface. */
+  const marquesTotal = compteParMarque.size;
 
   if (marquesVoulues.length > 0) {
     ordonne = ordonne.filter((p) =>
@@ -1218,6 +1222,7 @@ export async function GET(req: Request) {
       /* Marques présentes dans ce résultat, pour alimenter un vrai panneau
          de filtre côté client. */
       marquesDisponibles,
+      marquesTotal,
       source: "kv",
       filters_applied: {
         slot, palette, genre, style, merchant,

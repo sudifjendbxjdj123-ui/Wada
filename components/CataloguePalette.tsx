@@ -288,9 +288,10 @@ export default function CataloguePalette({
   genre?: string | null;
   /** Filtres réglés par l'en-tête (couleur, prix, promo, marques, tri). */
   filtres?: FiltresBoutique;
-  /** Remonte les marques présentes dans le résultat, pour le panneau
-      « Marques » de l'en-tête. */
-  onMarques?: (m: Array<{ nom: string; n: number }>) => void;
+  /** Remonte les facettes du résultat : les marques (pour le panneau
+      « Marques ») et leur nombre total (pour le bandeau de réassurance,
+      qui annonce « plus de N marques »). */
+  onMarques?: (m: Array<{ nom: string; n: number }>, total: number | null) => void;
   limit?: number;
 }) {
   const [produits, setProduits] = useState<Produit[]>([]);
@@ -332,7 +333,10 @@ export default function CataloguePalette({
         setProduits(liste);
         setTotal(typeof d.total === "number" ? d.total : liste.length);
         setEtat(liste.length ? "pret" : "vide");
-        if (Array.isArray(d.marquesDisponibles)) onMarques?.(d.marquesDisponibles);
+        if (Array.isArray(d.marquesDisponibles)) {
+          onMarques?.(d.marquesDisponibles,
+            typeof d.marquesTotal === "number" ? d.marquesTotal : null);
+        }
       } catch {
         /* Abort au démontage, ou réseau : on ne casse pas la page. */
       }

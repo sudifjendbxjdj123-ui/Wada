@@ -16,20 +16,20 @@ import {
 /**
  * VitrineBoutique — la page d'accueil de la boutique, section par section.
  *
- * Maquette client 2026-08-22 (« donne-moi exactement ça »). Neuf blocs :
- * recherche, onglets, nouveautés, tendances, palette WADA, sélection été,
- * sport, offres de marques, coups de cœur.
+ * Maquette client 2026-08-23 (« je veux ça »). Dans l'ordre : recherche +
+ * panier, onglets, bannière de remises, tendances du moment, palette WADA
+ * (avec quatre pièces), nouveautés, sélection été, sport & performance.
+ * La barre de réassurance et le catalogue filtrable sont posés par la page.
  *
  * Règle appliquée partout : AUCUN chiffre n'est écrit en dur. Les remises,
  * les prix « dès X € » et les dates viennent du catalogue. Une section dont
  * la donnée manque ne s'affiche pas, plutôt que d'afficher une valeur
  * inventée que le premier clic démentirait.
  *
- * Deux écarts assumés avec la maquette, expliqués à leur emplacement :
- *   - les marques sont en typographie, pas en logos (aucun fichier de logo
- *     dans le dépôt, et fabriquer de faux logos serait douteux) ;
- *   - « Les plus aimés » devient « Coups de cœur WADA » — il n'existe aucune
- *     donnée de popularité, la renommer était plus honnête que l'inventer.
+ * Écart assumé avec la maquette, expliqué à son emplacement : les marques de
+ * la bannière sont en typographie, pas en logos — le dépôt ne contient aucun
+ * fichier de logo de marque, et redessiner des marques déposées serait à la
+ * fois approximatif et juridiquement douteux.
  *
  * Toutes les données viennent de DEUX requêtes lancées en parallèle. Empiler
  * des appels séquentiels sur une route qui balaie le KV est exactement ce qui
@@ -272,6 +272,8 @@ export default function VitrineBoutique({
   const router = useRouter();
   const [pool, setPool] = useState<Produit[]>([]);
   const [promos, setPromos] = useState<Produit[]>([]);
+  /* Page courante de la bannière de remises (4 marques par page). */
+  const [pageOffre, setPageOffre] = useState(0);
   const [recherche, setRecherche] = useState("");
   const [panier, setPanier] = useState(0);
   const [ongletActif, setOngletActif] = useState("pour-vous");
@@ -294,7 +296,10 @@ export default function VitrineBoutique({
           fetch(`/api/products?limit=60${g}`, { signal: ac.signal }),
           fetch(`/api/products?promo=1&limit=40${g}`, { signal: ac.signal }),
         ]);
-        if (rPool.ok) setPool((await rPool.json()).products ?? []);
+        if (rPool.ok) {
+          const d = await rPool.json();
+          setPool(d.products ?? []);
+        }
         if (rPromo.ok) setPromos((await rPromo.json()).products ?? []);
       } catch { /* abort ou réseau : la page reste utilisable */ }
     })();
@@ -380,9 +385,39 @@ export default function VitrineBoutique({
     }
     return [...parMarque.entries()]
       .sort((a, b) => b[1] - a[1])
-      .slice(0, 6)
+      .slice(0, 12)
       .map(([marque, pc]) => ({ marque, pc }));
   }, [promos]);
+
+  /* Bannière de remises : la maquette montre quatre marques et un « JUSQU'À
+     −30 % ». Les deux sont calculés — le pourcentage est la remise la plus
+     forte réellement constatée, pas un chiffre d'illustration. Sans article
+     soldé dans le catalogue, la bannière ne s'affiche pas du tout. */
+  const PAR_PAGE = 4;
+  const pagesOffres = Math.max(1, Math.ceil(offres.length / PAR_PAGE));
+  const pageOffreSure = pageOffre % pagesOffres;
+  const offresPage = offres.slice(pageOffreSure * PAR_PAGE, pageOffreSure * PAR_PAGE + PAR_PAGE);
+  const remiseMax = offres.length ? offres[0].pc : 0;
+
+  /* Quatre pièces de la palette du jour, pour illustrer le bloc palette. Ce
+     sont les plus proches de ses teintes — le même critère que le catalogue,
+     pas un échantillon au hasard. */
+  const piecesPalette = useMemo(() => {
+    const couleurs = palette?.colors ?? [];
+    if (couleurs.length === 0) return [];
+    return [...achetables]
+      .map((p) => {
+        let ecart = Infinity;
+        for (const c of couleurs) {
+          try { ecart = Math.min(ecart, deltaEHex(p.hex || "", c.hex)); } catch { /* hex illisible */ }
+        }
+        return { p, ecart };
+      })
+      .filter((x) => Number.isFinite(x.ecart))
+      .sort((a, b) => a.ecart - b.ecart)
+      .slice(0, 4)
+      .map((x) => x.p);
+  }, [achetables, palette]);
 
   const lienGenre = genre ? `&genre=${genre}` : "";
   const versRecherche = (q: string) => `/vetements?q=${encodeURIComponent(q)}${lienGenre}`;
@@ -477,13 +512,128 @@ export default function VitrineBoutique({
         })}
       </nav>
 
-      {/* ── Nouveautés ─────────────────────────────────────────────────── */}
-      {nouveautes.length > 0 && (
-        <section id="nouveautes" style={{ margin: "0 0 26px", scrollMarginTop: 16 }}>
-          <TitreSection titre="Nouveautés" href={`/vetements?sort=nouveau${lienGenre}`} />
-          <Rangee>
-            {nouveautes.map((p, i) => <CarteProduit key={p.id || i} p={p} />)}
-          </Rangee>
+      {/* ── Bannière remises ────────────────────────────────────────────
+          Premier bloc sous les onglets (maquette client 2026-08-23). Elle
+          remplace la section « Offres de nos marques », qui vivait six écrans
+          plus bas : une remise annoncée après six écrans n'attire personne. */}
+      {offres.length > 0 && (
+        <section id="offres" style={{
+          margin: "0 0 24px", padding: "16px 15px", borderRadius: 16,
+          border: `1px solid ${border}`, background: "#FFFDFA",
+          display: "flex", alignItems: "center", gap: 14, scrollMarginTop: 16,
+        }}>
+          <div style={{ flex: "0 0 auto", maxWidth: 124 }}>
+            <p style={{
+              fontFamily: fontLabel, fontSize: 10, letterSpacing: ".14em",
+              textTransform: "uppercase", color: textSecondary, margin: 0,
+            }}>
+              Jusqu&apos;à
+            </p>
+            <p style={{
+              fontFamily: fontHeading, fontSize: 34, color: mojo,
+              margin: "2px 0 0", lineHeight: 1,
+            }}>
+              −{remiseMax}%
+            </p>
+            <p style={{
+              fontFamily: fontBody, fontSize: 12.5, color: textSecondary,
+              margin: "5px 0 0", lineHeight: 1.3,
+            }}>
+              sur une sélection de marques
+            </p>
+            <Link href={`/vetements?onSale=1${lienGenre}`} style={{
+              display: "inline-flex", alignItems: "center", justifyContent: "center",
+              marginTop: 11, padding: "9px 18px", borderRadius: 999,
+              background: mojo, color: "#fff", textDecoration: "none",
+              fontFamily: fontBody, fontSize: 13,
+            }}>
+              Découvrir
+            </Link>
+          </div>
+
+          <div style={{ flex: 1, minWidth: 0 }}>
+            {/* MARQUES EN TYPOGRAPHIE, PAS EN LOGOS.
+                La maquette montre les logos Carhartt, New Balance, adidas et
+                Nike. Le dépôt ne contient aucun fichier de logo de marque, et
+                redessiner des marques déposées serait à la fois approximatif
+                et juridiquement douteux. Chaque nom est ici un vrai lien vers
+                les articles soldés de la marque, avec sa remise réelle. Le
+                jour où les fichiers officiels sont fournis, ils se glissent
+                dans ce bloc sans rien changer d'autre. */}
+            <div style={{
+              display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+              gap: "10px 8px",
+            }}>
+              {offresPage.map((o) => (
+                <button key={o.marque} type="button"
+                  onClick={() => router.push(
+                    `/vetements?onSale=1&brands=${encodeURIComponent(o.marque)}${lienGenre}`)}
+                  style={{
+                    background: "none", border: "none", padding: 0, cursor: "pointer",
+                    textAlign: "left", minWidth: 0,
+                  }}>
+                  <span style={{
+                    /* Deux lignes plutôt qu'une troncature : « CARHARTT WIP »
+                       devenait « CARHART… », ce qui ne nomme plus la marque. */
+                    display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical",
+                    overflow: "hidden",
+                    fontFamily: fontHeading, fontSize: 12.5, color: ink,
+                    letterSpacing: ".02em", textTransform: "uppercase", lineHeight: 1.15,
+                  }}>
+                    {o.marque}
+                  </span>
+                  <span style={{
+                    display: "block", fontFamily: fontBody, fontSize: 12, color: mojo,
+                  }}>
+                    −{o.pc}%
+                  </span>
+                </button>
+              ))}
+            </div>
+
+            {pagesOffres > 1 && (
+              <div style={{
+                display: "flex", alignItems: "center", justifyContent: "space-between",
+                gap: 10, marginTop: 12,
+              }}>
+                <span style={{ display: "flex", alignItems: "center" }}>
+                  {Array.from({ length: pagesOffres }, (_, i) => (
+                    /* Le point est un <span> interne : globals.css impose
+                       `button { min-height: 36px }` sous 768 px, un bouton de
+                       7 px sortait donc en 7×36 — une ellipse verticale,
+                       mesurée telle quelle. Le bouton conserve sa cible
+                       tactile, ce qui est de toute façon souhaitable : sept
+                       pixels ne se visent pas au doigt. */
+                    <button key={i} type="button"
+                      onClick={() => setPageOffre(i)}
+                      aria-label={`Page ${i + 1} des marques en promotion`}
+                      aria-current={i === pageOffreSure ? "true" : undefined}
+                      style={{
+                        padding: "0 3px", border: "none", background: "none",
+                        cursor: "pointer", lineHeight: 0, flexShrink: 0,
+                        display: "inline-flex", alignItems: "center",
+                      }}>
+                      <span aria-hidden style={{
+                        display: "block", width: 7, height: 7, borderRadius: "50%",
+                        background: i === pageOffreSure ? mojo : "rgba(30,30,30,.18)",
+                      }} />
+                    </button>
+                  ))}
+                </span>
+                <button type="button"
+                  onClick={() => setPageOffre((n) => n + 1)}
+                  aria-label="Marques suivantes"
+                  style={{
+                    width: 30, height: 30, borderRadius: "50%", flexShrink: 0,
+                    border: `1px solid ${border}`, background: "#FAF8F4", color: ink,
+                    display: "inline-flex", alignItems: "center", justifyContent: "center",
+                    cursor: "pointer",
+                  }}>
+                  <Fleche t={14} />
+                </button>
+              </div>
+            )}
+          </div>
         </section>
       )}
 
@@ -495,7 +645,7 @@ export default function VitrineBoutique({
             {tendances.map((t) => (
               <button key={t.titre} type="button" onClick={() => router.push(versRecherche(t.q))}
                 style={{
-                  flex: "0 0 auto", width: 186, padding: 0, border: "none", background: "none",
+                  flex: "0 0 auto", width: 158, padding: 0, border: "none", background: "none",
                   cursor: "pointer", textAlign: "left", scrollSnapAlign: "start",
                   position: "relative", borderRadius: 14, overflow: "hidden",
                 }}>
@@ -510,15 +660,31 @@ export default function VitrineBoutique({
                   position: "absolute", inset: 0,
                   background: "linear-gradient(180deg, rgba(20,16,12,.05) 40%, rgba(20,16,12,.72) 100%)",
                 }} />
-                <span style={{ position: "absolute", left: 12, right: 12, bottom: 12 }}>
+                {/* Pastille « › » de la maquette : elle signale que la tuile
+                    ouvre une sélection, pas qu'elle est une simple image. */}
+                <span aria-hidden style={{
+                  position: "absolute", right: 10, bottom: 10,
+                  width: 26, height: 26, borderRadius: "50%",
+                  background: "rgba(255,255,255,.92)", color: ink,
+                  display: "inline-flex", alignItems: "center", justifyContent: "center",
+                }}>
+                  <Fleche t={13} />
+                </span>
+                <span style={{ position: "absolute", left: 11, right: 11, bottom: 11 }}>
+                  {/* Le titre prend toute la largeur ; seule la description
+                      s'écarte de la pastille. Réserver la place du rond sur
+                      les deux faisait passer « LIN & NATUREL » sur deux
+                      lignes. */}
                   <span style={{
-                    display: "block", fontFamily: fontHeading, fontSize: 15, color: "#fff",
-                    letterSpacing: ".04em", textTransform: "uppercase", lineHeight: 1.2,
+                    display: "block", fontFamily: fontHeading, fontSize: 13.5, color: "#fff",
+                    letterSpacing: ".03em", textTransform: "uppercase", lineHeight: 1.2,
+                    overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                   }}>
                     {t.titre}
                   </span>
                   <span style={{
-                    display: "block", marginTop: 3, fontFamily: fontBody, fontSize: 12,
+                    display: "block", marginTop: 3, paddingRight: 32,
+                    fontFamily: fontBody, fontSize: 11.5,
                     color: "rgba(255,255,255,.88)", lineHeight: 1.3,
                   }}>
                     {t.sous}
@@ -573,7 +739,48 @@ export default function VitrineBoutique({
                 Shopper cette palette
               </Link>
             </div>
+
+            {/* Quatre pièces de la palette (maquette client 2026-08-23). Elles
+                montrent ce que l'accord donne PORTÉ, ce que trois bandes de
+                couleur ne diront jamais. Ce sont les articles réellement les
+                plus proches de ses teintes — même critère que le catalogue. */}
+            {piecesPalette.length > 0 && (
+              <div style={{
+                display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+                gap: 6, flex: "1 1 100%", minWidth: 0,
+              }}>
+                {piecesPalette.map((p, i) => {
+                  const img = getDisplayImageUrl(p.image, p.largeImage);
+                  return (
+                    <a key={p.id || i} href={p.urlProduit || "#"}
+                      target="_blank" rel="noopener noreferrer sponsored"
+                      title={`${p.marque || p.marchand || ""} — ${p.nom}`}
+                      style={{
+                        display: "block", aspectRatio: "3 / 4", borderRadius: 10,
+                        overflow: "hidden", background: "#F2EFE9",
+                        border: `1px solid ${border}`, minWidth: 0,
+                      }}>
+                      {img && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={img} alt={p.nom} loading="lazy" decoding="async"
+                          style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                      )}
+                    </a>
+                  );
+                })}
+              </div>
+            )}
           </div>
+        </section>
+      )}
+
+      {/* ── Nouveautés ─────────────────────────────────────────────────── */}
+      {nouveautes.length > 0 && (
+        <section id="nouveautes" style={{ margin: "0 0 26px", scrollMarginTop: 16 }}>
+          <TitreSection titre="Nouveautés" href={`/vetements?sort=nouveau${lienGenre}`} />
+          <Rangee>
+            {nouveautes.map((p, i) => <CarteProduit key={p.id || i} p={p} />)}
+          </Rangee>
         </section>
       )}
 
@@ -668,56 +875,12 @@ export default function VitrineBoutique({
         </section>
       )}
 
-      {/* ── Offres de nos marques ──────────────────────────────────────── */}
-      {offres.length > 0 && (
-        <section id="offres" style={{ margin: "0 0 26px", scrollMarginTop: 16 }}>
-          <TitreSection titre="Offres de nos marques" href={`/vetements?onSale=1${lienGenre}`} />
-          <Rangee>
-            {offres.map((o) => (
-              <button key={o.marque} type="button"
-                onClick={() => router.push(`/vetements?onSale=1&q=${encodeURIComponent(o.marque)}${lienGenre}`)}
-                style={{
-                  flex: "0 0 auto", width: 138, scrollSnapAlign: "start",
-                  background: "#FFFDFA", border: `1px solid ${border}`, borderRadius: 14,
-                  padding: "14px 12px", cursor: "pointer", textAlign: "center",
-                }}>
-                {/* Nom de marque en typographie, pas en logo : le dépôt n'a
-                    aucun fichier de logo, et fabriquer de faux logos serait à
-                    la fois laid et juridiquement douteux. */}
-                <span style={{
-                  display: "block", fontFamily: fontHeading, fontSize: 13, color: ink,
-                  letterSpacing: ".04em", textTransform: "uppercase",
-                  overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                }}>
-                  {o.marque}
-                </span>
-                <span style={{
-                  display: "block", marginTop: 9, fontFamily: fontHeading, fontSize: 22,
-                  color: mojo, lineHeight: 1,
-                }}>
-                  −{o.pc}%
-                </span>
-                <span style={{
-                  display: "block", marginTop: 4, fontFamily: fontBody, fontSize: 11.5,
-                  color: textSecondary,
-                }}>
-                  sur une sélection
-                </span>
-              </button>
-            ))}
-          </Rangee>
-        </section>
-      )}
-
-      {/* ── Coups de cœur WADA ─────────────────────────────────────────── */}
-      {coupsDeCoeur.length > 0 && (
-        <section id="coups-de-coeur" style={{ margin: "0 0 26px", scrollMarginTop: 16 }}>
-          <TitreSection titre="Coups de cœur WADA" href={`/vetements${genre ? `?genre=${genre}` : ""}`} />
-          <Rangee>
-            {coupsDeCoeur.map((p, i) => <CarteProduit key={p.id || `c${i}`} p={p} />)}
-          </Rangee>
-        </section>
-      )}
+      {/* « Offres de nos marques » et « Coups de cœur WADA » ne sont plus
+          ici. La première est remontée tout en haut, en bannière (maquette
+          client 2026-08-23) : une remise annoncée après six écrans de
+          défilement n'attire plus personne. La seconde ne figure pas dans la
+          maquette, et la grille du catalogue juste en dessous remplit déjà ce
+          rôle — la garder aurait fait deux listes de produits qui se suivent. */}
 
       <style>{`
         .wada-vitrine-scroll { scrollbar-width: none; }

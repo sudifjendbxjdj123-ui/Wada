@@ -2,44 +2,46 @@
 /**
  * /boutique — Page shopping WADA.
  *
- * Fix 2026-06-11 « hero instantané » : retiré le caches.delete("products-v1")
- * qui s'exécutait à chaque mount → toutes les requêtes /api/products
- * repartaient à froid (4-6s contre ~200ms en chaud). Le cache produits doit
- * être invalidé par /api/cron, pas par l'utilisateur qui ouvre la page.
+ * Maquette client 2026-08-23 (« je veux ça »). La page s'ouvre désormais sur
+ * la recherche et les produits. Ce qui l'ouvrait avant — un bouton Retour, un
+ * titre « BOUTIQUE », un sous-titre, deux pilules de genre, six onglets de
+ * catégorie, trois pilules de filtre et dix pastilles de couleur — occupait
+ * près de six cents pixels, soit la moitié d'un écran de téléphone, avant le
+ * premier article. Les commandes n'ont pas disparu : elles sont descendues
+ * dans BarreCatalogue, juste au-dessus de la grille qu'elles pilotent.
+ *
+ * Fix 2026-06-11 « hero instantané » : ne pas remettre de caches.delete(
+ * "products-v1") au montage — toutes les requêtes /api/products repartaient
+ * à froid (4-6 s contre ~200 ms en chaud). Le cache produits est invalidé par
+ * /api/cron, pas par l'utilisateur qui ouvre la page.
  */
 import { useCallback, useState } from "react";
-import type { DictionaryEntry } from "@/lib/data";
-import { type FiltresBoutique, FILTRES_VIDES } from "@/lib/filtresBoutique";
-import BackButton from "@/components/BackButton";
-import BoutiqueEntete from "@/components/BoutiqueEntete";
+import { FILTRES_VIDES, type FiltresBoutique } from "@/lib/filtresBoutique";
+import { usePaletteDuJour, useGenreMemorise } from "@/lib/paletteDuJour";
+import BarreCatalogue from "@/components/BarreCatalogue";
 import CataloguePalette from "@/components/CataloguePalette";
 import VitrineBoutique from "@/components/VitrineBoutique";
+import BandeauConfiance from "@/components/BandeauConfiance";
 
 export default function BoutiquePage() {
-  /* Palette du jour et genre, remontés par l'en-tête. Le catalogue s'en sert
-     pour filtrer ses produits et nommer la teinte portée par chacun. */
-  const [contexte, setContexte] = useState<{
-    palette: DictionaryEntry | null;
-    genre: string;
-    filtres: FiltresBoutique;
-  }>({ palette: null, genre: "femme", filtres: FILTRES_VIDES });
+  const palette = usePaletteDuJour();
+  const [genre, setGenre] = useGenreMemorise();
+  const [filtres, setFiltres] = useState<FiltresBoutique>(FILTRES_VIDES);
+  const [panneau, setPanneau] = useState<string | null>(null);
 
   /* Les marques du résultat courant font l'aller-retour : le catalogue les
-     découvre en interrogeant l'API, l'en-tête s'en sert pour peupler son
+     découvre en interrogeant l'API, la barre s'en sert pour peupler son
      panneau « Marques ». Le catalogue est le seul à parler à l'API — une
-     seconde requête depuis l'en-tête aurait doublé la charge pour la même
-     information. */
+     seconde requête depuis la barre aurait doublé la charge pour la même
+     information. useCallback : sans lui, une nouvelle fonction à chaque rendu
+     relancerait l'effet du catalogue en boucle. */
   const [marques, setMarques] = useState<Array<{ nom: string; n: number }>>([]);
-
-  /* useCallback : sans lui, une nouvelle fonction à chaque rendu relancerait
-     l'effet de l'en-tête en boucle. */
-  const majContexte = useCallback(
-    (ctx: { palette: DictionaryEntry | null; genre: string; filtres: FiltresBoutique }) =>
-      setContexte(ctx),
-    [],
-  );
+  const [marquesTotal, setMarquesTotal] = useState<number | null>(null);
   const majMarques = useCallback(
-    (m: Array<{ nom: string; n: number }>) => setMarques(m),
+    (m: Array<{ nom: string; n: number }>, total: number | null) => {
+      setMarques(m);
+      if (total !== null) setMarquesTotal(total);
+    },
     [],
   );
 
@@ -57,38 +59,43 @@ export default function BoutiquePage() {
         position: "relative",
       }}
     >
-      <div style={{ position: "absolute", top: 0, left: 0, right: 0, zIndex: 10 }}>
-        <BackButton fallback="/" />
-      </div>
+      {/* Plus de bouton Retour flottant : la boutique est une destination de
+          la barre d'onglets du bas, pas une sous-page dont on ressort. Il
+          poussait en plus le contenu de 62 px vers le bas pour ne pas passer
+          derrière lui. */}
+      <div style={{ width: "100%", padding: "18px 5% 46px" }}>
+        {/* Recherche, onglets, bannière remises, tendances, palette,
+            nouveautés, été, sport, réassurance. */}
+        <VitrineBoutique genre={genre} palette={palette} />
 
-      {/* Le mur de vêtements défilant est parti sur l'accueil (client
-          2026-08-22). La boutique reçoit à la place une entrée de catalogue
-          lisible : titre, genre, catégories, filtres, couleurs, palette du
-          jour. Un mur d'images qui bouge est une belle porte d'entrée, mais
-          une mauvaise page de courses. */}
-      <BoutiqueEntete onContexte={majContexte} marquesDisponibles={marques} />
+        {/* Le catalogue et ses commandes ferment la page : on y arrive après
+            avoir parcouru les sélections, au moment où l'on veut chercher
+            soi-même. */}
+        <div style={{ maxWidth: 1200, margin: "0 auto", width: "100%" }}>
+          <BarreCatalogue
+            genre={genre}
+            onGenre={setGenre}
+            filtres={filtres}
+            onFiltres={setFiltres}
+            panneau={panneau}
+            onPanneau={setPanneau}
+            marquesDisponibles={marques}
+          />
+          <CataloguePalette
+            palette={palette}
+            genre={genre}
+            filtres={filtres}
+            onMarques={majMarques}
+            limit={24}
+          />
+        </div>
 
-      {/* Vrai catalogue produits (client 2026-08-22 : « je remplacerais
-          complètement À découvrir par un vrai catalogue produits, comme un
-          e-commerce mode »). Il remplace BrandShowcaseCompact, qui montrait
-          six vignettes dans un cadre blanc — une vitrine, pas une boutique.
-          Pas de conteneur autour de la grille : les cartes sont posées sur le
-          fond crème, comme sur Zalando ou BSTN. */}
-      <div style={{ width: "100%", padding: "22px 5% 46px" }}>
-        {/* Vitrine complète (maquette client 2026-08-22, « donne-moi
-            exactement ça ») : recherche + panier, onglets, nouveautés,
-            tendances, palette WADA, sélection été, sport, offres de marques,
-            coups de cœur. Placée avant le catalogue : elle donne une raison
-            d'entrer avant la grande liste. */}
-        <VitrineBoutique genre={contexte.genre} palette={contexte.palette} />
-
-        <CataloguePalette
-          palette={contexte.palette}
-          genre={contexte.genre}
-          filtres={contexte.filtres}
-          onMarques={majMarques}
-          limit={24}
-        />
+        {/* Réassurance en pied de page (maquette client 2026-08-23). Le texte
+            diffère de la maquette : voir l'explication dans le composant —
+            WADA n'expédie rien, n'encaisse rien et ne traite aucun retour. */}
+        <div style={{ maxWidth: 1200, margin: "26px auto 0", width: "100%" }}>
+          <BandeauConfiance marquesTotal={marquesTotal} />
+        </div>
       </div>
     </main>
   );
