@@ -23,13 +23,13 @@ import { BackToTopButton } from "@/components/BackToTopButton";
 import { showToast } from "@/lib/toast";
 import { SizeGuideModal } from "@/components/SizeGuideModal";
 import { CartSidebar } from "@/components/CartSidebar";
-import { getCartCount } from "@/lib/cart";
+import { getCartCount, addToCart } from "@/lib/cart";
 import { NewsletterBanner } from "@/components/NewsletterBanner";
 import { MobileNav } from "@/components/MobileNav";
 /* Brief 2026-06-09 — système de filtres complet (sidebar 11 filtres +
    filtre Palette Sanzō Wada). Cf. lib/categoryFilters + components/category. */
 import {
-  FilterSidebar, ActiveFilters, MobileFilterButton, type Facets,
+  FilterSidebar, type Facets,
 } from "@/components/category/FilterSidebar";
 import {
   type CategoryFilters, getDefaultFilters, paramsToFilters, filtersToParams,
@@ -85,6 +85,17 @@ const BORDEAUX = "#6B3A32";
    pas du catalogue — et la page 2 recommençait à zéro. /api/products/search
    sait trier tout le pool filtré (lib/categoryFilters.sortProducts) : on lui
    transmet le tri et on laisse le serveur paginer un résultat déjà ordonné. */
+/* Filtres rapides de la barre catégorie — les dimensions qu'on choisit le
+   plus souvent en boutique. Chaque puce ouvre le panneau complet ; le compteur
+   rappelle combien de valeurs sont déjà cochées. */
+const QUICK_FILTERS: Array<{ key: "sizes" | "brands" | "colors" | "palettes" | "styles"; label: string }> = [
+  { key: "sizes",    label: "Taille" },
+  { key: "brands",   label: "Marque" },
+  { key: "colors",   label: "Couleur" },
+  { key: "palettes", label: "Palette" },
+  { key: "styles",   label: "Style" },
+];
+
 const SORT_TO_SERVER: Record<SortOption, string> = {
   relevance: "",
   "price-low": "prix-asc",
@@ -374,6 +385,43 @@ function ProductModal({ product: p, onClose, clickPosition, allProducts, onProdu
               <div aria-disabled="true" style={{ background: "#d8cfc0", color: "#fff", borderRadius: 999, padding: "14px 0", fontSize: 14, fontWeight: 600, textAlign: "center", fontFamily: "'Inter'", cursor: "not-allowed" }}>Bientôt disponible</div>
             )}
           </div>
+
+          {/* ── Ajouter au panier ──
+              Déplacé ici depuis la carte de la grille (refonte 2026-08-21) :
+              la carte portait le bouton ET le sélecteur de taille, ce qui la
+              rendait démesurée. La fiche produit affiche déjà les tailles,
+              c'est sa place naturelle. La taille n'est exigée que si le
+              produit en propose — bijoux, sacs et une partie des accessoires
+              arrivent sans, et le panier leur était inaccessible. */}
+          <button
+            onClick={() => {
+              if (sizes.length > 0 && !selectedSize) {
+                showToast("Veuillez sélectionner une taille", { variant: "info" });
+                return;
+              }
+              if (p.enStock === false) {
+                showToast("Produit indisponible", { variant: "info" });
+                return;
+              }
+              addToCart({
+                piece: p.categorie || "accent",
+                item: p.nom,
+                colorName: p.couleurNom || p.hex,
+                colorHex: p.hex,
+                query: `${p.marque ?? ""} ${p.nom}`.trim(),
+                fromEntry: p.id,
+              });
+              showToast(`✓ ${p.nom} ajouté au panier`, { variant: "success", duration: 3000 });
+            }}
+            style={{
+              width: "100%", padding: "13px 0", marginBottom: 10,
+              borderRadius: 999, border: `1px solid ${BORDEAUX}`,
+              background: "#fff", color: BORDEAUX,
+              fontFamily: "'Inter'", fontSize: 14, fontWeight: 600, cursor: "pointer",
+            }}
+          >
+            Ajouter au panier
+          </button>
 
           {/* ── Actions secondaires ── */}
           <div style={{ display: "flex", gap: 8, marginBottom: 18 }}>
@@ -776,10 +824,10 @@ export default function CategoryPage({ title, breadcrumb, slot, q, genre: initGe
   }, [page, totalPages]);
 
   return (
-    <main style={{ minHeight: "100vh", background: "#FAF8F4", fontFamily: "'Inter', sans-serif" }}>
+    <main className="wada-cat-page" style={{ minHeight: "100vh", background: "#FAF8F4", fontFamily: "'Inter', sans-serif" }}>
 
       {/* Cart button — top right */}
-      <div style={{ position: "absolute", top: 16, right: 20, zIndex: 50 }}>
+      <div className="wada-cat-cart" style={{ position: "absolute", top: 16, right: 20, zIndex: 50 }}>
         <button
           onClick={() => {
             setCartOpen(true);
@@ -833,7 +881,10 @@ export default function CategoryPage({ title, breadcrumb, slot, q, genre: initGe
       <BackButton fallback="/boutique" />
 
       {/* Breadcrumb — amélioré */}
-      <div style={{ padding: "12px 20px", borderBottom: "0.5px solid #e8dfd0", display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+      {/* Fil d'Ariane — réduit à une ligne de texte sur mobile (cf.
+          .wada-cat-crumbs) : en pastilles noires il pesait autant que le
+          titre juste en dessous, pour une information secondaire. */}
+      <div className="wada-cat-crumbs" style={{ padding: "12px 20px", borderBottom: "0.5px solid #e8dfd0", display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
         {breadcrumb.map((item, i) => (
           <div key={item.href} style={{ display: "flex", alignItems: "center", gap: 8 }}>
             {i > 0 && <span style={{ fontSize: 10, color: "#c5b9a8", opacity: 0.5 }}>›</span>}
@@ -905,7 +956,10 @@ export default function CategoryPage({ title, breadcrumb, slot, q, genre: initGe
             </span>
           )}
         </h1>
-        <p style={{ fontSize: 14, color: "#5a5a5a", fontStyle: "italic", margin: 0, maxWidth: 480, lineHeight: 1.5 }}>
+        {/* Phrase d'accroche — masquée sur mobile (cf. .wada-cat-blurb dans
+            globals.css) : elle répète le nombre d'articles désormais affiché
+            juste au-dessus de la grille, et repoussait les produits d'autant. */}
+        <p className="wada-cat-blurb" style={{ fontSize: 14, color: "#5a5a5a", fontStyle: "italic", margin: 0, maxWidth: 480, lineHeight: 1.5 }}>
           {loading
             ? "Sélection WADA, filtrable par palette Sanzō Wada, marque et style."
             : `${total.toLocaleString("fr-FR")} pièces sélectionnées par WADA, filtrables par palette Sanzō Wada, marque et style.`}
@@ -923,37 +977,84 @@ export default function CategoryPage({ title, breadcrumb, slot, q, genre: initGe
         {/* Colonne principale */}
         <div style={{ flex: 1, minWidth: 0 }}>
 
-          {/* Barre mobile : bouton « Filtrer » (visible ≤ 900px) */}
-          <div className="wada-cat-mobilebar" style={{ marginBottom: 12 }}>
-            <MobileFilterButton filters={filters} resultCount={total} onClick={() => setDrawerOpen(true)} />
+          {/* ══ Barre de contrôle — refonte 2026-08-21 « comme sur Zalando » ══
+              Avant : une pilule noire « Filtrer (1) · 3064 », les filtres
+              actifs en chips, un gros bouton « Réinitialiser tous les filtres »
+              et un « Trier par: ». Quatre blocs concurrents avant d'atteindre
+              le premier produit.
+              Après, l'ordre des grandes boutiques : onglets de genre, filtres
+              rapides d'un coup de pouce, puis le nombre d'articles avec le tri
+              en vis-à-vis. La sidebar complète reste accessible par « Tous les
+              filtres ». */}
+
+          {/* Onglets genre */}
+          <div className="wada-genre-tabs" role="group" aria-label="Genre">
+            {(["femme", "homme"] as const).map((gr) => {
+              const actif = filters.genres.includes(gr);
+              return (
+                <button
+                  key={gr}
+                  type="button"
+                  onClick={() => updateFilters({ ...filters, genres: actif ? [] : [gr] })}
+                  aria-pressed={actif}
+                  className={actif ? "is-active" : ""}
+                >
+                  {gr === "femme" ? "Femme" : "Homme"}
+                </button>
+              );
+            })}
           </div>
 
-          {/* Barre de contrôle : filtres actifs + tri */}
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 16, flexWrap: "wrap" }}>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <ActiveFilters filters={filters} onChange={updateFilters} />
-            </div>
-            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              <span style={{ fontSize: 12, color: "#8a7a68", whiteSpace: "nowrap" }}>Trier par:</span>
-              <SortDropdown value={sort} onChange={(newSort) => {
-                setSort(newSort);
-                /* Le tri s'applique à tout le catalogue filtré : rester en
-                   page 7 après un changement de tri afficherait une tranche
-                   arbitraire du nouveau classement. On revient page 1. */
-                setPage(1);
-                try {
-                  localStorage.setItem("wada-sort-pref", newSort);
-                } catch {}
-                const sortLabels: Record<SortOption, string> = {
-                  relevance: "Pertinence",
-                  "price-low": "Prix: bas → haut",
-                  "price-high": "Prix: haut → bas",
-                  popular: "Les plus populaires",
-                };
-                showToast(`✓ Trié par ${sortLabels[newSort]}`, { variant: "success", duration: 2000 });
-              }} />
-            </div>
+          {/* Filtres rapides — ouvrent le panneau complet sur la bonne section */}
+          <div className="wada-quickfilters" role="group" aria-label="Filtres rapides">
+            {QUICK_FILTERS.map((qf) => {
+              const n = (filters[qf.key] as string[]).length;
+              return (
+                <button
+                  key={qf.key}
+                  type="button"
+                  onClick={() => setDrawerOpen(true)}
+                  className={n > 0 ? "is-active" : ""}
+                >
+                  {qf.label}{n > 0 ? ` (${n})` : ""}
+                </button>
+              );
+            })}
+            {activeFilterCount(filters) > 0 && (
+              <button
+                type="button"
+                className="wada-quickfilters-reset"
+                onClick={() => updateFilters(getDefaultFilters())}
+              >
+                Tout effacer
+              </button>
+            )}
           </div>
+
+          {/* Nombre d'articles + tri */}
+          <div className="wada-resultbar">
+            <span className="wada-resultbar-count">
+              {loading ? "Chargement…" : `${total.toLocaleString("fr-FR")} article${total > 1 ? "s" : ""}`}
+            </span>
+            <SortDropdown value={sort} onChange={(newSort) => {
+              setSort(newSort);
+              /* Le tri s'applique à tout le catalogue filtré : rester en
+                 page 7 après un changement de tri afficherait une tranche
+                 arbitraire du nouveau classement. On revient page 1. */
+              setPage(1);
+              try {
+                localStorage.setItem("wada-sort-pref", newSort);
+              } catch {}
+              const sortLabels: Record<SortOption, string> = {
+                relevance: "Pertinence",
+                "price-low": "Prix: bas → haut",
+                "price-high": "Prix: haut → bas",
+                popular: "Les plus populaires",
+              };
+              showToast(`✓ Trié par ${sortLabels[newSort]}`, { variant: "success", duration: 2000 });
+            }} />
+          </div>
+
 
           {/* Section Tendances — 4 produits populaires */}
           {!loading && products.length > 0 && activeFilterCount(filters) === 0 && (
@@ -1107,8 +1208,13 @@ export default function CategoryPage({ title, breadcrumb, slot, q, genre: initGe
       )}
 
       <style>{`
-        /* Grid responsive — colonnes par taille écran */
-        @media (max-width: 480px) { .wada-shop-grid { grid-template-columns: repeat(1, 1fr) !important; gap: 12px !important; } }
+        /* Grid responsive — colonnes par taille écran.
+           Fix 2026-08-21 : sous 480px la grille passait à UNE colonne. Combinée
+           à l'ancienne carte (sélecteurs + bouton panier + bloc tenue), une
+           seule fiche occupait tout l'écran du téléphone — impossible de
+           comparer quoi que ce soit. Deux colonnes partout sur mobile, comme
+           toutes les boutiques de mode. */
+        @media (max-width: 480px) { .wada-shop-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 10px 8px !important; } }
         @media (min-width: 481px) and (max-width: 768px) { .wada-shop-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 14px !important; } }
         @media (min-width: 769px) and (max-width: 900px) { .wada-shop-grid { grid-template-columns: repeat(2, 1fr) !important; } }
         @media (min-width: 901px)  { .wada-shop-grid { grid-template-columns: repeat(3, 1fr) !important; } }
