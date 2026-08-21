@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { dictionary } from "@/lib/data";
+import { dictionary, type DictionaryEntry } from "@/lib/data";
 import {
   ink, seal, border, textSecondary, mojo,
   fontHeading, fontBody, fontLabel,
@@ -63,13 +63,20 @@ const FILTRES: Array<{ label: string; href: string }> = [
 
 /** Palette mise en avant — change chaque jour, sans hasard : l'index dérive
     du quantième, donc le serveur et le client tombent sur la même. */
-function paletteDuJour() {
+function paletteDuJour(): DictionaryEntry | null {
   if (!dictionary.length) return null;
   const jour = Math.floor(Date.now() / 86400000);
   return dictionary[jour % dictionary.length];
 }
 
-export default function BoutiqueEntete() {
+export default function BoutiqueEntete({
+  /* Le parent a besoin de la palette du jour et du genre pour alimenter le
+     catalogue qui suit. Ils sont calculés ici (palette du jour, genre
+     mémorisé) — les recalculer en double aurait pu les faire diverger. */
+  onContexte,
+}: {
+  onContexte?: (ctx: { palette: DictionaryEntry | null; genre: Genre }) => void;
+} = {}) {
   const router = useRouter();
   const [genre, setGenre] = useState<Genre>("femme");
   const [toutesCouleurs, setToutesCouleurs] = useState(false);
@@ -79,6 +86,8 @@ export default function BoutiqueEntete() {
      que le HTML serveur et le HTML client soient identiques. */
   useEffect(() => setMonte(true), []);
   const palette = useMemo(() => (monte ? paletteDuJour() : null), [monte]);
+
+  useEffect(() => { onContexte?.({ palette, genre }); }, [palette, genre, onContexte]);
 
   /* Genre mémorisé : le client qui a choisi « Homme » ne veut pas le
      rechoisir à chaque visite. Même clé que le reste du site. */

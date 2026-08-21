@@ -146,7 +146,9 @@ export function PaletteDuJour({
       {/* ── Idéal pour ─────────────────────────────────────────────────── */}
       {occasions.length > 0 && (
         <p style={{
-          fontFamily: fontBody, fontSize: 13.5, color: seal,
+          /* `ink` : `seal` vaut #1B4A6B, un bleu — cette ligne d'information
+             se lisait comme un lien alors qu'elle n'est pas cliquable. */
+          fontFamily: fontBody, fontSize: 13.5, color: ink,
           margin: "16px 0 0", lineHeight: 1.5,
         }}>
           <span style={{
