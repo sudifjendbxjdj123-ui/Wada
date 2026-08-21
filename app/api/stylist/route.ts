@@ -4,6 +4,7 @@ import { dictionary } from "@/lib/data";
 import { findBestPalettesWithFallback, type UserIntent } from "@/lib/colorEngine";
 import { composeOutfitFromColor, type Slot, type ComposedOutfit } from "@/lib/outfitComposer";
 import { merchantsForPiece } from "@/lib/merchantsForPiece";
+import { analyserDemande, type Demande } from "@/lib/demandePiece";
 
 /* Brief 2026-05-26 « performances IA » : route en Edge runtime.
    - Cold start ~5x plus rapide qu'un Node Function (Vercel mesure
@@ -966,6 +967,17 @@ export async function POST(req: Request) {
     const bodyObj = body as Record<string, unknown>;
     const query: string = bodyObj.query as string;
     const userPrefs: UserPrefs = (bodyObj.userPrefs as Partial<UserPrefs>) || {};
+
+    /* Analyse locale de la demande (2026-08-22). Déterministe, sans réseau,
+       exécutée AVANT le LLM et réappliquée APRÈS lui.
+       Motif : « je veux un pantalon cargo » doit rendre des cargos, quoi
+       qu'il arrive. Aujourd'hui ce mot ne survit que si le LLM répond ET
+       qu'il le recopie dans le libellé du slot. S'il tombe, s'il paraphrase
+       (« pantalon utilitaire »), ou s'il n'y a pas de clé API, le mot est
+       perdu et le client reçoit un pantalon quelconque.
+       Ce qui est lu ici — pièce, couleur, matière, coupe, budget, taille —
+       est réinjecté plus bas et ne peut plus être écrasé. */
+    const demande: Demande = analyserDemande(query || "");
     // Brief conversationnel 2026-05-23 : le client peut envoyer l'état de
     // collecte accumulé (piece/couleur/style/occasion) pour que le LLM
     // sache ce qui a déjà été demandé et ne repose pas la question.
@@ -1534,7 +1546,17 @@ ${styleSignals.dislikedColors?.length ? `- Couleurs à ÉVITER (l'user a déjà 
               /* Brief 2026-05-26 « matching description ↔ produit » :
                  on extrait le type-keyword du libellé LLM. Pour les ancres
                  (Vos Nike blanches), pas besoin (pas de fetch produit). */
-              typeKeyword: s.ancre ? undefined : (extractTypeKeyword(s.type, s.slot) || undefined),
+              /* La pièce nommée par le client l'emporte sur le libellé du LLM.
+                 Sans ça, « je veux un pantalon cargo » partait en `q=pantalon`
+                 dès que le LLM écrivait « pantalon ample » — et /api/products
+                 renvoyait n'importe quel pantalon. Une ancre (pièce que le
+                 client POSSÈDE déjà) reste sans mot-clé : aucun produit n'est
+                 à chercher pour elle. */
+              typeKeyword: s.ancre
+                ? undefined
+                : (demande.pieces.find((d) => d.slot === s.slot && !demande.possede)?.motCle
+                   || extractTypeKeyword(s.type, s.slot)
+                   || undefined),
               lienAchat,
               mujiLien,
             };
@@ -1581,6 +1603,14 @@ ${styleSignals.dislikedColors?.length ? `- Couleurs à ÉVITER (l'user a déjà 
             });
             return {
               ...s,
+              /* Même règle que sur le chemin LLM : la pièce nommée par le
+                 client prime. Ce chemin de repli sert quand le LLM n'a rien
+                 rendu — c'est justement là qu'une demande explicite ne doit
+                 surtout pas se perdre. */
+              typeKeyword:
+                demande.pieces.find((d) => d.slot === s.slot && !demande.possede)?.motCle
+                || (s as { typeKeyword?: string }).typeKeyword
+                || undefined,
               lienAchat: m.find((x) => /^Amazon\b/i.test(x.label))?.url,
               mujiLien: m.find((x) => /^Muji$/i.test(x.label))?.url,
             };
@@ -1608,6 +1638,20 @@ ${styleSignals.dislikedColors?.length ? `- Couleurs à ÉVITER (l'user a déjà 
       preciser: v2.preciser || undefined,
       recommended_palettes,
       composed_outfit,
+      /* Contraintes lues dans la phrase du client. Le frontend les relaie à
+         /api/products (maxPrice) et les affiche (taille) — le client demande
+         « pour quel prix, quelle taille », encore faut-il les transporter. */
+      demande: {
+        pieces: demande.pieces,
+        budgetMax: demande.budgetMax,
+        tailleHaut: demande.tailleHaut,
+        tailleBas: demande.tailleBas,
+        pointure: demande.pointure,
+        couleur: demande.couleur,
+        matiere: demande.matiere,
+        coupe: demande.coupe,
+        possede: demande.possede,
+      },
       fallback_used: engineResult.fallback_used,
       source: "llm+local+engine+composer+streaming",
     }));

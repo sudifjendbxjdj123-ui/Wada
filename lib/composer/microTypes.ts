@@ -39,6 +39,10 @@ export interface OutfitPiece {
   genre?: string;
   /** Mot-clé de type pour recherche MUJI (chemise, blazer, etc.). */
   typeKeyword?: string;
+  /** Plafond de prix lu dans la phrase du client (« moins de 80 € »).
+      Porté par la pièce plutôt que passé en prop : il traverse ainsi
+      OutfitLayout et PieceCard sans qu'aucun des deux ait à le connaître. */
+  budgetMax?: number;
 }
 
 /* ─── DÉTECTION DE MICRO-TYPE depuis product_name ─── */

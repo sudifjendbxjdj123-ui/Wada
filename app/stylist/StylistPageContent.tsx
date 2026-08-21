@@ -62,6 +62,10 @@ function useMujiForSlot(
      dont le nom contient ce mot. Plus de Pull retourné quand le LLM
      dit Chemise. */
   typeKeyword?: string | null,
+  /* Plafond de prix lu DANS LA PHRASE du client (« un cargo à moins de
+     80 € »). Il prime sur la tranche du profil : une contrainte énoncée
+     maintenant vaut mieux qu'une préférence enregistrée il y a un mois. */
+  budgetMax?: number | null,
 ) {
   const [product, setProduct] = useState<{
     nom: string;
@@ -87,15 +91,21 @@ function useMujiForSlot(
       color: colorHex,
       limit: "1",
     });
-    /* Brief 2026-05-30 §7 : plafond budget depuis profil. */
-    try {
-      const profileRaw = typeof window !== "undefined" ? localStorage.getItem("wada.profile") : null;
-      if (profileRaw) {
-        const profile = JSON.parse(profileRaw);
-        if (profile?.budget === "< 150€") params.set("maxPrice", "150");
-        else if (profile?.budget === "150–400€") params.set("maxPrice", "400");
-      }
-    } catch {}
+    /* Plafond de prix. Ordre : ce que le client vient de dire, puis sa
+       tranche de profil. Avant, seul le profil comptait — « moins de 80 € »
+       tapé dans le Styliste n'avait aucun effet sur les produits proposés. */
+    if (typeof budgetMax === "number" && budgetMax > 0) {
+      params.set("maxPrice", String(Math.round(budgetMax)));
+    } else {
+      try {
+        const profileRaw = typeof window !== "undefined" ? localStorage.getItem("wada.profile") : null;
+        if (profileRaw) {
+          const profile = JSON.parse(profileRaw);
+          if (profile?.budget === "< 150€") params.set("maxPrice", "150");
+          else if (profile?.budget === "150–400€") params.set("maxPrice", "400");
+        }
+      } catch {}
+    }
     if (style) params.set("style", style);
     /* Brief audit live 2026-05-28 : on normalise en lowercase parce que
        les chips du /stylist renvoient « Femme »/« Homme »/« Unisexe »
@@ -140,7 +150,7 @@ function useMujiForSlot(
       })
       .catch(() => { /* silencieux — fallback Amazon */ });
     return () => { cancelled = true; };
-  }, [slot, colorHex, style, genre, seed, typeKeyword]);
+  }, [slot, colorHex, style, genre, seed, typeKeyword, budgetMax]);
 
   return product;
 }
@@ -1313,6 +1323,18 @@ export function StylistPageContent() {
     variation?: string;
     nom_tenue?: string;
     entities?: { styling_advice?: string };
+    /* Contraintes lues localement par le serveur dans la phrase du client. */
+    demande?: {
+      pieces?: Array<{ motCle: string; slot: string; libelle: string }>;
+      budgetMax?: number;
+      tailleHaut?: string;
+      tailleBas?: string;
+      pointure?: string;
+      couleur?: string;
+      matiere?: string;
+      coupe?: string;
+      possede?: boolean;
+    };
   }) {
     /* Propage la collecte LLM dans le state local — incluant les nouveaux
        champs accord/avoid. Le LLM peut ajouter à avoid si l'user a dit
@@ -1373,6 +1395,10 @@ export function StylistPageContent() {
         genre: s.genre || dominantGenre || undefined,
         /* Type-keyword extrait par le serveur depuis le libellé LLM. */
         typeKeyword: s.typeKeyword || undefined,
+        /* Plafond de prix lu dans la phrase (« un cargo à moins de 80 € »).
+           Sans lui, seule la tranche du profil s'appliquait et la contrainte
+           que le client venait d'énoncer restait sans effet. */
+        budgetMax: data.demande?.budgetMax,
       }));
       const reponse = data.reponse || data.entities?.styling_advice || "Voilà ce que je composerais.";
       const accordRef = composed.palette?.entry?.number || null;
@@ -2228,6 +2254,7 @@ function PieceCard({
        que 2 ajustements avec types différents (chemise → pull) donnent
        des produits différents au même slot. */
     piece.typeKeyword || null,
+    piece.budgetMax ?? null,
   );
 
   return (
