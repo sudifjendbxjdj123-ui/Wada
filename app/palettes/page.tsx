@@ -27,6 +27,8 @@ import BackButton from "@/components/BackButton";
    inline (défini en bas de ce fichier) est retiré au profit du composant
    partagé qui sert maintenant TOUTES les pages. */
 import PaletteCard from "@/components/PaletteCard";
+import { PaletteDuJour, CartePaletteCompacte } from "@/components/CartesPalette";
+import { AMBIANCES, aPourAmbiance, type Ambiance } from "@/lib/ambiances";
 import { useFavorites } from "@/hooks/useFavorites";
 import { useGestures } from "@/hooks/useGestures";
 
@@ -121,13 +123,18 @@ type ViewMode = "large" | "compact";
 export default function PalettesPage() {
   const [filter, setFilter] = useState<Family>("toutes");
   const [query, setQuery] = useState("");
+  /* Ambiance choisie en haut de page. Elle pilote la mise en avant, PAS la
+     grille du bas : celle-ci garde ses propres filtres techniques. Mélanger
+     les deux rendrait deux jeux de contrôles concurrents sur une même
+     liste. */
+  const [ambiance, setAmbiance] = useState<Ambiance | null>(null);
   const [sortMode, setSortMode] = useState<SortMode>("number");
   const [view, setView] = useState<ViewMode>("large");
   /* Brief 2026-05-26 — unification : la page lit les favoris via le même
      hook useFavorites() que PaletteCard. Avant on avait 2 sources de
      vérité (Set local + hook dans la card) qui pouvaient désynchroniser.
      Maintenant : 1 hook, 1 localStorage, 1 sync inter-onglets gratuite. */
-  const { favorites } = useFavorites();
+  const { favorites, toggle: toggleFavorite, has: isFavorite } = useFavorites();
   const favoritesSet = useMemo(() => new Set(favorites), [favorites]);
 
   // Brief Étape 2.1 (2026-05-26) : pagination 24 + bouton « Voir plus ».
@@ -165,6 +172,26 @@ export default function PalettesPage() {
   }, []);
 
   /* Filtre + sort */
+  /* Palettes correspondant à l'ambiance choisie, ou tout le dictionnaire.
+     Le tirage est déterministe : l'index dérive du quantième du jour, donc
+     le serveur et le client tombent sur la même palette et la mise en avant
+     ne change pas d'un rendu à l'autre. */
+  const { paletteMiseEnAvant, autresPalettes } = useMemo(() => {
+    const pool = ambiance
+      ? dictionary.filter((e) => aPourAmbiance(e, ambiance))
+      : dictionary;
+    if (pool.length === 0) return { paletteMiseEnAvant: null, autresPalettes: [] };
+    const jour = Math.floor(Date.now() / 86400000);
+    const debut = jour % pool.length;
+    const prendre = (i: number) => pool[(debut + i) % pool.length];
+    return {
+      paletteMiseEnAvant: prendre(0),
+      autresPalettes: pool.length > 1
+        ? Array.from({ length: Math.min(3, pool.length - 1) }, (_, i) => prendre(i + 1))
+        : [],
+    };
+  }, [ambiance]);
+
   const filtered = useMemo(() => {
     const q = query.toLowerCase().trim();
     let list = annotated.filter(({ entry, families }) => {
@@ -198,33 +225,164 @@ export default function PalettesPage() {
     }}>
             <BackButton />
 
-      <div style={{ maxWidth: 1080, margin: "0 auto", padding: "40px 26px 70px" }}>
-        {/* TOP — Titre + sous-titre + À propos */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, flexWrap: "wrap" }}>
-          <div>
-            <h1 style={{
-              fontFamily: fonts.display, fontWeight: 700,
-              fontSize: "clamp(32px, 4vw, 44px)",
-              letterSpacing: "-0.01em",
-              margin: 0,
+      {/* 18 px en haut au lieu de 40 : mesuré en 393×852, la première palette
+          commençait à 577 px — le client demandait « voir une palette
+          quasiment dès le premier écran ». */}
+      <div style={{ maxWidth: 1080, margin: "0 auto", padding: "18px 20px 70px" }}>
+        {/* ═══════════════════════════════════════════════════════════════
+            EN-TÊTE — « Quelle ambiance ? » (maquette client 2026-08-22)
+            ═══════════════════════════════════════════════════════════════
+            Le changement est de cadrage, pas de décor :
+              avant  « Voici 348 palettes. Choisissez-en une. »
+              après  « Quelle atmosphère voulez-vous porter aujourd'hui ? »
+            Le brief note aussi qu'avant d'atteindre la première palette, on
+            traversait titre, paragraphe, À propos, recherche, tri, huit
+            filtres, compteur et bascule de vue. Tout ça existe encore, mais
+            APRÈS la palette du jour — l'outillage ne crée pas le désir.
+            ═══════════════════════════════════════════════════════════════ */}
+        <h1 style={{
+          fontFamily: fonts.display, fontWeight: 700,
+          fontSize: "clamp(24px, 5.6vw, 40px)",
+          letterSpacing: "-0.01em", margin: 0, lineHeight: 1.12,
+        }}>
+          Quelle ambiance voulez-vous porter aujourd&rsquo;hui&nbsp;?
+        </h1>
+        <p style={{ color: palette.inkSoft, fontSize: 14, margin: "8px 0 0", maxWidth: "46ch", lineHeight: 1.45 }}>
+          348 harmonies de Sanzō Wada, réinterprétées pour votre vestiaire.
+        </p>
+
+        {/* Pastilles d'ambiance — l'entrée émotionnelle. Les familles
+            techniques (Neutres / Chauds / Froids…) restent plus bas, dans
+            les filtres : elles parlent à qui connaît la théorie des
+            couleurs, pas à qui cherche comment s'habiller. */}
+        <div style={{ display: "flex", gap: 7, flexWrap: "wrap", margin: "14px 0 0" }}>
+          {AMBIANCES.map((a) => {
+            const actif = ambiance === a.cle;
+            return (
+              <button
+                key={a.cle}
+                type="button"
+                onClick={() => setAmbiance(actif ? null : a.cle)}
+                aria-pressed={actif}
+                style={{
+                  fontSize: 12.5, padding: "8px 14px", borderRadius: 999,
+                  border: `1.5px solid ${actif ? palette.bordeaux : palette.line}`,
+                  background: actif ? palette.bordeaux : "transparent",
+                  color: actif ? "#fff" : palette.ink,
+                  cursor: "pointer", fontFamily: fonts.sans,
+                  fontWeight: actif ? 600 : 500,
+                  transition: "all .2s ease",
+                }}
+              >
+                {a.label}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* ── Palette du jour ───────────────────────────────────────────
+            « Ça évite de jeter 348 choix au visage de quelqu'un dès son
+            arrivée. » Quand une ambiance est choisie, la mise en avant suit
+            ce choix — sinon la pastille n'aurait aucun effet visible avant
+            la grille, tout en bas. */}
+        {paletteMiseEnAvant && (
+          <section style={{ margin: "18px 0 0" }}>
+            <p style={{
+              fontFamily: fonts.sans, fontSize: 11, letterSpacing: ".16em",
+              textTransform: "uppercase", color: palette.inkFaint, margin: "0 0 11px",
             }}>
-              Quelle combinaison vous parle ?
-            </h1>
-            <p style={{ color: palette.inkSoft, fontSize: 15, marginTop: 6 }}>
-              Découvrez des harmonies de couleurs pensées pour vos tenues parfaites.
+              {ambiance ? "Notre choix" : "Palette du jour"}
             </p>
-          </div>
+            <PaletteDuJour
+              entry={paletteMiseEnAvant}
+              favori={isFavorite(paletteMiseEnAvant.number)}
+              onFavori={() => toggleFavorite(paletteMiseEnAvant.number)}
+            />
+          </section>
+        )}
+
+        {/* ── Trois autres, pour donner le choix sans écraser ─────────── */}
+        {autresPalettes.length > 0 && (
+          <section style={{ margin: "28px 0 0" }}>
+            <div style={{
+              display: "flex", alignItems: "baseline", justifyContent: "space-between",
+              gap: 12, margin: "0 0 11px",
+            }}>
+              <p style={{
+                fontFamily: fonts.sans, fontSize: 11, letterSpacing: ".16em",
+                textTransform: "uppercase", color: palette.inkFaint, margin: 0,
+              }}>
+                Autres palettes pour vous
+              </p>
+              <a href="#toutes" style={{
+                fontFamily: fonts.sans, fontSize: 13, color: palette.bordeaux,
+                textDecoration: "none",
+              }}>
+                Voir tout
+              </a>
+            </div>
+            <div style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
+              gap: 10,
+            }}>
+              {autresPalettes.map((e) => (
+                <CartePaletteCompacte
+                  key={e.number}
+                  entry={e}
+                  favori={isFavorite(e.number)}
+                  onFavori={() => toggleFavorite(e.number)}
+                />
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* ── L'héritage Wada ──────────────────────────────────────────
+            « Je ne cacherais surtout pas cette origine. Au contraire, j'en
+            ferais quelque chose de premium. » Une carte éditoriale plutôt
+            qu'une ligne de bas de page : c'est la raison d'être du site. */}
+        <section style={{
+          margin: "28px 0 0", padding: "18px 20px", borderRadius: 18,
+          background: palette.card, border: `1px solid ${palette.line}`,
+        }}>
+          <p style={{
+            fontFamily: fonts.sans, fontSize: 10.5, letterSpacing: ".16em",
+            textTransform: "uppercase", color: palette.inkFaint, margin: 0,
+          }}>
+            L&rsquo;héritage Wada
+          </p>
+          <h2 style={{
+            fontFamily: fonts.display, fontSize: "clamp(20px, 4.6vw, 26px)",
+            color: palette.ink, margin: "7px 0 0", lineHeight: 1.2,
+          }}>
+            348 harmonies. Un siècle plus tard.
+          </h2>
+          <p style={{
+            fontFamily: fonts.sans, fontSize: 14, color: palette.inkSoft,
+            lineHeight: 1.55, margin: "9px 0 0", maxWidth: "48ch",
+          }}>
+            Des accords de couleurs publiés par Sanzō Wada dans les années 1930,
+            réinterprétés aujourd&rsquo;hui pour votre vestiaire.
+          </p>
           <Link href="/about" style={{
             display: "inline-flex", alignItems: "center", gap: 7,
-            fontSize: 12, letterSpacing: "0.08em",
-            background: palette.card, border: `1px solid ${palette.line}`,
-            borderRadius: 999, padding: "9px 15px",
-            color: palette.inkSoft, textDecoration: "none",
-            flexShrink: 0,
+            margin: "14px 0 0", padding: "10px 18px", borderRadius: 999,
+            border: `1px solid ${palette.line}`, background: "transparent",
+            color: palette.ink, textDecoration: "none",
+            fontFamily: fonts.sans, fontSize: 13.5,
           }}>
-            ⓘ À propos
+            Découvrir l&rsquo;histoire →
           </Link>
-        </div>
+        </section>
+
+        <h2 id="toutes" style={{
+          fontFamily: fonts.sans, fontSize: 11, letterSpacing: ".16em",
+          textTransform: "uppercase", color: palette.inkFaint,
+          margin: "34px 0 0", scrollMarginTop: 12,
+        }}>
+          Toutes les palettes
+        </h2>
 
         {/* ─── Barre filtres COLLANTE (brief 2026-05-26) ───
              Sticky en haut avec backdrop-blur dès qu'on scrolle. Englobe
