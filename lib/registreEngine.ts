@@ -16,6 +16,7 @@
  */
 
 import type { DictionaryEntry } from "./data";
+import { equilibrerVolumes, chaussureStructurante, coupeNeutralisee } from "./composer/proportions";
 import { hexToPlainName } from "./colorNames";
 
 /* ──────────────────────────────────────────────────────────────────────
@@ -149,6 +150,49 @@ const MATERIALS_BY_REGISTRE: Record<Registre, string[]> = {
   "Streetwear":  ["molleton", "tissu technique", "denim brut"],
 };
 
+/* ── MATIÈRE PAR PIÈCE (2026-08-21) ──────────────────────────────────────
+   Les cinq pièces recevaient la MÊME liste de matières — celle du registre.
+   Une tenue Minimal annonçait donc « coton épais, laine fine » sur le
+   t-shirt, sur le pantalon, sur le manteau ET sur les chaussures.
+
+   La règle 5 du brief demande l'inverse : « Mélange 2–3 matières. C'est ce
+   qui évite qu'une tenue paraisse plate. » Une matière répétée cinq fois
+   n'est pas un mélange, c'est une seule matière.
+
+   On déduit donc la matière du TYPE de la pièce — un jean est en denim, un
+   mocassin en cuir, un manteau en laine — et on retombe sur la liste du
+   registre quand le type ne dit rien. La liste du registre est alors
+   distribuée pièce par pièce plutôt que répétée, ce qui donne mécaniquement
+   2 à 3 matières sur la tenue. */
+const MATIERE_PAR_TYPE: Array<{ motif: RegExp; matiere: string }> = [
+  { motif: /jean|denim/i,                          matiere: "denim" },
+  { motif: /cachemire/i,                           matiere: "cachemire" },
+  { motif: /\blin\b/i,                             matiere: "lin" },
+  { motif: /daim|su[eè]de/i,                       matiere: "daim" },
+  { motif: /cuir|loafer|derb|richelieu|mocassin/i, matiere: "cuir" },
+  { motif: /maille|pull|cardigan|bonnet|polo maille/i, matiere: "maille" },
+  { motif: /laine|manteau|blazer|trench|[ée]charpe/i,  matiere: "laine" },
+  { motif: /hoodie|sweat|jogging|molleton/i,       matiere: "molleton" },
+  { motif: /tech|parka|coupe-vent|imperm/i,        matiere: "tissu technique" },
+  { motif: /soie|foulard|cravate/i,                matiere: "soie" },
+  { motif: /toile|tote|espadrille|casquette/i,     matiere: "toile" },
+  { motif: /oxford|chemise|t-shirt|marini[èe]re|coton/i, matiere: "coton" },
+  { motif: /sneakers?|baskets?/i,                  matiere: "cuir" },
+];
+
+const ORDRE_SLOTS_MATIERE: SlotKey[] = ["haut", "bas", "veste", "chaussures", "accent"];
+
+/** Une matière, déduite du type de la pièce ; à défaut, la liste du
+    registre distribuée par slot plutôt que répétée à l'identique. */
+function matieresDuSlot(slot: SlotKey, registre: Registre, type: string): string[] {
+  for (const { motif, matiere } of MATIERE_PAR_TYPE) {
+    if (motif.test(type)) return [matiere];
+  }
+  const liste = MATERIALS_BY_REGISTRE[registre];
+  const idx = Math.max(0, ORDRE_SLOTS_MATIERE.indexOf(slot));
+  return [liste[idx % liste.length]];
+}
+
 /* Référence maison de mode par registre. */
 const HOUSE_REF: Record<Registre, string> = {
   "Minimal":     "COS",
@@ -225,11 +269,68 @@ const MORPHO_FIT: Record<Morphologie, Partial<Record<SlotKey, Fit>>> = {
   Rond:         { haut: "standard", veste: "standard", bas: "standard" },
 };
 
-/** Coupe retenue pour un slot donné, morphologie comprise. */
-function fitForSlot(fitKey: Fit, slot: SlotKey, morpho: Morphologie | null): Fit {
+/* ── PROPORTIONS PAR REGISTRE (2026-08-21) ───────────────────────────────
+   Mesuré sur les 6 960 tenues que le moteur produit (348 palettes × 5
+   registres × 4 occasions) : les proportions étaient le point FAIBLE de
+   44 % d'entre elles, avec une moyenne de 16/20. La cause est mécanique —
+   sans coupe demandée et sans morphologie, les cinq pièces sortaient toutes
+   en « standard », donnant une silhouette droite : juste, mais plate.
+
+   Or la règle 3 du brief est un contraste : « haut ample → bas droit »,
+   « bas large → haut structuré ». Une tenue sans opposition de volumes ne
+   la satisfait jamais.
+
+   Chaque registre reçoit donc sa proportion par défaut, tirée des tendances
+   qui le caractérisent (cf. lib/tendances2026.ts) :
+     Minimal / Classique / Old money → volume en BAS (pantalon à pinces,
+       pantalon fluide, jupe colonne : la ligne 2026 du tailoring)
+     Décontracté / Streetwear → volume en HAUT (surchemise, hoodie), la
+       silhouette workwear et street, avec un bas qui reste droit.
+
+   Ce n'est qu'un défaut : il ne s'applique que si le client n'a rien demandé
+   ET que la morphologie ne dit rien. */
+const PROPORTION_PAR_REGISTRE: Record<Registre, Partial<Record<SlotKey, Fit>>> = {
+  "Minimal":     { bas: "ample" },
+  "Classique":   { bas: "ample" },
+  "Old money":   { bas: "ample" },
+  "Décontracté": { haut: "ample" },
+  "Streetwear":  { haut: "ample" },
+};
+
+/* Quelle pièce PORTE le volume dans chaque registre — la « pièce principale »
+   de la règle 1 du brief. C'est elle qui reçoit l'ample quand le client en
+   demande ; l'autre extrémité du corps tient la ligne. */
+const SLOT_PORTEUR: Record<Registre, SlotKey> = {
+  "Minimal": "bas", "Classique": "bas", "Old money": "bas",
+  "Décontracté": "haut", "Streetwear": "haut",
+};
+
+/** Coupe retenue pour un slot donné.
+    Priorité : choix explicite du client > morphologie > défaut du registre. */
+function fitForSlot(
+  fitKey: Fit, slot: SlotKey, morpho: Morphologie | null, registre: Registre,
+): Fit {
+  /* Le client demande de l'ample. On le lui donne — mais sur la pièce où le
+     volume se lit, pas sur les cinq. Propagé partout, « ample » produisait
+     haut ET bas amples : exactement le contre-exemple du brief (« volumes
+     amples partout »), noté 14/20 au mieux. Porté par une seule extrémité,
+     c'est un vrai look oversize, et un contraste de volumes à 20/20.
+     Mesuré : 33 % des tenues tombaient dans ce cas. */
+  if (fitKey === "ample") {
+    if (slot === SLOT_PORTEUR[registre] || slot === "veste") return "ample";
+    if (slot === "haut" || slot === "bas") return "standard";
+    return "standard";
+  }
+  /* L'ajusté intégral n'est PAS corrigé : le brief le déclare viable
+     (« peut fonctionner, mais donne une esthétique complètement différente »). */
   if (fitKey !== "standard") return fitKey;      // choix explicite du client
-  if (!morpho) return fitKey;
-  return MORPHO_FIT[morpho]?.[slot] ?? fitKey;
+  if (morpho) {
+    const m = MORPHO_FIT[morpho]?.[slot];
+    /* La morphologie a la main dès qu'elle dit quelque chose pour ce slot ;
+       sinon le défaut du registre reprend, pour ne pas retomber à plat. */
+    if (m) return m;
+  }
+  return PROPORTION_PAR_REGISTRE[registre]?.[slot] ?? fitKey;
 }
 
 function fitAdjective(fitKey: string, registre: Registre): string {
@@ -498,18 +599,44 @@ export function composeOutfitFromProfile(
      même valeur canonique. */
   const morpho = normaliserMorphologie(profile.morphologie);
 
+  /* Types finaux d'abord : la chaussure décide si une silhouette tout-ample
+     reste tenue (un mocassin ferme la ligne, une grosse sneaker l'alourdit). */
+  const typesFinaux = {} as Record<SlotKey, string>;
+  for (const slot of SLOTS) {
+    typesFinaux[slot] = applyOccasionModifier(slot, baseTypes[slot], registre, occasion);
+  }
+
+  /* Coupe propre à CHAQUE pièce : la morphologie peut demander du volume en
+     haut et de la ligne droite en bas, ce qu'une coupe globale ne sait pas
+     dire. Chaussures et accent ne sont pas concernés — leur coupe ne joue
+     pas sur l'équilibre de la silhouette. */
+  const fits = {} as Record<SlotKey, Fit>;
+  for (const slot of SLOTS) {
+    /* Une chaussure ou une ceinture n'a pas de « coupe ample » : la coupe
+       demandée par le client ne doit pas leur être propagée, sous peine de
+       libellés absurdes et d'une requête marchand « sneakers … oversized ». */
+    fits[slot] = coupeNeutralisee(slot)
+      ? "standard"
+      : fitForSlot(fitKey, slot, morpho, registre);
+  }
+
+  /* Garde-fou de proportions (règle 3 du brief). Quand le client demande de
+     l'ample, les CINQ pièces le devenaient : « volumes amples partout, sans
+     rien pour structurer » — la tenue que le brief donne justement en
+     contre-exemple. On garde ses volumes sur le haut et le bas, et on rend
+     la veste structurée : c'est elle qui tient la silhouette. */
+  const { fits: fitsEquilibres } = equilibrerVolumes(
+    fits, chaussureStructurante(typesFinaux.chaussures),
+  );
+
   const slots: RegistreSlot[] = SLOTS.map((slot) => {
-    const finalType = applyOccasionModifier(slot, baseTypes[slot], registre, occasion);
+    const finalType = typesFinaux[slot];
     const paletteColor = colors[slot];
     // Brief §1A : nom de couleur DÉRIVÉ DU HEX (jamais le nom poétique
     // de la palette Wada). « Crème » sur un hex camel devient « Camel ».
     const trueColorName = hexToPlainName(paletteColor.hex);
     const color = { hex: paletteColor.hex, name: trueColorName };
-    /* Coupe propre à CETTE pièce : la morphologie peut demander du volume en
-       haut et de la ligne droite en bas, ce qu'une coupe globale ne sait pas
-       dire. Chaussures et accent ne sont pas concernés — leur coupe ne joue
-       pas sur l'équilibre de la silhouette. */
-    const slotFitKey = fitForSlot(fitKey, slot, morpho);
+    const slotFitKey = fitsEquilibres[slot];
     // Mots-clés de recherche marchand : type + couleur (hex-fidèle) + fit
     const fitKw = slotFitKey === "ample" ? " oversized" : slotFitKey === "ajuste" ? " slim" : "";
     const searchKeywords = `${finalType}${fitKw} ${trueColorName}`.toLowerCase().replace(/\s+/g, " ").trim();
@@ -518,7 +645,7 @@ export function composeOutfitFromProfile(
       type: finalType,
       fit: fitAdjective(slotFitKey, registre),
       color,
-      materials: MATERIALS_BY_REGISTRE[registre],
+      materials: matieresDuSlot(slot, registre, finalType),
       searchKeywords,
     };
   });
