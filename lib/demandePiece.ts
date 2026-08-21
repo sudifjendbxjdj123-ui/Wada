@@ -317,10 +317,42 @@ export function analyserDemande(texte: string): Demande {
     matiere,
     coupe,
     budgetMax: extraireBudget(t),
-    ...extraireTailles(t),
+    ...desambiguerTailles(extraireTailles(t), pieces),
     genre,
     possede: RE_POSSEDE.test(t),
   };
+}
+
+/** « Je fais du 42 » est ambigu : pointure ou taille de pantalon. Sans
+ *  contexte, extraireTailles tranche pour la pointure — et « je veux un
+ *  pantalon cargo, je fais du 42 » perdait sa taille de bas (mesuré :
+ *  pointure=42, tailleBas absent). Ce sont les PIÈCES NOMMÉES qui lèvent
+ *  l'ambiguïté : un bas nommé sans chaussure nommée, c'est une taille de
+ *  pantalon ; l'inverse, une pointure. Quand les deux ou aucune sont
+ *  nommées, l'interprétation d'origine reste. */
+function desambiguerTailles(
+  tailles: Pick<Demande, "tailleHaut" | "tailleBas" | "pointure">,
+  pieces: PieceDemandee[],
+): Pick<Demande, "tailleHaut" | "tailleBas" | "pointure"> {
+  const slots = new Set(pieces.map((p) => p.slot));
+  const parleBas = slots.has("bas");
+  const parleChaussures = slots.has("chaussures");
+  const out = { ...tailles };
+  const versBas = (v: string) => {
+    const n = parseInt(v, 10);
+    return n % 2 === 0 && n >= 34 && n <= 54;
+  };
+  if (out.pointure && !out.tailleBas && parleBas && !parleChaussures && versBas(out.pointure)) {
+    out.tailleBas = out.pointure;
+    delete out.pointure;
+  } else if (out.tailleBas && !out.pointure && parleChaussures && !parleBas) {
+    const n = parseInt(out.tailleBas, 10);
+    if (n >= 35 && n <= 48) {
+      out.pointure = out.tailleBas;
+      delete out.tailleBas;
+    }
+  }
+  return out;
 }
 
 /** Vrai si la phrase nomme au moins une pièce — le signal qui fait basculer

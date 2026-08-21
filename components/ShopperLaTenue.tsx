@@ -41,15 +41,47 @@ const ORDRE: SlotKey[] = ["veste", "haut", "bas", "chaussures", "accent"];
 
 export default function ShopperLaTenue({
   produits,
+  tailles = {},
+  ouvrirSignal = 0,
+  apresId,
 }: {
   produits: Partial<Record<SlotKey, ProduitLook | null>>;
+  /** Tailles choisies dans la liste des pièces — rappelées dans le récap. */
+  tailles?: Partial<Record<SlotKey, string>>;
+  /** Incrémenté par le parent pour ouvrir la feuille depuis le hero. Le CTA
+      du hero et celui de la barre ouvrent le MÊME récapitulatif. */
+  ouvrirSignal?: number;
+  /** Id d'un élément (le hero) : la barre sticky n'apparaît qu'une fois cet
+      élément SORTI de l'écran (brief §13 : « éviter deux gros CTA identiques
+      à quelques pixels d'écart »). */
+  apresId?: string;
 }) {
   const [ouvert, setOuvert] = useState(false);
   const [montee, setMontee] = useState(false);
   /* Slots que le client a décochés — « je l'ai déjà ». */
   const [exclus, setExclus] = useState<Set<SlotKey>>(new Set());
+  const [heroVisible, setHeroVisible] = useState(true);
 
   useEffect(() => setMontee(true), []);
+
+  /* Ouverture commandée depuis le hero. Signal 0 = état initial, ignoré. */
+  useEffect(() => {
+    if (ouvrirSignal > 0) setOuvert(true);
+  }, [ouvrirSignal]);
+
+  /* La barre n'apparaît qu'après le hero : tant que son CTA « Shopper la
+     tenue » est à l'écran, un second CTA identique en bas ferait doublon. */
+  useEffect(() => {
+    if (!apresId) { setHeroVisible(false); return; }
+    const el = document.getElementById(apresId);
+    if (!el) { setHeroVisible(false); return; }
+    const obs = new IntersectionObserver(
+      (entrees) => setHeroVisible(entrees.some((e) => e.isIntersecting)),
+      { threshold: 0 },
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [apresId]);
 
   /* Empêche la page de défiler derrière la feuille ouverte. */
   useEffect(() => {
@@ -73,6 +105,7 @@ export default function ShopperLaTenue({
   /* Rien de cliquable tant qu'aucun produit n'est résolu : afficher une barre
      « 0 pièce · 0 € » pendant le chargement serait pire que pas de barre. */
   if (!montee || disponibles.length === 0) return null;
+  const barreVisible = !heroVisible;
 
   const basculer = (slot: SlotKey) => {
     setExclus((prev) => {
@@ -91,7 +124,7 @@ export default function ShopperLaTenue({
     }
   };
 
-  const barre = (
+  const barre = barreVisible && (
     <div
       style={{
         position: "fixed", left: 0, right: 0,
@@ -187,8 +220,9 @@ export default function ShopperLaTenue({
           fontFamily: fontBody, fontSize: 13, color: textSecondary,
           lineHeight: 1.5, margin: "8px 0 16px",
         }}>
-          Décochez ce que vous avez déjà. Chaque pièce s'ouvre sur le site de
-          son marchand — WADA ne vend pas directement.
+          Décochez ce que vous possédez déjà — le total se recalcule. Les
+          produits s'achètent chez plusieurs boutiques partenaires : chaque
+          pièce s'ouvre sur le site de son marchand.
         </p>
 
         <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 8 }}>
@@ -230,6 +264,14 @@ export default function ShopperLaTenue({
                     }}>
                       {produit.nom}
                     </span>
+                    {tailles[slot] && (
+                      <span style={{
+                        display: "block", fontFamily: fontBody, fontSize: 11.5,
+                        color: textSecondary,
+                      }}>
+                        Taille {tailles[slot]}
+                      </span>
+                    )}
                   </span>
                   <span style={{ fontFamily: fontLabel, fontSize: 13, color: ink, whiteSpace: "nowrap" }}>
                     {formatProductPrice(produit.prix, null, produit.devise)}
@@ -255,7 +297,7 @@ export default function ShopperLaTenue({
         >
           {retenus.length === 0
             ? "Sélectionnez au moins une pièce"
-            : `Ouvrir les ${retenus.length} pièce${retenus.length > 1 ? "s" : ""}`}
+            : `Acheter ${retenus.length} pièce${retenus.length > 1 ? "s" : ""}`}
         </button>
         <button
           type="button"

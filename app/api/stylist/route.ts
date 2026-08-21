@@ -955,6 +955,103 @@ function mergeExcluded(
   return merged;
 }
 
+/* ── Repli sans LLM autour d'une pièce nommée ──────────────────────────────
+   « Je veux un pantalon cargo » doit produire une tenue même quand aucun
+   modèle n'est joignable (pas de clé, quota, panne). On ancre le composeur
+   couleur legacy sur le slot demandé, dans la couleur demandée si elle est
+   nommée, puis on rebascule ce slot de « owned » à « suggested » : le
+   composeur réserve l'ancre à une pièce déjà possédée, ici le client veut
+   L'ACHETER. */
+
+/** Hex représentatifs des couleurs que lib/demandePiece sait lire. Servent
+    d'ancre au composeur — le produit réel est ensuite choisi par ΔE, donc
+    une teinte « raisonnable » suffit. */
+const HEX_COULEUR_DEMANDE: Record<string, string> = {
+  noir: "#1E1E1E", blanc: "#F4EFE6", "écru": "#EDE4D4", "crème": "#EDE4D4",
+  beige: "#C4A484", kaki: "#6B6A4F", olive: "#6B6E3F", marine: "#2A3A56",
+  bleu: "#2C4A5C", gris: "#8A8A8A", marron: "#5A4530", chocolat: "#4A3428",
+  camel: "#C19A6B", bordeaux: "#5C1F2B", rouge: "#A03A2E", vert: "#4A5D43",
+  sauge: "#9CAF88", rose: "#D99AA6", violet: "#6B5378", jaune: "#D8B54A",
+  orange: "#B4643C",
+};
+
+function composerTenueLocale(
+  demande: Demande,
+  userPrefs: UserPrefs,
+): { tenue: ComposedOutfit; reponse: string } | null {
+  /* « J'ai un cargo » n'est pas « je veux un cargo » : possédée, la pièce
+     relève du flow ancre classique, pas de celui-ci. */
+  if (demande.pieces.length === 0 || demande.possede) return null;
+  const p0 = demande.pieces[0];
+  /* Un accessoire seul (« je veux une ceinture ») s'ancre mal — le composeur
+     attend un vêtement. On ancre alors sur le haut et on garde l'accessoire
+     en accent nommé. */
+  const slotAncrage = (p0.slot === "accent" ? "haut" : p0.slot) as Slot;
+  const anchorHex = HEX_COULEUR_DEMANDE[demande.couleur ?? ""] ?? "#1F1B16";
+  const gender: "femme" | "homme" | "unisexe" =
+    demande.genre || (userPrefs.gender as "femme" | "homme" | null) || "unisexe";
+
+  let tenue: ComposedOutfit;
+  try {
+    tenue = composeOutfitFromColor(anchorHex, slotAncrage, gender, {
+      registre: (userPrefs.style as "Streetwear" | "Décontracté" | "Old money" | "Classique" | "Minimal" | null) || null,
+      anchorColorName: demande.couleur || undefined,
+    });
+  } catch {
+    return null;
+  }
+
+  const majuscule = (v: string) => (v ? v[0].toUpperCase() + v.slice(1) : v);
+  tenue.slots = tenue.slots.map((sl) => {
+    const nommee = demande.pieces.find((d) =>
+      d.slot === sl.slot || (d.slot === "accent" && sl.slot === "accent"));
+    const base = {
+      ...sl,
+      genre: gender === "unisexe" ? undefined : gender,
+      lienAchat: undefined as string | undefined,
+      mujiLien: undefined as string | undefined,
+    };
+    if (nommee) {
+      return {
+        ...base,
+        /* La pièce demandée n'est PAS possédée : elle redevient une
+           proposition, sous le libellé exact du client. */
+        role: (sl.slot === "accent" ? "accent" : "suggested") as "accent" | "suggested",
+        label: majuscule(nommee.libelle),
+        typeKeyword: nommee.motCle,
+      };
+    }
+    if (sl.role === "owned") {
+      /* L'ancre technique sur un slot que le client n'a pas nommé (cas
+         accessoire seul) : proposition ordinaire. */
+      return { ...base, role: "suggested" as const };
+    }
+    const m = merchantsForPiece({
+      type: sl.label,
+      couleurNom: sl.colorName,
+      genre: gender,
+      slot: sl.slot as "haut" | "bas" | "veste" | "chaussures" | "accent",
+    });
+    return {
+      ...base,
+      lienAchat: m.find((x) => /^Amazon\b/i.test(x.label))?.url,
+      mujiLien: m.find((x) => /^Muji$/i.test(x.label))?.url,
+    };
+  });
+
+  /* Le libellé porte déjà les qualificatifs lus près de la pièce (« cargo
+     beige ») : on n'ajoute que ce qu'il ne dit pas encore — sans quoi la
+     phrase sortait « des cargo beige en beige ». */
+  const contraintes: string[] = [];
+  if (demande.couleur && !p0.libelle.includes(demande.couleur)) contraintes.push(`en ${demande.couleur}`);
+  if (demande.matiere && !p0.libelle.includes(demande.matiere)) contraintes.push(`en ${demande.matiere}`);
+  if (demande.budgetMax) contraintes.push(`sous ${demande.budgetMax} €`);
+  const reponse =
+    `Voici des ${p0.libelle}${contraintes.length ? " " + contraintes.join(", ") : ""}, ` +
+    `avec de quoi composer la tenue autour — le tout accordé sur une palette Sanzō Wada.`;
+  return { tenue, reponse };
+}
+
 export async function POST(req: Request) {
   let body: unknown;
   try {
@@ -1034,6 +1131,10 @@ export async function POST(req: Request) {
       /[?]/.test(query); // toute question explicite passe au LLM
     if (
       !isComplexQuery &&
+      /* Une pièce NOMMÉE (« je veux un pantalon cargo ») ne doit jamais être
+         avalée par une phrase du dictionnaire : ce retour-là n'a ni tenue ni
+         produits, il ne sait répondre qu'en entités de style. */
+      demande.pieces.length === 0 &&
       (local.matched_via === "intention" || local.matched_via === "conflict")
     ) {
       return NextResponse.json({
@@ -1044,7 +1145,36 @@ export async function POST(req: Request) {
 
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
-      // Pas de clé OpenAI : on retombe sur ce que le dictionnaire local
+      /* Pas de clé LLM. Jusqu'ici : retour d'entités brutes, que le frontend
+         transformait en « J'ai bien noté. Vous pouvez préciser un peu ? » —
+         y compris pour « je veux un pantalon cargo », la demande la plus
+         claire qui soit. Le module local a pourtant tout lu : pièce, slot,
+         couleur, budget, taille. On compose donc une tenue déterministe
+         autour de la pièce nommée, avec le même moteur que le repli du
+         chemin LLM. Le styliste dégrade en panache, pas en haussement
+         d'épaules. */
+      const tenueLocale = composerTenueLocale(demande, userPrefs);
+      if (tenueLocale) {
+        return NextResponse.json({
+          mode: "tenue",
+          reponse: tenueLocale.reponse,
+          composed_outfit: tenueLocale.tenue,
+          demande: {
+            pieces: demande.pieces,
+            budgetMax: demande.budgetMax,
+            tailleHaut: demande.tailleHaut,
+            tailleBas: demande.tailleBas,
+            pointure: demande.pointure,
+            couleur: demande.couleur,
+            matiere: demande.matiere,
+            coupe: demande.coupe,
+            possede: demande.possede,
+          },
+          entities: localToEntities(local),
+          source: "local-compose",
+        });
+      }
+      // Aucune pièce nommée : on retombe sur ce que le dictionnaire local
       // a trouvé (matières, items, exclusions, pratique) — même sans LLM
       // la réponse reste riche.
       return NextResponse.json({

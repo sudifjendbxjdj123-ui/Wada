@@ -44,10 +44,15 @@ import {
 } from "@/lib/styles";
 import ExternalLink from "@/components/ExternalLink";
 import Reveal from "@/components/Reveal";
-import NoteComposition from "@/components/NoteComposition";
-import LookComplet, { type ProduitLook } from "@/components/LookComplet";
+import { type ProduitLook } from "@/components/LookComplet";
+import TenueHero from "@/components/TenueHero";
 import ListePieces from "@/components/ListePieces";
+import RemplacerDrawer from "@/components/RemplacerDrawer";
 import ShopperLaTenue from "@/components/ShopperLaTenue";
+import { AccordeonPourquoi, UtilisationPalette } from "@/components/TenueSections";
+import VariantesTenue from "@/components/VariantesTenue";
+import SimilairesTenue from "@/components/SimilairesTenue";
+import { showToast } from "@/lib/toast";
 /* Brief « appli efficace » §6 (2026-05-29) : repère « Ensuite : … ». */
 import NextStepHint from "@/components/NextStepHint";
 
@@ -300,6 +305,82 @@ function PaletteNotFound({ number }: { number: string }) {
   );
 }
 
+/** Nom de la tenue, éditable au crayon (maquette 2026-08-23). Par défaut le
+    nom de la palette ; le nom choisi est mémorisé par palette et survit au
+    rechargement. Le champ vide restaure le défaut plutôt que d'afficher un
+    titre blanc. */
+function NomTenueEditable({ cle, defaut }: { cle: string; defaut: string }) {
+  const [nom, setNom] = useState(defaut);
+  const [edition, setEdition] = useState(false);
+
+  useEffect(() => {
+    try {
+      const memorise = localStorage.getItem(cle);
+      if (memorise) setNom(memorise);
+    } catch {}
+  }, [cle]);
+
+  const valider = (v: string) => {
+    const propre = v.trim().slice(0, 60);
+    setEdition(false);
+    if (!propre || propre === defaut) {
+      setNom(defaut);
+      try { localStorage.removeItem(cle); } catch {}
+      return;
+    }
+    setNom(propre);
+    try { localStorage.setItem(cle, propre); } catch {}
+  };
+
+  const styleTitre: React.CSSProperties = {
+    fontFamily: fontHeading, fontStyle: "italic", fontWeight: 500,
+    fontSize: "clamp(30px, 5.4vw, 52px)",
+    letterSpacing: "-0.02em", color: ink, lineHeight: 1.05,
+  };
+
+  if (edition) {
+    return (
+      <input
+        autoFocus
+        defaultValue={nom}
+        aria-label="Nom de la tenue"
+        maxLength={60}
+        onBlur={(e) => valider(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") valider((e.target as HTMLInputElement).value);
+          if (e.key === "Escape") setEdition(false);
+        }}
+        style={{
+          ...styleTitre, width: "100%", textAlign: "center",
+          background: "transparent", border: "none", outline: "none",
+          borderBottom: `2px solid ${border}`, margin: "0 0 6px", padding: 0,
+        }}
+      />
+    );
+  }
+
+  return (
+    <h1 style={{ ...styleTitre, margin: "0 0 6px" }}>
+      {nom}
+      <button
+        type="button"
+        onClick={() => setEdition(true)}
+        aria-label="Renommer la tenue"
+        style={{
+          background: "none", border: "none", cursor: "pointer",
+          color: textSecondary, marginLeft: 10, padding: 4,
+          verticalAlign: "middle",
+        }}
+      >
+        <svg width="17" height="17" viewBox="0 0 24 24" aria-hidden fill="none"
+          stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M17 3a2.8 2.8 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+        </svg>
+      </button>
+    </h1>
+  );
+}
+
 function MaTenueContent() {
   const searchParams = useSearchParams();
   // Palette imposée via URL param (?palette=037) — quand le client arrive
@@ -408,7 +489,7 @@ function MaTenueContent() {
      formaté /api/products (identique à ce que chaque carte recevait). */
   type PrefetchedProduct = {
     id: string; nom: string; marque?: string; marchand?: string;
-    marchandSlug?: string; imageLocal?: string; largeImage?: string;
+    marchandSlug?: string; tailles?: string[]; imageLocal?: string; largeImage?: string;
     image?: string; prix: number; devise: string; urlProduit: string;
     couleurNom?: string; hex: string;
   };
@@ -638,17 +719,10 @@ function MaTenueContent() {
      être écrasé au prochain rendu. Vidés quand la palette change, sinon on
      garderait une veste choisie pour une autre tenue. */
   const [remplacements, setRemplacements] = useState<Partial<Record<SlotKey, PrefetchedProduct>>>({});
-  const [enRemplacement, setEnRemplacement] = useState<SlotKey | null>(null);
   const [favorisPieces, setFavorisPieces] = useState<Set<string>>(new Set());
-
-  /* Produits déjà vus par slot — évite de retomber sur la même pièce au
-     deuxième clic sur ↻. Une ref, pas un state : la valeur n'a pas à
-     déclencher de rendu. */
-  const vusParSlotRef = useRef<Partial<Record<SlotKey, string[]>>>({});
 
   useEffect(() => {
     setRemplacements({});
-    vusParSlotRef.current = {};
   }, [entry?.number]);
 
   /* « Remplacer une pièce » — demande explicite du client : « et surtout, le
@@ -656,45 +730,22 @@ function MaTenueContent() {
      slot seulement, en excluant le produit courant et en changeant la graine.
      Les mêmes paliers de relâchement que les cartes : sans eux, un slot
      étroit (couleur rare) renvoyait vide et le ↻ semblait cassé. */
-  const remplacerPiece = useCallback(async (slot: SlotKey) => {
-    if (!entry || !registreOutfit) return;
-    const cible = registreOutfit.slots.find((sl) => sl.slot === slot);
-    if (!cible) return;
-    setEnRemplacement(slot);
-    try {
-      const base = new URLSearchParams({ slot, limit: "1", palette: entry.number });
-      base.set("color", cible.color.hex);
-      if (userGender) base.set("genre", userGender);
-      if (prefs.style) base.set("style", prefs.style);
-      /* Graine dérivée du nombre d'essais : deux clics donnent deux pièces
-         différentes, et un rechargement redonne la même — pas de hasard. */
-      const dejaVus = vusParSlotRef.current[slot] ?? [];
-      base.set("seed", `${entry.number}-${slot}-alt${dejaVus.length + 1}`);
-      if (dejaVus.length) base.set("excludeIds", dejaVus.join(","));
+  /* ── Refonte 2026-08-23 : état de la page « Shop the Look » ── */
+  /* Tailles choisies par slot — rappelées dans le récap d'achat. */
+  const [taillesChoisies, setTaillesChoisies] = useState<Partial<Record<SlotKey, string>>>({});
+  const choisirTaille = useCallback((slot: SlotKey, t: string) => {
+    setTaillesChoisies((prev) => ({ ...prev, [slot]: t }));
+  }, []);
+  /* Slot dont le tiroir « Remplacer » est ouvert. */
+  const [slotDrawer, setSlotDrawer] = useState<SlotKey | null>(null);
+  /* Signal d'ouverture du récap d'achat depuis le CTA du hero. */
+  const [signalShopper, setSignalShopper] = useState(0);
+  /* Tenue sauvegardée (localStorage) — le marque-page du hero. */
+  const [sauvegardee, setSauvegardee] = useState(false);
 
-      const tirer = (sp: URLSearchParams) =>
-        fetch(`/api/products?${sp}`)
-          .then((r) => (r.ok ? r.json() : null))
-          .then((d) => d?.products?.[0] || null)
-          .catch(() => null);
-
-      let p = await tirer(base);
-      if (!p) {
-        for (const drop of [["style"], ["style", "excludeIds"]]) {
-          const sp = new URLSearchParams(base);
-          for (const k of drop) sp.delete(k);
-          p = await tirer(sp);
-          if (p) break;
-        }
-      }
-      if (p?.id) {
-        vusParSlotRef.current[slot] = [...dejaVus, p.id].slice(-12);
-        setRemplacements((prev) => ({ ...prev, [slot]: p as PrefetchedProduct }));
-      }
-    } finally {
-      setEnRemplacement(null);
-    }
-  }, [entry, registreOutfit, userGender, prefs.style]);
+  /* L'ancien remplacement « à l'aveugle » (remplacerPiece) est parti avec la
+     refonte 2026-08-23 : le tiroir RemplacerDrawer laisse le client CHOISIR
+     parmi des alternatives, au lieu de subir la pièce suivante du classement. */
 
   const basculerFavori = useCallback((id: string) => {
     setFavorisPieces((prev) => {
@@ -719,6 +770,41 @@ function MaTenueContent() {
     }
     return out;
   }, [outfitPrefetch, remplacements]);
+
+  /* Repli si /api/outfit a échoué (refonte 2026-08-23) : avant, chaque
+     grande fiche re-fetchait son produit — ces fiches n'existent plus. Si le
+     préfetch aboutit à rien, on refait le travail ici, slot par slot, pour
+     que le hero ne reste pas en squelette. */
+  const fallbackLance = useRef(false);
+  useEffect(() => {
+    if (prefetchPending || outfitPrefetch || fallbackLance.current) return;
+    if (!entry || composition.length === 0) return;
+    fallbackLance.current = true;
+    let cancelled = false;
+    (async () => {
+      const map: Record<string, PrefetchedProduct> = {};
+      for (const piece of composition) {
+        const color = piece._slot?.color || entry.colors[0];
+        const sp = new URLSearchParams({
+          slot: piece.piece, limit: "1", palette: entry.number,
+          seed: `${entry.number}-${piece.piece}-fallback`,
+        });
+        if (color?.hex) sp.set("color", color.hex);
+        if (userGender) sp.set("genre", userGender);
+        if (prefs.style) sp.set("style", prefs.style);
+        try {
+          const r = await fetch(`/api/products?${sp}`);
+          if (!r.ok) continue;
+          const d = await r.json();
+          if (d?.products?.[0]) map[piece.piece] = d.products[0];
+        } catch { /* réseau : slot suivant */ }
+        if (cancelled) return;
+      }
+      if (!cancelled && Object.keys(map).length > 0) setOutfitPrefetch(map);
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prefetchPending, outfitPrefetch, entry?.number, composition.length]);
 
 
 
@@ -822,6 +908,24 @@ function MaTenueContent() {
     return () => { cancelled = true; clearTimeout(safety); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [entry?.number, userGender, prefs.style, composition.length]);
+
+  /* Refonte 2026-08-23 : les PieceCards qui remontaient prix et méta par
+     callback n'existent plus. Les mêmes états sont désormais dérivés de la
+     source unique `produitsParSlot`, pour que la validation LLM (Couche 6)
+     et le plafond de tier continuent de fonctionner à l'identique. */
+  useEffect(() => {
+    for (const [slot, prod] of Object.entries(produitsParSlot)) {
+      if (!prod) continue;
+      handlePriceResolved(slot, prod.prix || 0);
+      handlePieceResolved(slot, {
+        slot,
+        type: prod.nom,
+        marque: prod.marque || "",
+        couleur: prod.couleurNom || "",
+        prix_eur: prod.prix || 0,
+      });
+    }
+  }, [produitsParSlot, handlePriceResolved, handlePieceResolved]);
 
   /* Brief 2026-05-31 v8 — Couche 6 : validation LLM de la tenue assemblée.
      Déclenchée quand TOUTES les pièces de composition sont résolues. Envoie
@@ -1028,13 +1132,10 @@ function MaTenueContent() {
             <p style={{ ...sectionLabel, color: mojo, fontWeight: 700, letterSpacing: "0.4em", marginBottom: 10 }}>
               Votre tenue, sélectionnée pour vous
             </p>
-            <h1 style={{
-              fontFamily: fontHeading, fontStyle: "italic", fontWeight: 500,
-              fontSize: "clamp(30px, 5.4vw, 52px)", margin: "0 0 6px",
-              letterSpacing: "-0.02em", color: ink, lineHeight: 1.05,
-            }}>
-              {entry.name}
-            </h1>
+            {/* Nom de la tenue, ÉDITABLE (maquette : crayon à côté du nom).
+                Par défaut le nom de la palette — déjà une signature — et le
+                nom choisi survit au rechargement, par palette. */}
+            <NomTenueEditable cle={`wada.tenue.nom.${entry.number}`} defaut={entry.name} />
 
             {/* Brief 2026-06-07 (design) — barre nuancier : remplace
                 l'ancien sous-titre italique « X · Y · Z » + les pastilles
@@ -1116,58 +1217,56 @@ function MaTenueContent() {
           ═══════════════════════════════════════════════════════════════ */}
       {registreOutfit && (
         <section className="wada-tenue-look" style={{ padding: "0 5% 20px" }} id="votre-tenue">
-          {/* offset=0 : le décalage d'animation par défaut (24 px) creusait
-              un vide sous la palette, alors que c'est justement l'espace
-              qu'on cherche à récupérer pour remonter la tenue. */}
-          {/* Le titre « Votre tenue » vit maintenant DANS la carte, à côté du
-              WADA MATCH. L'afficher aussi au-dessus le répétait à l'écran. */}
           <Reveal offset={0}>
-            <LookComplet
-              outfit={registreOutfit}
-              produits={produitsParSlot}
-              note={noteTenue}
-              onVoirPiece={(slot) => {
-                document.getElementById(`piece-${slot}`)
-                  ?.scrollIntoView({ behavior: "smooth", block: "start" });
-              }}
-              onVoirLaTenue={() => {
-                document.getElementById("liste-pieces")
-                  ?.scrollIntoView({ behavior: "smooth", block: "start" });
-              }}
-            />
+            {/* id `tenue-hero` : la barre sticky de ShopperLaTenue attend que
+                ce bloc soit sorti de l'écran avant d'apparaître — deux CTA
+                identiques à quelques pixels d'écart font doublon. */}
+            <div id="tenue-hero">
+              <TenueHero
+                outfit={registreOutfit}
+                produits={produitsParSlot}
+                note={noteTenue}
+                onShopper={() => setSignalShopper((n) => n + 1)}
+                sauvegardee={sauvegardee}
+                onSauvegarder={() => {
+                  /* Marque-page local : la tenue re-composable (palette,
+                     style, pièces du moment). Pas de compte requis. */
+                  try {
+                    const cle = "wada.tenues.sauvees";
+                    const brut = localStorage.getItem(cle);
+                    const liste: Array<{ palette: string }> = brut ? JSON.parse(brut) : [];
+                    const deja = liste.findIndex((t) => t.palette === entry.number);
+                    if (sauvegardee && deja >= 0) {
+                      liste.splice(deja, 1);
+                      localStorage.setItem(cle, JSON.stringify(liste));
+                      setSauvegardee(false);
+                      return;
+                    }
+                    if (deja < 0) {
+                      liste.unshift({
+                        palette: entry.number,
+                        nom: entry.name,
+                        date: new Date().toISOString(),
+                        pieces: Object.entries(produitsParSlot)
+                          .filter(([, p]) => p)
+                          .map(([slot, p]) => ({
+                            slot, nom: p!.nom, marque: p!.marque,
+                            prix: p!.prix, url: p!.urlProduit,
+                          })),
+                      } as never);
+                      localStorage.setItem(cle, JSON.stringify(liste.slice(0, 30)));
+                    }
+                    setSauvegardee(true);
+                    showToast("Tenue sauvegardée ✓");
+                  } catch { /* stockage indisponible */ }
+                }}
+                onVoirPiece={(slot) => {
+                  document.getElementById(`piece-${slot}`)
+                    ?.scrollIntoView({ behavior: "smooth", block: "center" });
+                }}
+              />
+            </div>
           </Reveal>
-        </section>
-      )}
-
-      {/* ════════════════════════════════════════════════════════════════
-          DIRECTION ARTISTIQUE — brief 2026-05-28 (retrait flat-lay IA) :
-          plus de visuel généré en haut. À la place, fine bande de pastilles
-          couleur (identité visuelle de la palette) + texte DA + chips
-          registre/coupe/matières. Les vraies photos MUJI prennent le relais
-          juste en dessous, agrandies, sur 2 colonnes.
-          ════════════════════════════════════════════════════════════════ */}
-      {fashionOutput && (
-        <section className="wada-tenue-da" style={{ padding: "0 5% 18px" }}>
-          <div style={{ maxWidth: 720, margin: "0 auto" }}>
-            <Reveal>
-              {/* Pastilles rondes flottantes retirées (design 2026-06-07) :
-                  remplacées par la barre nuancier nommée du hero ci-dessus.
-                  Kicker « Direction artistique » retiré aussi — la phrase
-                  éditoriale se suffit comme chapô sous le nuancier. */}
-              <div style={{ textAlign: "center", padding: "0 12px" }}>
-                <p style={{
-                  fontFamily: fontBody, fontStyle: "italic", fontSize: 16,
-                  color: seal, lineHeight: 1.55, margin: "0 auto",
-                  maxWidth: "44ch", letterSpacing: 0,
-                }}>
-                  {registreOutfit?.description || fashionOutput.description}
-                </p>
-                {/* Tags techniques (Registre · Coupe · Matières · Réf)
-                    retirés — brief « Page tenue V2 » : on supprime le jargon
-                    technique au profit d'une lecture éditoriale épurée. */}
-              </div>
-            </Reveal>
-          </div>
         </section>
       )}
 
@@ -1184,704 +1283,106 @@ function MaTenueContent() {
               )}
               favoris={favorisPieces}
               onFavori={basculerFavori}
-              onRemplacer={remplacerPiece}
-              enRemplacement={enRemplacement}
+              /* « Remplacer » ouvre le tiroir d'alternatives (refonte
+                 2026-08-23) au lieu de tirer une pièce à l'aveugle : le
+                 client choisit, le reste de la tenue ne bouge pas. */
+              onRemplacer={(slot) => setSlotDrawer(slot)}
+              enRemplacement={null}
+              tailles={taillesChoisies}
+              onTaille={choisirTaille}
             />
           </Reveal>
         </section>
       )}
 
-      {noteTenue && (
-        <section className="wada-tenue-note" style={{ padding: "0 5% 24px" }}>
+      {/* « Pourquoi cette tenue fonctionne ? » — accordéon FERMÉ (brief §9).
+          Il abrite la phrase de direction artistique et la note détaillée,
+          qui occupaient chacune une section pleine page. */}
+      {(noteTenue || registreOutfit?.description) && (
+        <section className="wada-tenue-note" style={{ padding: "0 5% 14px" }}>
           <Reveal offset={0}>
-            <NoteComposition note={noteTenue} />
+            <AccordeonPourquoi
+              description={registreOutfit?.description || fashionOutput?.description || null}
+              note={noteTenue}
+            />
           </Reveal>
         </section>
       )}
 
-      {/* ═══════════════════════════════════════════════════════════════
-          GRILLE 5 PIÈCES — chaque pièce a sa propre carte avec photo +
-          top 3 marchands en accès direct (lien externe immédiat).
-          ═══════════════════════════════════════════════════════════════ */}
-      <section style={{ padding: "16px 5% 64px" }}>
-        <div style={{ maxWidth: 1000, margin: "0 auto" }}>
-          {/* Tabs variations (Safe / Audacieuse / Accessible) retirés
-              (user 2026-06-07) : les variantes V2/V3 n'étaient pas
-              fonctionnelles (« Bientôt ») → bruit visuel. La tenue Safe est
-              la seule composition, inutile de l'annoncer comme un onglet. */}
+      {/* « Utilisation de la palette » — quelle teinte habille quelle pièce
+          (brief §10). */}
+      {registreOutfit && (
+        <section className="wada-tenue-note" style={{ padding: "0 5% 24px" }}>
+          <Reveal offset={0}>
+            <UtilisationPalette outfit={registreOutfit} />
+          </Reveal>
+        </section>
+      )}
 
-          {/* Brief 2026-06-01 (mockup) — Tenue Total head card.
-              Mini résumé : nom de la tenue + nombre de pièces + score
-              cohérence du LLM validateur (si dispo). Total prix rendu
-              séparément plus bas (somme realPrices). */}
-          {/* Carte d'en-tête « Tenue Safe — la composition centrée » retirée
-              (brief Page tenue V2 : doublon avec le titre éditorial et les
-              tabs ci-dessus). Le statut « validée par le styliste » reste
-              porté par le badge plus bas. */}
+      {/* La grille des cinq grandes fiches « Comparer les marchands » a
+          été retirée (refonte 2026-08-23) : « la page doit ressembler à un
+          vrai Shop the Look, pas à une liste de fiches produit ». La liste
+          compacte ci-dessus porte l'achat, le panier et le remplacement ;
+          le choix du marchand se fait sur sa page produit. */}
 
-          {/* En-tête de section — divider éditorial (filets + label) avec le
-              badge de validation intégré dessous (design 2026-06-07). */}
-          <div style={{ textAlign: "center", marginBottom: 26 }}>
-            {/* Renommé (maquette 2026-08-22) : « La tenue complète » faisait
-                doublon avec la carte « Votre tenue » en haut de page, qui
-                montre désormais la tenue ET son total. Ce qu'apportent ces
-                fiches, c'est le choix du marchand pour chaque pièce — le
-                titre le dit maintenant. */}
-            <div style={{
-              display: "flex", alignItems: "center", justifyContent: "center",
-              gap: 16, maxWidth: 520, margin: "0 auto",
-            }}>
-              <span aria-hidden style={{ flex: 1, height: 1, background: border }} />
-              <span style={{
-                ...sectionLabel, color: mojo, fontWeight: 700,
-                letterSpacing: "0.3em", whiteSpace: "nowrap",
-              }}>
-                Comparer les marchands
-              </span>
-              <span aria-hidden style={{ flex: 1, height: 1, background: border }} />
-            </div>
+      {/* « Variantes de cette tenue » (brief §11) — trois recompositions
+          réelles de la même palette : plus décontractée, plus habillée,
+          moins chère. Chargées quand la section approche de l'écran. */}
+      {registreOutfit && entry && (
+        <section style={{ padding: "0 5% 24px" }}>
+          <VariantesTenue
+            slots={registreOutfit.slots.map((sl) => ({ slot: sl.slot, color: sl.color.hex }))}
+            palette={entry.number}
+            genre={userGender}
+            styleActuel={prefs.style || null}
+            totalActuel={Object.values(produitsParSlot)
+              .reduce((a, p) => a + (p?.prix || 0), 0)}
+          />
+        </section>
+      )}
 
-            {/* Le badge « ✓ Tenue validée par le styliste WADA » a été retiré
-                ici (retour client 2026-08-21 : « ça sonne légèrement comme une
-                IA qui s'auto-certifie »). Il est remplacé plus haut dans la
-                page par le bloc « Compatibilité WADA », qui donne le même
-                message en chiffres détaillés et l'explique en français. */}
-          </div>
-
-          {/* Scanner Phase 3 (2026-05-31) — Carte « Ta pièce » :
-              affiche la pièce scannée par le client en 1ère position, avec
-              un badge vert « ANCRE · TA PIÈCE » et la mention « tu l'as
-              déjà ». Le composer a exclu son slot des 4 autres cartes.
-              Pas de prix, pas de CTA Acheter — c'est la pièce du client. */}
-          {anchor && (
-            <div style={{
-              marginBottom: 22,
-              background: "#FAF8F4",
-              border: `1px solid rgba(168,178,154,0.45)`,
-              borderRadius: 18,
-              overflow: "hidden",
-              boxShadow: "0 4px 14px -8px rgba(30,30,30,0.12)",
-              position: "relative",
-            }}>
-              {/* Badge ANCRE */}
-              <div style={{
-                position: "absolute",
-                top: 14,
-                left: 14,
-                zIndex: 5,
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 6,
-                padding: "5px 10px 5px 8px",
-                background: "#A8B29A",
-                color: "#fff",
-                borderRadius: 999,
-                fontFamily: "'Fredoka', sans-serif",
-                fontSize: 11,
-                fontWeight: 600,
-                letterSpacing: "0.08em",
-                textTransform: "uppercase",
-                boxShadow: "0 2px 8px -2px rgba(30,30,30,0.2)",
-              }}>
-                <span style={{
-                  width: 8, height: 8, borderRadius: "50%",
-                  background: "#fff",
-                }} />
-                Ta pièce
-              </div>
-
-              {/* Bouton Re-scanner discret en haut à droite */}
-              <button
-                type="button"
-                onClick={clearAnchor}
-                aria-label="Re-scanner une autre pièce"
-                style={{
-                  position: "absolute",
-                  top: 14,
-                  right: 14,
-                  zIndex: 5,
-                  width: 30, height: 30,
-                  borderRadius: "50%",
-                  background: "rgba(255,255,255,0.92)",
-                  border: "1px solid rgba(30,30,30,0.1)",
-                  cursor: "pointer",
-                  fontSize: 14,
-                  color: "#6a6259",
-                  display: "inline-flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  lineHeight: 1,
-                }}
-              >
-                ↻
-              </button>
-
-              {/* Image + métadonnées en 2 colonnes desktop, 1 sur mobile */}
-              <div style={{ display: "grid", gridTemplateColumns: "minmax(180px, 1fr) 1.2fr", gap: 0 }}>
-                {/* Photo scannée */}
-                <div style={{
-                  background: "#1E1E1E",
-                  aspectRatio: "1 / 1",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  overflow: "hidden",
-                }}>
-                  {anchor.thumb ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={anchor.thumb}
-                      alt={`${anchor.marque || ""} ${anchor.type}`}
-                      style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                    />
-                  ) : (
-                    <span style={{
-                      width: 80, height: 80,
-                      borderRadius: 20,
-                      background: anchor.couleur?.hex || "#888",
-                      border: "2px solid rgba(255,255,255,0.2)",
-                    }} />
-                  )}
-                </div>
-
-                {/* Métadonnées */}
-                <div style={{ padding: "26px 24px", display: "flex", flexDirection: "column", justifyContent: "center" }}>
-                  <p style={{
-                    fontFamily: "'Inter', sans-serif",
-                    fontSize: 10,
-                    letterSpacing: "0.18em",
-                    textTransform: "uppercase",
-                    color: "#6a6259",
-                    fontWeight: 600,
-                    margin: 0,
-                  }}>
-                    {anchor.slot} · {anchor.couleur?.nom || "—"}
-                  </p>
-                  <p style={{
-                    fontFamily: "'Fredoka', sans-serif",
-                    fontWeight: 600,
-                    fontSize: 22,
-                    color: "#1E1E1E",
-                    margin: "6px 0 2px",
-                    lineHeight: 1.15,
-                  }}>
-                    {anchor.marque
-                      ? `${anchor.marque}${anchor.modele ? " " + anchor.modele : ""}`
-                      : anchor.type.charAt(0).toUpperCase() + anchor.type.slice(1)}
-                  </p>
-                  <p style={{
-                    fontFamily: "'Inter', sans-serif",
-                    fontSize: 13,
-                    color: "#6a6259",
-                    margin: "4px 0 0",
-                    lineHeight: 1.5,
-                  }}>
-                    {/* Fix 2026-05-31 : éviter doublon « sneakers · Sneakers »
-                        (type Vision lowercase ≈ piece picker capitalized).
-                        On compare en lowercase trimmed. */}
-                    {(() => {
-                      const t = anchor.type.trim();
-                      const p = (anchor.piecePicked || "").trim();
-                      const dup = !p || p.toLowerCase() === t.toLowerCase();
-                      return dup ? t : `${t} · ${p}`;
-                    })()}
-                  </p>
-                  <p style={{
-                    fontFamily: "'Inter', sans-serif",
-                    fontStyle: "italic",
-                    fontSize: 12.5,
-                    color: "#6B3A32",
-                    margin: "14px 0 0",
-                    lineHeight: 1.5,
-                  }}>
-                    Tu l'as déjà — WADA compose la tenue autour.
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-          {/* Brief 2026-05-28 (harmonisation) — grille « 1 vedette + 4 en 2×2 » :
-              la première pièce occupe une carte pleine largeur (signature),
-              les 4 suivantes se rangent dans une grille 2 colonnes.
-              Plus de trou orphelin pour la 5ème pièce.
-              CSS Grid : on définit explicitement 2 colonnes et la 1ère
-              card s'étend sur `grid-column: 1 / -1`. */}
-          {/* Brief 2026-06-01 v3 (user) : grille TOUJOURS visible. Le
-              fallback INCOHERENT a été supprimé — on propose toujours
-              une tenue, quitte à ce qu'elle ne soit pas parfaite. */}
-          <div
-            className="wada-tenue-grid"
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(2, 1fr)",
-              gap: 22,
-            }}
-          >
-          {composition.map((piece, pieceIndex) => {
-            // Refonte 2026-05-22 : couleur + mots-clés viennent du
-            // registreEngine, plus du matching par index. Le type de
-            // pièce (« Hoodie oversized » pour Streetwear, « Pull
-            // cachemire » pour Old money) influence la recherche
-            // marchand → on cherche réellement la bonne pièce.
-            const slot: RegistreSlot | undefined = piece._slot;
-            const color = slot?.color || entry.colors[0];
-
-            // Query : type registre-aligné + couleur + genre
-            // (ex : « hoodie oversized fer homme » au lieu de
-            //  « surchemise coton plâtre homme »)
-            const q = smartQuery(slot?.searchKeywords || piece.item, color.name)
-              + (userGender ? ` ${userGender}` : "");
-
-            // Marchands rankés par profil — large pool puis diversification
-            // par tier de prix pour éviter "Vinted/Zara/Lacoste partout".
-            const profileForRanking: WadaProfile = {
-              gender: prefs.gender,
-              style: prefs.style || undefined,
-              budget: prefs.budget,
-              morpho: prefs.morpho || undefined,
-              intensity: prefs.intensity,
-            };
-            const ranked = filterAndRankBrandsByProfile(
-              shopOptionsAffiliated(q, piece.piece),
-              profileForRanking,
-              50 // pool très large pour la diversification 6-8 marques
-            );
-            // Diversification : on pioche jusqu'à 1 marque par tier de prix
-            // dans l'ordre selon le budget client. Brief mobile 2026-05-21 :
-            // cible 3-4 marchands MAX par pièce (le mur « Amazon · X · Amazon
-            // · Y… » répétait Amazon 6-7 fois et faisait bon marché).
-            const MAX_MERCHANTS = 4;
-            const PER_TIER = 1;
-            // Dédup-key par MARQUE (pas par label) — on extrait le nom de
-            // marque depuis « Amazon · HUGO » → « HUGO ». Empêche d'avoir
-            // 2× le même brand (depuis Amazon et depuis le marchand direct)
-            // ET d'empiler 6× le préfixe « Amazon ».
-            const brandKey = (m: ShopLink) =>
-              (m.label.replace(/^Amazon\s*[·•:-]?\s*/i, "").trim() || m.label)
-                .toLowerCase();
-            const seenBrands = new Set<string>();
-            const merchants: ShopLink[] = [];
-            let amazonCount = 0;
-            const AMAZON_MAX = 1; // brief mobile 2026-05-21 : Amazon une seule fois max
-
-            const budgetIdx = prefs.budget ?? 1;
-            const tierOrder: ShopLink["priceLevel"][] =
-              budgetIdx === 2 ? ["luxe", "premium", "mid", "budget"]
-              : budgetIdx === 0 ? ["budget", "mid", "premium", "luxe"]
-              : ["premium", "mid", "luxe", "budget"];
-
-            const isAmazon = (m: ShopLink) => /^Amazon\b/i.test(m.label);
-            const tryPush = (m: ShopLink) => {
-              const k = brandKey(m);
-              if (seenBrands.has(k)) return false;
-              if (isAmazon(m) && amazonCount >= AMAZON_MAX) return false;
-              merchants.push(m);
-              seenBrands.add(k);
-              if (isAmazon(m)) amazonCount++;
-              return true;
-            };
-
-            /* ─── Bug fix 2026-05-24 « JACK & JONES partout » ─────────────
-               PRIORITÉ ABSOLUE : merchantsForPiece() retourne 2-4 marchands
-               variés et pertinents pour CETTE pièce (Amazon générique avec
-               query type+couleur+genre + Muji si minimal + 1-2 directs
-               selon le slot). Évite que la sélection retombe sur l'unique
-               « Amazon · JACK & JONES » polyvalent en tier budget. */
-            const piecePriority = merchantsForPiece({
-              type: slot?.type || piece.item,
-              couleurNom: color.name,
-              genre: prefs.gender,
-              slot: slot?.slot,
-            });
-            for (const m of piecePriority) {
-              if (merchants.length >= MAX_MERCHANTS) break;
-              tryPush(m);
-            }
-
-            // 1ère passe (legacy) : jusqu'à PER_TIER marques par tier dans l'ordre du budget
-            for (const tier of tierOrder) {
-              let pickedFromTier = 0;
-              for (const m of ranked) {
-                if (pickedFromTier >= PER_TIER) break;
-                if (merchants.length >= MAX_MERCHANTS) break;
-                if (m.priceLevel === tier && tryPush(m)) pickedFromTier++;
-              }
-              if (merchants.length >= MAX_MERCHANTS) break;
-            }
-
-            // 2ème passe : complète avec le ranking normal si on n'a pas atteint MAX
-            for (const m of ranked) {
-              if (merchants.length >= MAX_MERCHANTS) break;
-              tryPush(m);
-            }
-
-            /* Brief 2026-05-28 (variété par palette) :
-               Seed unique par (palette + slot + style) → garantit que :
-               - Même palette / même style → MÊME tenue (stable au reload)
-               - Palette différente → produits DIFFÉRENTS (rotation pool top-12)
-               - Style différent (Classique vs Minimal vs Old money) → tirage
-                 différent → variantes Look distinctes
-               Dedup intra-tenue inutile : chaque slot a sa propre catégorie
-               (haut/bas/veste/chaussures/accent), donc pas de collision possible. */
-            const variantSeed = `${entry.number}-${piece.piece}-${prefs.style || "default"}`;
-            /* La première pièce (signature) prend toute la largeur :
-               grid-column: 1 / -1. Les 4 suivantes se rangent en 2×2 — pas
-               de trou orphelin pour la 5ème. */
-            const featured = pieceIndex === 0;
-            return (
-              <div
-                key={piece.item}
-                /* Cible du clic depuis la vignette « Votre tenue » : la
-                   vignette fait défiler jusqu'à la fiche détaillée de sa
-                   pièce plutôt que d'ouvrir une modale de plus. */
-                id={`piece-${piece.piece}`}
-                style={{ gridColumn: featured ? "1 / -1" : undefined, scrollMarginTop: 16 }}
-              >
-                <PieceCard
-                  piece={piece.piece}
-                  itemName={piece.item}
-                  color={color}
-                  merchants={merchants}
-                  paletteRef={entry.number}
-                  genre={userGender}
-                  style={prefs.style || null}
-                  seed={variantSeed}
-                  featured={featured}
-                  onPriceResolved={handlePriceResolved}
-                  onPieceMetaResolved={handlePieceResolved}
-                  onImageResolved={handleImageResolved}
-                  /* Brief URGENT 2026-06-01 MICRO_TYPES : noms des pièces
-                     déjà résolues dans la tenue → filtre de cohérence
-                     intra-tenue côté API (short + cardigan NO, etc.). */
-                  selectedNamesStr={
-                    Object.values(resolvedPieces)
-                      .filter((rp) => rp.type)
-                      .map((rp) => encodeURIComponent(rp.type))
-                      .join("|") || undefined
-                  }
-                  /* Brief 2026-06-07 COHÉRENCE DE TIER : plafond imposé si
-                     cette pièce est un outlier de prix dans la tenue. */
-                  tierMaxPrice={tierCeilings[piece.piece] ?? null}
-                  /* PERF 2026-06-11 : produit pré-résolu par /api/outfit. */
-                  prefetched={outfitPrefetch?.[piece.piece] ?? null}
-                  prefetchPending={prefetchPending}
-                />
-              </div>
-            );
-          })}
-          </div>
-
-          {/* Brief UX client (26/05) — Total estimé de la tenue.
-              Fix 2026-05-31 (user screenshot « ~275€ » avec somme = 2414€) :
-              le calcul utilisait priceEstimateNum() basé sur le priceLevel
-              tier du marchand (~25/55/120/280 par défaut), pas les vrais
-              prix produits affichés sur les cards. Maintenant : agrégé via
-              callback onPriceResolved des PieceCard → state realPrices.
-              Total = somme arrondie des vrais prix MUJI/TBF affichés. */}
-          {(() => {
-            const resolved = composition
-              .map((p) => realPrices[p.piece] || 0)
-              .filter((v) => v > 0);
-            /* Si TOUS les prix réels sont arrivés → total exact.
-               Sinon (chargement en cours) → on n'affiche rien plutôt qu'un
-               total faux qui se met à jour visiblement. */
-            if (resolved.length < composition.length) return null;
-            const total = Math.round(resolved.reduce((a, b) => a + b, 0));
-            if (total === 0) return null;
-
-            /* Brief 2026-06-01 « Toujours proposer une tenue » :
-               calcul de l'overshoot vs budget profil pour afficher le
-               badge transparent. 4 scénarios :
-                 A (≤10%)  → pas de badge
-                 B (10-30%) → badge ambre « Dépasse votre budget de X% »
-                 C (30-100%) → badge orange « investissement notable »
-                 D (>100%)   → badge bordeaux « palette luxe » */
-            let budgetCible: number | null = null;
-            try {
-              const profileRaw = typeof window !== "undefined" ? localStorage.getItem("wada.profile") : null;
-              if (profileRaw) {
-                const profile = JSON.parse(profileRaw);
-                /* Budget profil → cible TOTAL tenue (≈ 4-5 pièces × cap pièce).
-                   On utilise les fourchettes du brief : <150€ → cible 600€,
-                   150-400€ → 1500€, Premium → null (jamais d'overshoot). */
-                if (profile?.budget === "< 150€") budgetCible = 600;
-                else if (profile?.budget === "150–400€") budgetCible = 1500;
-              }
-            } catch {}
-            const overshoot = budgetCible !== null && total > budgetCible
-              ? (total - budgetCible) / budgetCible
-              : 0;
-            let badgeColors: { bg: string; fg: string } | null = null;
-            let badgeLabel = "";
-            if (overshoot > 1.0) {
-              badgeColors = { bg: "#f5d9d4", fg: "#6e3b32" };
-              badgeLabel = `Palette luxe — ${Math.round(overshoot * 100)}% au-dessus de ton budget`;
-            } else if (overshoot > 0.3) {
-              badgeColors = { bg: "#fbd4a8", fg: "#7e4a16" };
-              badgeLabel = `Dépasse ton budget de ${Math.round(overshoot * 100)}%`;
-            } else if (overshoot > 0.1) {
-              badgeColors = { bg: "#fbe9c5", fg: "#8a6608" };
-              badgeLabel = `Dépasse ton budget de ${Math.round(overshoot * 100)}%`;
-            }
-
-            return (
-              <div style={{
-                marginTop: 28,
-                padding: "18px 24px",
-                background: "rgba(107, 58, 50, 0.06)",
-                border: `1px solid rgba(107, 58, 50, 0.15)`,
-                borderRadius: 14,
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "baseline",
-                flexWrap: "wrap",
-                gap: 10,
-              }}>
-                <div>
-                  <p style={{
-                    fontSize: 11, letterSpacing: "0.18em",
-                    textTransform: "uppercase", color: textSecondary,
-                    margin: 0, fontFamily: "'Inter', sans-serif", fontWeight: 600,
-                  }}>
-                    {anchor ? "Les 4 pièces à acheter" : "Total de la tenue"}
-                  </p>
-                  <p style={{
-                    fontSize: 13, color: textSecondary,
-                    margin: "4px 0 0", fontStyle: "italic",
-                    fontFamily: "'Inter', sans-serif",
-                  }}>
-                    {anchor
-                      ? "Hors ta pièce ancrée — prix réels chez chaque marchand au clic"
-                      : "Estimation — prix réels chez chaque marchand au clic"}
-                  </p>
-                </div>
-                <div style={{ textAlign: "right" }}>
-                  <p style={{
-                    fontFamily: "'Fredoka', sans-serif",
-                    fontWeight: 600, fontSize: 28,
-                    color: "#6B3A32",
-                    margin: 0, lineHeight: 1,
-                  }}>
-                    ~{total} €
-                  </p>
-                  {badgeColors && (
-                    <span style={{
-                      display: "inline-block",
-                      fontFamily: "'Inter', sans-serif",
-                      fontSize: 10.5,
-                      letterSpacing: "0.04em",
-                      fontWeight: 600,
-                      padding: "3px 10px",
-                      borderRadius: 999,
-                      marginTop: 8,
-                      background: badgeColors.bg,
-                      color: badgeColors.fg,
-                    }}>
-                      {badgeLabel}
-                    </span>
-                  )}
-                </div>
-              </div>
-            );
-          })()}
-
-          {/* Note du styliste (carte 和) retirée (user 2026-06-07). */}
-
-          {/* Brief 2026-06-01 (mockup) — Stylist CTA « Quelque chose ne te
-              plaît pas ? » → invite à dialoguer avec le styliste IA. */}
-          {validation.state === "coherent" && entry && (
-            <Link
-              href={`/stylist?palette=${entry.number}`}
-              style={{
-                background: "#1E1E1E",
-                color: "#fff",
-                border: "none",
-                borderRadius: 18,
-                padding: 20,
-                marginTop: 18, marginBottom: 8,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                gap: 14,
-                textDecoration: "none",
-                flexWrap: "wrap",
-              }}
-            >
-              <div style={{ flex: 1, minWidth: 200 }}>
-                <h4 style={{
-                  fontFamily: "'Fredoka', sans-serif",
-                  fontSize: 15, fontWeight: 500,
-                  margin: "0 0 4px", color: "#fff",
-                }}>
-                  Quelque chose ne te plaît pas&nbsp;?
-                </h4>
-                <p style={{
-                  fontSize: 12.5, color: "rgba(255,255,255,.7)",
-                  lineHeight: 1.4, margin: 0,
-                }}>
-                  Dis-moi en mots ce que tu veux changer — je recompose autour.
-                </p>
-              </div>
-              <span style={{
-                background: "#6B3A32", color: "#fff",
-                borderRadius: 999,
-                padding: "10px 16px",
-                fontFamily: "'Fredoka', sans-serif",
-                fontSize: 12, fontWeight: 500,
-                flex: "0 0 auto",
-              }}>
-                Discuter →
-              </span>
-            </Link>
-          )}
-
-          {/* Bottom CTAs — brief mockup 2026-05-25 */}
-          <div style={{
-            display: "flex",
-            gap: 12,
-            justifyContent: "center",
-            marginTop: 32,
-            flexWrap: "wrap",
-          }}>
-            <button
-              type="button"
-              onClick={() => {
-                // Ajoute les 5 pièces de la tenue au panier localStorage
-                try {
-                  const raw = localStorage.getItem("wada-cart") || "[]";
-                  const existing = JSON.parse(raw) as unknown[];
-                  const cart = Array.isArray(existing) ? existing : [];
-
-                  const newItems = composition.map((piece) => {
-                    const slot = piece._slot;
-                    const color = slot?.color || (entry.colors?.[0] ?? { name: "Unknown", hex: "#000000" });
-                    return {
-                      id: `${entry.number}-${piece.piece}-${Date.now()}`,
-                      piece: piece.piece,
-                      item: piece.item,
-                      colorName: color.name ?? "Unknown",
-                      colorHex: color.hex ?? "#000000",
-                      query: slot?.searchKeywords || piece.item,
-                      fromEntry: entry.number,
-                      addedAt: Date.now(),
-                    };
-                  });
-
-                  localStorage.setItem("wada-cart", JSON.stringify([...cart, ...newItems]));
-                  window.dispatchEvent(new Event("storage"));
-                  alert(`${composition.length} pièces ajoutées à votre panier.`);
-                } catch (err) {
-                  console.error("Add to cart failed:", err);
-                }
-              }}
-              style={{
-                fontFamily: "'Inter', sans-serif",
-                fontSize: 14,
-                padding: "13px 24px",
-                borderRadius: 999,
-                background: "#6B3A32",
-                color: "#FAF8F4",
-                border: "none",
-                cursor: "pointer",
-                fontWeight: 500,
-              }}
-            >
-              Ajouter à mon dressing
-            </button>
-            {/* Bouton « Tout chercher sur Amazon » retiré (user 2026-06-07). */}
-          </div>
-
-          {/* Bloc réassurance (Paiement sécurisé / Achat direct / Prix
-              identique) retiré (user 2026-06-07). */}
-
-          <p style={{
-            maxWidth: 720,
-            margin: "12px auto 0",
-            fontSize: 12,
-            color: textSecondary,
-            textAlign: "center",
-          }}>
-            Liens partenaires (Muji via Awin · Amazon Partenaires) — WADA peut toucher une commission, sans coût supplémentaire pour vous.{" "}
-            <Link href="/cgv" style={{ color: "inherit", textDecoration: "underline" }}>CGV</Link>
-            {" · "}
-            <Link href="/confidentialite" style={{ color: "inherit", textDecoration: "underline" }}>Confidentialité</Link>
-          </p>
-
-          {/* Brief 2026-05-28 (harmonisation) :
-              - 2 cols → 1 col ≤ 640px (cards pleine largeur)
-              - hover discret : translateY(-3px) + image scale(1.03) pour
-                inviter au clic, sans surcharger
-              - réassurance passe aussi en colonne sur mobile */}
-          <style jsx>{`
-            /* Fix 2026-05-31 v2 (user screenshot iPhone : cartes trop
-               grandes en 1 colonne stretch) : on garde la grille 2
-               colonnes même sur mobile, comme le desktop. La pièce
-               vedette continue de spanner les 2 colonnes via grid-column:
-               1 / -1. Les 4 autres en 2×2 compactes. Le client voit
-               4 cartes lisibles d'un seul scroll au lieu d'1 carte par
-               écran. Gap réduit pour gagner de la place. */
-            @media (max-width: 640px) {
-              :global(.wada-tenue-grid) {
-                gap: 12px !important;
-              }
-            }
-            @media (max-width: 540px) {
-              :global(.wada-reassurance) {
-                grid-template-columns: 1fr !important;
-                gap: 14px !important;
-                text-align: left !important;
-              }
-            }
-            /* Brief 2026-06-07 (design héro) — la pièce centrale est un
-               héro 2 colonnes (image | détails) sur desktop. Sous 720px,
-               on repasse en colonne pour garder une image lisible. */
-            @media (max-width: 720px) {
-              :global(.wada-piece-card--featured) {
-                flex-direction: column !important;
-              }
-              :global(.wada-piece-card--featured .wada-piece-photo),
-              :global(.wada-piece-card--featured .wada-skeleton) {
-                flex: none !important;
-                width: 100% !important;
-                border-radius: 16px 16px 0 0 !important;
-              }
-            }
-            :global(.wada-piece-card:hover) {
-              transform: translateY(-3px);
-              box-shadow: 0 14px 40px rgba(30, 30, 30, .10) !important;
-            }
-            :global(.wada-piece-card:hover .wada-piece-photo img) {
-              transform: scale(1.03);
-            }
-            @media (prefers-reduced-motion: reduce) {
-              :global(.wada-piece-card),
-              :global(.wada-piece-card:hover),
-              :global(.wada-piece-card .wada-piece-photo img) {
-                transform: none !important;
-                transition: none !important;
-              }
-            }
-          `}</style>
-        </div>
-      </section>
+      {/* « Vous pourriez aussi aimer » (brief §12) — pièces du catalogue
+          accordées à la même palette, hors celles déjà dans la tenue. */}
+      {entry && (
+        <section style={{ padding: "0 5% 96px" }}>
+          <SimilairesTenue
+            palette={entry.number}
+            genre={userGender}
+            excludeIds={Object.values(produitsParSlot)
+              .filter((p): p is ProduitLook => !!p)
+              .map((p) => p.id)}
+          />
+        </section>
+      )}
 
       {/* Barre d'achat permanente (retour client 2026-08-21 : « c'est
           probablement ce qui manque le plus commercialement »). Rendue en
           portail sur document.body — voir le commentaire du composant. */}
-      <ShopperLaTenue produits={produitsParSlot} />
+      <ShopperLaTenue
+        produits={produitsParSlot}
+        tailles={taillesChoisies}
+        ouvrirSignal={signalShopper}
+        apresId="tenue-hero"
+      />
 
-      {/* ═══════════════════════════════════════════════════════════════
-          COMPLÉTEZ VOTRE LOOK — accessoires compatibles palette
-          Brief « Page tenue premium » 2026-06-09, adapté à la réalité WADA :
-          rail d'accessoires RÉELS du catalogue KV (slot=accent, ΔE palette),
-          liens affiliés marchands. Pas de checkout/Klarna (WADA = affiliation).
-          ═══════════════════════════════════════════════════════════════ */}
-      {entry && (
-        <CompleteTheLook
+      {/* Tiroir « Remplacer » — alternatives filtrables du slot choisi. */}
+      {slotDrawer && registreOutfit && entry && produitsParSlot[slotDrawer] && (
+        <RemplacerDrawer
+          slot={slotDrawer}
+          libelleSlot={{
+            veste: "Veste", haut: "Haut", bas: "Bas",
+            chaussures: "Chaussures", accent: "Accessoire",
+          }[slotDrawer]}
+          hexSlot={registreOutfit.slots.find((sl) => sl.slot === slotDrawer)?.color.hex || entry.colors[0].hex}
+          produitActuel={produitsParSlot[slotDrawer]!}
           paletteNumber={entry.number}
-          accentHex={registreOutfit?.slots.find((s) => s.slot === "accent")?.color?.hex || entry.colors[0]?.hex}
-          gender={prefs.gender}
-          style={prefs.style}
+          genre={userGender}
+          style={prefs.style || null}
+          onChoisir={(p) => {
+            setRemplacements((prev) => ({ ...prev, [slotDrawer]: p as never }));
+            showToast("Pièce remplacée ✓");
+          }}
+          onFermer={() => setSlotDrawer(null)}
         />
       )}
 
@@ -1916,1550 +1417,13 @@ function MaTenueContent() {
   );
 }
 
-/* ─────────────────── CompleteTheLook ───────────────────
-   « Complétez votre look » — rail horizontal d'accessoires compatibles
-   palette, tirés du VRAI catalogue KV (slot=accent, matching ΔE palette).
-   100% données réelles : packshots, prix, liens affiliés marchands. Aucun
-   contenu fabriqué (pas de faux avis, pas de checkout/Klarna : WADA est un
-   site d'affiliation). Si rien de pertinent → la section ne s'affiche pas. */
-type AccentItem = {
-  id: string; nom: string; marque?: string; prix?: number;
-  devise?: string; image?: string; urlProduit: string; marchandSlug?: string;
-};
-
-function CompleteTheLook({
-  paletteNumber, accentHex, gender, style,
-}: {
-  paletteNumber: string;
-  accentHex?: string;
-  gender: string | null;
-  style: string;
-}) {
-  const [items, setItems] = useState<AccentItem[] | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    const params = new URLSearchParams({ slot: "accent", palette: paletteNumber, limit: "12" });
-    if (gender) params.set("genre", gender);
-    if (style) params.set("style", style);
-    if (accentHex) params.set("color", accentHex);
-    fetch(`/api/products?${params.toString()}`)
-      .then((r) => r.json())
-      .then((d) => {
-        if (cancelled) return;
-        const list: AccentItem[] = (d.products || [])
-          .filter((p: AccentItem) => p.image && p.urlProduit)
-          .slice(0, 6);
-        setItems(list);
-      })
-      .catch(() => { if (!cancelled) setItems([]); });
-    return () => { cancelled = true; };
-  }, [paletteNumber, accentHex, gender, style]);
-
-  // Rien de pertinent → on n'affiche pas la section (jamais de bloc vide).
-  if (items !== null && items.length === 0) return null;
-
-  const cells: (AccentItem | null)[] = items ?? [null, null, null, null];
-
-  return (
-    <section style={{ padding: "8px 5% 56px" }}>
-      <div style={{ maxWidth: 1000, margin: "0 auto" }}>
-        <div style={{
-          display: "flex", alignItems: "center", justifyContent: "center",
-          gap: 16, maxWidth: 520, margin: "0 auto 26px",
-        }}>
-          <span aria-hidden style={{ flex: 1, height: 1, background: border }} />
-          <span style={{ ...sectionLabel, color: mojo, fontWeight: 700, letterSpacing: "0.3em", whiteSpace: "nowrap" }}>
-            Complétez votre look
-          </span>
-          <span aria-hidden style={{ flex: 1, height: 1, background: border }} />
-        </div>
-
-        <div style={{ display: "flex", gap: 14, overflowX: "auto", paddingBottom: 8 }}>
-          {cells.map((p, i) => {
-            if (!p) {
-              return (
-                <div key={`sk-${i}`} style={{ flex: "0 0 158px", width: 158 }}>
-                  <div style={{ aspectRatio: "1 / 1", background: cardBg, borderRadius: cardRadius }} />
-                  <div style={{ height: 12, background: cardBg, borderRadius: 4, marginTop: 10 }} />
-                  <div style={{ height: 10, width: "60%", background: cardBg, borderRadius: 4, marginTop: 6 }} />
-                </div>
-              );
-            }
-            const prix = typeof p.prix === "number"
-              ? formatProductPrice(p.prix, p.marchandSlug, p.devise)
-              : "";
-            return (
-              <ExternalLink
-                key={p.id}
-                href={p.urlProduit}
-                aria-label={`${p.nom}${p.marque ? " — " + p.marque : ""}`}
-                style={{ flex: "0 0 158px", width: 158, textDecoration: "none", color: ink }}
-              >
-                <div style={{
-                  aspectRatio: "1 / 1", background: "#fff", borderRadius: cardRadius,
-                  overflow: "hidden", border: `1px solid ${border}`,
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                }}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={p.image}
-                    alt={p.nom}
-                    loading="lazy"
-                    decoding="async"
-                    fetchPriority="low"
-                    style={{ width: "100%", height: "100%", objectFit: "contain", padding: 8, containIntrinsicSize: "1px 1px" }}
-                    onError={(e) => { const img = e.currentTarget; img.style.display = "none"; if (img.parentElement) img.parentElement.style.background = "#F4EFE7"; }}
-                  />
-                </div>
-                <p style={{
-                  margin: "10px 0 0", fontSize: 13, fontFamily: fontBody, lineHeight: 1.3,
-                  color: ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                }}>{p.nom}</p>
-                {p.marque && <p style={{ margin: "2px 0 0", fontSize: 11, color: textSecondary, fontFamily: fontBody }}>{p.marque}</p>}
-                {prix && <p style={{ margin: "4px 0 0", fontSize: 13, fontWeight: 600, color: ink, fontFamily: fontBody }}>{prix}</p>}
-              </ExternalLink>
-            );
-          })}
-        </div>
-
-        <p style={{ marginTop: 12, fontSize: 12, color: textSecondary, fontStyle: "italic", fontFamily: fontBody, textAlign: "center" }}>
-          Accessoires assortis à la palette · liens vers nos marchands partenaires
-        </p>
-      </div>
-    </section>
-  );
-}
-
-/* ─────────────────── FlatLayCollage ───────────────────
-   Composition CSS des 5 photos produit en style éditorial.
-   Layout (sur mobile : colonne simple) :
-     ┌──────────┬───────────┐
-     │   HAUT   │  VESTE    │
-     ├────┬─────┴─┬─────────┤
-     │BAS │ CHSS  │ ACCENT  │
-     └────┴───────┴─────────┘
-────────────────────────────────────────────────────── */
-
-function FlatLayCollage({
-  images,
-  pieces,
-}: {
-  images: Record<string, string>;
-  pieces: Array<{ slot: string; id: string; nom: string; marque: string; prix: number; url: string; name?: string; type?: string }>;
-}) {
-  const slots = ["haut", "veste", "bas", "chaussures", "accent"];
-  const has = (s: string) => !!images[s];
-  const count = slots.filter(has).length;
-
-  /* État : null = chargement, string = URL générée, "fallback" = CSS */
-  const [generatedUrl, setGeneratedUrl] = useState<string | null | "fallback">(null);
-  const [positions, setPositions] = useState<Array<{ slot: string; cx: number; cy: number }>>([]);
-  const [activeHotspot, setActiveHotspot] = useState<string | null>(null);
-  const [liked, setLiked] = useState(false);
-  const [buyModal, setBuyModal] = useState(false);
-
-  /* Charge l'état liked depuis localStorage */
-  useEffect(() => {
-    try {
-      const key = `wada.liked.${Object.values(images).join(",").slice(0, 40)}`;
-      setLiked(!!localStorage.getItem(key));
-    } catch {}
-  }, [images]);
-
-  /* Appelle /api/flatlay quand 4+ images disponibles */
-  useEffect(() => {
-    if (count < 4 || !process.env.NEXT_PUBLIC_SITE_URL) {
-      /* Fallback CSS si pas assez d'images ou env non configuré */
-      if (count >= 3) setGeneratedUrl("fallback");
-      return;
-    }
-
-    const flatPieces = pieces
-      .filter((p) => images[p.slot])
-      .map((p) => ({
-        id: p.id,
-        slot: p.slot as "veste" | "haut" | "bas" | "chaussures" | "accent",
-        name: p.nom,
-        image_url: images[p.slot],
-        marque: p.marque,
-        nom: p.nom,
-        prix: p.prix,
-        url_buy: p.url,
-      }));
-
-    fetch("/api/flatlay", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ pieces: flatPieces }),
-    })
-      .then((r) => r.json())
-      .then((data) => {
-        if (data?.url) {
-          setGeneratedUrl(data.url);
-          setPositions(data.positions || []);
-        } else {
-          setGeneratedUrl("fallback");
-        }
-      })
-      .catch(() => setGeneratedUrl("fallback"));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [count]);
-
-  if (count < 3) return null;
-
-  const toggleLike = () => {
-    try {
-      const key = `wada.liked.${Object.values(images).join(",").slice(0, 40)}`;
-      if (liked) localStorage.removeItem(key);
-      else localStorage.setItem(key, "1");
-      setLiked(!liked);
-    } catch {}
-  };
-
-  const total = pieces.reduce((s, p) => s + (p.prix || 0), 0);
-  const activePiece = activeHotspot ? pieces.find((p) => p.slot === activeHotspot) : null;
-
-  /* Style partagé : fond blanc, ombre légère, objectFit contain. */
-  const cellStyle = (extra: React.CSSProperties = {}): React.CSSProperties => ({
-    background: "#fff",
-    borderRadius: 12,
-    overflow: "hidden",
-    boxShadow: "0 1px 6px rgba(30,30,30,0.08)",
-    display: "flex", alignItems: "center", justifyContent: "center",
-    ...extra,
-  });
-  const imgEl2 = (slot: string): React.ReactNode => (
-    <img
-      src={images[slot]} alt={slot}
-      loading="lazy"
-      style={{ width: "100%", height: "100%", objectFit: "contain", padding: 6 }}
-    />
-  );
-
-  const cellStyle2 = (extra: React.CSSProperties = {}): React.CSSProperties => ({
-    background: "#fff", borderRadius: 12, overflow: "hidden",
-    boxShadow: "0 1px 6px rgba(30,30,30,0.08)",
-    display: "flex", alignItems: "center", justifyContent: "center",
-    contain: "layout style paint",
-    ...extra,
-  });
-  const imgEl3 = (slot: string): React.ReactNode => {
-    const isCritical = slot === "haut" || slot === "veste";
-    return (
-      <img
-        src={images[slot]}
-        alt={slot}
-        loading={isCritical ? "eager" : "lazy"}
-        fetchPriority={isCritical ? "high" : "low"}
-        decoding="async"
-        style={{ width: "100%", height: "100%", objectFit: "contain", padding: 6, containIntrinsicSize: "1px 1px" }}
-      />
-    );
-  };
-
-  return (
-    <div style={{ marginBottom: 32 }}>
-      {/* ── Image générée Replicate + hotspots ── */}
-      {generatedUrl && generatedUrl !== "fallback" ? (
-        <div style={{ position: "relative", borderRadius: 18, overflow: "hidden", background: "#F2EDE4", border: "1px solid rgba(30,30,30,0.07)" }}>
-          <img src={generatedUrl} alt="Tenue complète flat lay"
-            style={{ width: "100%", display: "block" }} />
-
-          {/* Hotspots SVG overlay */}
-          <svg style={{ position: "absolute", inset: 0, width: "100%", height: "100%", overflow: "visible" }}
-            viewBox="0 0 1200 1200" preserveAspectRatio="xMidYMid meet">
-            {positions.map((pos) => (
-              <g key={pos.slot}
-                onClick={() => setActiveHotspot(activeHotspot === pos.slot ? null : pos.slot)}
-                style={{ cursor: "pointer" }}>
-                <circle cx={pos.cx} cy={pos.cy} r={28} fill="white" opacity={0.9} />
-                <text x={pos.cx} y={pos.cy + 7} textAnchor="middle"
-                  fontSize={32} fontWeight={300} fill="#6B3A32">+</text>
-              </g>
-            ))}
-          </svg>
-
-          {/* Barre info hotspot actif */}
-          {activePiece && (
-            <div style={{
-              position: "absolute", bottom: 0, left: 0, right: 0,
-              background: "rgba(255,255,255,0.97)", backdropFilter: "blur(8px)",
-              padding: "12px 16px", display: "flex", alignItems: "center", gap: 12,
-              borderTop: "1px solid rgba(30,30,30,0.08)",
-            }}>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ margin: 0, fontSize: 11, fontWeight: 600, color: "#6B3A32", textTransform: "uppercase", letterSpacing: "0.08em" }}>{activePiece.marque}</p>
-                <p style={{ margin: "2px 0 0", fontSize: 13, color: "#1E1E1E", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{activePiece.nom}</p>
-              </div>
-              <span style={{ fontFamily: "'Fredoka'", fontSize: 17, fontWeight: 500, color: "#6B3A32", flexShrink: 0 }}>{typeof activePiece.prix === "number" ? `${activePiece.prix.toFixed(2)} €` : "Prix sur le site"}</span>
-              {activePiece.url ? (
-                <a href={activePiece.url} target="_blank" rel="noopener sponsored"
-                style={{ flexShrink: 0, background: "#1E1E1E", color: "#FAF8F4", borderRadius: 8, padding: "8px 14px", fontSize: 12, fontFamily: "'Fredoka'", textDecoration: "none" }}>
-                Acheter ↗
-              </a>
-              ) : null}
-            </div>
-          )}
-        </div>
-      ) : generatedUrl === null ? (
-        /* Chargement */
-        <div style={{ background: "#F2EDE4", borderRadius: 18, height: 220, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <p style={{ color: "#A89880", fontSize: 13, fontFamily: "'Inter'", fontStyle: "italic" }}>
-            Composition de la tenue en cours…
-          </p>
-        </div>
-      ) : (
-        /* Fallback CSS (si pas assez d'images ou erreur) */
-        <div style={{ marginBottom: 0, borderRadius: 18, overflow: "hidden", background: "#F2EDE4", border: "1px solid rgba(30,30,30,0.07)", padding: "14px 10px 10px" }}>
-          <p style={{ textAlign: "center", fontSize: 9.5, fontWeight: 700, letterSpacing: "0.32em", textTransform: "uppercase", color: "#A89880", margin: "0 0 10px", fontFamily: "'Inter'" }}>
-            La tenue · composition
-          </p>
-          <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 6 }}>
-            <div style={cellStyle2({ gridColumn: "1/2", gridRow: "1/3", aspectRatio: "4/5", minHeight: 180 })}>{has("haut") ? imgEl3("haut") : <span style={{ color: "#D0C8BC" }}>◻</span>}</div>
-            <div style={cellStyle2({ aspectRatio: "3/4" })}>{has("veste") ? imgEl3("veste") : null}</div>
-            <div style={{ display: "grid", gridTemplateRows: "1fr 1fr", gap: 6 }}>
-              <div style={cellStyle2({ aspectRatio: "3/2" })}>{has("chaussures") ? imgEl3("chaussures") : null}</div>
-              {has("accent") && <div style={cellStyle2({ aspectRatio: "3/2" })}>{imgEl3("accent")}</div>}
-            </div>
-          </div>
-          {has("bas") && <div style={{ ...cellStyle2({}), marginTop: 6, aspectRatio: "4/2" }}>{imgEl3("bas")}</div>}
-        </div>
-      )}
-
-      {/* ── Boutons Aimer + Acheter tout ── */}
-      <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
-        {/* Cœur */}
-        <button type="button" onClick={toggleLike}
-          style={{
-            width: 52, height: 52, borderRadius: 14, flexShrink: 0,
-            background: liked ? "#FEE2E2" : "#F2EDE4",
-            border: `1px solid ${liked ? "#F87171" : "rgba(30,30,30,0.12)"}`,
-            fontSize: 22, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-          }}
-          aria-label={liked ? "Retirer des favoris" : "Aimer cette tenue"}>
-          {liked ? "❤️" : "🤍"}
-        </button>
-
-        {/* Acheter tout */}
-        <button type="button" onClick={() => setBuyModal(true)}
-          style={{
-            flex: 1, background: "#1E1E1E", color: "#FAF8F4", border: "none",
-            borderRadius: 14, fontFamily: "'Fredoka'", fontSize: 16, fontWeight: 500,
-            cursor: "pointer", padding: "0 16px",
-          }}>
-          Acheter cette tenue · {total > 0 ? `${Math.round(total)} €` : "…"}
-        </button>
-      </div>
-
-      {/* ── Modal Buy All ── */}
-      {buyModal && (
-        <div style={{
-          position: "fixed", inset: 0, zIndex: 9999,
-          background: "rgba(0,0,0,0.55)", backdropFilter: "blur(4px)",
-          display: "flex", alignItems: "flex-end", justifyContent: "center",
-        }} onClick={() => setBuyModal(false)}>
-          <div style={{
-            background: "#FAF8F4", borderRadius: "20px 20px 0 0",
-            width: "100%", maxWidth: 600, padding: "24px 20px 36px",
-            maxHeight: "80vh", overflowY: "auto",
-          }} onClick={(e) => e.stopPropagation()}>
-            <p style={{ fontFamily: "'Fredoka'", fontSize: 20, fontWeight: 500, margin: "0 0 18px", textAlign: "center" }}>
-              Acheter la tenue complète
-            </p>
-
-            {pieces.map((p) => p.url && (
-              <div key={p.slot} style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12, padding: "10px 14px", background: "#fff", borderRadius: 12, border: "1px solid rgba(30,30,30,0.07)" }}>
-                {images[p.slot] && <img src={images[p.slot]} alt={p.slot} loading="lazy" decoding="async" fetchPriority="low" style={{ width: 44, height: 44, objectFit: "contain", borderRadius: 8, containIntrinsicSize: "44px 44px" }} />}
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ margin: 0, fontSize: 11, fontWeight: 600, color: "#6B3A32", textTransform: "uppercase", letterSpacing: "0.06em" }}>{p.marque}</p>
-                  <p style={{ margin: "2px 0 0", fontSize: 13, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.nom}</p>
-                </div>
-                <span style={{ fontFamily: "'Fredoka'", fontSize: 15, color: "#6B3A32", flexShrink: 0 }}>{typeof p.prix === "number" ? `${p.prix.toFixed(2)} €` : "—"}</span>
-                <a href={p.url} target="_blank" rel="noopener sponsored"
-                  style={{ background: "#6B3A32", color: "#FAF8F4", borderRadius: 8, padding: "6px 12px", fontSize: 12, fontFamily: "'Fredoka'", textDecoration: "none", flexShrink: 0 }}>
-                  ↗
-                </a>
-              </div>
-            ))}
-
-            <button type="button"
-              onClick={() => {
-                pieces.forEach((p) => { if (p.url) window.open(p.url, "_blank"); });
-                setBuyModal(false);
-              }}
-              style={{
-                width: "100%", background: "#1E1E1E", color: "#FAF8F4", border: "none",
-                borderRadius: 14, fontFamily: "'Fredoka'", fontSize: 16, fontWeight: 500,
-                cursor: "pointer", padding: "16px", marginTop: 8,
-              }}>
-              Ouvrir les {pieces.filter((p) => p.url).length} liens marchands →
-            </button>
-
-            <button type="button" onClick={() => setBuyModal(false)}
-              style={{ width: "100%", background: "transparent", border: "none", color: "#9B8B78", fontFamily: "'Inter'", fontSize: 13, cursor: "pointer", padding: "12px", marginTop: 4 }}>
-              Fermer
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-/* ─────────────────── PieceCard ───────────────────
-   Une carte = 1 pièce de la tenue.
-   Structure : photo (fond colored palette + mix-blend-multiply) +
-   nom de la pièce + 3 boutons marchands directs.
-   ───────────────────────────────────────────────── */
-/**
- * PieceLine — version compacte texte-only (remplace l'ancien PieceCard avec
- * photos). Demandée par le client : "juste des mots en dessous, où trouver
- * ce type de pantalon / pull / mocassins". L'image FLUX en haut de page
- * sert de référence visuelle pour TOUTE la tenue ; ici on liste juste les
- * pièces + les marchands où les trouver.
- *
- * Layout :
- *   ┌───────────────────────────────────────────────────────┐
- *   │ ● HAUT                                          DUNE  │
- *   │ T-shirt coton dune                                    │
- *   │ Où trouver → Depop · Levi's · Vinted                  │
- *   └───────────────────────────────────────────────────────┘
- */
-function PieceLine({
-  piece, itemName, color, merchants,
-}: {
-  piece: string;
-  itemName: string;
-  color: { name: string; hex: string };
-  merchants: ShopLink[];
-}) {
-  return (
-    <article style={{
-      padding: "22px 0",
-      borderBottom: `1px solid ${border}`,
-      display: "flex", flexDirection: "column", gap: 8,
-    }}>
-      {/* Ligne 1 : label catégorie + swatch couleur + nom couleur (à droite) */}
-      <div style={{
-        display: "flex", justifyContent: "space-between", alignItems: "center",
-        gap: 14,
-      }}>
-        <div style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
-          <span style={{
-            display: "inline-block",
-            width: 12, height: 12, borderRadius: "50%",
-            background: color.hex,
-            border: `1px solid rgba(0,0,0,0.1)`,
-            flexShrink: 0,
-          }} />
-          <span style={{
-            fontFamily: fontLabel, fontSize: 10, fontWeight: 700,
-            letterSpacing: "0.35em", textTransform: "uppercase",
-            color: mojo,
-          }}>
-            {PIECE_LABELS[piece] || piece}
-          </span>
-        </div>
-        <span style={{
-          fontFamily: fontLabel, fontSize: 9, fontWeight: 600,
-          letterSpacing: "0.25em", textTransform: "uppercase",
-          color: subtle,
-        }}>
-          {color.name}
-        </span>
-      </div>
-
-      {/* Ligne 2 : nom de l'item, en serif italique éditorial */}
-      <p style={{
-        fontFamily: fontHeading, fontStyle: "italic", fontWeight: 500,
-        fontSize: 22, color: ink, margin: 0,
-        lineHeight: 1.2, letterSpacing: "-0.01em",
-      }}>
-        {itemName}
-      </p>
-
-      {/* Ligne 3 : où trouver — marchands en PASTILLES (brief mobile 2026-05-21)
-          Plus de mur « Amazon · X · Amazon · Y » : Amazon est limité à 1 max,
-          les labels « Amazon · HUGO » sont affichés « HUGO » (pastille avec
-          pictogramme A pour signaler l'origine Amazon). Cible : 3-4 chips
-          lisibles, cliquables, cible tactile 44px. */}
-      {merchants.length > 0 ? (
-        <div style={{
-          display: "flex", flexWrap: "wrap", gap: 8,
-          alignItems: "center", margin: "8px 0 0",
-        }}>
-          <span style={{
-            fontFamily: fontLabel, fontSize: 10, fontWeight: 700,
-            letterSpacing: "0.3em", textTransform: "uppercase",
-            color: subtle, marginRight: 4,
-          }}>
-            Où trouver →
-          </span>
-          {merchants.map((m, idx) => {
-            const isAmz = /^Amazon\b/i.test(m.label);
-            const cleanLabel = isAmz
-              ? m.label.replace(/^Amazon\s*[·•:-]?\s*/i, "").trim() || "Amazon"
-              : m.label;
-            return (
-              <ExternalLink
-                key={`${m.label}-${idx}`}
-                href={m.url}
-                style={{
-                  display: "inline-flex", alignItems: "center", gap: 6,
-                  padding: "8px 14px",
-                  background: cardBg,
-                  border: `1px solid ${border}`,
-                  borderRadius: 999,
-                  color: ink,
-                  fontFamily: fontBody, fontSize: 14, fontWeight: 500,
-                  textDecoration: "none",
-                  lineHeight: 1.2,
-                  minHeight: 36,
-                  transition: "border-color .2s ease, background .2s ease",
-                }}
-              >
-                {isAmz && (
-                  <span
-                    aria-label="via Amazon"
-                    title="via Amazon"
-                    style={{
-                      display: "inline-flex", alignItems: "center", justifyContent: "center",
-                      width: 16, height: 16, borderRadius: 4,
-                      background: "#FF9900", color: "#1E1E1E",
-                      fontFamily: fontLabel, fontSize: 9, fontWeight: 800,
-                      letterSpacing: 0, lineHeight: 1,
-                    }}
-                  >
-                    a
-                  </span>
-                )}
-                <span>{cleanLabel}</span>
-              </ExternalLink>
-            );
-          })}
-        </div>
-      ) : (
-        <p style={{
-          fontFamily: fontBody, fontStyle: "italic", fontSize: 13,
-          color: textSecondary, margin: "4px 0 0",
-        }}>
-          Aucun marchand pour cet item — ajustez votre profil.
-        </p>
-      )}
-    </article>
-  );
-}
-
-/* ──────────────────────────────────────────────────────────────────────
-   PieceCard — refonte « marque + prix + Acheter » (brief 2026-05-27 §2)
-   ──────────────────────────────────────────────────────────────────────
-   Avant : bouton générique « Amazon → » qui ne disait ni la marque ni le
-   prix. Confus pour le client (« je clique sur quoi ? »).
-
-   Après : carte plus grande, avec un BLOC marchand explicite :
-     - MARQUE en gros (« COS », « Muji », « HUGO », « Amazon »)
-     - prix en accent (~55 €) — estimation par tier (faute d'API prix)
-     - mention « via Amazon » / « via Awin » discrète
-     - bouton « Acheter → » clair
-     - « + N autres marchands » repliable
-
-   Layout :
-     ┌────────────────────────────┐
-     │ [color swatch — 110px]     │
-     ├────────────────────────────┤
-     │ HAUT · MARINE              │
-     │ Pull col rond marine       │
-     │                            │
-     │ ┌────────────────────────┐ │
-     │ │ COS                    │ │
-     │ │ ~55 €     via Amazon   │ │
-     │ │ [   Acheter →   ]      │ │
-     │ └────────────────────────┘ │
-     │ + 3 autres marchands ▾     │
-     └────────────────────────────┘
-   ────────────────────────────────────────────────────────────────────── */
-
-/** Extrait un nom de marque propre depuis un label de marchand :
- *   « Amazon · HUGO » → « HUGO »
- *   « Amazon »        → « Amazon »
- *   « COS »           → « COS »
- *   « Muji »          → « Muji »
- */
-function brandLabel(m: ShopLink): string {
-  const cleaned = m.label.replace(/^Amazon\s*[·•:\-]\s*/i, "").trim();
-  return cleaned || m.label;
-}
-
-/** True si le marchand est l'Amazon GÉNÉRIQUE (pas un brand affilié via
- *  Amazon comme « Amazon · HUGO » qui devient « HUGO »). Sert à le pousser
- *  en bas du classement — on veut afficher la VRAIE marque en headline,
- *  pas le nom de la place de marché. */
-function isPureAmazon(m: ShopLink): boolean {
-  return m.label.trim().toLowerCase() === "amazon";
-}
-
-/** True si le lien passe par Amazon (générique ou brand affilié).
- *  Sert à afficher le petit logo « a » orange + « via Amazon ». */
-function isAmazonLinked(m: ShopLink): boolean {
-  return /^Amazon\b/i.test(m.label);
-}
-
-/** Pastille orange « a » — signature visuelle Amazon dans les UI WADA.
- *  Utilisée à côté du « via Amazon » pour signaler l'origine du lien
- *  sans monopoliser la headline. */
-function AmazonAaChip({ size = 16 }: { size?: number }) {
-  return (
-    <span
-      aria-label="via Amazon"
-      title="via Amazon"
-      style={{
-        display: "inline-flex", alignItems: "center", justifyContent: "center",
-        width: size, height: size, borderRadius: 4,
-        background: "#FF9900", color: "#1E1E1E",
-        fontFamily: "'Inter', sans-serif", fontWeight: 800,
-        fontSize: Math.round(size * 0.6), letterSpacing: 0, lineHeight: 1,
-        flexShrink: 0,
-      }}
-    >
-      a
-    </span>
-  );
-}
-
-/** Libellé prix d'un marchand de recherche (fallback).
- *
- *  Bug critique 2026-05-31 : avant, on affichait un prix factice par tier
- *  (« ~55 € » pour TOUT marchand « mid »), ce qui donnait Hoodie ~55€ /
- *  Cargo ~55€ / Sneakers ~55€ — visiblement faux. Un lien de RECHERCHE n'a
- *  pas de prix produit. Règle 4 du brief : on affiche « Prix sur le site »
- *  plutôt qu'un montant inventé. Le vrai prix (MUJI / TBF) vient de la fiche
- *  produit /api/products et est affiché directement (mujiProduct.prix), pas
- *  via cette fonction. */
-function priceEstimate(_m: ShopLink): string {
-  return "Prix sur le site";
-}
-
-/** Brief 2026-06-07 (design cartes) — format prix épuré : on masque les
- *  décimales « .00 » (80.00 € → 80 €) tout en gardant les centimes réels
- *  quand ils existent (248.85 € → 248,85 €). Virgule décimale FR. Le prix
- *  exact reste celui du marchand (mention « prix identique » sous le CTA). */
-function formatPrice(prix: number): string {
-  const rounded = Math.round(prix * 100) / 100;
-  if (Number.isInteger(rounded)) return String(rounded);
-  return rounded.toFixed(2).replace(".", ",");
-}
-
-/** Mention discrète « via Amazon / via Awin » pour signaler la couche
- *  d'affiliation sans la rendre criante. Renvoie null si la marque est
- *  affichée en direct (Amazon brut ou marchand direct). */
-function viaLabel(m: ShopLink): string | null {
-  // Cas "Amazon · HUGO" → on affiche HUGO + "via Amazon"
-  if (/^Amazon\b/i.test(m.label) && m.label.trim().toLowerCase() !== "amazon") {
-    return "via Amazon";
-  }
-  // Muji passe par Awin (cf. lib/affiliate.ts + merchantsForPiece.ts)
-  if (/^Muji$/i.test(m.label)) return "via Awin";
-  return null;
-}
-
-/** Slot canonique pour l'API /api/products. Map les clés legacy
- *  (« Top »/« Bottom »/…) vers les slots FR utilisés par le flux Awin. */
-function pieceToSlot(piece: string): string | null {
-  const map: Record<string, string> = {
-    Top: "haut", Shirt: "haut", haut: "haut",
-    Bottom: "bas", bas: "bas",
-    Outer: "veste", veste: "veste",
-    Shoes: "chaussures", chaussures: "chaussures",
-    Accent: "accent", accent: "accent",
-  };
-  return map[piece] || null;
-}
-
-/** Hook léger : tente de charger un produit MUJI réel pour ce slot+palette.
- *  Renvoie null en cas d'absence (catalogue vide, aucun match, erreur).
- *  Le UI bascule alors sur le placeholder Amazon.
- *
- *  Brief Muji 2026-05-28 (cohérence matching) : passe aussi `style` à l'API
- *  pour exclure les sous-types incohérents avec le registre (jogging en
- *  Classique, pantoufles en Tailoring…). */
-/** Hook : tente de charger un produit MUJI réel pour ce slot.
- *
- *  Brief 2026-05-28 (variété par palette) :
- *    - On passe `colorHex` (la VRAIE couleur de la palette assignée à ce slot)
- *      → tri ΔE2000 vs cette couleur → produit qui match VRAIMENT la teinte
- *    - On passe `seed` (palette + slot + style) → rotation dans le top-12
- *      pour avoir des produits différents entre palettes
- *    - On passe `excludeIds` → dedup intra-tenue (un produit ne réapparaît
- *      pas sur 2 slots de la même tenue)
- *
- *  Quand un produit est trouvé, on appelle `onPicked(id)` pour que le parent
- *  l'ajoute aux excludeIds des slots suivants.
- */
-function useMujiProduct(
-  slot: string | null,
-  colorHex: string | null,
-  paletteRef: string | null,
-  genre: string | null,
-  style: string | null,
-  seed: string | null,
-  excludeIds: string[],
-  onPicked?: (id: string) => void,
-  /** Brief URGENT 2026-06-01 MICRO_TYPES — noms des pièces déjà sélectionnées
-   *  dans la tenue, encodés "|" séparés. Transmis à /api/products pour le
-   *  filtre de cohérence intra-tenue (short + cardigan NO, etc.). */
-  selectedNamesStr?: string,
-  /** Brief 2026-06-07 COHÉRENCE DE TIER — plafond prix imposé a posteriori
-   *  quand cette pièce est un outlier de prix dans la tenue (> 5× la médiane
-   *  des autres pièces). null = pas de contrainte (pick idéal). Quand fourni,
-   *  l'API re-sélectionne une pièce ≤ ce plafond dans le même slot/couleur,
-   *  ramenant la tenue dans un tier de prix homogène. */
-  tierMaxPrice?: number | null,
-  /** PERF 2026-06-11 — produit déjà résolu par /api/outfit (composition de
-   *  toute la tenue en 1 requête). Si fourni (et pas de plafond tier), la
-   *  carte l'applique directement sans refaire son propre fetch. */
-  prefetched?: {
-    id: string; nom: string; marque?: string; marchand?: string;
-    marchandSlug?: string; imageLocal?: string; largeImage?: string;
-    image?: string; prix: number; devise: string; urlProduit: string;
-    couleurNom?: string; hex: string;
-  } | null,
-  /** PERF 2026-06-11 — true tant que le préfetch tenue (/api/outfit) est en
-   *  cours. La carte attend (aucun fetch) pour ne pas relancer les 5 GET. */
-  prefetchPending?: boolean,
-) {
-  const [product, setProduct] = useState<{
-    id: string;
-    nom: string;
-    marque: string;
-    /* Brief 2026-05-30 : marchand exposé pour afficher le bon label
-       « via Awin · {marchand} partenaire » (MUJI ou The Business
-       Fashion ou autre flux futur). */
-    marchand?: string;
-    marchandSlug?: string;
-    image: string;
-    prix: number;
-    devise: string;
-    url: string;
-    /* Brief UX client (26/05) — la couleur RÉELLE du produit MUJI
-       (« Bleu Marine Foncé », « Beige Sable »), pas la couleur cible
-       de la palette WADA. Utilisée par la PieceCard pour afficher
-       le bon nom de couleur dans le badge (cohérence visuelle). */
-    couleurNom?: string;
-    /* Brief UX client v2 (26/05) — hex inféré du flux Awin (couleurNom
-       → hex), utilisé pour la pastille à côté du label. Évite le cas
-       où le label dit « NOIR » mais la pastille est crème (intention
-       palette) et la photo est beige (produit réel). Pastille + label
-       + photo viennent maintenant TOUS de la même source. */
-    couleurHex?: string;
-  } | null>(null);
-
-  // Brief : on utilise excludeIds joined en string pour la dep useEffect —
-  // évite des re-fetches inutiles à chaque render du parent (les arrays
-  // sont des références).
-  const excludeKey = excludeIds.join(",");
-
-  useEffect(() => {
-    if (!slot) return;
-    void selectedNamesStr; // inclus dans les deps ci-dessous
-    let cancelled = false;
-    /* Fix 2026-05-30 « toujours pas de photo TBF » : avant on hardcodait
-       merchant=muji-france, ce qui exclut TBF (et tout autre flux futur)
-       du résultat. Maintenant on laisse l'API choisir le meilleur produit
-       toutes marques confondues, trié par proximité couleur (min ΔE2000
-       vers la palette demandée). MUJI reste dominant sur les palettes
-       neutres, TBF apparaît sur les palettes sombres/luxury. */
-    const params = new URLSearchParams({ slot, limit: "1" });
-    /* Brief 2026-06-01 « Toujours proposer une tenue » : on n'applique
-       PLUS le maxPrice strict du profil sur le pick principal. Le
-       composer ramène la tenue IDÉALE pour la palette/registre — quitte
-       à dépasser le budget profil de 10-100%. L'UI affiche ensuite un
-       badge « Dépasse votre budget de X% » et offre une porte de sortie
-       (alternative strict, ajustement styliste, augmenter budget).
-       Le soft cap par REGISTRE reste appliqué côté API (Décontracté
-       600€, Streetwear 800€, Minimaliste 1000€, Classique 2000€) pour
-       garder une fourchette réaliste sans laisser des Brioni 5000€
-       passer par défaut.
-
-       La saison reste propagée — c'est une contrainte de cohérence
-       (lin en hiver = pas idéal), pas un compromis budget. */
-    if (typeof window !== "undefined") {
-      try {
-        const profileRaw = localStorage.getItem("wada.profile");
-        if (profileRaw) {
-          const profile = JSON.parse(profileRaw);
-          if (profile?.saison === "Hiver") params.set("season", "hiver,automne");
-          else if (profile?.saison === "Été") params.set("season", "été,printemps");
-          else if (profile?.saison === "Mi-saison") params.set("season", "automne,printemps");
-        }
-      } catch {}
-    }
-    if (colorHex) params.set("color", colorHex);
-    if (paletteRef) params.set("palette", paletteRef);
-    if (genre) params.set("genre", genre);
-    if (style) params.set("style", style);
-    if (seed) params.set("seed", seed);
-    if (excludeKey) params.set("excludeIds", excludeKey);
-
-    /* Brief 2026-06-07 COHÉRENCE DE TIER : plafond prix appliqué uniquement
-       aux pièces outlier (cf. parent). On passe `tierCap` (et NON `maxPrice`)
-       pour que l'API l'applique en filtre DUR final, sans la majoration +50%
-       du soft-cap budget réservée aux slots non-MUJI. Force une re-sélection
-       du même slot/couleur sous ce plafond → tenue homogène en tier. */
-    if (tierMaxPrice != null && tierMaxPrice > 0) {
-      params.set("tierCap", String(Math.round(tierMaxPrice)));
-    }
-
-    /* Brief URGENT 2026-06-01 Nemanja — Règle 3 : propager `occasion` à
-       l'API pour activer les FORBIDDEN_TYPES (short_bain interdit en
-       voyage/bureau, sneakers_sport en cérémonie, etc.). */
-    if (typeof window !== "undefined") {
-      try {
-        const urlOcc = new URLSearchParams(window.location.search).get("occasion");
-        if (urlOcc) params.set("occasion", urlOcc);
-      } catch {}
-    }
-
-    /* Brief URGENT 2026-06-01 MICRO_TYPES : pièces déjà sélectionnées dans
-       la tenue. Permet à /api/products de rejeter les incompatibilités
-       intra-tenue (short + cardigan NO, sandal plage + blazer NO, etc.). */
-    if (selectedNamesStr) params.set("selectedNames", selectedNamesStr);
-
-    /* Brief 2026-06-01 « dimensions IA » §1 — traduit wada.mood.perception
-       en param `envie` API. Mapping :
-         Élégant     → elegant
-         Créatif     → creatif
-         Accessible  → confortable
-         Autoritaire → affirme
-         Séduisant   → affirme
-         Mystérieux  → discret
-       Pas envoyé si l'user n'a pas configuré de mood du jour. */
-    if (typeof window !== "undefined") {
-      try {
-        const moodRaw = localStorage.getItem("wada.mood");
-        if (moodRaw) {
-          const mood = JSON.parse(moodRaw);
-          const today = new Date().toISOString().slice(0, 10);
-          if (mood?.date === today && mood?.perception) {
-            const ENVIE_MAP: Record<string, string> = {
-              "Élégant": "elegant",
-              "Créatif": "creatif",
-              "Accessible": "confortable",
-              "Autoritaire": "affirme",
-              "Séduisant": "affirme",
-              "Mystérieux": "discret",
-            };
-            const envie = ENVIE_MAP[mood.perception];
-            if (envie) params.set("envie", envie);
-          }
-        }
-      } catch {}
-    }
-
-    /* Applique un produit /api/products au slot.
-       Image — Brief 2026-05-28 (plein cadre 4/5) : imageLocal (Blob) →
-       largeImage proxifié → image standard proxifiée. */
-    const applyProduct = (p: {
-      id: string; nom: string; marque?: string; marchand?: string;
-      marchandSlug?: string; imageLocal?: string; largeImage?: string;
-      image?: string; prix: number; devise: string; urlProduit: string;
-      couleurNom?: string; hex: string;
-    }) => {
-      const sourceUrl = p.imageLocal
-        ? p.imageLocal
-        : p.largeImage
-          ? `/api/img?u=${encodeURIComponent(p.largeImage)}`
-          : p.image
-            ? `/api/img?u=${encodeURIComponent(p.image)}`
-            : "";
-      setProduct({
-        id: p.id,
-        nom: p.nom,
-        marque: p.marque || p.marchand || "MUJI",
-        marchand: p.marchand,
-        marchandSlug: p.marchandSlug,
-        image: sourceUrl,
-        prix: p.prix,
-        devise: p.devise,
-        url: p.urlProduit,
-        couleurNom: p.couleurNom,
-        couleurHex: p.hex,
-      });
-      onPicked?.(p.id);
-    };
-
-    /* PERF 2026-06-11 (« attente trop longue ») — ATTENTE du préfetch tenue.
-       Tant que /api/outfit n'a pas répondu (prefetchPending), la carte ne
-       fetch PAS : sinon on relance les 5 GET /api/products simultanés (le
-       cold-start qu'on veut éliminer). L'effet se relance quand pending
-       passe à false (via les deps). Exception : une re-sélection tier
-       (tierMaxPrice) doit pouvoir refetch même hors préfetch. */
-    if (prefetchPending && (tierMaxPrice == null || tierMaxPrice <= 0)) {
-      return () => { cancelled = true; };
-    }
-
-    /* Produit pré-résolu par /api/outfit (1 requête tenue → 1 cold start au
-       lieu de 5). On l'applique directement et on saute le fetch de cette
-       carte. EXCEPTION : un plafond tier (pièce outlier en prix) impose une
-       re-sélection → on retombe sur le fetch par carte avec tierCap. Si
-       `prefetched` est absent (échec /api/outfit), la carte fetch elle-même
-       → fallback robuste, comportement legacy. */
-    if (prefetched && (tierMaxPrice == null || tierMaxPrice <= 0)) {
-      applyProduct(prefetched);
-      return () => { cancelled = true; };
-    }
-
-    const pickFrom = (sp: URLSearchParams) =>
-      fetch(`/api/products?${sp}`)
-        .then((r) => (r.ok ? r.json() : null))
-        .then((d) => d?.products?.[0] || null)
-        .catch(() => null);
-
-    /* Brief 2026-06-09 « moins de Bientôt » : la requête STRICTE (slot +
-       couleur + palette + genre + style + occasion + saison + envie +
-       pièces déjà choisies) sur-restreint certains slots → carte vide
-       « pas encore chez nos partenaires ». On retente alors en relâchant
-       par paliers les contraintes SECONDAIRES, en gardant l'essentiel
-       (slot, couleur, palette, genre) : un produit pertinent de la bonne
-       catégorie/couleur vaut mieux qu'un slot vide. On s'arrête au 1er
-       succès. (Le slot reste réellement vide seulement si le genre+slot
-       n'a vraiment aucun produit.) */
-    (async () => {
-      let p = await pickFrom(params);
-      if (!p) {
-        const RELAX = [
-          ["occasion", "season", "envie", "selectedNames"],            // garde le style
-          ["occasion", "season", "envie", "selectedNames", "style"],   // lâche aussi le style
-        ];
-        for (const drop of RELAX) {
-          if (cancelled) return;
-          const sp = new URLSearchParams(params);
-          for (const k of drop) sp.delete(k);
-          p = await pickFrom(sp);
-          if (p) break;
-        }
-      }
-      if (cancelled || !p) return;
-      applyProduct(p);
-    })();
-    return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [slot, colorHex, paletteRef, genre, style, seed, excludeKey, selectedNamesStr, tierMaxPrice, prefetched, prefetchPending]);
-
-  return product;
-}
-
-function PieceCard({
-  piece, itemName, color, merchants, paletteRef, genre, style,
-  seed, excludeIds, onPicked, featured, onPriceResolved, onPieceMetaResolved,
-  selectedNamesStr, onImageResolved, tierMaxPrice, prefetched, prefetchPending,
-}: {
-  piece: string;
-  itemName: string;
-  color: { name: string; hex: string };
-  merchants: ShopLink[];
-  paletteRef?: string | null;
-  genre?: string | null;
-  style?: string | null;
-  seed?: string | null;
-  excludeIds?: string[];
-  onPicked?: (id: string) => void;
-  /** Brief URGENT 2026-06-01 MICRO_TYPES : noms des pièces déjà sélectionnées
-   *  "|"-séparés. Transmis à useMujiProduct puis à /api/products. */
-  selectedNamesStr?: string;
-  /** Brief 2026-06-02 flat lay : remonte l'URL image résolue au parent pour le collage. */
-  onImageResolved?: (slot: string, imageUrl: string) => void;
-  /** Brief 2026-05-28 (vedette) : carte 1ère pièce pleine largeur,
-   *  ratio image 16/10 plus paysage que portrait pour bien remplir.
-   *  Les autres restent en 4/5 portrait. */
-  featured?: boolean;
-  /** Fix 2026-05-31 (user screenshot bug total) : remonte le vrai
-   *  prix du produit dès qu'il est résolu, pour que le total agrégé
-   *  soit calculé sur les VRAIS prix et pas sur les tiers estimate. */
-  onPriceResolved?: (pieceId: string, price: number) => void;
-  /** Brief 2026-05-31 v8 (validation LLM) : remonte les métadonnées
-   *  produit (marque/type/couleur/prix) pour permettre au parent de
-   *  valider la cohérence globale de la tenue auprès de /api/validate-outfit. */
-  onPieceMetaResolved?: (pieceId: string, meta: {
-    slot: string;
-    type: string;
-    marque: string;
-    couleur: string;
-    prix_eur: number;
-  }) => void;
-  /** Brief 2026-06-07 COHÉRENCE DE TIER — plafond prix imposé par le parent
-   *  quand cette pièce est un outlier (> 5× la médiane des autres). null sinon. */
-  tierMaxPrice?: number | null;
-  /** PERF 2026-06-11 — produit pré-résolu par /api/outfit (composition tenue
-   *  en 1 requête). Court-circuite le fetch par carte quand fourni. */
-  prefetched?: {
-    id: string; nom: string; marque?: string; marchand?: string;
-    marchandSlug?: string; imageLocal?: string; largeImage?: string;
-    image?: string; prix: number; devise: string; urlProduit: string;
-    couleurNom?: string; hex: string;
-  } | null;
-  /** PERF 2026-06-11 — true tant que /api/outfit n'a pas répondu : la carte
-   *  attend (pas de fetch propre) pour ne pas relancer les 5 GET cold-start. */
-  prefetchPending?: boolean;
-}) {
-  const [alternativeCount, setAlternativeCount] = useState(0);
-
-  // Tentative MUJI réel — brief variété : on passe la VRAIE couleur de la
-  // palette assignée à ce slot (color.hex) + un seed unique par slot.
-  // Le seed est modifié quand l'utilisateur clique sur la croix.
-  const currentSeed = seed && alternativeCount > 0
-    ? `${seed}-alt${alternativeCount}`
-    : seed;
-
-  const mujiProduct = useMujiProduct(
-    pieceToSlot(piece),
-    color.hex,
-    paletteRef || null,
-    genre || null,
-    style || null,
-    currentSeed || null,
-    excludeIds || [],
-    onPicked,
-    selectedNamesStr,
-    tierMaxPrice,
-    prefetched && alternativeCount === 0 ? prefetched : null,
-    prefetchPending && alternativeCount === 0,
-  );
-  /* Quand le produit est résolu (prix réel arrivé), on remonte au parent. */
-  useEffect(() => {
-    if (mujiProduct?.prix && onPriceResolved) {
-      onPriceResolved(piece, mujiProduct.prix);
-    }
-  }, [mujiProduct?.prix, piece, onPriceResolved]);
-
-  /* Brief 2026-06-02 flat lay : remonte l'URL image au parent pour le collage CSS. */
-  useEffect(() => {
-    const slot = pieceToSlot(piece);
-    const img = mujiProduct?.image;
-    if (slot && img && onImageResolved) {
-      onImageResolved(slot, img);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mujiProduct?.image, piece]);
-
-  /* Brief 2026-05-31 v8 (Couche 6 validation LLM) : remonte les
-     métadonnées complètes du produit (marque, type, couleur) pour que
-     le parent puisse valider la tenue globale. */
-  useEffect(() => {
-    if (mujiProduct?.prix && onPieceMetaResolved) {
-      onPieceMetaResolved(piece, {
-        slot: pieceToSlot(piece) || piece,
-        type: itemName,
-        marque: mujiProduct.marque,
-        couleur: mujiProduct.couleurNom || color.name,
-        prix_eur: mujiProduct.prix,
-      });
-    }
-  }, [mujiProduct?.prix, mujiProduct?.marque, mujiProduct?.couleurNom, piece, itemName, color.name, onPieceMetaResolved]);
-  // Brief 2026-05-27 « afficher la VRAIE marque » :
-  // On re-trie pour pousser les marchands directs (COS, Muji, Veja, Uniqlo,
-  // Amazon · HUGO → HUGO…) en premier. L'Amazon GÉNÉRIQUE (label « Amazon »
-  // tout court, sans brand) tombe en dernier — il ne servira qu'à défaut.
-  // Conséquence : la headline est presque toujours une marque réelle.
-  const sortedMerchants = [...merchants].sort((a, b) => {
-    const aPure = isPureAmazon(a) ? 1 : 0;
-    const bPure = isPureAmazon(b) ? 1 : 0;
-    return aPure - bPure;
-  });
-  const primary = sortedMerchants[0];
-  const others = sortedMerchants.slice(1);
-
-  /* Règle 3 (brief 2026-05-31) — slot sans candidat affilié :
-     aucune fiche produit affiliée réelle (mujiProduct) ET aucun marchand de
-     recherche affilié (primary) → on NE remplit PAS le slot avec un faux lien
-     (COS / Amazon / ~55 €). On affiche un état honnête : « pas encore chez nos
-     partenaires », ce qui est vrai et pousse le client à revenir. */
-  if (!mujiProduct && !primary) {
-    /* Brief 2026-06-07 (design) — état vide adouci : avant, un aplat de
-       couleur pleine saturation (110px) faisait « card cassée ». Maintenant
-       un fond crème dégradé très léger teinté de la couleur cible + une
-       pastille discrète + un libellé « Bientôt », pour signaler un
-       placeholder honnête plutôt qu'un produit raté. */
-    return (
-      <article style={{
-        background: "#FBF9F5",
-        border: `1px dashed ${color.hex}55`,
-        borderRadius: 16,
-        overflow: "hidden",
-        boxShadow: "0 8px 30px rgba(30,30,30,.05)",
-        display: "flex", flexDirection: "column",
-        aspectRatio: featured ? undefined : "4 / 5",
-      }}>
-        <div aria-hidden style={{
-          flex: 1,
-          minHeight: 120,
-          display: "flex", flexDirection: "column",
-          alignItems: "center", justifyContent: "center", gap: 10,
-          background: `linear-gradient(180deg, #fff 0%, ${color.hex}14 100%)`,
-        }}>
-          <span style={{
-            width: 40, height: 40, borderRadius: "50%",
-            background: color.hex, opacity: 0.85,
-            boxShadow: "0 0 0 4px #ffffffcc, 0 2px 10px -2px rgba(30,30,30,.25)",
-          }} />
-          <span style={{
-            fontFamily: "'Inter', sans-serif", fontSize: 9.5,
-            letterSpacing: "0.18em", textTransform: "uppercase",
-            color: textSecondary, fontWeight: 600,
-          }}>
-            Bientôt
-          </span>
-        </div>
-        <div style={{ padding: "14px 16px" }}>
-          <p style={{ fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", color: "#A8B29A", margin: 0, fontWeight: 700 }}>
-            {PIECE_LABELS[piece] || piece}
-          </p>
-          <p style={{ fontFamily: "'Fredoka', sans-serif", fontSize: 17, margin: "4px 0 0", lineHeight: 1.25, color: ink }}>
-            {itemName}
-          </p>
-          <p style={{ marginTop: 8, fontSize: 12, color: textSecondary, fontStyle: "italic", lineHeight: 1.45 }}>
-            Pas encore chez nos partenaires — on enrichit le catalogue chaque
-            semaine.
-          </p>
-        </div>
-      </article>
-    );
-  }
-
-  // primary peut être absent si mujiProduct est présent (fiche produit réelle).
-  // On garde tout accès à `primary` sous garde pour ne jamais déréférencer null.
-  const brand = primary ? brandLabel(primary) : "";
-  // Marchand de recherche = pas de prix produit → « Prix sur le site » (jamais
-  // un montant inventé). Le vrai prix MUJI/TBF est affiché via mujiProduct.prix.
-  const price = primary ? priceEstimate(primary) : "Prix sur le site";
-  const via = primary ? viaLabel(primary) : null;
-
-  return (
-    <article
-      className={featured ? "wada-piece-card wada-piece-card--featured" : "wada-piece-card"}
-      style={{
-        position: "relative",
-        background: "#FBF9F5",
-        border: `1px solid ${border}`,
-        borderRadius: 16,
-        overflow: "hidden",
-        boxShadow: "0 8px 30px rgba(30,30,30,.06)",
-        display: "flex",
-        /* Brief 2026-06-07 (design) — la pièce centrale passe en HÉRO
-           2 colonnes (image | détails) sur desktop au lieu d'une image
-           16/10 pleine largeur qui laissait le packshot flotter dans un
-           grand vide. Sur mobile, on retombe en colonne (cf. media query). */
-        flexDirection: featured ? "row" : "column",
-        transition: "transform 0.3s cubic-bezier(.22,1,.36,1), box-shadow 0.3s ease",
-      }}
-    >
-      {/* Bouton croix pour changer l'habit — brief user 2026-06-11 */}
-      <button
-        type="button"
-        onClick={() => setAlternativeCount((c) => c + 1)}
-        aria-label="Changer cet habit"
-        title="Changer cet habit"
-        style={{
-          position: "absolute",
-          top: 12,
-          right: 12,
-          zIndex: 7,
-          width: 32,
-          height: 32,
-          borderRadius: "50%",
-          background: "rgba(255, 255, 255, 0.92)",
-          border: `1px solid ${border}`,
-          cursor: "pointer",
-          fontSize: 20,
-          color: "#6B3A32",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          lineHeight: 1,
-          padding: 0,
-          fontWeight: 500,
-          transition: "all 0.2s ease",
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.background = "rgba(255, 255, 255, 1)";
-          e.currentTarget.style.boxShadow = "0 4px 12px rgba(30, 30, 30, 0.15)";
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.background = "rgba(255, 255, 255, 0.92)";
-          e.currentTarget.style.boxShadow = "none";
-        }}
-      >
-        ×
-      </button>
-
-      {/* Tag « Pièce centrale » sur la vedette (brief Page tenue V2 §7). */}
-      {featured && (
-        <span style={{
-          position: "absolute", top: 14, left: 14, zIndex: 6,
-          background: "#6B3A32", color: "#fff",
-          fontFamily: "'Inter', sans-serif", fontSize: 10, fontWeight: 700,
-          letterSpacing: "0.1em", textTransform: "uppercase",
-          padding: "5px 11px", borderRadius: 999,
-          boxShadow: "0 2px 8px -2px rgba(30,30,30,0.3)",
-        }}>
-          Pièce centrale
-        </span>
-      )}
-      {/* JSON-LD Product schema — brief maître 2026-05-28 P4.19 :
-          Google Shopping enriche les résultats avec image + prix + dispo.
-          On émet un Product par card quand un vrai produit MUJI est posé. */}
-      {mujiProduct && (
-        <script
-          type="application/ld+json"
-          // eslint-disable-next-line react/no-danger
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
-              "@context": "https://schema.org",
-              "@type": "Product",
-              name: mujiProduct.nom,
-              image: mujiProduct.image,
-              description: `${PIECE_LABELS[piece] || piece} ${color.name} — ${mujiProduct.marque}`,
-              brand: { "@type": "Brand", name: mujiProduct.marque },
-              category: PIECE_LABELS[piece] || piece,
-              color: color.name,
-              offers: {
-                "@type": "Offer",
-                price: mujiProduct.prix,
-                priceCurrency: mujiProduct.devise,
-                availability: "https://schema.org/InStock",
-                url: mujiProduct.url,
-              },
-            }),
-          }}
-        />
-      )}
-      {/* Visuel top — brief 2026-05-28 (harmonisation) :
-          ratio 4/5 identique pour TOUTES les cards, image edge-to-edge
-          via object-fit:cover (plus de padding qui créait l'effet
-          « boîte dans une boîte »). object-position: center 20% recadre
-          sur le buste/vêtement pour les photos mannequin. Fond #FBF9F5
-          uniforme — les packshots détourés se fondent dans la card. */}
-      {mujiProduct ? (
-        <div
-          className="wada-piece-photo"
-          aria-hidden
-          style={{
-            // Brief 2026-06-07 (design héro) — Vedette : colonne image à
-            // largeur fixe (~46%) et ratio portrait 4/5, à côté des détails.
-            // Card normale : 4/5 portrait pleine largeur.
-            ...(featured
-              ? { flex: "0 0 46%", aspectRatio: "4 / 5", borderRadius: "16px 0 0 16px" }
-              : { aspectRatio: "4 / 5", borderRadius: "16px 16px 0 0" }),
-            // Fond dégradé blanc → couleur dominante de la pièce
-            // (brief Page tenue V2 §7) : le fond « raconte » le produit.
-            background: `linear-gradient(180deg, #fff 0%, ${(mujiProduct?.couleurHex || color.hex)}26 100%)`,
-            overflow: "hidden",
-          }}
-        >
-          <img
-            src={mujiProduct.image}
-            alt={mujiProduct.nom}
-            loading="lazy"
-            style={{
-              width: "100%", height: "100%",
-              /* Brief 2026-05-30 : passé de `cover` à `contain` pour
-                 préserver l'intégralité de la photo. Les shoots TBF
-                 sont des portraits full-body (modèle), avec `cover` le
-                 crop tombait sur le visage du modèle au lieu du
-                 vêtement (ex. hoodie Bathing Ape camo où on voyait
-                 surtout le visage). `contain` garde toute la photo
-                 visible — les bandes éventuelles se fondent dans le
-                 background crème #FBF9F5 de la card. */
-              objectFit: "contain",
-              objectPosition: "center",
-              display: "block",
-              padding: "8px",
-              transition: "transform 0.35s cubic-bezier(.22,1,.36,1)",
-            }}
-          />
-        </div>
-      ) : (
-        /* Brief 2026-06-01 (audit point 9 — squelettes loading) :
-           pendant que useMujiProduct fetch le produit (1-2s sur réseau
-           normal), on affichait un aplat couleur palette. Maintenant :
-           skeleton shimmer + pastille couleur palette en watermark
-           subtil au centre. Donne un signal visuel clair « chargement
-           en cours » au lieu d'une carte qui semble figée. */
-        <div
-          aria-hidden
-          className="wada-skeleton"
-          style={{
-            /* Brief 2026-06-07 (design héro) — skeleton aligné sur le
-               nouveau layout : colonne 46% ratio 4/5 pour la vedette. */
-            ...(featured
-              ? { flex: "0 0 46%", aspectRatio: "4 / 5", borderRadius: "16px 0 0 16px" }
-              : { aspectRatio: "4 / 5", borderRadius: "16px 16px 0 0" }),
-            position: "relative",
-            overflow: "hidden",
-          }}
-        >
-          <span style={{
-            position: "absolute",
-            top: "50%", left: "50%",
-            width: 48, height: 48,
-            borderRadius: "50%",
-            background: color.hex,
-            transform: "translate(-50%, -50%)",
-            opacity: 0.35,
-            border: "1px solid rgba(255,255,255,0.4)",
-          }} />
-        </div>
-      )}
-
-      {/* Body — Brief 2026-06-07 (design héro) : sur la vedette, le bloc
-          détails occupe la colonne droite et se centre verticalement avec
-          plus d'air. Sur les cards normales, comportement inchangé. */}
-      <div style={{
-        padding: featured ? "28px clamp(20px, 3vw, 36px)" : "14px 16px",
-        flex: 1,
-        display: "flex",
-        flexDirection: "column",
-        justifyContent: featured ? "center" : "flex-start",
-        minWidth: 0,
-      }}>
-        {/* Brief Muji §9 : si on a un vrai produit MUJI, on affiche son
-            NOM RÉEL en headline (« T-shirt à manches courtes col rond »)
-            plutôt que le libellé générique du moteur (« Chemise oxford »).
-            Sinon on garde le libellé moteur. La pastille de couleur reste
-            en petit, à côté du label catégorie. */}
-        <p style={{
-          fontSize: 10, letterSpacing: "0.2em", textTransform: "uppercase",
-          color: "#A8B29A", margin: 0, fontWeight: 700,
-          display: "inline-flex", alignItems: "center", gap: 6,
-        }}>
-          {/* Pastille couleur — brief §9 : « garder la pastille de couleur
-              en petit, à côté du nom »
-
-              Brief UX client v2 (26/05) — verbatim : « erreur de couleur
-              proposer ». Si on a un VRAI produit MUJI, la pastille prend
-              la couleur du produit (couleurHex inféré du flux Awin), PAS
-              celle de la palette intent. Sinon l'utilisateur voit une
-              pastille noire à côté d'un pull beige → confusion totale. */}
-          <span
-            aria-hidden
-            style={{
-              display: "inline-block",
-              width: 10, height: 10, borderRadius: "50%",
-              background: mujiProduct?.couleurHex || color.hex,
-              boxShadow: "0 0 0 1px rgba(30,30,30,.12)",
-              flexShrink: 0,
-            }}
-          />
-          <span>{PIECE_LABELS[piece] || piece}</span>
-          {/* Brief UX client v2 (26/05) — l'étiquette affichait
-              « HAUT · NOIR » alors que le produit MUJI réel était beige.
-              Règle : quand mujiProduct est chargé, on n'affiche le nom de
-              couleur QUE si couleurNom est non-vide (sinon l'utilisateur
-              voit l'intention palette qui ne correspond pas à la photo).
-              Sans mujiProduct chargé, on retombe sur l'intention palette
-              comme avant (état placeholder cohérent). */}
-          {(mujiProduct ? mujiProduct.couleurNom : color.name) && (
-            <span style={{ color: textSecondary, fontWeight: 500 }}>
-              · {/* Brief 2026-06-01 : certains flux TBF ont couleurNom =
-                   "BROWN D4B35,ENCRE" (deux couleurs concaténées). On prend
-                   le premier mot/segment avant la virgule ou le code hex. */
-                (mujiProduct?.couleurNom || color.name)
-                  .split(/,|\s+[0-9A-F]{4,}/i)[0]
-                  .trim()
-              }
-            </span>
-          )}
-        </p>
-        {/* Nom — réel quand MUJI dispo, générique sinon. 2 lignes max. */}
-        <p
-          className="wada-piece-name"
-          style={{
-            fontFamily: "'Fredoka', sans-serif",
-            fontWeight: 500, fontSize: 17, margin: "4px 0 0",
-            lineHeight: 1.25, color: ink,
-            display: "-webkit-box",
-            WebkitLineClamp: 2,
-            WebkitBoxOrient: "vertical",
-            overflow: "hidden",
-            minHeight: "calc(1.25em * 2)",
-          }}
-        >
-          {mujiProduct ? mujiProduct.nom : itemName}
-        </p>
-
-        {/* ─── Bloc marchand primaire — brique structurée ─── */}
-        {/* Brief 2026-06-07 (design héro) : sur la vedette (layout row,
-            corps centré verticalement), on NE pousse PAS le bloc marchand
-            en bas (marginTop auto) — sinon un grand vide se crée entre le
-            nom et le bouton. On le garde groupé avec le titre, le tout
-            centré. Sur les cards normales, marginTop auto aligne les
-            boutons en bas de carte. */}
-        <div style={{
-          marginTop: featured ? 16 : "auto",
-          paddingTop: 12,
-        }}>
-          <div style={{
-            background: "rgba(255,255,255,0.65)",
-            border: `1px solid ${border}`,
-            borderRadius: 12,
-            padding: "12px 14px",
-          }}>
-            {/* Ligne 1 : MARQUE en gros — quand un VRAI produit MUJI est
-                trouvé via /api/products, on l'affiche en headline. Sinon
-                on retombe sur le brand extrait du ranking Amazon
-                (« HUGO », « COS », etc.) ou « Amazon » en dernier ressort. */}
-            <p style={{
-              fontFamily: "'Inter', sans-serif",
-              fontSize: 17, fontWeight: 700,
-              color: ink, margin: 0, lineHeight: 1.1,
-              letterSpacing: "-0.005em",
-            }}>
-              {mujiProduct ? mujiProduct.marque : brand}
-            </p>
-            {/* Brief Muji §9 : le nom MUJI est désormais le headline de la
-                card (au-dessus). Plus de subtitle redondant ici. */}
-            {/* Ligne 2 : origine — soit « via Awin » pour MUJI réel,
-                soit pastille Amazon « a » + « via Amazon » sinon. */}
-            <div style={{
-              display: "flex", alignItems: "center", gap: 5,
-              marginTop: 4,
-            }}>
-              {mujiProduct ? (
-                <span style={{
-                  fontSize: 11, color: textSecondary,
-                  fontStyle: "italic", fontFamily: "'Inter', sans-serif",
-                }}>
-                  {/* Brief 2026-05-30 : label dynamique selon le vrai
-                      marchand (MUJI France ou The Business Fashion ou
-                      autre flux futur). Fallback « MUJI » si pas dispo. */}
-                  via Awin · {mujiProduct.marchand || "MUJI"} partenaire
-                </span>
-              ) : (isAmazonLinked(primary) || via) ? (
-                <>
-                  {isAmazonLinked(primary) && <AmazonAaChip size={14} />}
-                  <span style={{
-                    fontSize: 11, color: textSecondary,
-                    fontStyle: "italic", fontFamily: "'Inter', sans-serif",
-                  }}>
-                    {isAmazonLinked(primary) ? "via Amazon" : via}
-                  </span>
-                </>
-              ) : null}
-            </div>
-            {/* Ligne 3 : prix accent — réel (MUJI) ou estimation (Amazon) */}
-            <p style={{
-              fontFamily: "'Inter', sans-serif",
-              fontSize: 16, fontWeight: 700,
-              color: mojo, margin: "8px 0 0",
-              letterSpacing: "-0.005em",
-            }}>
-              {mujiProduct
-                ? formatProductPrice(mujiProduct.prix, mujiProduct.marchandSlug, mujiProduct.devise)
-                : price}
-            </p>
-            {/* Ligne 4 : bouton Acheter — deep-link MUJI (rel sponsored) ou
-                lien Amazon affilié selon la source. */}
-            <a
-              href={mujiProduct ? mujiProduct.url : primary.url}
-              target="_blank"
-              rel="noopener nofollow sponsored"
-              style={{
-                display: "block",
-                marginTop: 10,
-                textAlign: "center",
-                fontFamily: "'Inter', sans-serif",
-                fontSize: 13, fontWeight: 600,
-                textDecoration: "none",
-                background: ink, color: "#FAF8F4",
-                borderRadius: 999,
-                padding: "10px 14px",
-                letterSpacing: "0.01em",
-              }}
-            >
-              {/* Brief 2026-05-30 : label dynamique selon le marchand réel.
-                  Avant : « Acheter sur MUJI » même pour les produits TBF
-                  (Brunello, Tom Ford…) → confusion utilisateur qui pensait
-                  cliquer sur MUJI et atterrissait sur The Business Fashion.
-                  Maintenant : « Acheter sur {marchand} » qui reflète le
-                  marchand affilié réel. */}
-              {mujiProduct
-                ? `Acheter sur ${mujiProduct.marchand || "MUJI"} →`
-                : "Acheter →"}
-            </a>
-            {/* Brief finition (24/05) §7 — transparence affiliation :
-                la divulgation footer ne suffit pas, on indique aussi
-                directement sous chaque CTA d'achat que le lien est
-                tracké en partenariat. Discret (10px gris), pas
-                d'astérisque ni de pop-up. */}
-            <p style={{
-              margin: "6px 0 0",
-              textAlign: "center",
-              fontFamily: "'Inter', sans-serif",
-              fontSize: 10,
-              fontStyle: "italic",
-              color: textSecondary,
-              letterSpacing: "0.02em",
-            }}>
-              Lien partenaire — prix identique chez le marchand
-            </p>
-          </div>
-
-          {/* « + autres marchands » repliable — brief 2026-05-27 :
-              option discrète pour comparer sans dominer la carte. */}
-          {others.length > 0 && (
-            <details style={{ marginTop: 8 }}>
-              <summary style={{
-                fontSize: 12, color: textSecondary, cursor: "pointer",
-                listStyle: "none",
-                fontFamily: "'Inter', sans-serif",
-              }}>
-                + {others.length} autre{others.length > 1 ? "s" : ""} marchand{others.length > 1 ? "s" : ""}
-              </summary>
-              <ul style={{
-                listStyle: "none", padding: "8px 0 0", margin: 0,
-                display: "flex", flexDirection: "column", gap: 6,
-              }}>
-                {others.map((m, i) => {
-                  const b = brandLabel(m);
-                  const p = priceEstimate(m);
-                  const amz = isAmazonLinked(m);
-                  return (
-                    <li key={i}>
-                      <a
-                        href={m.url}
-                        target="_blank"
-                        rel="noopener nofollow sponsored"
-                        style={{
-                          display: "flex", justifyContent: "space-between",
-                          alignItems: "center", gap: 8,
-                          padding: "8px 12px",
-                          background: "rgba(255,255,255,0.45)",
-                          border: `1px solid ${border}`,
-                          borderRadius: 10,
-                          color: ink, textDecoration: "none",
-                          fontFamily: "'Inter', sans-serif",
-                          fontSize: 12.5,
-                        }}
-                      >
-                        <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-                          {amz && <AmazonAaChip size={13} />}
-                          <span style={{ fontWeight: 600 }}>{b}</span>
-                        </span>
-                        <span style={{ color: textSecondary }}>{p}</span>
-                      </a>
-                    </li>
-                  );
-                })}
-              </ul>
-            </details>
-          )}
-        </div>
-      </div>
-    </article>
-  );
-}
-
-/* ReassuranceItem retiré avec le bloc réassurance (user 2026-06-07). */
+/* Les fonctions CompleteTheLook, FlatLayCollage, PieceLine, PieceCard,
+   useMujiProduct et leurs aides (brandLabel, AmazonAaChip, priceEstimate,
+   viaLabel, pieceToSlot…) ont été retirées avec la refonte 2026-08-23 :
+   la page « Shop the Look » n'affiche plus de grandes fiches par pièce.
+   Le hero (TenueHero), la liste compacte (ListePieces), le tiroir
+   (RemplacerDrawer) et les carrousels (VariantesTenue, SimilairesTenue)
+   couvrent l'affichage ; /api/outfit reste l'unique source produits. */
 
 const chipReadOnlyStyle = {
   fontFamily: fontLabel, fontSize: 11, fontWeight: 500,
