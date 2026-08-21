@@ -4417,3 +4417,51 @@ html.wada-home-immersive {
 @media (prefers-reduced-motion: reduce) {
   @keyframes wada-spin { to { transform: none; } }
 }
+
+/* ══════════════════════════════════════════════════════════════════════
+   NAV — carte flottante (maquette client 2026-08-22)
+   ══════════════════════════════════════════════════════════════════════
+   Deux règles plus haut dans ce fichier imposent le padding de la barre en
+   `!important` (12px 16px à 768px, puis padding-left/right 16px plus bas).
+   Elles datent d'un bandeau collé bord à bord ; maintenant que la barre est
+   une carte avec ses propres marges extérieures, 16 px de retrait intérieur
+   la rendent trop haute et écrasent son centre. On les reprend ici, après,
+   à même spécificité mais plus tard dans la cascade. */
+@media (max-width: 900px) {
+  .wada-nav.wada-nav--solid {
+    padding: 10px 12px !important;
+    /* `1fr` vaut `minmax(auto, 1fr)`, et cet `auto` n'a pas suffi : mesuré en
+       393 px, la colonne droite recevait 122 px pour un bouton de 137 — il
+       débordait de 7 px par la gauche et rognait le 田 du logo. On impose
+       donc explicitement `min-content` comme plancher : une colonne ne peut
+       plus être plus étroite que ce qu'elle contient.
+       (Une règle plus haut dans ce fichier pose `1fr auto 1fr !important` ;
+       ce sélecteur est plus spécifique, il l'emporte.) */
+    grid-template-columns: minmax(min-content, 1fr) auto minmax(min-content, 1fr) !important;
+  }
+  /* Les liens de navigation desktop n'ont rien à faire dans la barre mobile —
+     ils sont dans le tiroir du hamburger. Ils occupaient pourtant 64 px de la
+     colonne gauche, au détriment du logo. */
+  .wada-nav.wada-nav--solid .wada-nav-links { display: none !important; }
+}
+
+/* Sur les écrans étroits, le compte est simplement impossible : mesuré en
+   393 px, la barre offre 348 px utiles ; un logo centré occupe 146→249, il
+   ne reste donc que 114 px à droite pour une pastille qui en demande 137
+   avec son étincelle. Aucun réglage de grille n'y change quoi que ce soit —
+   c'est de la géométrie.
+   On sacrifie donc l'étincelle sous 420 px, et seulement là : au-dessus, la
+   barre est exactement celle de la maquette. Le mot « Abonnement » reste, et
+   c'est lui qui porte l'information. */
+@media (max-width: 419px) {
+  .wada-nav-tarifs svg { display: none !important; }
+  .wada-nav-tarifs {
+    padding-left: 13px !important;
+    padding-right: 13px !important;
+    font-size: 0.85rem !important;
+  }
+  /* Le logo perd 2 px : à 22 px il touchait presque la pilule Abonnement
+     sur un écran de 393 px. */
+  .wada-nav-center span:first-child { font-size: 20px !important; }
+  .wada-nav-center .wada-jp { font-size: 19px !important; }
+}
