@@ -31,6 +31,53 @@
  */
 @import './design-improvements.css';
 
+/* ═══════════════════════════════════════════════════════════════════════
+   POLICES AUTO-HÉBERGÉES (fix 2026-08-21)
+   ═══════════════════════════════════════════════════════════════════════
+   Fredoka, Inter et Noto Serif JP venaient de fonts.googleapis.com. Après la
+   réduction de la japonaise, PageSpeed mesurait encore 1 500 ms de blocage du
+   rendu pour 2,7 Kio de CSS : ce n'est plus le poids, c'est la LATENCE —
+   résolution DNS, poignée de main TLS et aller-retour vers deux origines
+   tierces (googleapis puis gstatic), le tout sur le chemin critique.
+
+   Les fichiers sont maintenant servis depuis notre propre domaine, avec le
+   Cache-Control immutable d'un an déjà configuré pour les .woff2 dans
+   next.config.ts. Zéro requête tierce, zéro poignée de main supplémentaire.
+
+   Les noms de famille sont IDENTIQUES à ceux de Google : les ~530 références
+   'Fredoka' et 'Inter' du code continuent de fonctionner telles quelles.
+
+   Fredoka et Inter sont des polices VARIABLES — un seul fichier couvre toutes
+   les graisses, d'où le `font-weight` exprimé en plage. Sous-ensemble latin,
+   qui couvre l'intégralité des caractères français (vérifié : é è ê ë à â ä ç
+   î ï ô ö û ù ü ÿ œ æ et les majuscules accentuées).
+
+   Si une langue à alphabet non latin est ajoutée un jour, il faudra
+   télécharger les sous-ensembles correspondants. */
+@font-face {
+  font-family: 'Fredoka';
+  font-style: normal;
+  font-weight: 300 700;
+  font-display: swap;
+  src: url('/fonts/self/fredoka-var.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('/fonts/self/inter-var.woff2') format('woff2');
+}
+/* Noto Serif JP — fichier déjà réduit aux 4 glyphes du site (和 田 色 彩).
+   `optional` : purement décoratif, jamais bloquant, pas de décalage possible. */
+@font-face {
+  font-family: 'Noto Serif JP';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: optional;
+  src: url('/fonts/self/noto-serif-jp-subset.woff2') format('woff2');
+}
+
 /* Merriweather Sans — chargé localement (woff2 dans /public/fonts/)
    Legacy fallback for pre-migrated pages. Use font-display: optional to avoid
    blocking text rendering on non-critical fonts. */

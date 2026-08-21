@@ -232,42 +232,37 @@ export default function RootLayout({
             - Split Fredoka + Inter (critical, display=swap) from Noto JP (optional)
             - Preload critical fonts to reduce FCP/LCP
             - Non-critical fonts use display=optional (no render blocking) */}
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        {/* Polices auto-hébergées (fix 2026-08-21).
+            Les <link> vers fonts.googleapis.com ont disparu : après réduction
+            de la police japonaise, PageSpeed mesurait encore 1 500 ms de
+            blocage du rendu pour 2,7 Kio de CSS. Ce n'était plus le poids mais
+            la LATENCE — DNS, TLS et aller-retour vers deux origines tierces sur
+            le chemin critique. Les @font-face vivent désormais dans
+            globals.css et pointent sur /fonts/self/ (même domaine, cache
+            immutable d'un an configuré dans next.config.ts).
+            Les `preconnect` vers googleapis/gstatic sont retirés avec eux :
+            sans requête vers ces origines, ils ne faisaient qu'ouvrir puis
+            abandonner deux connexions.
 
-        {/* Preload critical fonts (Fredoka + Inter) to reduce First Contentful Paint */}
+            Preload des deux polices du chemin critique : elles sont
+            référencées depuis un CSS, donc découvertes tardivement par le
+            navigateur. Le preload les fait partir en même temps que la
+            feuille. Noto n'est pas préchargée — décorative, en
+            font-display:optional. `crossOrigin` est obligatoire sur un
+            preload de police, même en même origine. */}
         <link
           rel="preload"
-          as="style"
-          href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap"
+          href="/fonts/self/inter-var.woff2"
+          as="font"
+          type="font/woff2"
+          crossOrigin="anonymous"
         />
-
-        {/* Load critical fonts (Fredoka + Inter) with swap strategy */}
         <link
-          rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap"
-        />
-
-        {/* Noto Serif JP — sous-ensemble des 4 SEULS caractères japonais du site.
-            Fix 2026-08-21 (PageSpeed : « Requêtes de blocage du rendu — 2 820 ms ») :
-            cette feuille pesait 347 Ko et bloquait le rendu 1 960 ms à elle seule.
-            Le commentaire précédent affirmait que `display=optional` évitait le
-            blocage : c'est faux. `font-display` ne régit que le comportement du
-            FICHIER de police une fois le CSS chargé ; un <link rel="stylesheet">
-            bloque le rendu dans tous les cas.
-
-            Le poids venait de la nature de la police : Noto Serif JP couvre tout
-            le japonais, que Google découpe en 372 blocs @font-face avec autant de
-            plages unicode. Or le site n'affiche QUE quatre glyphes — 和 et 田 dans
-            le wordmark, 色 et 彩 dans EditorialPoster (inventaire exhaustif du
-            dépôt). Le paramètre `text=` demande à Google de ne servir que
-            ceux-là : 347 031 → 930 octets, 372 → 3 blocs @font-face.
-
-            Si un nouveau caractère japonais apparaît dans l'interface, il faut
-            l'AJOUTER ici, sinon il s'affichera dans la police de repli. */}
-        <link
-          rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;500;700&display=optional&text=%E5%92%8C%E7%94%B0%E8%89%B2%E5%BD%A9"
+          rel="preload"
+          href="/fonts/self/fredoka-var.woff2"
+          as="font"
+          type="font/woff2"
+          crossOrigin="anonymous"
         />
         {/* Awin publisher domain verification — wada.style claim.
             Token fourni par Awin (2026-05-20). Le format exact du tag Awin
