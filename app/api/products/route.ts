@@ -291,6 +291,10 @@ export async function GET(req: Request) {
 
   /* Filtres boutique : famille couleur + fourchette prix */
   const couleurFamille = url.searchParams.get("couleurFamille")?.toLowerCase().trim() || null;
+  /* Taille ou pointure demandée (« M », « 42 »). Le flux Awin remplit
+     `tailles` (agrégé par modèle) : on peut donc filtrer réellement, au lieu
+     d'ignorer la contrainte comme le faisait le Styliste. */
+  const tailleVoulue = url.searchParams.get("taille")?.toUpperCase().trim() || null;
   /* Tri explicite demandé par l'utilisateur. Il l'emporte sur le tourniquet
      des marques plus bas : quand on clique « Prix croissant », on veut le
      moins cher en premier, pas l'équité entre marques. */
@@ -725,6 +729,18 @@ export async function GET(req: Request) {
   if (prixMax !== null) filtered = filtered.filter((p) => (p.prix ?? 0) <= prixMax!);
 
   // Recherche full-text (AND sur tokens)
+  /* Filtre taille — volontairement asymétrique : on ÉLIMINE un produit dont
+     la liste de tailles connue ne contient pas celle demandée, on GARDE un
+     produit sans liste (environ la moitié du catalogue n'en déclare pas).
+     Écarter les non-renseignés viderait le résultat ; les garder ne promet
+     rien de faux — la carte affiche « à vérifier chez le marchand ». */
+  if (tailleVoulue) {
+    filtered = filtered.filter((p) => {
+      if (!Array.isArray(p.tailles) || p.tailles.length === 0) return true;
+      return p.tailles.some((t) => t.toUpperCase().trim() === tailleVoulue);
+    });
+  }
+
   if (q && q.trim()) {
     const terms = q.toLowerCase().split(/\s+/).filter(Boolean);
     filtered = filtered.filter((p) => {

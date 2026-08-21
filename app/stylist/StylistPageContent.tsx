@@ -30,7 +30,6 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import BackButton from "@/components/BackButton";
-import { formatProductPrice } from "@/lib/priceFormat";
 /* Vision Pt D (2026-05-31) — boutons like/dislike sous chaque tenue. */
 import OutfitFeedback from "@/components/OutfitFeedback";
 import { useSavedOutfits, type SavedOutfit } from "@/hooks/useSavedOutfits";
@@ -46,123 +45,13 @@ import { OutfitExplainer } from "./OutfitExplainer";
 import { OutfitAdjustBar } from "./OutfitAdjustBar";
 import type { OutfitPiece, Role } from "@/lib/composer/microTypes";
 
-/** Hook qui fetch un vrai produit MUJI pour ce slot+couleur via /api/products.
- *  Brief 2026-05-28 : aligne /stylist sur /ma-tenue → vraies photos MUJI
- *  dans le chat avec image / nom / prix réels + Acheter. Null en cas d'absence
- *  (la card retombe alors sur le swatch + lien Amazon générique). */
-function useMujiForSlot(
-  slot: string | null,
-  colorHex: string | null,
-  style: string | null,
-  genre: string | null,
-  seed: string | null,
-  /* Brief 2026-05-26 « matching description ↔ produit » : type-keyword
-     extrait du libellé LLM côté serveur. Si fourni, on l'envoie comme
-     q= à /api/products → la recherche full-text restreint aux produits
-     dont le nom contient ce mot. Plus de Pull retourné quand le LLM
-     dit Chemise. */
-  typeKeyword?: string | null,
-  /* Plafond de prix lu DANS LA PHRASE du client (« un cargo à moins de
-     80 € »). Il prime sur la tranche du profil : une contrainte énoncée
-     maintenant vaut mieux qu'une préférence enregistrée il y a un mois. */
-  budgetMax?: number | null,
-) {
-  const [product, setProduct] = useState<{
-    nom: string;
-    marque: string;
-    /* Brief 2026-05-30 : marchand pour label dynamique « via Awin · {marchand} ». */
-    marchand?: string;
-    marchandSlug?: string;
-    image: string;
-    prix: number;
-    devise: string;
-    url: string;
-  } | null>(null);
+/* Le hook produits et la carte de pièce vivent dans OutfitSlotCard.tsx —
+   la SEULE carte réellement rendue par OutfitLayout. Ce fichier a longtemps
+   hébergé des copies (« useMujiForSlot », « PieceCard ») jamais montées :
+   deux campagnes de corrections y ont été câblées pour rien, dont le plafond
+   de prix « moins de 80 € » — mesuré absent des requêtes réseau. Elles sont
+   supprimées ; toute correction du rendu des pièces va dans OutfitSlotCard. */
 
-  useEffect(() => {
-    if (!slot || !colorHex) return;
-    let cancelled = false;
-    /* Fix 2026-05-30 « toujours pas de photo TBF » : on retire le hardcode
-       merchant=muji-france pour permettre au styliste de proposer aussi
-       du TBF (luxury). L'API trie par ΔE couleur → bon match couleur
-       gagne, MUJI ou TBF. */
-    const params = new URLSearchParams({
-      slot,
-      color: colorHex,
-      limit: "1",
-    });
-    /* Plafond de prix. Ordre : ce que le client vient de dire, puis sa
-       tranche de profil. Avant, seul le profil comptait — « moins de 80 € »
-       tapé dans le Styliste n'avait aucun effet sur les produits proposés. */
-    if (typeof budgetMax === "number" && budgetMax > 0) {
-      params.set("maxPrice", String(Math.round(budgetMax)));
-    } else {
-      try {
-        const profileRaw = typeof window !== "undefined" ? localStorage.getItem("wada.profile") : null;
-        if (profileRaw) {
-          const profile = JSON.parse(profileRaw);
-          if (profile?.budget === "< 150€") params.set("maxPrice", "150");
-          else if (profile?.budget === "150–400€") params.set("maxPrice", "400");
-        }
-      } catch {}
-    }
-    if (style) params.set("style", style);
-    /* Brief audit live 2026-05-28 : on normalise en lowercase parce que
-       les chips du /stylist renvoient « Femme »/« Homme »/« Unisexe »
-       (capitalisés) alors que l'API filtre en lowercase. Sans ça, un
-       homme reçoit des jupes femme. */
-    if (genre) params.set("genre", genre.toLowerCase());
-    if (seed) params.set("seed", seed);
-    /* Brief 2026-05-26 « matching description ↔ produit » : si on a
-       extrait un type-keyword côté serveur (chemise, blazer, sneakers…),
-       on le passe en q= → /api/products applique son filtre full-text
-       AND sur les tokens, restreint aux produits dont le nom le contient. */
-    if (typeKeyword) params.set("q", typeKeyword);
-
-    fetch(`/api/products?${params}`)
-      .then((r) => r.ok ? r.json() : null)
-      .then((data) => {
-        if (cancelled || !data?.products?.length) return;
-        const p = data.products[0];
-        /* Brief « Page Tenue maître » P0-2 (24/05) :
-           priorité d'image hi-res :
-             1. imageLocal — Blob mirroré (depuis le fix cron, en hi-res)
-             2. largeImage — CDN MUJI ~1280px, proxy via /api/img
-             3. image — aw_image_url ~200px, proxy /api/img (dernier recours) */
-        const displayImage = p.imageLocal
-          ? p.imageLocal
-          : p.largeImage
-            ? `/api/img?u=${encodeURIComponent(p.largeImage)}`
-            : p.image
-              ? `/api/img?u=${encodeURIComponent(p.image)}`
-              : "";
-        setProduct({
-          nom: p.nom,
-          marque: p.marque || p.marchand || "MUJI",
-          /* Brief 2026-05-30 : marchand pour label dynamique. */
-          marchand: p.marchand,
-          marchandSlug: p.marchandSlug,
-          image: displayImage,
-          prix: p.prix,
-          devise: p.devise,
-          url: p.urlProduit,
-        });
-      })
-      .catch(() => { /* silencieux — fallback Amazon */ });
-    return () => { cancelled = true; };
-  }, [slot, colorHex, style, genre, seed, typeKeyword, budgetMax]);
-
-  return product;
-}
-
-/** Map role canonique (« Haut », « Bas »…) → slot API (« haut », « bas »…). */
-function roleToApiSlot(role: string): string | null {
-  const map: Record<string, string> = {
-    Haut: "haut", Bas: "bas", Veste: "veste",
-    Chaussures: "chaussures", Accent: "accent",
-  };
-  return map[role] || null;
-}
 
 /* formatPrice local retiré 2026-06-09 → remplacé par formatProductPrice
    (lib/priceFormat) qui gère le « ≈ » des marchands convertis (TBF/K&Ö). */
@@ -1383,6 +1272,24 @@ export function StylistPageContent() {
         || (typeof window !== "undefined" ? localStorage.getItem("wada-gender") : null)
         || null;
 
+      /* Contraintes lues dans la phrase du client (serveur, déterministe).
+         Chacune rejoint la pièce qu'elle concerne :
+         - la pièce NOMMÉE (« un pantalon cargo ») est marquée `demandee` —
+           sa carte montrera PLUSIEURS produits, pas un seul ;
+         - la taille part sur le slot qu'elle mesure (haut / bas / pointure) ;
+         - la matière resserre la recherche de la pièce nommée uniquement —
+           « chemise en lin » ne doit pas exiger du lin pour les chaussures. */
+      const dem = data.demande;
+      const slotsNommes = new Set(
+        !dem?.possede ? (dem?.pieces ?? []).map((d) => d.slot) : [],
+      );
+      const tailleDuSlot = (slot: string): string | undefined => {
+        if (slot === "haut" || slot === "veste") return dem?.tailleHaut;
+        if (slot === "bas") return dem?.tailleBas;
+        if (slot === "chaussures") return dem?.pointure;
+        return undefined;
+      };
+
       const pieces: OutfitPiece[] = composed.slots.map((s) => ({
         badge: s.role === "owned" ? "Votre pièce" : s.role === "accent" ? "Touche" : "Proposé",
         role: slotToRole(s.slot),
@@ -1399,6 +1306,9 @@ export function StylistPageContent() {
            Sans lui, seule la tranche du profil s'appliquait et la contrainte
            que le client venait d'énoncer restait sans effet. */
         budgetMax: data.demande?.budgetMax,
+        demandee: s.role !== "owned" && slotsNommes.has(s.slot),
+        matiere: s.role !== "owned" && slotsNommes.has(s.slot) ? dem?.matiere : undefined,
+        taille: s.role !== "owned" ? tailleDuSlot(s.slot) : undefined,
       }));
       const reponse = data.reponse || data.entities?.styling_advice || "Voilà ce que je composerais.";
       const accordRef = composed.palette?.entry?.number || null;
@@ -2215,241 +2125,6 @@ function OutfitBubble({
         paletteColors={paletteColors}
         onAdjust={onAdjust}
       />
-    </div>
-  );
-}
-
-/* ──────────────────────────────────────────────────────────────────────
-   PieceCard — pattern marque + Amazon "a" + prix + Acheter (idem /ma-tenue)
-   ────────────────────────────────────────────────────────────────────── */
-function PieceCard({
-  piece, style, genre,
-}: {
-  piece: OutfitPiece;
-  style?: string | null;
-  genre?: string | null;
-}) {
-  /* Brief 2026-05-28 : on tente un vrai produit MUJI matchant slot +
-     couleur précise (piece.hex) + style + genre. Si trouvé → vraie photo
-     + nom MUJI + prix réel + Acheter sur MUJI. Sinon → swatch couleur +
-     Amazon générique (placeholder honnête). */
-  /* Brief 2026-05-28 (variété) : seed unique par (couleur+style+role)
-     pour que deux tenues stylist différentes ne donnent pas les mêmes
-     produits MUJI. Stable au reload, varié entre tenues. */
-  /* Brief 2026-05-26 « gender consistency » : on prend d'abord le genre
-     POSÉ PAR LE LLM sur le slot lui-même (piece.genre), puis fallback
-     sur le genre passé en prop (state.genre du chat). Avant : on ne
-     prenait QUE le prop → si state.genre était null (free-text user),
-     les produits MUJI leakaient sur les 2 genres. */
-  const effectiveGenre = piece.genre || genre || null;
-  const seed = piece.ancre ? null : `${piece.hex}-${piece.role}-${style || ""}-${effectiveGenre || ""}-${piece.typeKeyword || ""}`;
-  const mujiProduct = useMujiForSlot(
-    piece.ancre ? null : roleToApiSlot(piece.role),
-    piece.ancre ? null : piece.hex,
-    style || null,
-    effectiveGenre,
-    seed,
-    /* Brief « matching description ↔ produit » : on passe le type-keyword
-       extrait par le serveur. Le seed inclut maintenant le keyword pour
-       que 2 ajustements avec types différents (chemise → pull) donnent
-       des produits différents au même slot. */
-    piece.typeKeyword || null,
-    piece.budgetMax ?? null,
-  );
-
-  return (
-    <div
-      style={{
-        background: palette.cream,
-        border: piece.ancre ? `1.5px solid ${palette.bordeaux}` : `1px solid ${palette.line}`,
-        borderRadius: 16,
-        overflow: "hidden",
-        boxShadow: SOFT,
-        display: "flex",
-        flexDirection: "column",
-      }}
-    >
-      {/* JSON-LD Product schema — idem /ma-tenue (brief P4.19). */}
-      {mujiProduct && (
-        <script
-          type="application/ld+json"
-          // eslint-disable-next-line react/no-danger
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
-              "@context": "https://schema.org",
-              "@type": "Product",
-              name: mujiProduct.nom,
-              image: mujiProduct.image,
-              description: `${piece.role} ${piece.couleurNom} — ${mujiProduct.marque}`,
-              brand: { "@type": "Brand", name: mujiProduct.marque },
-              category: piece.role,
-              color: piece.couleurNom,
-              offers: {
-                "@type": "Offer",
-                price: mujiProduct.prix,
-                priceCurrency: mujiProduct.devise,
-                availability: "https://schema.org/InStock",
-                url: mujiProduct.url,
-              },
-            }),
-          }}
-        />
-      )}
-
-      {/* Visuel top — photo MUJI réelle si trouvée, sinon swatch couleur.
-          Brief « Page Tenue maître » P0-2 + P2-5 (24/05) :
-          - objectFit: cover edge-to-edge (était contain + padding 14 = trous)
-          - objectPosition: center 20% pour cadrer le buste du mannequin
-          - source = imageLocal (Blob hi-res depuis P0-2 fix mirror) →
-            largeImage proxifié /api/img si pas de mirror local → image
-            (200px) en dernier recours. Aligné sur ma-tenue/PieceCard. */}
-      {mujiProduct ? (
-        <div
-          aria-hidden
-          style={{
-            aspectRatio: "4 / 5",
-            /* Brief 2026-06-07 : fond dégradé blanc → teinte de la pièce,
-               aligné sur /ma-tenue. Le packshot détouré s'y fond. */
-            background: `linear-gradient(180deg, #fff 0%, ${piece.hex}22 100%)`,
-            overflow: "hidden",
-            borderBottom: `1px solid ${palette.line}`,
-          }}
-        >
-          <img
-            src={mujiProduct.image}
-            alt={mujiProduct.nom}
-            loading="lazy"
-            style={{
-              width: "100%", height: "100%",
-              /* Brief 2026-06-07 (cohérence packshot) : passé de
-                 `cover` + `center 20%` (pensé pour des photos mannequin,
-                 qui ROGNAIT les packshots détourés) à `contain` + padding,
-                 comme /ma-tenue → la pièce entière est visible, jamais
-                 coupée. Le scoring d'image préfère désormais les packshots,
-                 donc `contain` est le bon choix. */
-              objectFit: "contain", objectPosition: "center",
-              padding: "8px",
-              display: "block",
-            }}
-          />
-        </div>
-      ) : (
-        /* Brief finition (24/05) §2 — chargement : avant on rendait
-           juste un block plein de la teinte (height:96). Maintenant on
-           garde le même aspect-ratio 4/5 que la version avec produit et
-           on superpose un overlay shimmer (.wada-skeleton défini dans
-           globals.css) pour signaler le chargement actif sans saut de
-           layout quand le produit MUJI arrive. */
-        <div
-          aria-hidden
-          className="wada-skeleton"
-          style={{
-            aspectRatio: "4 / 5",
-            background: piece.hex,
-            opacity: 0.85,
-            borderBottom: `1px solid ${palette.line}`,
-          }}
-        />
-      )}
-
-      <div style={{ padding: "11px 13px", flex: 1, display: "flex", flexDirection: "column" }}>
-        <p style={{
-          fontSize: 9, letterSpacing: "0.18em",
-          textTransform: "uppercase", margin: 0, fontWeight: 700,
-          color: piece.ancre ? palette.bordeaux : palette.olive,
-        }}>
-          {piece.badge} <span style={{ color: palette.inkSoft, fontWeight: 500 }}>· {piece.role}</span>
-        </p>
-        <p
-          style={{
-            fontFamily: fonts.display, fontWeight: 600,
-            fontSize: 14, margin: "3px 0 0",
-            lineHeight: 1.2, color: palette.ink,
-            display: "-webkit-box",
-            WebkitLineClamp: 2,
-            WebkitBoxOrient: "vertical",
-            overflow: "hidden",
-            minHeight: "calc(1.2em * 2)",
-          }}
-        >
-          {mujiProduct ? mujiProduct.nom : piece.type}
-        </p>
-
-        <div style={{ marginTop: "auto", paddingTop: 10 }}>
-          {piece.ancre ? (
-            <p style={{
-              fontSize: 12, color: palette.inkSoft,
-              textAlign: "center", margin: 0,
-              fontStyle: "italic",
-            }}>
-              à vous ✓
-            </p>
-          ) : mujiProduct ? (
-            /* Bloc MUJI réel : marque + via Awin + prix réel + Acheter MUJI */
-            <div style={{
-              background: "rgba(255,255,255,0.65)",
-              border: `1px solid ${palette.line}`,
-              borderRadius: 12,
-              padding: "10px 12px",
-            }}>
-              <p style={{
-                fontFamily: fonts.sans, fontSize: 15, fontWeight: 700,
-                color: palette.ink, margin: 0, lineHeight: 1.1,
-              }}>
-                {mujiProduct.marque}
-              </p>
-              <span style={{
-                display: "inline-block", marginTop: 4,
-                fontSize: 11, color: palette.inkSoft,
-                fontStyle: "italic", fontFamily: fonts.sans,
-              }}>
-                {/* Brief 2026-05-30 : label dynamique (MUJI / TBF / autre). */}
-                via Awin · {mujiProduct.marchand || "MUJI"} partenaire
-              </span>
-              <p style={{
-                fontFamily: fonts.sans, fontSize: 14, fontWeight: 700,
-                color: palette.bordeaux, margin: "6px 0 0",
-              }}>
-                {formatProductPrice(mujiProduct.prix, mujiProduct.marchandSlug, mujiProduct.devise)}
-              </p>
-              <a
-                href={mujiProduct.url}
-                target="_blank"
-                rel="noopener nofollow sponsored"
-                style={{
-                  display: "block", marginTop: 8,
-                  textAlign: "center",
-                  fontFamily: fonts.sans,
-                  fontSize: 12, fontWeight: 600,
-                  textDecoration: "none",
-                  background: palette.ink, color: palette.cream,
-                  borderRadius: 999,
-                  padding: "8px 12px",
-                }}
-              >
-                {/* Brief 2026-05-30 : label dynamique selon marchand réel
-                    (MUJI / The Business Fashion / autre flux futur). */}
-                Acheter sur {mujiProduct.marchand || "MUJI"} →
-              </a>
-            </div>
-          ) : (
-            /* Bug critique 2026-05-31 — règle 3 : aucune fiche produit
-               affiliée (MUJI / TBF / Shirt Company) pour ce slot. On NE
-               propose PAS un faux lien Amazon non affilié à « ~55 € » (ni
-               commission, ni prix réel, et libellé trompeur). On reste
-               honnête : la pièce est conseillée, mais pas encore achetable
-               chez nos partenaires. */
-            <p style={{
-              fontSize: 11.5, color: palette.inkSoft,
-              fontStyle: "italic", fontFamily: fonts.sans,
-              margin: 0, lineHeight: 1.45,
-            }}>
-              Pas encore chez nos marques partenaires — on enrichit le catalogue
-              chaque semaine.
-            </p>
-          )}
-        </div>
-      </div>
     </div>
   );
 }

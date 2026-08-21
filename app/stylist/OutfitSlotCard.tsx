@@ -31,83 +31,100 @@ const BORDEAUX = "#6B3A32";
 const CREAM = "#FAF8F4";
 const LINE = "rgba(30,30,30,.10)";
 
-// Hook pour fetch produit MUJI (copié du original avec optimisations)
-function useMujiForSlot(
+/* Hook produits du slot. C'est LUI que la tenue du Styliste utilise —
+   StylistPageContent héberge une PieceCard homonyme jamais rendue, dans
+   laquelle deux campagnes de corrections (budget « moins de 80 € », puis
+   tailles/matière) ont été câblées pour rien. Mesuré : la requête réseau
+   du slot cargo partait sans maxPrice ni taille. D'où les règles ici :
+   - budgetMax lu dans la phrase → maxPrice ;
+   - taille/pointure → filtre API sur les tailles connues ;
+   - matière ajoutée au q, avec REPLI sans elle si le résultat est vide
+     (q exige TOUS les mots — mieux vaut une chemise sans lin qu'aucune) ;
+   - limit > 1 pour la pièce NOMMÉE : « voici DES pantalons cargo ». */
+function useProduitsForSlot(
   slot: string | null,
   colorHex: string | null,
   style: string | null,
   genre: string | null,
   typeKeyword?: string | null,
-): MujiProduct | null {
-  const [product, setProduct] = useState<MujiProduct | null>(null);
-  const [loading, setLoading] = useState(false);
+  budgetMax?: number | null,
+  matiere?: string | null,
+  taille?: string | null,
+  limit: number = 1,
+): MujiProduct[] {
+  const [products, setProducts] = useState<MujiProduct[]>([]);
 
   useEffect(() => {
     if (!slot || !colorHex) {
-      setProduct(null);
+      setProducts([]);
       return;
     }
 
     let cancelled = false;
-    setLoading(true);
 
     const params = new URLSearchParams({
       slot,
       color: colorHex,
-      limit: "1",
+      limit: String(limit),
     });
 
     if (style) params.set("style", style);
     if (genre) params.set("genre", genre.toLowerCase());
-    if (typeKeyword) params.set("q", typeKeyword);
+    if (typeof budgetMax === "number" && budgetMax > 0) params.set("maxPrice", String(Math.round(budgetMax)));
+    if (taille) params.set("taille", taille);
 
-    // Timeout 3s pour éviter les fetches qui traînent
-    const timeoutId = setTimeout(() => {
-      if (!cancelled) {
-        setLoading(false);
-        setProduct(null);
+    /* Candidats de recherche, du plus précis au plus large. */
+    const qs: Array<string | null> = [];
+    if (typeKeyword && matiere) qs.push(`${typeKeyword} ${matiere}`);
+    if (typeKeyword) qs.push(typeKeyword);
+    if (qs.length === 0) qs.push(null);
+
+    /* Timeout 8s global pour éviter les fetches qui traînent. */
+    const timeoutId = setTimeout(() => { cancelled = true; }, 8000);
+
+    (async () => {
+      for (const qCandidat of qs) {
+        if (cancelled) return;
+        const essai = new URLSearchParams(params);
+        if (qCandidat) essai.set("q", qCandidat);
+        try {
+          const r = await fetch(`/api/products?${essai}`);
+          if (!r.ok) continue;
+          const data = await r.json();
+          if (cancelled) return;
+          if (!data?.products?.length) continue;
+          setProducts(data.products.map((p: {
+            nom: string; marque?: string; marchand?: string; marchandSlug?: string;
+            imageLocal?: string; largeImage?: string; image?: string;
+            prix: number; devise: string; urlProduit: string;
+          }) => ({
+            nom: p.nom,
+            marque: p.marque || p.marchand || "MUJI",
+            marchand: p.marchand,
+            marchandSlug: p.marchandSlug,
+            image: p.imageLocal
+              ? p.imageLocal
+              : p.largeImage
+                ? `/api/img?u=${encodeURIComponent(p.largeImage)}`
+                : p.image
+                  ? `/api/img?u=${encodeURIComponent(p.image)}`
+                  : "",
+            prix: p.prix,
+            devise: p.devise,
+            url: p.urlProduit,
+          })));
+          return;
+        } catch { /* réseau : candidat suivant */ }
       }
-    }, 3000);
-
-    fetch(`/api/products?${params}`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
-        clearTimeout(timeoutId);
-        if (cancelled || !data?.products?.length) return;
-
-        const p = data.products[0];
-        const displayImage = p.imageLocal
-          ? p.imageLocal
-          : p.largeImage
-            ? `/api/img?u=${encodeURIComponent(p.largeImage)}`
-            : p.image
-              ? `/api/img?u=${encodeURIComponent(p.image)}`
-              : "";
-
-        setProduct({
-          nom: p.nom,
-          marque: p.marque || p.marchand || "MUJI",
-          marchand: p.marchand,
-          marchandSlug: p.marchandSlug,
-          image: displayImage,
-          prix: p.prix,
-          devise: p.devise,
-          url: p.urlProduit,
-        });
-        setLoading(false);
-      })
-      .catch(() => {
-        clearTimeout(timeoutId);
-        setLoading(false);
-      });
+    })().finally(() => clearTimeout(timeoutId));
 
     return () => {
       cancelled = true;
       clearTimeout(timeoutId);
     };
-  }, [slot, colorHex, style, genre, typeKeyword]);
+  }, [slot, colorHex, style, genre, typeKeyword, budgetMax, matiere, taille, limit]);
 
-  return product;
+  return products;
 }
 
 export function OutfitSlotCard({
@@ -118,13 +135,22 @@ export function OutfitSlotCard({
   loading: outerLoading = false,
 }: OutfitSlotCardProps) {
   // Si c'est une pièce ancre (déjà possédée), pas de fetch MUJI
-  const mujiProduct = useMujiForSlot(
+  const produits = useProduitsForSlot(
     piece.ancre ? null : piece.role.toLowerCase(),
     piece.ancre ? null : piece.hex,
     style ?? null,
     genre ?? null,
     piece.typeKeyword,
+    piece.budgetMax ?? null,
+    piece.matiere ?? null,
+    piece.taille ?? null,
+    /* La pièce NOMMÉE par le client reçoit un choix, les slots
+       d'accompagnement gardent une proposition unique : c'est la pièce
+       demandée qu'on est venu voir, pas la ceinture. */
+    piece.demandee ? 4 : 1,
   );
+  const mujiProduct = produits[0] ?? null;
+  const alternatives = piece.demandee ? produits.slice(1, 4) : [];
 
   const badgeIcon = piece.ancre ? "📌" : "✨";
   const minHeight = size === "small" ? 220 : 380;
@@ -254,6 +280,19 @@ export function OutfitSlotCard({
             <p style={{ fontSize: 14, fontWeight: 700, color: BORDEAUX, margin: "0 0 8px 0", fontFamily: "'Inter'" }}>
               {formatProductPrice(mujiProduct.prix, mujiProduct.marchandSlug, mujiProduct.devise)}
             </p>
+            {piece.taille && (
+              /* La taille énoncée par le client. Les produits dont la liste
+                 de tailles connue l'exclut sont déjà filtrés côté API ; pour
+                 ceux qui n'en déclarent pas, on reste honnête : elle se
+                 choisit chez le marchand. */
+              <span style={{
+                display: "inline-block", margin: "0 0 8px", padding: "3px 9px",
+                borderRadius: 999, background: "rgba(107,58,50,0.08)",
+                fontSize: 11, color: BORDEAUX, fontWeight: 600, fontFamily: "'Inter'",
+              }}>
+                {piece.role === "Chaussures" ? `Pointure ${piece.taille}` : `Taille ${piece.taille}`} · à confirmer chez le marchand
+              </span>
+            )}
             <a
               href={mujiProduct.url}
               target="_blank"
@@ -298,6 +337,66 @@ export function OutfitSlotCard({
             En cours de recherche chez nos partenaires…
           </p>
         ) : null}
+
+        {/* « Voici DES pantalons cargo » (brief client 2026-08-22) : pour la
+            pièce que le client a NOMMÉE, d'autres options du catalogue sous
+            la proposition principale. Un styliste à qui on demande un cargo
+            n'en sort pas un seul du portant. */}
+        {alternatives.length > 0 && (
+          <div style={{ marginTop: 10 }}>
+            <p style={{
+              fontSize: 9, letterSpacing: "0.16em", textTransform: "uppercase",
+              margin: "0 0 6px", fontWeight: 700, color: "#7A8B6A", fontFamily: "'Inter'",
+            }}>
+              D&apos;autres options
+            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              {alternatives.map((a) => (
+                <a key={a.url} href={a.url} target="_blank" rel="noopener sponsored"
+                  style={{
+                    display: "flex", alignItems: "center", gap: 8,
+                    padding: 6, borderRadius: 10,
+                    border: `1px solid ${LINE}`,
+                    background: "rgba(255,255,255,0.7)",
+                    textDecoration: "none", color: "inherit", minWidth: 0,
+                  }}>
+                  <span aria-hidden style={{
+                    width: 38, height: 46, borderRadius: 7, overflow: "hidden",
+                    background: "#F2EFE9", flexShrink: 0,
+                  }}>
+                    {a.image && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={a.image} alt="" loading="lazy"
+                        style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+                    )}
+                  </span>
+                  <span style={{ minWidth: 0, flex: 1 }}>
+                    <span style={{
+                      display: "block", fontSize: 11, fontWeight: 700, color: "#1a1a1a",
+                      fontFamily: "'Inter'",
+                      overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                    }}>
+                      {a.marque}
+                    </span>
+                    <span style={{
+                      display: "block", fontSize: 10.5, color: "#8a7a68", lineHeight: 1.25,
+                      fontFamily: "'Inter'",
+                      overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                    }}>
+                      {a.nom}
+                    </span>
+                  </span>
+                  <span style={{
+                    fontSize: 11.5, fontWeight: 700, color: BORDEAUX, flexShrink: 0,
+                    fontFamily: "'Inter'",
+                  }}>
+                    {formatProductPrice(a.prix, a.marchandSlug, a.devise)}
+                  </span>
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       <style>{`

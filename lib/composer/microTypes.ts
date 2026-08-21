@@ -43,6 +43,17 @@ export interface OutfitPiece {
       Porté par la pièce plutôt que passé en prop : il traverse ainsi
       OutfitLayout et PieceCard sans qu'aucun des deux ait à le connaître. */
   budgetMax?: number;
+  /** Vrai si le client a NOMMÉ cette pièce (« je veux un pantalon cargo »).
+      La carte charge alors PLUSIEURS produits — « voici des cargos » — au
+      lieu d'un seul : c'est la pièce qu'il est venu chercher, une seule
+      proposition n'est pas une réponse. */
+  demandee?: boolean;
+  /** Matière énoncée dans la phrase (« en lin ») — resserre la recherche
+      produit de cette pièce. */
+  matiere?: string;
+  /** Taille (haut), taille de bas ou pointure énoncée. Filtrée côté API sur
+      les tailles connues du produit, et affichée sur la carte. */
+  taille?: string;
 }
 
 /* ─── DÉTECTION DE MICRO-TYPE depuis product_name ─── */
