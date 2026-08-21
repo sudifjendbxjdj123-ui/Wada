@@ -475,6 +475,15 @@ function MaTenueContent() {
         const parsed = JSON.parse(p);
         Object.assign(initial, parsed);
       }
+      /* Morphologie : deux écrans la demandent, avec deux vocabulaires.
+         `wada-prefs.morpho` (panneau de personnalisation, slugs) est
+         prioritaire car c'est le réglage le plus récent du client ; sinon on
+         reprend celle de /compte (`wada.profile.morphologie`, libellés).
+         Object.assign ci-dessus écrase toujours `morpho`, même avec une
+         chaîne vide — d'où ce repli placé APRÈS, et non avant. */
+      if (!initial.morpho && typeof profile?.morphologie === "string") {
+        initial.morpho = profile.morphologie;
+      }
       // Overrides URL — gagnent sur localStorage pour cette session
       if (overrideStyle) initial.style = overrideStyle;
       if (overrideOccasion) initial.occasion_focus = overrideOccasion;
@@ -550,6 +559,9 @@ function MaTenueContent() {
       fit: prefs.fit || "standard",
       occasion_focus: prefs.occasion_focus || "quotidien",
       gender: prefs.gender,
+      /* Le moteur normalise lui-même les deux vocabulaires (slug ou
+         libellé) — on lui passe la valeur telle qu'elle est stockée. */
+      morphologie: prefs.morpho || null,
     });
     // Validation dev — Streetwear ne doit jamais avoir blazer/derbies
     if (typeof window !== "undefined") {
@@ -557,7 +569,7 @@ function MaTenueContent() {
       if (!v.ok) console.warn("[registreEngine] violations :", v.errors);
     }
     return out;
-  }, [entry, prefs.style, prefs.fit, prefs.occasion_focus, prefs.gender]);
+  }, [entry, prefs.style, prefs.fit, prefs.occasion_focus, prefs.gender, prefs.morpho]);
 
   // Composition utilisée pour le rendu = slots du registre engine,
   // mappés au format attendu par PieceLine (piece + item + color).
@@ -651,7 +663,11 @@ function MaTenueContent() {
       genre: userGender || undefined,
       style: prefs.style || undefined,
       season, occasion, envie,
-      maxPrice: prefs.budget && prefs.budget > 1 ? String(prefs.budget) : undefined,
+      /* Budget TOTAL de la tenue : /api/outfit le répartit entre les slots et
+         recalcule après chaque pièce. On n'envoie plus `maxPrice`, qui était
+         un plafond PAR PIÈCE — le total annoncé pouvait être dépassé d'un
+         facteur 5. */
+      budgetTotal: prefs.budget && prefs.budget > 1 ? prefs.budget : undefined,
       exclude: overrideExclude || undefined,
     };
     fetch("/api/outfit", {
