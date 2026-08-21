@@ -249,6 +249,14 @@ export async function GET(req: Request) {
      Chacune applique des règles précises sur matières / coupes / marques.
      Si non spécifié → pas de filtre envie (comportement legacy). */
   const envie = (url.searchParams.get("envie") || "").toLowerCase().trim() || null;
+  /* ?exclude=talons,cuir,blanc,motifs,logos — « Une chose à éviter » du
+     questionnaire de /palette/[number] (spec 2026-08-21). Liste séparée par
+     des virgules ; toute valeur inconnue est ignorée. Sans le paramètre,
+     aucun filtre : le comportement existant ne bouge pas. */
+  const excludeSet = new Set(
+    (url.searchParams.get("exclude") || "")
+      .toLowerCase().split(",").map((v) => v.trim()).filter(Boolean),
+  );
   /* §1 — chip INSPIRATION. 4 valeurs : tendance | intemporel | avant-garde | classique-revisite
      Filtre additionnel sur les marques/tags. */
   const inspiration = (url.searchParams.get("inspiration") || "").toLowerCase().trim() || null;
@@ -547,6 +555,34 @@ export async function GET(req: Request) {
       if (/(off[\s-]?white|palm\s+angels|bape|amiri|jacquemus|heron\s+preston|kidsuper|44\s+label|heliot\s+emil|y\/?project|we11done)/i.test(m)) return false;
       if (/\b(tendance\s+(2025|2026)|saison\s+(\d{4}|en\s+cours)|capsule|drop|limited[\s-]?edition)\b/i.test(hay)) return false;
     }
+    /* ── « Une chose à éviter » (spec 2026-08-21) ──
+       Même approche que les règles envie ci-dessus : des motifs sur le nom et
+       la description, seule matière dont on dispose dans le flux marchand. On
+       reste volontairement littéral — mieux vaut laisser passer une pièce
+       ambiguë que d'écarter à tort la moitié du catalogue. */
+    if (excludeSet.size > 0) {
+      if (excludeSet.has("talons") &&
+          /\b(escarpins?|talons?|stilettos?|high[\s-]?heel|heeled|pumps?)\b/i.test(hay)) return false;
+      if (excludeSet.has("cuir") &&
+          /\b(cuir|leather|nubuck|su[eé]de|daim)\b/i.test(hay)) return false;
+      if (excludeSet.has("motifs") &&
+          /\b(imprim[ée]e?s?|motifs?|print(ed)?|pattern|ray[ée]e?s?|striped?|carreaux|checked|tartan|fleuri|floral|pois|polka|l[ée]opard|zebra|camo(uflage)?)\b/i.test(hay)) return false;
+      if (excludeSet.has("logos") &&
+          /\b(logo|monogram|branded|with\s+logo|lettering)\b/i.test(hay)) return false;
+      if (excludeSet.has("blanc")) {
+        /* Blanc : on croise le nom de couleur du marchand ET la luminance du
+           hex, l'un des deux pouvant manquer selon le flux. */
+        const nomCouleur = (p.couleurNom || "").toLowerCase();
+        if (/\b(blanc|white|blanche|[ée]cru|ivoire|ivory)\b/i.test(nomCouleur)) return false;
+        const hx = (p.hex || "").replace("#", "");
+        if (/^[0-9a-f]{6}$/i.test(hx)) {
+          const n = parseInt(hx, 16);
+          const lum = 0.299 * ((n >> 16) & 255) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255);
+          if (lum > 232) return false;
+        }
+      }
+    }
+
     /* affirme : pas d'exclusion (on autorise tout, on boostera la
        pièce statement au sort). Idem créatif. */
     return true;
@@ -1049,6 +1085,7 @@ export async function GET(req: Request) {
            pour respecter le budget ». */
         relaxed_dimensions: relaxedDimensions,
         envie: envie || null,
+        exclude: excludeSet.size ? [...excludeSet] : null,
         inspiration: inspiration || null,
       },
     },

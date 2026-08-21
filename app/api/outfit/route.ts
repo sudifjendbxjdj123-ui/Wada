@@ -41,6 +41,10 @@ type OutfitBody = {
   season?: string;
   occasion?: string;
   envie?: string;
+  /* Ajout 2026-08-21 — questionnaire /palette/[number] : plafond de prix par
+     pièce et exclusions (« une chose à éviter »). Relayés tels quels. */
+  maxPrice?: string;
+  exclude?: string;
   anchorNames?: string[];
 };
 
@@ -77,6 +81,11 @@ export async function POST(req: Request) {
   if (body.season) shared.season = body.season;
   if (body.occasion) shared.occasion = body.occasion;
   if (body.envie) shared.envie = body.envie;
+  /* Ajout 2026-08-21 : budget plafond et exclusions du questionnaire
+     (/palette/[number]). Relayés tels quels vers /api/products, qui les
+     interprète — cet endpoint ne fait que passer-plat. */
+  if (body.maxPrice) shared.maxPrice = body.maxPrice;
+  if (body.exclude) shared.exclude = body.exclude;
 
   /* Accumulateurs séquentiels — cohérence intra-tenue + dédup produit. */
   const selectedNames: string[] = Array.isArray(body.anchorNames)
