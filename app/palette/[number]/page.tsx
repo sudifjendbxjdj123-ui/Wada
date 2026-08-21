@@ -40,7 +40,7 @@ import MoodChips from "@/components/MoodChips"; */
 import ProfileChip from "@/components/ProfileChip";
 import { useProfile } from "@/hooks/useProfile";
 /* Refonte maquette « Composez votre tenue » 2026-06-11 — nouveau formulaire
-   4 questions (remplace l'ancien PersonalizedCompose inline plus bas). */
+   8 questions (remplace l'ancien PersonalizedCompose inline plus bas). */
 import ComposeForm from "./ComposeForm";
 
 const palette = {
@@ -275,7 +275,7 @@ export default function PalettePage({ params }: { params: Promise<{ number: stri
             </em>{" "}?
           </h1>
           <p style={{ fontFamily: fonts.body, fontSize: 17, lineHeight: 1.6, color: palette.inkSoft, margin: "18px 0 30px", maxWidth: 560 }}>
-            Répondez à 4 questions, et notre styliste WADA compose votre tenue parfaite dans cette palette.
+            Répondez à 8 questions, et notre styliste WADA compose votre tenue parfaite dans cette palette.
           </p>
         </div>
         {/* User feedback 2026-05-31 « rends cette page cohérente elle

@@ -9,10 +9,17 @@
  *                  · Autre (champ texte)
  *   3. Pour qui  — Femme · Homme · Mixte
  *   4. Tailles   — haut XS→XXL, bas 34→54, chaussures 35→48
+ *   5. Saison    — actuelle (pré-sélectionnée) · Printemps/Été
+ *                  · Automne/Hiver · Mi-saison
+ *   6. Budget    — curseur 100 € → 2000 €+, défaut 400 €
+ *   7. Audace    — Classique · Affirmé · Éditorial, en cartes
+ *   8. À éviter  — Talons · Cuir · Blanc · Motifs · Logos visibles
+ *                  · Rien à signaler (pré-sélectionné), multi-choix
  *
- * Remplacent « Budget total » et « Niveau d'audace », absents de la spec.
- * L'audace n'était de toute façon jamais transmise, et le budget partait en
- * `?maxPrice=` que /ma-tenue ne lit pas.
+ * Toutes les réponses descendent jusqu'au moteur (2026-08-21) : saison par le
+ * profil, genre / occasion / style / budget / audace / exclusions par l'URL,
+ * relayés par /ma-tenue puis /api/outfit jusqu'à /api/products. Avant ce
+ * câblage, budget et audace étaient collectés puis perdus.
  *
  * « Visuel d'abord » (décision user) : les libellés de la maquette qui ne
  * sont pas reconnus par le moteur (/ma-tenue) — occasion « Voyage », univers
@@ -25,7 +32,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import type { DictionaryEntry } from "@/lib/data";
 import { cultureLabels } from "@/lib/data";
-import { useProfile, TAILLES_HAUT, TAILLES_BAS, POINTURES, type TailleHaut } from "@/hooks/useProfile";
+import { useProfile, TAILLES_HAUT, TAILLES_BAS, POINTURES, A_EVITER, type TailleHaut } from "@/hooks/useProfile";
 
 const palette = {
   beige: "#F4EFE7",
@@ -75,6 +82,53 @@ const OCC_TO_PARAM: Record<OccasionOpt, string> = {
   voyage: "quotidien", evenement: "soiree", autre: "quotidien",
 };
 const UNIVERS: UniversOpt[] = ["Minimaliste", "Élégant", "Créatif", "Décontracté", "Autre"];
+
+type SaisonOpt = "actuelle" | "ete" | "hiver" | "misaison";
+const SAISON_LABEL: Record<SaisonOpt, string> = {
+  actuelle: "Saison actuelle", ete: "Printemps / Été",
+  hiver: "Automne / Hiver", misaison: "Mi-saison",
+};
+/* Valeurs du profil que /ma-tenue sait traduire en `season` pour le moteur
+   (« Hiver » → hiver,automne ; « Été » → été,printemps ; « Mi-saison » →
+   automne,printemps). « Saison actuelle » est résolue depuis la date. */
+const SAISON_TO_PROFIL: Record<SaisonOpt, string> = {
+  actuelle: "", ete: "Été", hiver: "Hiver", misaison: "Mi-saison",
+};
+function saisonDuJour(): "Été" | "Hiver" | "Mi-saison" {
+  const m = new Date().getMonth(); // 0 = janvier
+  if (m >= 4 && m <= 7) return "Été";        // mai → août
+  if (m >= 10 || m <= 1) return "Hiver";     // novembre → février
+  return "Mi-saison";                         // mars-avril, septembre-octobre
+}
+
+type AudaceOpt = "classique" | "affirme" | "editorial";
+/* Le moteur ne connaît que le vocabulaire `envie` de /api/products.
+   « Classique — valeurs sûres, intemporel » correspond exactement à
+   `intemporel`, qui écarte les marques streetwear récentes et les pièces
+   estampillées « tendance 2026 ». `affirme` n'applique aucune exclusion : il
+   ouvre le champ. Affirmé et Éditorial partagent donc le même filtre — le
+   moteur ne les distingue pas encore, seul le libellé change. */
+const AUDACE: Array<{ cle: AudaceOpt; titre: string; desc: string; envie: string; partAccent: number }> = [
+  /* `partAccent` = place donnée à la couleur la plus saturée de la palette
+     dans la vignette. Le visuel se lit ainsi : discret chez Classique, à
+     parité chez Affirmé, dominant chez Éditorial. On joue sur les PROPORTIONS
+     et non sur le nombre de teintes, sans quoi deux niveaux se ressemblent
+     dès qu'une palette n'a que trois couleurs — comme la n°195. */
+  { cle: "classique", titre: "Classique", desc: "Valeurs sûres, intemporel", envie: "intemporel", partAccent: 0.12 },
+  { cle: "affirme",   titre: "Affirmé",   desc: "Du caractère, sans excès",  envie: "affirme",    partAccent: 0.4 },
+  { cle: "editorial", titre: "Éditorial", desc: "Pièces fortes, assumées",   envie: "affirme",    partAccent: 0.72 },
+];
+
+/* Saturation approchée (0-1) — sert à désigner la couleur « accent » de la
+   palette, celle qui porte le caractère. */
+function saturation(hex: string): number {
+  const h = hex.replace("#", "");
+  const f = h.length === 3 ? h.split("").map((c) => c + c).join("") : h;
+  const n = parseInt(f, 16);
+  const r = ((n >> 16) & 255) / 255, g = ((n >> 8) & 255) / 255, bl = (n & 255) / 255;
+  const max = Math.max(r, g, bl), min = Math.min(r, g, bl);
+  return max === 0 ? 0 : (max - min) / max;
+}
 const UNIV_TO_STYLE: Record<UniversOpt, string> = {
   Minimaliste: "Minimal", "Élégant": "Old money", "Créatif": "Streetwear",
   "Décontracté": "Décontracté", Autre: "Minimal",
@@ -92,6 +146,11 @@ export default function ComposeForm({ entry }: { entry: DictionaryEntry }) {
   const [tailleHaut, setTailleHaut] = useState<TailleHaut | "">("");
   const [tailleBas, setTailleBas] = useState("");
   const [pointure, setPointure] = useState("");
+  const [saison, setSaison] = useState<SaisonOpt>("actuelle");
+  const [budget, setBudget] = useState<number>(400);
+  const [audace, setAudace] = useState<AudaceOpt>("affirme");
+  /* Liste vide = « Rien à signaler », l'option pré-sélectionnée. */
+  const [aEviter, setAEviter] = useState<string[]>([]);
 
   /* Pré-remplissage depuis le profil (genre / budget / style le plus proche). */
   useEffect(() => {
@@ -101,12 +160,16 @@ export default function ComposeForm({ entry }: { entry: DictionaryEntry }) {
     if (effective.tailleHaut) setTailleHaut(effective.tailleHaut);
     if (effective.tailleBas) setTailleBas(effective.tailleBas);
     if (effective.pointure) setPointure(effective.pointure);
+    if (Array.isArray(effective.aEviter) && effective.aEviter.length) setAEviter(effective.aEviter);
+    if (effective.budget === "< 150€") setBudget(150);
+    else if (effective.budget === "150–400€") setBudget(400);
+    else if (effective.budget === "Premium") setBudget(1200);
     const s = effective.style;
     if (s === "Minimaliste") setUnivers("Minimaliste");
     else if (s === "Décontracté") setUnivers("Décontracté");
     else if (s === "Streetwear") setUnivers("Créatif");
     else if (s) setUnivers("Élégant");
-  }, [hydrated, effective.style, effective.genre, effective.tailleHaut, effective.tailleBas, effective.pointure]);
+  }, [hydrated, effective.style, effective.genre, effective.budget, effective.tailleHaut, effective.tailleBas, effective.pointure, effective.aEviter]);
 
   if (!hydrated) return <div style={{ height: 820 }} aria-hidden />;
 
@@ -116,11 +179,15 @@ export default function ComposeForm({ entry }: { entry: DictionaryEntry }) {
   const accentTint = hexRgba(accent, 0.1);
 
   const genreParam = genre === "Femme" ? "femme" : genre === "Homme" ? "homme" : "unisexe";
+  const audaceDef = AUDACE.find((a) => a.cle === audace)!;
   const composeHref =
     `/ma-tenue?palette=${entry.number}` +
     `&style=${encodeURIComponent(UNIV_TO_STYLE[univers])}` +
     `&occasion=${OCC_TO_PARAM[occasion]}` +
-    `&genre=${genreParam}`;
+    `&genre=${genreParam}` +
+    `&maxPrice=${budget >= 2000 ? 100000 : budget}` +
+    `&envie=${audaceDef.envie}` +
+    (aEviter.length ? `&exclude=${aEviter.join(",")}` : "");
 
   /* Les tailles sont enregistrées dans le profil au moment de composer :
      c'est de la donnée client stable, pas un paramètre d'une tenue. Elles
@@ -132,6 +199,11 @@ export default function ComposeForm({ entry }: { entry: DictionaryEntry }) {
     if (tailleHaut) patch.tailleHaut = tailleHaut;
     if (tailleBas) patch.tailleBas = tailleBas;
     if (pointure) patch.pointure = pointure;
+    patch.aEviter = aEviter;
+    /* La saison choisie est lue par /ma-tenue depuis le profil : c'est le
+       seul canal existant pour cette dimension. */
+    patch.saison = SAISON_TO_PROFIL[saison] || saisonDuJour();
+    patch.budget = budget < 150 ? "< 150€" : budget <= 400 ? "150–400€" : "Premium";
     if (Object.keys(patch).length === 0) return;
     try {
       const brut = localStorage.getItem("wada.profile");
@@ -264,6 +336,116 @@ export default function ComposeForm({ entry }: { entry: DictionaryEntry }) {
             ))}
           </div>
         </div>
+
+        {/* 5 — Saison */}
+        <div style={qCard}>
+          <div style={qHead}><span style={qBadge}>5</span><h3 style={qTitle}>Pour quelle saison&nbsp;?</h3></div>
+          {(["actuelle", "ete", "hiver", "misaison"] as SaisonOpt[]).map((sa) =>
+            choiceRow(saison === sa, () => setSaison(sa),
+              sa === "actuelle" ? `${SAISON_LABEL[sa]} · ${saisonDuJour()}` : SAISON_LABEL[sa]),
+          )}
+        </div>
+
+        {/* 6 — Budget total */}
+        <div style={qCard}>
+          <div style={qHead}><span style={qBadge}>6</span><h3 style={qTitle}>Budget total</h3></div>
+          <div style={{ display: "flex", justifyContent: "space-between", fontFamily: fonts.sans, fontSize: 12, color: palette.inkSoft, marginBottom: 10 }}>
+            <span>100&nbsp;€</span><span>2000&nbsp;€+</span>
+          </div>
+          <input
+            type="range" min={100} max={2000} step={50} value={budget}
+            onChange={(e) => setBudget(parseInt(e.target.value))}
+            className="wada-slider" style={sliderStyle(((budget - 100) / 1900) * 100)}
+            aria-label="Budget total"
+          />
+          <div style={{ textAlign: "center", marginTop: 16, fontFamily: fonts.display, fontSize: 30, fontWeight: 500, color: accent, letterSpacing: "-0.5px", lineHeight: 1 }}>
+            {budget >= 2000 ? "2000 €+" : `~ ${budget} €`}
+          </div>
+        </div>
+
+        {/* 7 — Niveau d'audace (pleine largeur, en cartes) */}
+        <div style={{ ...qCard, gridColumn: "1 / -1" }}>
+          <div style={qHead}><span style={qBadge}>7</span><h3 style={qTitle}>Niveau d&apos;audace</h3></div>
+          <div className="wada-audace" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
+            {AUDACE.map((a) => {
+              const actif = audace === a.cle;
+              return (
+                <button
+                  key={a.cle} type="button" onClick={() => setAudace(a.cle)} aria-pressed={actif}
+                  style={{
+                    display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 4,
+                    padding: 14, borderRadius: 13, cursor: "pointer", textAlign: "left",
+                    border: `1.5px solid ${actif ? accent : palette.line}`,
+                    background: actif ? accentTint : "#fff", transition: "all .15s",
+                  }}
+                >
+                  {/* Visuel : un extrait de la palette dont la richesse croît
+                      avec le niveau — deux teintes sourdes pour Classique,
+                      l'accord complet pour Éditorial. Construit depuis les
+                      couleurs de CETTE palette, pas une image générique. */}
+                  <span aria-hidden style={{ display: "flex", width: "100%", height: 34, borderRadius: 7, overflow: "hidden", marginBottom: 6 }}>
+                    {(() => {
+                      const tries = [...entry.colors].sort((c1, c2) => saturation(c2.hex) - saturation(c1.hex));
+                      const accentCouleur = tries[0]?.hex || accent;
+                      const reste = tries.slice(1);
+                      const partReste = (1 - a.partAccent) / Math.max(1, reste.length);
+                      return [
+                        ...reste.map((c, i) => (
+                          <i key={i} style={{ flexGrow: partReste, flexBasis: 0, background: c.hex, display: "block" }} />
+                        )),
+                        <i key="accent" style={{ flexGrow: a.partAccent, flexBasis: 0, background: accentCouleur, display: "block" }} />,
+                      ];
+                    })()}
+                  </span>
+                  <span style={{ fontFamily: fonts.display, fontSize: 15, fontWeight: 500, color: palette.ink }}>{a.titre}</span>
+                  <span style={{ fontFamily: fonts.sans, fontSize: 12, lineHeight: 1.35, color: palette.inkSoft }}>{a.desc}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* 8 — Une chose à éviter (pleine largeur, multi-choix) */}
+        <div style={{ ...qCard, gridColumn: "1 / -1" }}>
+          <div style={qHead}>
+            <span style={qBadge}>8</span>
+            <h3 style={qTitle}>Une chose à éviter&nbsp;?</h3>
+            <span style={{ fontFamily: fonts.sans, fontSize: 12, color: palette.inkSoft }}>facultatif</span>
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+            {A_EVITER.map((e) => {
+              const actif = aEviter.includes(e.cle);
+              return (
+                <button
+                  key={e.cle} type="button" aria-pressed={actif}
+                  onClick={() => setAEviter(actif ? aEviter.filter((x) => x !== e.cle) : [...aEviter, e.cle])}
+                  style={{
+                    padding: "10px 16px", borderRadius: 999, cursor: "pointer",
+                    border: `1.5px solid ${actif ? accent : palette.line}`,
+                    background: actif ? accentTint : "#fff",
+                    fontFamily: fonts.sans, fontSize: 14, fontWeight: actif ? 600 : 500, color: palette.ink,
+                  }}
+                >
+                  {e.label}
+                </button>
+              );
+            })}
+            {/* « Rien à signaler » est l'inverse des autres : le cocher vide la
+                liste, et il s'allume dès qu'elle est vide. */}
+            <button
+              type="button" aria-pressed={aEviter.length === 0}
+              onClick={() => setAEviter([])}
+              style={{
+                padding: "10px 16px", borderRadius: 999, cursor: "pointer",
+                border: `1.5px solid ${aEviter.length === 0 ? accent : palette.line}`,
+                background: aEviter.length === 0 ? accentTint : "#fff",
+                fontFamily: fonts.sans, fontSize: 14, fontWeight: aEviter.length === 0 ? 600 : 500, color: palette.ink,
+              }}
+            >
+              Rien à signaler
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Votre sélection */}
@@ -287,6 +469,12 @@ export default function ComposeForm({ entry }: { entry: DictionaryEntry }) {
               ? universAutre.trim() : univers],
             ["Pour", genre],
             ["Tailles", [tailleHaut, tailleBas, pointure].filter(Boolean).join(" · ") || "Non renseignées"],
+            ["Saison", saison === "actuelle" ? `Actuelle · ${saisonDuJour()}` : SAISON_LABEL[saison]],
+            ["Budget", budget >= 2000 ? "2000 €+" : `~ ${budget} €`],
+            ["Audace", audaceDef.titre],
+            ["À éviter", aEviter.length
+              ? A_EVITER.filter((e) => aEviter.includes(e.cle)).map((e) => e.label).join(" · ")
+              : "Rien à signaler"],
           ] as [string, string][]).map(([k, v]) => (
             <div key={k} style={sumRow}>
               <span style={{ color: palette.inkSoft, fontFamily: fonts.sans }}>{k}</span>
@@ -330,6 +518,7 @@ export default function ComposeForm({ entry }: { entry: DictionaryEntry }) {
            en dessous ils passent l'un sous l'autre pour rester tapables. */
         @media (max-width: 420px) {
           :global(.wada-tailles) { grid-template-columns: 1fr !important; }
+          :global(.wada-audace) { grid-template-columns: 1fr !important; }
         }
       `}</style>
     </div>

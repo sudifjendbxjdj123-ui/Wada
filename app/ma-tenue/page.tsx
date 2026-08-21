@@ -294,6 +294,13 @@ function MaTenueContent() {
      bas, affirmait pourtant que « les query params explicites gagnent ». On
      applique ce qui était annoncé. */
   const overrideGenre = searchParams.get("genre");
+  /* Questionnaire /palette/[number] (spec 2026-08-21) : budget plafond,
+     niveau d'audace traduit en `envie`, et « une chose à éviter ». Aucun des
+     trois n'était transmis jusqu'ici — les réponses étaient collectées puis
+     perdues. Ils descendent maintenant jusqu'à /api/products. */
+  const overrideMaxPrice = searchParams.get("maxPrice");
+  const overrideEnvie = searchParams.get("envie");
+  const overrideExclude = searchParams.get("exclude");
 
   const [prefs, setPrefs] = useState<WadaPrefs>(DEFAULT_PREFS);
   const [matchIndex, setMatchIndex] = useState(0);
@@ -474,10 +481,12 @@ function MaTenueContent() {
       if (overrideGenre === "femme" || overrideGenre === "homme" || overrideGenre === "unisexe") {
         initial.gender = overrideGenre;
       }
+      const mp = parseInt(overrideMaxPrice || "", 10);
+      if (Number.isFinite(mp) && mp > 0) initial.budget = mp;
       setPrefs(initial);
     } catch { /* ignore */ }
     setHydrated(true);
-  }, [overrideStyle, overrideOccasion, overrideGenre]);
+  }, [overrideStyle, overrideOccasion, overrideGenre, overrideMaxPrice]);
 
   /* Trouve les palettes qui matchent — calcul memoisé pour ne pas relancer
      le scoring à chaque render.
@@ -624,6 +633,9 @@ function MaTenueContent() {
         }
       }
     } catch {}
+    /* Le niveau d'audace choisi dans le questionnaire est plus explicite
+       qu'un mood chip posé un autre jour : il l'emporte. */
+    if (overrideEnvie) envie = overrideEnvie;
 
     const slots = composition.map((piece) => {
       const s = piece._slot;
@@ -639,6 +651,8 @@ function MaTenueContent() {
       genre: userGender || undefined,
       style: prefs.style || undefined,
       season, occasion, envie,
+      maxPrice: prefs.budget && prefs.budget > 1 ? String(prefs.budget) : undefined,
+      exclude: overrideExclude || undefined,
     };
     fetch("/api/outfit", {
       method: "POST",

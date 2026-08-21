@@ -45,6 +45,16 @@ export const TAILLES_HAUT: TailleHaut[] = ["XS", "S", "M", "L", "XL", "XXL"];
 export const TAILLES_BAS: string[] = Array.from({ length: 11 }, (_, i) => String(34 + i * 2));
 export const POINTURES: string[] = Array.from({ length: 14 }, (_, i) => String(35 + i));
 
+/* « Une chose à éviter » — la clé est ce que /api/products attend en
+   `?exclude=`, le libellé est ce que voit le client. */
+export const A_EVITER: Array<{ cle: string; label: string }> = [
+  { cle: "talons", label: "Talons" },
+  { cle: "cuir",   label: "Cuir" },
+  { cle: "blanc",  label: "Blanc" },
+  { cle: "motifs", label: "Motifs" },
+  { cle: "logos",  label: "Logos visibles" },
+];
+
 export interface Profile {
   /* Champs obligatoires (onboarding 3 questions) */
   genre: Genre;
@@ -74,6 +84,11 @@ export interface Profile {
   tailleHaut?: TailleHaut;
   tailleBas?: string;
   pointure?: string;
+
+  /* « Une chose à éviter » (spec questionnaire 2026-08-21). Valeurs parmi
+     A_EVITER ; liste vide = rien à signaler. Transmise au moteur en
+     `?exclude=` et appliquée par /api/products. */
+  aEviter?: string[];
 }
 
 export const DEFAULT_PROFILE: Profile = {
@@ -118,6 +133,7 @@ function isValidProfile(raw: unknown): raw is Profile {
   if (p.tailleHaut !== undefined && !TAILLES_HAUT.includes(p.tailleHaut as TailleHaut)) return false;
   if (p.tailleBas !== undefined && !TAILLES_BAS.includes(p.tailleBas as string)) return false;
   if (p.pointure !== undefined && !POINTURES.includes(p.pointure as string)) return false;
+  if (p.aEviter !== undefined && !Array.isArray(p.aEviter)) return false;
   if (p.formalite !== undefined) {
     const f = p.formalite;
     if (typeof f !== "number" || f < 0 || f > 4) return false;
