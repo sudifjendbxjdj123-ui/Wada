@@ -124,7 +124,7 @@ export default function ShopperLaTenue({
             {retenus.length} pièce{retenus.length > 1 ? "s" : ""} sélectionnée{retenus.length > 1 ? "s" : ""}
           </p>
           <p style={{ fontFamily: fontHeading, fontSize: 18, color: ink, margin: "1px 0 0" }}>
-            {formatProductPrice(total, devise)}
+            {formatProductPrice(total, null, devise)}
           </p>
         </div>
         <button
@@ -180,7 +180,7 @@ export default function ShopperLaTenue({
             Votre tenue
           </h2>
           <span style={{ fontFamily: fontHeading, fontSize: 18, color: ink }}>
-            {formatProductPrice(total, devise)}
+            {formatProductPrice(total, null, devise)}
           </span>
         </div>
         <p style={{
@@ -232,7 +232,7 @@ export default function ShopperLaTenue({
                     </span>
                   </span>
                   <span style={{ fontFamily: fontLabel, fontSize: 13, color: ink, whiteSpace: "nowrap" }}>
-                    {formatProductPrice(produit.prix, produit.devise)}
+                    {formatProductPrice(produit.prix, null, produit.devise)}
                   </span>
                 </button>
               </li>

@@ -296,7 +296,7 @@ export default function LookComplet({
               Tenue complète dès
             </span>
             <span style={{ fontFamily: fontHeading, fontSize: 17, color: ink }}>
-              {formatProductPrice(total, devise)}
+              {formatProductPrice(total, null, devise)}
             </span>
           </span>
           <button

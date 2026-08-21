@@ -44,3 +44,20 @@ export function formatProductPrice(
   }
   return `${prix.toLocaleString("fr-FR")} ${cur}`;
 }
+
+/**
+ * Prix de catalogue : deux décimales, comme sur les fiches produit des
+ * grandes boutiques (« 89,00 € » et non « 89 € »). Le format court de
+ * `formatProductPrice` reste celui des récapitulatifs et des totaux, où
+ * les centimes ajoutent du bruit.
+ */
+export function formatPrixCatalogue(
+  prix: number | null | undefined,
+  devise?: string | null,
+): string {
+  if (typeof prix !== "number" || !Number.isFinite(prix)) return "Prix sur le site";
+  const cur = !devise || devise === "EUR" ? "€" : devise;
+  return `${prix.toLocaleString("fr-FR", {
+    minimumFractionDigits: 2, maximumFractionDigits: 2,
+  })} ${cur}`;
+}
