@@ -106,16 +106,24 @@ export default function ShopperLaTenue({
     >
       <div style={{
         maxWidth: 720, margin: "0 auto",
-        display: "flex", alignItems: "center", gap: 12,
+        display: "flex", alignItems: "center", gap: 11,
       }}>
-        <div style={{ minWidth: 0 }}>
+        <span aria-hidden style={{ color: ink, flexShrink: 0, display: "flex" }}>
+          <svg width="21" height="21" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M4 8h16l-1 12H5L4 8Z" />
+            <path d="M9 8V6a3 3 0 0 1 6 0v2" />
+          </svg>
+        </span>
+        <div style={{ minWidth: 0, flexShrink: 0 }}>
           <p style={{
-            fontFamily: fontLabel, fontSize: 10, letterSpacing: ".1em",
+            fontFamily: fontLabel, fontSize: 9.5, letterSpacing: ".08em",
             textTransform: "uppercase", color: textSecondary, margin: 0,
+            whiteSpace: "nowrap",
           }}>
-            {retenus.length} pièce{retenus.length > 1 ? "s" : ""}
+            {retenus.length} pièce{retenus.length > 1 ? "s" : ""} sélectionnée{retenus.length > 1 ? "s" : ""}
           </p>
-          <p style={{ fontFamily: fontHeading, fontSize: 17, color: ink, margin: "1px 0 0" }}>
+          <p style={{ fontFamily: fontHeading, fontSize: 18, color: ink, margin: "1px 0 0" }}>
             {formatProductPrice(total, devise)}
           </p>
         </div>
@@ -123,13 +131,22 @@ export default function ShopperLaTenue({
           type="button"
           onClick={() => setOuvert(true)}
           style={{
-            flex: 1, padding: "13px 16px", borderRadius: 999, border: "none",
+            flex: 1, minWidth: 0,
+            display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8,
+            padding: "14px 14px", borderRadius: 999, border: "none",
             background: mojo, color: "#fff", cursor: "pointer",
-            fontFamily: fontLabel, fontSize: 13, fontWeight: 600,
-            letterSpacing: ".08em", textTransform: "uppercase",
+            fontFamily: fontLabel, fontSize: 11.5, fontWeight: 600,
+            letterSpacing: ".05em", textTransform: "uppercase",
+            /* Sans ça, « Shopper la tenue » se coupait en deux lignes et la
+               barre grandissait d'un cran. */
+            whiteSpace: "nowrap",
           }}
         >
           Shopper la tenue
+          <svg width="15" height="15" viewBox="0 0 24 24" aria-hidden fill="none"
+            stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M5 12h14M13 6l6 6-6 6" />
+          </svg>
         </button>
       </div>
     </div>
