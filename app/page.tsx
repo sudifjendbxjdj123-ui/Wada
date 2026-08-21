@@ -44,8 +44,16 @@ export default function Home() {
      position:fixed → ils échappent à isolation:isolate). Le toggle est
      scopé à la home : autres pages gardent leurs overlays comme avant. */
   useEffect(() => {
+    /* La classe est posée sur <html> AUSSI depuis le 2026-08-21 : le rebond
+       élastique d'iOS se produit sur l'élément de défilement du document,
+       c'est-à-dire <html>. Sans sélecteur sur lui, impossible de le neutraliser
+       (cf. .wada-home-immersive dans globals.css). */
+    document.documentElement.classList.add("wada-home-immersive");
     document.body.classList.add("wada-home-immersive");
-    return () => document.body.classList.remove("wada-home-immersive");
+    return () => {
+      document.documentElement.classList.remove("wada-home-immersive");
+      document.body.classList.remove("wada-home-immersive");
+    };
   }, []);
 
   /* ═══ Stratégie hybride 2026-05-29 — image + vidéo en progressive enhancement ═══

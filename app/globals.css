@@ -949,6 +949,22 @@ body.wada-home-immersive {
   height: 100svh;
   min-height: 100svh;
   overflow: hidden;
+  /* Fix 2026-08-21 « l'accueil bouge sous le doigt ».
+     `overflow: hidden` sur le body ne suffit pas sur iOS : le rebond
+     élastique se joue sur l'élément de défilement du document, et Safari le
+     déclenche même quand le contenu tient dans l'écran. On voyait donc le
+     bandeau crème glisser vers le bas, ou l'image remonter sous le bandeau.
+     Deux verrous complémentaires :
+       - `overscroll-behavior: none` (posé aussi sur <html> plus bas) coupe le
+         rebond ;
+       - `position: fixed` + inset 0 retire purement le body du flux de
+         défilement : il ne peut plus bouger d'un pixel, quel que soit le
+         geste. L'accueil est un écran unique, cette contrainte est sans effet
+         de bord ici.
+     Les deux sont scopés à l'accueil : les autres pages défilent normalement. */
+  position: fixed;
+  inset: 0;
+  overscroll-behavior: none;
   /* Le padding-bottom global (56px) est plus court que la tab bar (78px) :
      le bas de la photo — la traîne du kimono et le tatami — disparaissait
      derrière la barre. On réserve ici sa hauteur réelle pour que le hero
@@ -4347,4 +4363,12 @@ input[type="range"]:active {
     padding: 6px 13px !important;
     font-size: 11px !important;
   }
+}
+
+/* Élément de défilement du document — c'est LUI que Safari fait rebondir.
+   La classe est posée sur <html> par app/page.tsx, uniquement sur l'accueil. */
+html.wada-home-immersive {
+  overflow: hidden;
+  overscroll-behavior: none;
+  height: 100%;
 }
