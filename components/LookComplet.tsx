@@ -33,6 +33,14 @@ export type ProduitLook = {
   id: string;
   nom: string;
   marque?: string;
+  /** Marchand affilié (« Kastner & Öhler ») — la ligne pièce dit chez qui
+      la pièce s'achète, en petit. */
+  marchand?: string;
+  marchandSlug?: string;
+  couleurNom?: string;
+  /** Tailles connues du flux marchand — alimente le sélecteur. Absent chez
+      environ la moitié des marchands : le sélecteur le dit alors. */
+  tailles?: string[];
   prix: number;
   devise: string;
   urlProduit: string;
