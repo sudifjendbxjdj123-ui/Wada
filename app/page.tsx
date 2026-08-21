@@ -129,11 +129,19 @@ export default function Home() {
   return (
     <main
       style={{
-        // 100svh = small viewport height (mobile-safe : prend la zone
-        // visible HORS chrome navigateur, pas de saut quand l'adresse
-        // bar disparaît). Fallback dvh pour les browsers plus anciens.
-        minHeight: "100svh",
-        height: "100svh",
+        /* Fix 2026-08-20 « cadrage accueil » : le hero était en height:100svh
+           alors qu'il est posé SOUS le header (~72px, dans le flux) et
+           AU-DESSUS de la tab bar fixe (le body réserve 64px + safe-area en
+           ≤880px). Le bloc dépassait donc l'écran d'environ 135px : tout le
+           bas de la photo — le kimono déployé et le tatami — tombait sous la
+           ligne de flottaison, et la page gagnait un scroll parasite de la
+           même hauteur qui emportait le bandeau crème avec lui.
+           Le body étant déjà `flex flex-col`, on laisse le hero prendre
+           EXACTEMENT la place restante entre le header et la tab bar : plus
+           de débordement, plus de scroll, le bandeau reste en haut et la
+           photo entière tient dans l'écran. */
+        flex: "1 1 auto",
+        minHeight: 0,
         width: "100vw",
         position: "relative",
         overflow: "hidden",
@@ -162,6 +170,7 @@ export default function Home() {
 
       {/* COUCHE 1 : image toujours présente, z-index 0 */}
       <img
+        className="wada-hero-media"
         src="/hero/femme-wada-bg-photo.webp"
         alt=""
         aria-hidden="true"
@@ -172,12 +181,9 @@ export default function Home() {
           width: "100%",
           height: "100%",
           objectFit: "cover",
-          /* Brief 2026-06-07 (média hero) — cadrage desktop : l'image est
-             un portrait (1600×3034) dans un cadre paysage large → `cover`
-             montrait le milieu vertical, laissant un grand vide de shoji
-             au-dessus du sujet. `center 60%` remonte le sujet (le visage
-             révélé + le masque Hannya) en point focal et réduit le vide. */
-          objectPosition: "center 60%",
+          /* Le cadrage (object-position) vit dans globals.css — il diffère
+             entre mobile et desktop, ce qu'un style inline ne peut pas
+             exprimer. Cf. `.wada-hero-media`. */
           zIndex: 0,
           pointerEvents: "none",
         }}
@@ -187,6 +193,7 @@ export default function Home() {
           Tant que `playing` ne s'est pas déclenché, opacity reste 0 et
           l'image en dessous fait le rendu — c'est la garantie zéro-bug. */}
       <video
+        className="wada-hero-media"
         ref={videoRef}
         autoPlay
         muted
@@ -203,9 +210,8 @@ export default function Home() {
           width: "100%",
           height: "100%",
           objectFit: "cover",
-          /* Brief 2026-06-07 (média hero) : même cadrage que l'image de
-             fond pour une transition image→vidéo sans saut. */
-          objectPosition: "center 60%",
+          /* Même cadrage que l'image de fond (`.wada-hero-media`) pour une
+             transition image→vidéo sans saut. */
           zIndex: 1,
           pointerEvents: "none",
           opacity: videoReady ? 1 : 0,

@@ -867,6 +867,58 @@ body.wada-home-immersive::after {
   display: none !important;
 }
 
+/* ═══════════════════════════════════════════════════════════════════════
+   ACCUEIL — cadrage du hero (fix 2026-08-20)
+   ═══════════════════════════════════════════════════════════════════════
+   La home est un écran unique, sans scroll : bandeau crème (WADA + Abonnement)
+   en haut, photo entre le bandeau et la tab bar. Le <main> prend la place
+   restante via flex (cf. app/page.tsx) ; ici on verrouille la hauteur du body
+   pour qu'aucun scroll parasite ne puisse repousser le bandeau hors de l'écran.
+   La classe est posée sur <body> par la home uniquement. */
+body.wada-home-immersive {
+  /* Le <body> porte bien `flex flex-col` en classes Tailwind, mais ces
+     utilitaires ne sont pas générés dans ce projet (`.flex` calcule
+     display:block) — le hero en `flex:1` restait donc écrasé à la hauteur
+     de son contenu. On pose la colonne flex explicitement, et seulement
+     ici : sur l'accueil, les seuls enfants du body encore dans le flux sont
+     le bandeau crème et le hero (tab bar, bannière cookies et compagnie sont
+     tous en position:fixed), donc le hero récupère exactement la hauteur
+     restante. */
+  display: flex;
+  flex-direction: column;
+  height: 100svh;
+  min-height: 100svh;
+  overflow: hidden;
+  /* Le padding-bottom global (56px) est plus court que la tab bar (78px) :
+     le bas de la photo — la traîne du kimono et le tatami — disparaissait
+     derrière la barre. On réserve ici sa hauteur réelle pour que le hero
+     s'arrête pile sur son bord. Scopé à l'accueil : les autres pages gardent
+     leur padding actuel. */
+  padding-bottom: var(--wada-tabbar-h);
+}
+
+/* Cadrage de la photo / vidéo du hero.
+   L'image source est un portrait très haut (2160×4096) : le sujet est assis,
+   masque Hannya vers 40 % de la hauteur, kimono déployé et tatami jusqu'en bas.
+
+   Mobile — le cadre est lui aussi portrait, donc on peut montrer presque toute
+   la photo. On l'ancre EN BAS : le personnage est visible en entier, kimono et
+   tatami compris, et c'est le vide de shoji au-dessus qui est rogné. C'est le
+   cadrage demandé.
+
+   Desktop — le cadre est paysage large, seule une tranche d'environ 30 % de la
+   photo tient dedans. Ancrer en bas n'y montrerait que le bas du kimono, sans
+   visage : on garde donc `center 60 %`, qui cale le masque comme point focal. */
+.wada-hero-media {
+  object-position: center 60%;
+}
+
+@media (max-width: 880px) {
+  .wada-hero-media {
+    object-position: center bottom;
+  }
+}
+
 /* Display headlines — Fredoka : chubby rond mais POSÉ (pas exagéré comme
    Bagel Fat One). Le brief client demande la chubby comme voix de marque
    « différenciante mais premium, pas enfantin ». Style normal, un seul
@@ -2366,7 +2418,26 @@ a[data-wada-btn="ghost"]:hover {
    ═══════════════════════════════════════════════════════════ */
 .wada-tabbar { display: none; }
 
+/* Hauteur RÉELLE de la tab bar — 6px de padding haut + 66px de contenu + 6px
+   de padding bas + safe-area. Les 66px viennent de la bulle « Scanner »
+   surélevée, plus haute que les autres onglets ; c'est pour ça que la barre
+   mesure 78px et non les ~45px estimés plus bas dans ce fichier, où le
+   padding-bottom du body a été calé à 56px. Tout le contenu passe donc de
+   22px sous la barre. La variable sert à caler le hero de l'accueil pile
+   au-dessus ; à garder synchronisée avec le bloc .wada-tabbar ci-dessous. */
+:root { --wada-tabbar-h: 0px; }
+
+/* Hauteur du bandeau crème (components/Nav.tsx, sticky en haut du flux) :
+   18px de padding bas + 40px de contenu + un padding haut de
+   max(18px, safe-area-inset-top). Soit 76px sur un écran sans encoche et
+   ~105px sur iPhone. Toute section qui veut tenir dans un écran doit la
+   soustraire : `min-height: 100svh` seul déborde d'autant, puisque la section
+   démarre SOUS le bandeau. À garder synchronisée avec le style du <nav>. */
+:root { --wada-nav-h: calc(58px + max(18px, env(safe-area-inset-top, 0px))); }
+
 @media (max-width: 880px) {
+  :root { --wada-tabbar-h: calc(78px + env(safe-area-inset-bottom, 0px)); }
+
   .wada-tabbar {
     display: flex;
     position: fixed;

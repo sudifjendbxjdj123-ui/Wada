@@ -16,7 +16,15 @@ export default function BoutiquePage() {
     <main
       style={{
         background: "#FAF8F4",
-        minHeight: "100svh",
+        /* Fix 2026-08-20 « pilule Marques coupée » : ce <main> imposait
+           `minHeight: 100svh`. Mais il démarre SOUS le bandeau crème, et la
+           barre d'onglets fixe recouvre le bas de l'écran : un premier écran
+           de 100svh finissait donc largement derrière la barre. Sur iPhone
+           c'est pire, le bandeau passant à ~105px avec la safe-area — et le
+           contenu du hero, ancré à 140px du bas de celui-ci, tombait pile
+           sous la barre. C'est désormais le hero lui-même qui fixe la hauteur
+           du premier écran (cf. `.wada-bh-hero`), la vitrine des marques
+           coulant simplement à sa suite. */
         display: "flex",
         flexDirection: "column",
         position: "relative",

@@ -7,15 +7,23 @@
  */
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
+import { getDisplayImageUrl } from "@/lib/image-utils";
+import { formatProductPrice } from "@/lib/priceFormat";
 
+/* Fix 2026-08-20 : le type local déclarait `url`, un champ que
+   /api/products ne renvoie JAMAIS. Le vrai champ est `urlProduit`
+   (cf. ProduitAwin dans lib/schema.ts) — résultat : toutes les tuiles
+   « À découvrir » de /boutique pointaient sur href="#" et ne menaient
+   nulle part. On s'aligne sur le schéma réel. */
 interface Product {
   nom: string;
   marque: string;
   image?: string;
   largeImage?: string;
-  prix: number;
-  url?: string;
+  prix?: number;
+  devise?: string;
+  marchandSlug?: string;
+  urlProduit?: string;
 }
 
 interface BrandShowcaseCompactProps {
@@ -35,18 +43,20 @@ export function BrandShowcaseCompact({
 
     (async () => {
       try {
-        const slots = ["haut", "bas"];
-        const results = await Promise.all(
-          slots.map((slot) =>
-            fetch(`/api/products?slot=${slot}&limit=20`)
-              .then((r) => r.json())
-              .catch(() => ({ products: [] })),
-          ),
-        );
+        /* Fix 2026-08-20 « la boutique met trop de temps » : deux requêtes
+           (slot=haut, slot=bas) de 20 produits pour n'en afficher que 6.
+           Chaque appel rebalaie tout le catalogue KV côté serveur, et on
+           attendait les deux avant d'afficher quoi que ce soit. Le paramètre
+           `slot` ne sert qu'à des exclusions : une seule requête suffit à
+           remplir cette vitrine. */
+        const r = await fetch(`/api/products?limit=${Math.max(12, maxProducts * 3)}`);
+        const data = r.ok ? await r.json() : { products: [] };
 
-        const allProducts: Product[] = results
-          .flatMap((r) => r.products || [])
-          .filter((p: any) => p.image || p.largeImage)
+        /* On n'affiche que des tuiles réellement cliquables : une image ET
+           un deep-link marchand. Sans ce garde-fou la grille affichait des
+           vignettes inertes. */
+        const allProducts: Product[] = (data.products || [])
+          .filter((p: any) => (p.image || p.largeImage) && typeof p.urlProduit === "string" && /^https?:\/\//.test(p.urlProduit))
           .slice(0, maxProducts);
 
         if (alive) {
@@ -101,15 +111,16 @@ export function BrandShowcaseCompact({
         }}
       >
         {products.map((product, idx) => {
-          const imageUrl = (product.image || product.largeImage);
-          const displayUrl = imageUrl?.startsWith("http")
-            ? `/api/img?u=${encodeURIComponent(imageUrl)}`
-            : imageUrl;
+          const displayUrl = getDisplayImageUrl(product.image, product.largeImage);
 
           return (
-            <Link
+            /* Lien marchand externe : <a> + rel="sponsored" (lien affilié),
+               pas next/link — la destination est hors du site. */
+            <a
               key={idx}
-              href={product.url || "#"}
+              href={product.urlProduit}
+              target="_blank"
+              rel="noopener sponsored"
               style={{
                 textDecoration: "none",
                 display: "block",
@@ -167,9 +178,9 @@ export function BrandShowcaseCompact({
                 }}
                 title={product.nom}
               >
-                {product.prix.toFixed(0)}€
+                {formatProductPrice(product.prix, product.marchandSlug, product.devise)}
               </div>
-            </Link>
+            </a>
           );
         })}
       </div>

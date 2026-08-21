@@ -22,14 +22,25 @@ const CATEGORIES: Array<{ label: string; href: string }> = [
   { label: "Marques",    href: "/marques" },
 ];
 
-/* Fix 2026-06-11 « hero instantané » :
-   localStorage cache des URLs d'images pour hydrater le mur à la 1re paint
-   au lieu d'attendre 3 fetches /api/products (6-7s cold). On garde au max 60
-   URLs, qu'on refresh silencieusement en arrière-plan à chaque visite.
-   Fallback : 12 images Muji par défaut pour les 1re visites (même sans cache). */
+/* Fix 2026-06-11 « hero instantané », révisé le 2026-08-20 :
+   cache localStorage des URLs d'images pour remplir le mur sans attendre
+   /api/products (6-7s à froid). Le cache est rafraîchi silencieusement en
+   arrière-plan à chaque visite. Sur une 1re visite, ou si le réseau échoue,
+   ce sont les placeholders neutres ci-dessous qui tiennent le mur — jamais un
+   fond vide. Le cache est appliqué dans un effet et non pendant le render :
+   lire localStorage au render faisait diverger le HTML serveur du HTML client
+   (erreur d'hydratation, mur qui se remontait au chargement). */
 const CACHE_KEY = "wada-boutique-hero-images";
-const CACHE_MAX = 60;
-const EAGER_COUNT = 16; // 1res images loadées en priorité (≈ above-the-fold)
+/* Fix 2026-08-20 « le fond met trop de temps » : 60 images distinctes, chacune
+   retéléchargée chez le marchand via /api/img, pour un décor — et comme chaque
+   colonne est dupliquée pour boucler, ça faisait 120 balises <img> dans le DOM.
+   30 suffisent largement : le mur fait 3 colonnes sur téléphone (10 images par
+   colonne, 20 après duplication), bien plus haut que l'écran. Moitié moins de
+   requêtes, mur complet deux fois plus vite. */
+const CACHE_MAX = 30;
+/* Idem : 16 images en priorité haute se disputaient la bande passante au
+   moment précis où la page doit s'afficher. 8 couvrent le premier écran. */
+const EAGER_COUNT = 8;
 // Placeholders neutres en attendant les images API
 const FALLBACK_IMAGES = Array.from({ length: 24 }, (_, i) =>
   `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 500'%3E%3Crect fill='%23${["d4c5b9","c9b8ac","e8ddd4","bfb0a4"][i % 4]}' width='400' height='500'/%3E%3C/svg%3E`
@@ -52,12 +63,23 @@ function writeCachedImages(imgs: string[]) {
 }
 
 export function BoutiqueHero() {
-  /* Hydrate synchroniquement depuis localStorage pour que la 1re paint
-     contienne déjà le mur — pas d'attente de useEffect. Sur SSR/1re visite
-     ça retombe sur [], et le fetch en useEffect rempli ~1s plus tard. */
-  const [images, setImages] = useState<string[]>(() => readCachedImages());
+  /* Fix 2026-08-20 « hydratation » : l'initialiseur lisait localStorage
+     PENDANT le render. Le serveur rend alors les 24 placeholders SVG et le
+     client rend les URLs en cache → les <img src> divergent et React jette
+     une erreur d'hydratation (mur qui clignote / se re-monte au chargement).
+     On part donc du MÊME état des deux côtés (les placeholders), puis on
+     remplace par le cache dans un effet, avant le fetch réseau. Le mur reste
+     visible à la 1re paint, sans divergence SSR/client. */
+  const [images, setImages] = useState<string[]>(FALLBACK_IMAGES);
+
   const [cols, setCols] = useState(4);
   const [genre, setGenre] = useState<"femme" | "homme">("femme");
+
+  /* Cache localStorage appliqué après hydratation (effet ⇒ client only). */
+  useEffect(() => {
+    const cached = readCachedImages();
+    if (cached !== FALLBACK_IMAGES) setImages(cached);
+  }, []);
 
   /* Nombre de colonnes adapté à la largeur (≈1 colonne / 260px). */
   useEffect(() => {
@@ -67,30 +89,37 @@ export function BoutiqueHero() {
     return () => window.removeEventListener("resize", update);
   }, []);
 
+  /* Fix 2026-08-20 « le fond met trop de temps » : on lançait TROIS requêtes
+     /api/products (haut, bas, veste). Chacune rebalaie l'intégralité du
+     catalogue KV (~1-2 Mo) puis lui applique une quarantaine de filtres, côté
+     serveur, à chaque appel — trois fois ce travail pour un simple décor. Et
+     comme on attendait `Promise.all`, le mur ne se remplissait qu'une fois la
+     PLUS LENTE des trois revenue.
+     Le paramètre `slot` de /api/products ne sert qu'à des exclusions : sans
+     lui, une seule requête renvoie déjà un mélange de pièces. Un tiers du
+     travail serveur, et plus d'attente sur la traînarde. */
   useEffect(() => {
-    let alive = true;
+    const ac = new AbortController();
     (async () => {
-      const slots = ["haut", "bas", "veste"];
-      const results = await Promise.all(
-        slots.map((s) =>
-          fetch(`/api/products?slot=${s}&style=minimaliste&limit=32`)
-            .then((r) => r.json())
-            .catch(() => ({ products: [] })),
-        ),
-      );
-      const imgs: string[] = results.flatMap((r) =>
-        (r.products ?? [])
+      try {
+        const r = await fetch(
+          `/api/products?style=minimaliste&limit=${CACHE_MAX}`,
+          { signal: ac.signal },
+        );
+        if (!r.ok) return;
+        const d = await r.json();
+        const imgs: string[] = (d.products ?? [])
           .map((p: { image?: string; largeImage?: string }) =>
             getDisplayImageUrl(p.image, p.largeImage),
           )
-          .filter(Boolean),
-      );
-      const uniq = Array.from(new Set(imgs)).slice(0, CACHE_MAX);
-      if (!alive || uniq.length === 0) return;
-      setImages(uniq);
-      writeCachedImages(uniq);
+          .filter(Boolean);
+        const uniq = Array.from(new Set(imgs)).slice(0, CACHE_MAX);
+        if (uniq.length === 0) return;
+        setImages(uniq);
+        writeCachedImages(uniq);
+      } catch { /* abort ou réseau : on garde le mur déjà affiché */ }
     })();
-    return () => { alive = false; };
+    return () => ac.abort();
   }, []);
 
   const columns = Array.from({ length: cols }, (_, c) =>
@@ -147,22 +176,14 @@ export function BoutiqueHero() {
           {/* Toggle Femme / Homme */}
           <div className="wada-bh-toggle" role="group" aria-label="Genre">
             <button
-              className="wada-bh-tog"
-              style={genre === "femme"
-                ? { background: BORDEAUX, color: "#fff", boxShadow: "0 2px 10px rgba(0,0,0,0.35)" }
-                : { background: "transparent", color: "rgba(255,255,255,0.72)" }
-              }
+              className={`wada-bh-tog${genre === "femme" ? " wada-bh-tog--active" : ""}`}
               onClick={() => setGenre("femme")}
               aria-pressed={genre === "femme"}
             >
               Femme
             </button>
             <button
-              className="wada-bh-tog"
-              style={genre === "homme"
-                ? { background: BORDEAUX, color: "#fff", boxShadow: "0 2px 10px rgba(0,0,0,0.35)" }
-                : { background: "transparent", color: "rgba(255,255,255,0.72)" }
-              }
+              className={`wada-bh-tog${genre === "homme" ? " wada-bh-tog--active" : ""}`}
               onClick={() => setGenre("homme")}
               aria-pressed={genre === "homme"}
             >
@@ -198,7 +219,13 @@ export function BoutiqueHero() {
           position: relative;
           width: 100%;
           flex: 1 1 auto;
-          min-height: 500px;
+          /* Hauteur du premier écran : tout l'espace visible entre le bandeau
+             crème et la barre d'onglets. Le mur descend donc pile jusqu'au
+             bord de la barre, et le contenu qui y est ancré (titre, toggle,
+             pilules) reste entièrement visible — y compris « Marques », qui
+             passait derrière la barre. Plancher à 500px pour les écrans très
+             courts (paysage). */
+          min-height: max(500px, calc(100svh - var(--wada-nav-h) - var(--wada-tabbar-h)));
           overflow: hidden;
           background: linear-gradient(135deg, #1c1612 0%, #3a342d 50%, #2a2420 100%);
         }
@@ -293,6 +320,11 @@ export function BoutiqueHero() {
           color: rgba(255,255,255,0.72);
           transition: background 0.22s ease, color 0.22s ease;
         }
+        /* Fix 2026-08-20 : cette classe existait mais n'était JAMAIS posée —
+           l'état actif était appliqué en style inline, qui l'emporte sur toute
+           règle CSS. Conséquence : la règle :hover ci-dessous ciblait aussi le
+           pill actif (sans effet visible) et le halo actif ne pouvait pas être
+           thémé depuis la feuille. On pose désormais la classe. */
         .wada-bh-tog--active {
           background: ${BORDEAUX};
           color: #fff;

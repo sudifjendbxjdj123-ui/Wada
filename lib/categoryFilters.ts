@@ -339,6 +339,10 @@ export function sortProducts(products: ProduitAwin[], sort: string): ProduitAwin
   const out = [...products];
   if (sort === "prix-asc") out.sort((a, b) => (a.prix ?? 0) - (b.prix ?? 0));
   else if (sort === "prix-desc") out.sort((a, b) => (b.prix ?? 0) - (a.prix ?? 0));
+  /* Ajout 2026-08-20 : le tri « populaire » n'existait que côté client, où il
+     ne réordonnait que les 48 produits de la page courante. Il est désormais
+     appliqué ici, sur tout le pool filtré, comme les tris prix. */
+  else if (sort === "populaire") out.sort((a, b) => (b.popularite ?? 0) - (a.popularite ?? 0));
   /* "nouveau" : pas d'horodatage produit fiable → ordre catalogue conservé. */
   return out;
 }

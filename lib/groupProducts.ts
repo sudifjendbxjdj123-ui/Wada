@@ -11,6 +11,19 @@ export interface GroupedProduct {
 }
 
 /**
+ * Clé de groupe d'un produit (marque + nom, insensible à la casse).
+ *
+ * Exportée depuis le 2026-08-20 : la carte produit mémorise les favoris sous
+ * `g.key` tandis que la Quick View utilisait `p.id`. Les deux composants
+ * décrivaient donc le MÊME produit sous deux clés différentes — un cœur coché
+ * sur la carte réapparaissait vide dans la modale. Une seule fonction, une
+ * seule clé.
+ */
+export function groupKeyOf(p: Pick<ProduitAwin, "marque" | "nom">): string {
+  return `${(p.marque || "").toLowerCase()}-${(p.nom || "").toLowerCase()}`;
+}
+
+/**
  * Groupe les produits par marque + nom, consolidant les variantes couleur.
  * Chaque groupe affiche une carte avec sélecteurs couleur/taille.
  */
@@ -19,7 +32,7 @@ export function groupProducts(products: ProduitAwin[]): GroupedProduct[] {
 
   // Grouper par brand-nom (case-insensitive)
   for (const p of products) {
-    const key = `${(p.marque || "").toLowerCase()}-${(p.nom || "").toLowerCase()}`;
+    const key = groupKeyOf(p);
     if (!groupMap.has(key)) groupMap.set(key, []);
     groupMap.get(key)!.push(p);
   }

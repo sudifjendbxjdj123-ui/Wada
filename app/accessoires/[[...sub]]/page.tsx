@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
 import CategoryPage from "@/components/CategoryPage";
 
 const SUB_MAP: Record<string, { q?: string }> = {
@@ -36,6 +37,15 @@ export default async function AccessoiresPage({ params, searchParams }: Props) {
   const subSlug = sub?.[0];
   const mapping = subSlug ? SUB_MAP[subSlug] : null;
 
+  /* Fix 2026-08-20 « fausse page catégorie » : la route est un catch-all
+     optionnel, donc /accessoires/nimportequoi (ou une ancienne URL renommée)
+     tombait ici avec mapping = null. La page répondait alors 200 avec un titre
+     tiré du slug — « Nimportequoi » — et la grille par défaut de la catégorie.
+     Un visiteur voyait une catégorie qui n'existe pas, et Google l'indexait.
+     Un slug non mappé (ou un segment supplémentaire) est un 404. */
+  if (sub && sub.length > 1) notFound();
+  if (subSlug && !mapping) notFound();
+
   return (
     <CategoryPage
       title={subSlug ? subSlug.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()) : "Accessoires"}
@@ -48,7 +58,7 @@ export default async function AccessoiresPage({ params, searchParams }: Props) {
       q={mapping?.q}
       genre={sp.genre}
       style={sp.style}
-      page={parseInt(sp.page ?? "1")}
+      page={parseInt(sp.page ?? "1", 10)}
     />
   );
 }

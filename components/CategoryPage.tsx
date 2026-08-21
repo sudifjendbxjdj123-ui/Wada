@@ -12,11 +12,12 @@ import type { ProduitAwin } from "@/lib/schema";
 import { formatProductPrice } from "@/lib/priceFormat";
 import { dictionaryMinimal } from "@/lib/data-client";
 import { deltaEHex, DELTA_E_LOOSE } from "@/lib/colorDistance";
-import { groupProducts } from "@/lib/groupProducts";
+import { groupProducts, groupKeyOf } from "@/lib/groupProducts";
 import { GroupedProductCard } from "@/components/GroupedProductCard";
 import { getMatchingPalettes } from "@/lib/getMatchingPalettes";
 import { SOURCE_LABEL } from "@/lib/SOURCE_LABEL";
 import { HeartIcon } from "@/components/HeartIcon";
+import { useLiked } from "@/hooks/useLiked";
 import { SortDropdown, type SortOption } from "@/components/category/SortDropdown";
 import { BackToTopButton } from "@/components/BackToTopButton";
 import { showToast } from "@/lib/toast";
@@ -78,6 +79,19 @@ interface Props {
 
 const BORDEAUX = "#6B3A32";
 
+/* Fix 2026-08-20 « le tri ne triait que la page affichée » : le SortDropdown
+   réordonnait uniquement les 48 produits déjà chargés. Sur une catégorie de
+   3 000 pièces, « Prix : bas → haut » montrait donc le moins cher DE LA PAGE 1,
+   pas du catalogue — et la page 2 recommençait à zéro. /api/products/search
+   sait trier tout le pool filtré (lib/categoryFilters.sortProducts) : on lui
+   transmet le tri et on laisse le serveur paginer un résultat déjà ordonné. */
+const SORT_TO_SERVER: Record<SortOption, string> = {
+  relevance: "",
+  "price-low": "prix-asc",
+  "price-high": "prix-desc",
+  popular: "populaire",
+};
+
 /* Garde anti-crash : vrai uniquement pour une URL http(s) bien formée.
    Empêche href="undefined"/"" de produire un clic vers une route cassée. */
 function isValidHttpUrl(u?: string | null): u is string {
@@ -107,7 +121,11 @@ function CheckIcon() {
 
 function ProductModal({ product: p, onClose, clickPosition, allProducts, onProductChange }: { product: ProduitAwin; onClose: () => void; clickPosition: { x: number; y: number } | null; allProducts: ProduitAwin[]; onProductChange?: (product: ProduitAwin) => void }) {
   const source = SOURCE_LABEL[p.marchandSlug || ""] || p.marchand;
-  const [liked, setLiked] = useState(false);
+  /* Fix 2026-08-20 : le cœur de la Quick View était un useState local — il
+     retombait à vide à chaque ouverture et n'était jamais enregistré, alors
+     que la carte produit persiste bien ses favoris via useLiked. On partage
+     désormais le même stockage ET la même clé (cf. groupKeyOf). */
+  const [liked, setLiked] = useLiked(groupKeyOf(p));
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
   const [imgIndex, setImgIndex] = useState(0);
   const [sizeGuideOpen, setSizeGuideOpen] = useState(false);
@@ -119,9 +137,26 @@ function ProductModal({ product: p, onClose, clickPosition, allProducts, onProdu
   const [brandItems, setBrandItems] = useState<ProduitAwin[]>([]);
   const [paletteItems, setPaletteItems] = useState<ProduitAwin[]>([]);
 
-  /* Galerie d'images : largeImage + image + thumb si disponibles */
-  const images = [p.largeImage, p.image, p.thumb].filter(Boolean);
-  const currentImg = images[imgIndex] || p.largeImage || p.image;
+  /* Galerie d'images.
+     Fix 2026-08-20 : la liste était [largeImage, image, thumb] brute, ce qui
+     produisait deux défauts visibles :
+       1. /api/products renseigne `image` ET `largeImage` avec la MÊME URL dès
+          qu'un visuel local existe → la « galerie » affichait deux fois la même
+          photo, avec flèches ‹ › et pastilles pour naviguer entre deux clones ;
+       2. `thumb` est une vignette 70×70 hotlinkée chez le marchand (jamais
+          passée par le proxy) → affichée en grand elle était floue, et bloquée
+          en cross-domain chez Muji/Awin (image morte).
+     On proxifie tout et on déduplique : les flèches n'apparaissent donc que
+     s'il y a réellement plusieurs visuels distincts. */
+  const images = useMemo(
+    () => Array.from(new Set(
+      [p.largeImage, p.image, p.thumb]
+        .map((u) => getDisplayImageUrl(u))
+        .filter(Boolean),
+    )),
+    [p.largeImage, p.image, p.thumb],
+  );
+  const currentImg = images[imgIndex] || images[0];
 
   const matches = useMemo(() => getMatchingPalettes(p.hex), [p.hex]);
   const primaryPalette = matches[0]?.number || null;
@@ -598,24 +633,6 @@ export default function CategoryPage({ title, breadcrumb, slot, q, genre: initGe
 
   const category = useMemo(() => deriveCategory(slot, title), [slot, title]);
 
-  /* Fonction de tri des produits */
-  const sortProducts = (items: ProduitAwin[], sortBy: SortOption): ProduitAwin[] => {
-    const sorted = [...items];
-    switch (sortBy) {
-      case "price-low":
-        return sorted.sort((a, b) => a.prix - b.prix);
-      case "price-high":
-        return sorted.sort((a, b) => b.prix - a.prix);
-      case "newest":
-        // Simulation: tri par popularité comme proxy pour nouveaux
-        return sorted.sort((a, b) => (b.popularite || 0) - (a.popularite || 0));
-      case "popular":
-        return sorted.sort((a, b) => (b.popularite || 0) - (a.popularite || 0));
-      case "relevance":
-      default:
-        return sorted;
-    }
-  };
 
   /* État UNIQUE des 11 filtres. Seed SSR-safe (props), puis hydraté depuis
      l'URL (+ localStorage en fallback) au montage → pas de mismatch SSR. */
@@ -630,16 +647,31 @@ export default function CategoryPage({ title, breadcrumb, slot, q, genre: initGe
   const [clickPosition, setClickPosition] = useState<{ x: number; y: number } | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
-  const [cartCount, setCartCount] = useState(() => getCartCount());
-  const [sort, setSort] = useState<SortOption>(() => {
-    if (typeof window === "undefined") return "relevance";
+  /* Fix 2026-08-20 « hydratation » : ces deux états lisaient localStorage
+     PENDANT le render. Le serveur rendait un panier vide / un tri « Pertinence »
+     et le client une autre valeur → divergence d'hydratation React. On part
+     d'une valeur déterministe et on lit le stockage dans un effet. */
+  const [cartCount, setCartCount] = useState(0);
+  const [sort, setSort] = useState<SortOption>("relevance");
+
+  /* Préférence de tri restaurée après hydratation. */
+  useEffect(() => {
     try {
-      const stored = localStorage.getItem("wada-sort-pref");
-      return (stored as SortOption) || "relevance";
-    } catch {
-      return "relevance";
-    }
-  });
+      const stored = localStorage.getItem("wada-sort-pref") as SortOption | null;
+      if (stored && SORT_TO_SERVER[stored] !== undefined) setSort(stored);
+    } catch {}
+  }, []);
+
+  /* Fix 2026-08-20 « badge panier figé » : le compteur n'était rafraîchi qu'à
+     l'ouverture du panier. Un « Ajouter au panier » depuis une carte laissait
+     donc le badge à sa valeur précédente (souvent 0) jusqu'au prochain clic.
+     lib/cart émet un évènement `storage` à chaque écriture : on s'y abonne. */
+  useEffect(() => {
+    const sync = () => setCartCount(getCartCount());
+    sync();
+    window.addEventListener("storage", sync);
+    return () => window.removeEventListener("storage", sync);
+  }, []);
   const [, startTransition] = useTransition();
 
   /* ── Hydratation : URL > localStorage > seed props (au montage client) ── */
@@ -676,8 +708,13 @@ export default function CategoryPage({ title, breadcrumb, slot, q, genre: initGe
       const qs = filtersToParams(next).toString();
       window.history.replaceState(null, "", qs ? `${window.location.pathname}?${qs}` : window.location.pathname);
     } catch {}
-    // Toast feedback
-    const activeCount = Object.values(next).flat().length;
+    /* Fix 2026-08-20 : le compteur du toast faisait Object.values(next).flat()
+       — ce qui comptait aussi priceMin, priceMax, onSale et sort, quatre clés
+       TOUJOURS présentes. Résultat : « Filtres réinitialisés » ne s'affichait
+       jamais et un panneau vide annonçait « ✓ Filtres appliqués (4) ».
+       activeFilterCount() est le compteur de référence (déjà utilisé par la
+       sidebar et le badge mobile). */
+    const activeCount = activeFilterCount(next);
     if (activeCount === 0) {
       showToast("Filtres réinitialisés", { variant: "info", duration: 2000 });
     } else {
@@ -695,7 +732,11 @@ export default function CategoryPage({ title, breadcrumb, slot, q, genre: initGe
       fetch("/api/products/search", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ slot, category, filters, limit: PER_PAGE, offset: (page - 1) * PER_PAGE }),
+        body: JSON.stringify({
+          slot, category,
+          filters: { ...filters, sort: SORT_TO_SERVER[sort] },
+          limit: PER_PAGE, offset: (page - 1) * PER_PAGE,
+        }),
         signal: ctrl.signal,
       })
         .then((r) => {
@@ -712,7 +753,7 @@ export default function CategoryPage({ title, breadcrumb, slot, q, genre: initGe
     }, 250);
     return () => { clearTimeout(t); ctrl.abort(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hydrated, slot, category, filtersKey, page, PER_PAGE]);
+  }, [hydrated, slot, category, filtersKey, sort, page, PER_PAGE]);
 
   /* Nombre total de pages (le serveur /search renvoie déjà filtré + trié). */
   const totalPages = Math.max(1, Math.ceil(total / PER_PAGE));
@@ -896,6 +937,10 @@ export default function CategoryPage({ title, breadcrumb, slot, q, genre: initGe
               <span style={{ fontSize: 12, color: "#8a7a68", whiteSpace: "nowrap" }}>Trier par:</span>
               <SortDropdown value={sort} onChange={(newSort) => {
                 setSort(newSort);
+                /* Le tri s'applique à tout le catalogue filtré : rester en
+                   page 7 après un changement de tri afficherait une tranche
+                   arbitraire du nouveau classement. On revient page 1. */
+                setPage(1);
                 try {
                   localStorage.setItem("wada-sort-pref", newSort);
                 } catch {}
@@ -903,7 +948,6 @@ export default function CategoryPage({ title, breadcrumb, slot, q, genre: initGe
                   relevance: "Pertinence",
                   "price-low": "Prix: bas → haut",
                   "price-high": "Prix: haut → bas",
-                  newest: "Les plus nouveaux",
                   popular: "Les plus populaires",
                 };
                 showToast(`✓ Trié par ${sortLabels[newSort]}`, { variant: "success", duration: 2000 });
@@ -923,8 +967,14 @@ export default function CategoryPage({ title, breadcrumb, slot, q, genre: initGe
                   {initGenre === "femme" ? "👗 Tendance femmes" : initGenre === "homme" ? "👔 Tendance hommes" : "⭐ Plus vendus"}
                 </span>
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16 }}>
-                {sortProducts([...products].sort((a, b) => (b.popularite || 0) - (a.popularite || 0)), "relevance").slice(0, 4).map((p) => (
+              {/* Fix 2026-08-20 : cette grille était figée en repeat(4, 1fr),
+                  sans media query — contrairement à la grille produits
+                  (.wada-shop-grid). Sur un écran de téléphone, « À la une »
+                  écrasait donc 4 cartes complètes (image + sélecteur couleur +
+                  tailles + bouton panier) sur ~90 px de large chacune. On
+                  réutilise la même grille responsive que le reste de la page. */}
+              <div className="wada-shop-grid" style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 16 }}>
+                {[...products].sort((a, b) => (b.popularite ?? 0) - (a.popularite ?? 0)).slice(0, 4).map((p) => (
                   <GroupedProductCard key={p.id} g={groupProducts([p])[0]!} onClick={(e) => {
                     setClickPosition({ x: e.clientX, y: e.clientY });
                     setSelected(p);
@@ -950,7 +1000,7 @@ export default function CategoryPage({ title, breadcrumb, slot, q, genre: initGe
             </div>
           ) : (
             <div className="wada-shop-grid" style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 16 }}>
-              {groupProducts(sortProducts(products, sort)).map((g) => (
+              {groupProducts(products).map((g) => (
                 <GroupedProductCard key={g.key} g={g} onClick={(e) => {
                   setClickPosition({ x: e.clientX, y: e.clientY });
                   setSelected(g.primary);
