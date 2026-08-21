@@ -46,6 +46,7 @@ import ExternalLink from "@/components/ExternalLink";
 import Reveal from "@/components/Reveal";
 import NoteComposition from "@/components/NoteComposition";
 import LookComplet, { type ProduitLook } from "@/components/LookComplet";
+import ListePieces from "@/components/ListePieces";
 import ShopperLaTenue from "@/components/ShopperLaTenue";
 /* Brief « appli efficace » §6 (2026-05-29) : repère « Ensuite : … ». */
 import NextStepHint from "@/components/NextStepHint";
@@ -94,6 +95,15 @@ const PIECE_LABELS: Record<string, string> = {
 /* Repères affichés sous la palette : « Minimal · Casual chic · Regular ».
    Le vocabulaire interne (« quotidien », « sorties ») n'est pas celui qu'on
    montre à un client. */
+/* Libellé de saison affiché en pastille. Le profil stocke « Hiver » / « Été »
+   / « Mi-saison » ; on montre la période, plus parlante qu'un mot seul. */
+const SAISON_CHIP: Record<string, string> = {
+  "Hiver": "Automne / Hiver",
+  "Été": "Printemps / Été",
+  "Mi-saison": "Mi-saison",
+  "Toute saison": "Toute saison",
+};
+
 const OCCASION_LABEL: Record<string, string> = {
   quotidien: "Casual chic",
   bureau: "Bureau",
@@ -591,19 +601,6 @@ function MaTenueContent() {
     return out;
   }, [entry, prefs.style, prefs.fit, prefs.occasion_focus, prefs.gender, prefs.morpho]);
 
-  /* Produits résolus, indexés par slot — la vue « look complet » et la barre
-     d'achat lisent le MÊME préfetch que les fiches détaillées, pour qu'un
-     prix affiché en haut soit celui de la carte plus bas. Tant que le
-     préfetch n'a pas répondu, les vignettes montrent la teinte prévue. */
-  const produitsParSlot = useMemo<Partial<Record<SlotKey, ProduitLook | null>>>(() => {
-    const out: Partial<Record<SlotKey, ProduitLook | null>> = {};
-    if (!outfitPrefetch) return out;
-    for (const [slot, p] of Object.entries(outfitPrefetch)) {
-      if (p) out[slot as SlotKey] = p as ProduitLook;
-    }
-    return out;
-  }, [outfitPrefetch]);
-
   /* Note de composition sur 100 (barème brief 2026-08-21). Elle juge le PLAN
      de tenue — couleurs, proportions, styles, occasion, matières, saison,
      accessoire — donc avant même d'aller chercher les produits marchands.
@@ -635,6 +632,95 @@ function MaTenueContent() {
 
   /* Genre du client (priorité au choix explicite, fallback sur la palette). */
   const userGender = prefs.gender || (entry ? paletteGender(entry.composition) : null);
+
+  /* Remplacements manuels : slot → produit choisi par le client via ↻.
+     Ils PRIMENT sur le préfetch — c'est un choix explicite, il ne doit pas
+     être écrasé au prochain rendu. Vidés quand la palette change, sinon on
+     garderait une veste choisie pour une autre tenue. */
+  const [remplacements, setRemplacements] = useState<Partial<Record<SlotKey, PrefetchedProduct>>>({});
+  const [enRemplacement, setEnRemplacement] = useState<SlotKey | null>(null);
+  const [favorisPieces, setFavorisPieces] = useState<Set<string>>(new Set());
+
+  /* Produits déjà vus par slot — évite de retomber sur la même pièce au
+     deuxième clic sur ↻. Une ref, pas un state : la valeur n'a pas à
+     déclencher de rendu. */
+  const vusParSlotRef = useRef<Partial<Record<SlotKey, string[]>>>({});
+
+  useEffect(() => {
+    setRemplacements({});
+    vusParSlotRef.current = {};
+  }, [entry?.number]);
+
+  /* « Remplacer une pièce » — demande explicite du client : « et surtout, le
+     reste de la tenue ne change pas ». On refait donc UNE requête, pour CE
+     slot seulement, en excluant le produit courant et en changeant la graine.
+     Les mêmes paliers de relâchement que les cartes : sans eux, un slot
+     étroit (couleur rare) renvoyait vide et le ↻ semblait cassé. */
+  const remplacerPiece = useCallback(async (slot: SlotKey) => {
+    if (!entry || !registreOutfit) return;
+    const cible = registreOutfit.slots.find((sl) => sl.slot === slot);
+    if (!cible) return;
+    setEnRemplacement(slot);
+    try {
+      const base = new URLSearchParams({ slot, limit: "1", palette: entry.number });
+      base.set("color", cible.color.hex);
+      if (userGender) base.set("genre", userGender);
+      if (prefs.style) base.set("style", prefs.style);
+      /* Graine dérivée du nombre d'essais : deux clics donnent deux pièces
+         différentes, et un rechargement redonne la même — pas de hasard. */
+      const dejaVus = vusParSlotRef.current[slot] ?? [];
+      base.set("seed", `${entry.number}-${slot}-alt${dejaVus.length + 1}`);
+      if (dejaVus.length) base.set("excludeIds", dejaVus.join(","));
+
+      const tirer = (sp: URLSearchParams) =>
+        fetch(`/api/products?${sp}`)
+          .then((r) => (r.ok ? r.json() : null))
+          .then((d) => d?.products?.[0] || null)
+          .catch(() => null);
+
+      let p = await tirer(base);
+      if (!p) {
+        for (const drop of [["style"], ["style", "excludeIds"]]) {
+          const sp = new URLSearchParams(base);
+          for (const k of drop) sp.delete(k);
+          p = await tirer(sp);
+          if (p) break;
+        }
+      }
+      if (p?.id) {
+        vusParSlotRef.current[slot] = [...dejaVus, p.id].slice(-12);
+        setRemplacements((prev) => ({ ...prev, [slot]: p as PrefetchedProduct }));
+      }
+    } finally {
+      setEnRemplacement(null);
+    }
+  }, [entry, registreOutfit, userGender, prefs.style]);
+
+  const basculerFavori = useCallback((id: string) => {
+    setFavorisPieces((prev) => {
+      const suivant = new Set(prev);
+      if (suivant.has(id)) suivant.delete(id); else suivant.add(id);
+      return suivant;
+    });
+  }, []);
+
+  /* Produits résolus, indexés par slot — la vue « look complet » et la barre
+     d'achat lisent le MÊME préfetch que les fiches détaillées, pour qu'un
+     prix affiché en haut soit celui de la carte plus bas. Tant que le
+     préfetch n'a pas répondu, les vignettes montrent la teinte prévue. */
+  const produitsParSlot = useMemo<Partial<Record<SlotKey, ProduitLook | null>>>(() => {
+    const out: Partial<Record<SlotKey, ProduitLook | null>> = {};
+    for (const [slot, p] of Object.entries(outfitPrefetch ?? {})) {
+      if (p) out[slot as SlotKey] = p as ProduitLook;
+    }
+    /* Un remplacement manuel écrase le produit pré-résolu de son slot. */
+    for (const [slot, p] of Object.entries(remplacements)) {
+      if (p) out[slot as SlotKey] = p as ProduitLook;
+    }
+    return out;
+  }, [outfitPrefetch, remplacements]);
+
+
 
   /* PERF 2026-06-11 — déclenche le préfetch tenue (1 requête /api/outfit) dès
      que la composition est prête. On réplique EXACTEMENT les params que chaque
@@ -983,18 +1069,34 @@ function MaTenueContent() {
                 chic · Regular », juste sous la palette. Elle remplace le
                 paragraphe éditorial en tête de page, qui disait la même
                 chose en quatre lignes. */}
+            {/* Repères en pastilles (maquette 2026-08-22) plutôt qu'une ligne
+                de texte : c'est cliquable à l'œil, ça se lit en diagonale, et
+                la saison y trouve sa place — elle était collectée par le
+                questionnaire et n'apparaissait nulle part sur cette page. */}
             {registreOutfit && (
-              <p style={{
-                fontFamily: fontLabel, fontSize: 11, letterSpacing: ".12em",
-                textTransform: "uppercase", color: textSecondary,
-                margin: "14px 0 0",
+              <div style={{
+                display: "flex", justifyContent: "center", flexWrap: "wrap",
+                gap: 6, margin: "12px 0 0",
               }}>
                 {[
                   registreOutfit.registre,
                   OCCASION_LABEL[registreOutfit.occasion] ?? registreOutfit.occasion,
                   registreOutfit.slots.find((sl) => sl.slot === "haut")?.fit,
-                ].filter(Boolean).join(" · ")}
-              </p>
+                  profileSaison ? SAISON_CHIP[profileSaison] ?? profileSaison : null,
+                ].filter(Boolean).map((t) => (
+                  <span key={String(t)} style={{
+                    /* Serrées pour tenir sur UNE ligne en 393 px : à 12,5 px
+                       et 13 px de padding, la quatrième pastille passait à la
+                       ligne et cassait le rythme sous la palette. */
+                    padding: "5px 10px", borderRadius: 999,
+                    border: `1px solid ${border}`, background: "rgba(255,255,255,.5)",
+                    fontFamily: fontBody, fontSize: 11.5, color: seal,
+                    textTransform: "capitalize", whiteSpace: "nowrap",
+                  }}>
+                    {t}
+                  </span>
+                ))}
+              </div>
             )}
           </Reveal>
         </div>
@@ -1017,18 +1119,19 @@ function MaTenueContent() {
           {/* offset=0 : le décalage d'animation par défaut (24 px) creusait
               un vide sous la palette, alors que c'est justement l'espace
               qu'on cherche à récupérer pour remonter la tenue. */}
+          {/* Le titre « Votre tenue » vit maintenant DANS la carte, à côté du
+              WADA MATCH. L'afficher aussi au-dessus le répétait à l'écran. */}
           <Reveal offset={0}>
-            <p style={{
-              ...sectionLabel, color: mojo, fontWeight: 700,
-              letterSpacing: "0.3em", textAlign: "center", margin: "16px 0 12px",
-            }}>
-              Votre tenue
-            </p>
             <LookComplet
               outfit={registreOutfit}
               produits={produitsParSlot}
+              note={noteTenue}
               onVoirPiece={(slot) => {
                 document.getElementById(`piece-${slot}`)
+                  ?.scrollIntoView({ behavior: "smooth", block: "start" });
+              }}
+              onVoirLaTenue={() => {
+                document.getElementById("liste-pieces")
                   ?.scrollIntoView({ behavior: "smooth", block: "start" });
               }}
             />
@@ -1068,9 +1171,29 @@ function MaTenueContent() {
         </section>
       )}
 
+      {/* Liste compacte des pièces (maquette 2026-08-22) : une ligne par
+          pièce, avec ♡ et ↻. Les fiches détaillées restent plus bas pour qui
+          veut comparer les marchands. */}
+      {registreOutfit && (
+        <section className="wada-tenue-note" style={{ padding: "0 5% 14px" }} id="liste-pieces">
+          <Reveal offset={0}>
+            <ListePieces
+              produits={produitsParSlot}
+              couleurs={Object.fromEntries(
+                registreOutfit.slots.map((sl) => [sl.slot, sl.color.hex]),
+              )}
+              favoris={favorisPieces}
+              onFavori={basculerFavori}
+              onRemplacer={remplacerPiece}
+              enRemplacement={enRemplacement}
+            />
+          </Reveal>
+        </section>
+      )}
+
       {noteTenue && (
         <section className="wada-tenue-note" style={{ padding: "0 5% 24px" }}>
-          <Reveal>
+          <Reveal offset={0}>
             <NoteComposition note={noteTenue} />
           </Reveal>
         </section>
@@ -1099,6 +1222,11 @@ function MaTenueContent() {
           {/* En-tête de section — divider éditorial (filets + label) avec le
               badge de validation intégré dessous (design 2026-06-07). */}
           <div style={{ textAlign: "center", marginBottom: 26 }}>
+            {/* Renommé (maquette 2026-08-22) : « La tenue complète » faisait
+                doublon avec la carte « Votre tenue » en haut de page, qui
+                montre désormais la tenue ET son total. Ce qu'apportent ces
+                fiches, c'est le choix du marchand pour chaque pièce — le
+                titre le dit maintenant. */}
             <div style={{
               display: "flex", alignItems: "center", justifyContent: "center",
               gap: 16, maxWidth: 520, margin: "0 auto",
@@ -1108,7 +1236,7 @@ function MaTenueContent() {
                 ...sectionLabel, color: mojo, fontWeight: 700,
                 letterSpacing: "0.3em", whiteSpace: "nowrap",
               }}>
-                La tenue complète
+                Comparer les marchands
               </span>
               <span aria-hidden style={{ flex: 1, height: 1, background: border }} />
             </div>

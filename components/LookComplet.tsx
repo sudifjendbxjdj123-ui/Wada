@@ -1,30 +1,32 @@
 "use client";
 import { useMemo } from "react";
 import type { RegistreOutfit, SlotKey } from "@/lib/registreEngine";
-import { legendePalette, rolesCouleurs, libelleRole } from "@/lib/composer/rolesCouleurs";
+import type { NoteTenue } from "@/lib/composer/scoreTenue";
+import { rolesCouleurs } from "@/lib/composer/rolesCouleurs";
 import { formatProductPrice } from "@/lib/priceFormat";
 import {
-  ink, seal, border, cardBg, textSecondary,
-  fontHeading, fontBody, fontLabel, cardRadius,
+  ink, border, textSecondary, mojo,
+  fontHeading, fontBody, fontLabel,
 } from "@/lib/styles";
 
 /**
- * LookComplet — « Votre tenue », toutes les pièces visibles d'un coup.
+ * LookComplet — la carte « Votre tenue ».
  *
- * Retour client 2026-08-21 : « Ça ressemble encore davantage à une page de
- * résultat qu'à une page qui donne envie d'acheter la tenue. Le changement
- * principal : arrêter de présenter une succession de produits et commencer à
- * présenter un LOOK. » Et le symptôme précis : « Ta chemise occupe
- * pratiquement tout l'écran » — il fallait scroller avant de comprendre à
- * quoi ressemblait la tenue.
+ * Maquette client 2026-08-22. Elle règle en une carte ce que la page disait
+ * en trois sections empilées : ce que WADA propose (les pièces), ce que ça
+ * vaut (le match), et combien ça coûte (le CTA).
  *
- * D'où cette vue d'ensemble, placée AVANT les fiches produit : quatre ou cinq
- * vignettes côte à côte, et sous chacune le rôle qu'elle joue dans la
- * composition. Les fiches détaillées restent en dessous, inchangées.
+ * Deux choix repris de la maquette et qui changent le sens de la page :
  *
- * La légende palette → vêtements répond au second point : « l'utilisateur
- * comprend immédiatement que les couleurs Sanzō Wada ne sont pas juste une
- * décoration en haut de l'écran ».
+ *  - sous chaque vignette, on affiche le NOM DE LA TEINTE, pas le nom du
+ *    produit. « Sauge tendre », « Lait », « Mousse », « Chocolat ». Le nom
+ *    commercial est en dessous, dans la liste des pièces. Ici on lit la
+ *    palette portée — c'est la promesse de WADA, et elle devient vérifiable
+ *    d'un coup d'œil.
+ *
+ *  - les quatre critères passent en rangée d'icônes chiffrées plutôt qu'en
+ *    barres empilées. Même information, un quart de la hauteur, et ça tient
+ *    dans la carte au lieu de pousser le CTA hors de l'écran.
  */
 
 export type ProduitLook = {
@@ -46,22 +48,87 @@ function visuel(p: ProduitLook | null | undefined): string | null {
   return p.imageLocal || p.largeImage || p.image || null;
 }
 
+/* Icônes des quatre critères — tracées inline : quatre glyphes de 16 px ne
+   justifient pas une dépendance, et un emoji ne se colorise pas. */
+function Icone({ nom, taille = 16 }: { nom: string; taille?: number }) {
+  const commun = {
+    width: taille, height: taille, viewBox: "0 0 24 24", fill: "none",
+    stroke: "currentColor", strokeWidth: 1.6,
+    strokeLinecap: "round" as const, strokeLinejoin: "round" as const,
+    "aria-hidden": true,
+  };
+  switch (nom) {
+    case "couleurs":   // palette de peintre
+      return (
+        <svg {...commun}>
+          <path d="M12 3a9 9 0 1 0 0 18c.83 0 1.5-.67 1.5-1.5 0-.39-.15-.74-.39-1-.24-.27-.39-.62-.39-1 0-.83.67-1.5 1.5-1.5H16a5 5 0 0 0 5-5c0-4.42-4.03-8-9-8Z" />
+          <circle cx="7.5" cy="10.5" r="1" fill="currentColor" stroke="none" />
+          <circle cx="11" cy="7" r="1" fill="currentColor" stroke="none" />
+          <circle cx="15.5" cy="8.5" r="1" fill="currentColor" stroke="none" />
+        </svg>
+      );
+    case "proportions": // quatre carrés = équilibre des volumes
+      return (
+        <svg {...commun}>
+          <rect x="3" y="3" width="7" height="7" rx="1.5" />
+          <rect x="14" y="3" width="7" height="7" rx="1.5" />
+          <rect x="3" y="14" width="7" height="7" rx="1.5" />
+          <rect x="14" y="14" width="7" height="7" rx="1.5" />
+        </svg>
+      );
+    case "styles":      // t-shirt
+      return (
+        <svg {...commun}>
+          <path d="M8 3 4 5.5 5.5 10 8 9v11h8V9l2.5 1L20 5.5 16 3a4 4 0 0 1-8 0Z" />
+        </svg>
+      );
+    case "occasion":    // calendrier
+      return (
+        <svg {...commun}>
+          <rect x="3" y="5" width="18" height="16" rx="2.5" />
+          <path d="M3 10h18M8 3v4M16 3v4" />
+        </svg>
+      );
+    case "sac":
+      return (
+        <svg {...commun}>
+          <path d="M4 8h16l-1 12H5L4 8Z" />
+          <path d="M9 8V6a3 3 0 0 1 6 0v2" />
+        </svg>
+      );
+    case "fleche":
+      return (
+        <svg {...commun} strokeWidth={2}>
+          <path d="M5 12h14M13 6l6 6-6 6" />
+        </svg>
+      );
+    default:
+      return null;
+  }
+}
+
+const CRITERES = [
+  { cle: "couleurs", label: "Couleurs" },
+  { cle: "proportions", label: "Coupe" },
+  { cle: "styles", label: "Style" },
+  { cle: "occasion", label: "Occasion" },
+] as const;
+
 export default function LookComplet({
   outfit,
   produits,
+  note,
   onVoirPiece,
+  onVoirLaTenue,
 }: {
   outfit: RegistreOutfit;
-  /** Produits résolus, par slot. Une entrée manquante affiche la teinte seule. */
   produits: Partial<Record<SlotKey, ProduitLook | null>>;
-  /** Fait défiler jusqu'à la fiche détaillée de la pièce. */
+  note: NoteTenue | null;
   onVoirPiece?: (slot: SlotKey) => void;
+  onVoirLaTenue?: () => void;
 }) {
   const places = useMemo(() => rolesCouleurs(outfit), [outfit]);
-  const legende = useMemo(() => legendePalette(outfit), [outfit]);
 
-  /* Ordre de lecture d'une silhouette : ce qu'on voit en premier de loin
-     (la veste), puis le haut, le bas, et enfin ce qui ponctue. */
   const pieces = ORDRE
     .map((slot) => {
       const place = places.find((p) => p.slot === slot);
@@ -70,19 +137,51 @@ export default function LookComplet({
     })
     .filter((p): p is NonNullable<typeof p> => !!p);
 
+  const resolus = pieces.map((p) => p.produit).filter((p): p is ProduitLook => !!p);
+  const total = resolus.reduce((a, p) => a + (p.prix || 0), 0);
+  const devise = resolus[0]?.devise || "EUR";
+
   return (
-    <div style={{ maxWidth: 720, margin: "0 auto" }}>
-      {/* ── Les pièces, ensemble ───────────────────────────────────────── */}
+    <div style={{
+      maxWidth: 720, margin: "0 auto",
+      background: "#FFFDFA", border: `1px solid ${border}`,
+      borderRadius: 20, padding: "16px 16px 14px",
+      boxShadow: "0 10px 30px -22px rgba(30,30,30,.4)",
+    }}>
+      {/* ── Titre + match ─────────────────────────────────────────────── */}
+      <div style={{
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        gap: 10, marginBottom: 14,
+      }}>
+        <span style={{
+          fontFamily: fontLabel, fontSize: 11, letterSpacing: ".14em",
+          textTransform: "uppercase", color: ink, fontWeight: 600,
+        }}>
+          Votre tenue
+        </span>
+        {note && (
+          <span style={{
+            display: "inline-flex", alignItems: "baseline", gap: 7,
+            background: "rgba(30,30,30,.045)", borderRadius: 999,
+            padding: "5px 11px",
+          }}>
+            <span style={{
+              fontFamily: fontLabel, fontSize: 9.5, letterSpacing: ".1em",
+              textTransform: "uppercase", color: textSecondary,
+            }}>
+              Wada match
+            </span>
+            <span style={{ fontFamily: fontHeading, fontSize: 17, color: mojo, lineHeight: 1 }}>
+              {note.total}%
+            </span>
+          </span>
+        )}
+      </div>
+
+      {/* ── Les pièces ────────────────────────────────────────────────── */}
       <div style={{
         display: "grid",
-        /* 60 px de minimum, pas 96 : mesuré en 393 px de large, un minimum de
-           96 ne laissait passer que TROIS vignettes par ligne — la tenue se
-           lisait sur deux rangées, et la seconde tombait sous la ligne de
-           flottaison. Tout l'intérêt de cette vue est de comprendre la
-           proposition d'un seul coup d'œil, donc les cinq pièces doivent
-           tenir sur une rangée. À 60, la rangée compte 5 colonnes sur
-           téléphone et s'élargit sur grand écran. */
-        gridTemplateColumns: "repeat(auto-fit, minmax(60px, 1fr))",
+        gridTemplateColumns: `repeat(${Math.min(pieces.length, 5)}, minmax(0, 1fr))`,
         gap: 8,
       }}>
         {pieces.map(({ slot, place, type, produit }) => {
@@ -94,121 +193,129 @@ export default function LookComplet({
               onClick={onVoirPiece ? () => onVoirPiece(slot) : undefined}
               aria-label={`${place.libelleSlot} — ${produit?.nom || type}`}
               style={{
-                display: "block", textAlign: "left", padding: 0,
-                background: "none", border: "none",
+                display: "block", textAlign: "left", padding: 0, minWidth: 0,
+                background: "none", border: "none", font: "inherit", color: "inherit",
                 cursor: onVoirPiece ? "pointer" : "default",
-                font: "inherit", color: "inherit",
-                /* Sans ça, la colonne prend la largeur du mot le plus long :
-                   « ACCESSOIRE » débordait de sa vignette et poussait la
-                   cinquième pièce hors de la rangée. Les cellules de grille
-                   ont `min-width: auto` par défaut, pas 0. */
-                minWidth: 0,
               }}
             >
               <div style={{
-                aspectRatio: "3 / 4", borderRadius: 12, overflow: "hidden",
-                background: place.hex, border: `1px solid ${border}`,
+                aspectRatio: "1 / 1", borderRadius: 12, overflow: "hidden",
+                /* Fond neutre, pas la teinte : la maquette pose les produits
+                   sur du blanc cassé pour qu'on juge la couleur du VÊTEMENT,
+                   pas celle de la vignette. La teinte reste dite en toutes
+                   lettres sous la photo. */
+                background: img ? "#F6F3EE" : place.hex,
+                border: `1px solid ${border}`,
                 display: "flex", alignItems: "center", justifyContent: "center",
-                position: "relative",
               }}>
-                {/* Pastille de teinte incrustée sur l'image plutôt que posée
-                    devant le libellé : sur une colonne de 62 px, elle volait
-                    11 px et faisait tronquer « CHAUSSURES » en « CHAUSS… ». */}
-                <span aria-hidden style={{
-                  position: "absolute", left: 5, bottom: 5,
-                  width: 11, height: 11, borderRadius: "50%",
-                  background: place.hex,
-                  boxShadow: "0 0 0 1.5px rgba(255,255,255,.85)",
-                }} />
                 {img ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={img} alt={produit?.nom || type} loading="lazy" decoding="async"
-                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                  />
+                  <img src={img} alt={produit?.nom || type} loading="lazy" decoding="async"
+                    style={{ width: "100%", height: "100%", objectFit: "contain" }} />
                 ) : (
-                  /* Pas encore de produit : on montre au moins la teinte
-                     prévue, plutôt qu'un carré vide. */
-                  <span style={{
-                    fontFamily: fontLabel, fontSize: 10, letterSpacing: ".08em",
-                    color: "rgba(30,30,30,.45)", textTransform: "uppercase",
-                    padding: 6, textAlign: "center",
-                  }}>
-                    {place.nom}
-                  </span>
+                  /* Pas de photo (produit pas encore résolu) : on montre la
+                     teinte prévue en fond, et rien d'écrit — le libellé du
+                     slot est déjà juste en dessous, l'afficher ici donnait
+                     « VESTE / VESTE ». */
+                  <span aria-hidden />
                 )}
               </div>
-
-              {/* Sur une colonne de ~62 px, chaque ligne compte : la pastille
-                  de teinte rejoint le libellé de slot au lieu d'occuper la
-                  sienne, et le nom du produit est borné à deux lignes. Le
-                  détail complet reste sur la fiche, plus bas. */}
               <p style={{
-                fontFamily: fontLabel, fontSize: 9, letterSpacing: ".02em",
-                textTransform: "uppercase", color: textSecondary,
-                margin: "6px 0 2px", minWidth: 0,
+                /* 8 px sans interlettrage : « CHAUSSURES » et « ACCESSOIRE »
+                   sortaient tronqués sur des colonnes de ~62 px. */
+                fontFamily: fontLabel, fontSize: 8, letterSpacing: 0,
+                textTransform: "uppercase", color: ink, fontWeight: 600,
+                margin: "8px 0 1px", minWidth: 0,
                 overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
               }}>
                 {place.libelleSlot}
               </p>
+              {/* Le nom de la TEINTE, pas celui du produit — voir l'en-tête. */}
               <p style={{
-                fontFamily: fontBody, fontSize: 11, color: ink,
-                margin: 0, lineHeight: 1.3,
-                display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical",
-                overflow: "hidden",
-                /* Hauteur de deux lignes réservée même quand le nom en tient
-                   une seule : sinon les prix se décalaient d'une vignette à
-                   l'autre et la rangée avait l'air bancale. */
-                minHeight: "2.6em",
+                fontFamily: fontBody, fontSize: 11, color: textSecondary,
+                margin: 0, minWidth: 0,
+                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
               }}>
-                {produit?.nom || type}
+                {place.nom}
               </p>
-              {produit && (
-                <p style={{ fontFamily: fontLabel, fontSize: 11, color: ink, margin: "2px 0 0" }}>
-                  {formatProductPrice(produit.prix, produit.devise)}
-                </p>
-              )}
             </button>
           );
         })}
       </div>
 
-      {/* ── Palette → vêtements ────────────────────────────────────────── */}
-      <div style={{
-        marginTop: 18, background: cardBg, border: `1px solid ${border}`,
-        borderRadius: cardRadius, padding: "14px 16px",
-      }}>
-        <p style={{
-          fontFamily: fontLabel, fontSize: 10.5, letterSpacing: ".14em",
-          textTransform: "uppercase", color: textSecondary, margin: "0 0 10px",
+      {/* ── Les quatre critères ───────────────────────────────────────── */}
+      {note && (
+        <div style={{
+          display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+          gap: 6, marginTop: 14, paddingTop: 13, borderTop: `1px solid ${border}`,
         }}>
-          La palette dans la tenue
-        </p>
-        <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 8 }}>
-          {legende.map((l) => (
-            <li key={l.hex} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <span aria-hidden style={{
-                width: 18, height: 18, borderRadius: 5, flexShrink: 0,
-                background: l.hex, border: `1px solid ${border}`,
-              }} />
-              <span style={{ fontFamily: fontBody, fontSize: 13, color: ink, minWidth: 0 }}>
-                {l.nom}
-              </span>
-              <span aria-hidden style={{ color: textSecondary, fontSize: 12 }}>→</span>
-              <span style={{ fontFamily: fontBody, fontSize: 13, color: seal, flex: 1, minWidth: 0 }}>
-                {l.pieces.join(" · ")}
-              </span>
-              <span style={{
-                fontFamily: fontLabel, fontSize: 10, letterSpacing: ".06em",
-                textTransform: "uppercase", color: textSecondary,
-                whiteSpace: "nowrap",
-              }}>
-                {libelleRole(l.role)}
-              </span>
-            </li>
-          ))}
-        </ul>
-      </div>
+          {CRITERES.map(({ cle, label }) => {
+            const c = note.criteres.find((x) => x.cle === cle);
+            if (!c) return null;
+            const pc = Math.round((c.note / c.max) * 100);
+            return (
+              <div key={cle} style={{ display: "flex", gap: 7, alignItems: "center", minWidth: 0 }}>
+                <span style={{ color: textSecondary, flexShrink: 0, display: "flex" }}>
+                  <Icone nom={cle} />
+                </span>
+                <span style={{ minWidth: 0 }}>
+                  <span style={{
+                    display: "block", fontFamily: fontLabel, fontSize: 8.5,
+                    letterSpacing: ".06em", textTransform: "uppercase",
+                    color: textSecondary,
+                    overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                  }}>
+                    {label}
+                  </span>
+                  <span style={{ fontFamily: fontHeading, fontSize: 14, color: ink }}>
+                    {pc}
+                    <span style={{ fontSize: 9, color: textSecondary }}>%</span>
+                  </span>
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* ── Prix + CTA ────────────────────────────────────────────────── */}
+      {resolus.length > 0 && (
+        <div style={{
+          display: "flex", alignItems: "center", gap: 12, marginTop: 13,
+          background: "rgba(30,30,30,.035)", borderRadius: 14, padding: "10px 12px",
+        }}>
+          <span style={{ color: textSecondary, flexShrink: 0, display: "flex" }}>
+            <Icone nom="sac" taille={20} />
+          </span>
+          <span style={{ flex: 1, minWidth: 0 }}>
+            <span style={{
+              display: "block", fontFamily: fontBody, fontSize: 11.5, color: textSecondary,
+            }}>
+              {/* « dès » et non « = » : toutes les pièces ne sont pas
+                  toujours résolues, et le client peut en décocher. */}
+              Tenue complète dès
+            </span>
+            <span style={{ fontFamily: fontHeading, fontSize: 17, color: ink }}>
+              {formatProductPrice(total, devise)}
+            </span>
+          </span>
+          <button
+            type="button"
+            onClick={onVoirLaTenue}
+            style={{
+              display: "inline-flex", alignItems: "center", gap: 8,
+              padding: "11px 15px", borderRadius: 999, border: "none",
+              background: mojo, color: "#fff", cursor: "pointer",
+              fontFamily: fontLabel, fontSize: 11.5, fontWeight: 600,
+              letterSpacing: ".07em", textTransform: "uppercase",
+              whiteSpace: "nowrap",
+            }}
+          >
+            Voir la tenue
+            <Icone nom="fleche" taille={14} />
+          </button>
+        </div>
+      )}
     </div>
   );
 }

@@ -4411,3 +4411,9 @@ html.wada-home-immersive {
     padding-bottom: 24px !important;
   }
 }
+
+/* Rotation du bouton « Remplacer une pièce » pendant la requête. */
+@keyframes wada-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  @keyframes wada-spin { to { transform: none; } }
+}
