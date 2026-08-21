@@ -5,6 +5,7 @@
  * Quick View modal sur clic carte.
  */
 import { useState, useEffect, useCallback, useMemo, useTransition } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import BackButton from "@/components/BackButton";
 import { getDisplayImageUrl } from "@/lib/image-utils";
@@ -231,28 +232,65 @@ function ProductModal({ product: p, onClose, clickPosition, allProducts, onProdu
     return () => ac.abort();
   }, [p.id, p.hex, primaryPalette]);
 
-  /* Calcul position dynamique de la modal près du clic */
-  const getModalPosition = () => {
-    if (!clickPosition) return { top: "50%", left: "50%", transform: "translate(-50%, -50%)" };
+  /* Position de la fiche produit.
+     Fix 2026-08-21 « je clique sur un produit, je n'ai que le flou » : la
+     modale s'ouvrait à left:-567px, donc entièrement hors de l'écran — seul
+     le voile sombre restait visible. La faute aux deux garde-fous appliqués
+     l'un après l'autre sur une largeur fixe de 940px :
+        if (left < offset) left = offset;                  // -> 20
+        if (left + 940 > innerWidth - offset)
+            left = innerWidth - 940 - offset;              // -> 393-940-20 = -567
+     Le second écrasait le premier avec une valeur négative dès que l'écran
+     faisait moins de 940 + 2×20 px. La fiche était donc inatteignable sur
+     tout téléphone et la plupart des tablettes.
 
-    const modalWidth = 940;
-    const modalHeight = 600;
+     Deux corrections : sous 768px on ouvre une feuille plein écran (ce que la
+     règle @media de cette modale prévoyait déjà, mais que le `left` en style
+     inline contredisait), et au-dessus on borne proprement, en partant d'une
+     taille de modale plafonnée à celle du viewport. */
+  const getModalPosition = (): React.CSSProperties => {
+    if (typeof window === "undefined") {
+      return { top: "50%", left: "50%", transform: "translate(-50%, -50%)" };
+    }
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+
+    /* Téléphone : feuille plein écran, comme n'importe quelle fiche produit
+       d'une boutique mobile. */
+    /* Seuil aligné sur la règle @media (max-width: 768px) de cette modale —
+       à 768px pile, les deux doivent basculer ensemble. */
+    if (vw <= 768) {
+      return { top: 0, left: 0, right: 0, bottom: 0, transform: "none" };
+    }
+
+    if (!clickPosition) {
+      return { top: "50%", left: "50%", transform: "translate(-50%, -50%)" };
+    }
+
     const offset = 20;
-    let top = clickPosition.y - modalHeight / 2;
-    let left = clickPosition.x - modalWidth / 2;
-
-    /* Ajuste si la modal sort de l'écran */
-    if (left < offset) left = offset;
-    if (left + modalWidth > window.innerWidth - offset) left = window.innerWidth - modalWidth - offset;
-    if (top < offset) top = offset;
-    if (top + modalHeight > window.innerHeight - offset) top = window.innerHeight - modalHeight - offset;
+    const modalWidth = Math.min(940, vw - offset * 2);
+    const modalHeight = Math.min(600, vh - offset * 2);
+    /* clamp = borne haute ET basse en une fois : impossible de sortir de
+       l'écran quel que soit l'ordre des contraintes. */
+    const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(v, max));
+    const left = clamp(clickPosition.x - modalWidth / 2, offset, vw - modalWidth - offset);
+    const top = clamp(clickPosition.y - modalHeight / 2, offset, vh - modalHeight - offset);
 
     return { top: `${top}px`, left: `${left}px`, transform: "none" };
   };
 
   const modalPos = getModalPosition();
 
-  return (
+  /* Fix 2026-08-21 — la fiche produit était enfermée dans <main>.
+     globals.css applique `contain: layout style paint` à tous les <main> pour
+     la fluidité du scroll ; or `contain` fait de l'élément un bloc de
+     référence pour ses descendants en position:fixed. Le voile et la fiche,
+     tous deux `fixed`, se calaient donc sur la page (1505px de haut, démarrant
+     sous le bandeau) au lieu de couvrir l'écran — d'où le voile visible mais
+     décalé, et une fiche qui débordait vers le bas.
+     Le portail la rattache à <body> : elle échappe au `contain` sans qu'on
+     ait à toucher une règle de performance qui s'applique à tout le site. */
+  const contenu = (
     <div onClick={onClose} className="wada-qv-backdrop" style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,0.45)", backdropFilter: "blur(3px)", display: "block", overflow: "auto", padding: 24 }}>
       <div onClick={(e) => e.stopPropagation()} className="wada-qv-modal wada-modal-grid" style={{ background: "#fff", width: "100%", maxWidth: 940, maxHeight: "88vh", borderRadius: 24, overflow: "hidden", display: "grid", gridTemplateColumns: "1.1fr 1fr", position: "fixed", ...modalPos, pointerEvents: "auto", "@media (max-width: 768px)": { gridTemplateColumns: "1fr", maxWidth: "95vw", maxHeight: "95vh" } } as any}>
         <button onClick={onClose} style={{ position: "absolute", top: 14, right: 14, zIndex: 10, width: 34, height: 34, borderRadius: "50%", background: "rgba(255,255,255,0.92)", boxShadow: "0 1px 6px rgba(0,0,0,0.12)", border: "none", cursor: "pointer", fontSize: 16, fontWeight: 300, display: "flex", alignItems: "center", justifyContent: "center" }} aria-label="Fermer">✕</button>
@@ -594,6 +632,9 @@ function ProductModal({ product: p, onClose, clickPosition, allProducts, onProdu
       `}</style>
     </div>
   );
+
+  if (typeof document === "undefined") return null;
+  return createPortal(contenu, document.body);
 }
 
 /* ── Carte produit PREMIUM (brief Pages catégorie V2) ──
