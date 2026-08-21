@@ -8,7 +8,7 @@ import CategoryPage from "@/components/CategoryPage";
 
 interface Props {
   params: Promise<{ sub?: string[] }>;
-  searchParams: Promise<{ genre?: string; style?: string; page?: string }>;
+  searchParams: Promise<{ genre?: string; style?: string; page?: string; q?: string; onSale?: string }>;
 }
 
 /* Mapping slug → slot+query pour /api/products */
@@ -66,6 +66,7 @@ export default async function VetementsPage({ params, searchParams }: Props) {
 
   return (
     <CategoryPage
+      onSale={sp.onSale === "1"}
       title={subSlug ? subSlug.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()) : "Vêtements"}
       breadcrumb={[
         { label: "Accueil", href: "/" },
@@ -73,7 +74,14 @@ export default async function VetementsPage({ params, searchParams }: Props) {
         ...(subSlug ? [{ label: subSlug.replace(/-/g, " "), href: `/vetements/${subSlug}` }] : []),
       ]}
       slot={mapping?.slot ?? "haut"}
-      q={mapping?.q}
+      /* Deux sources de recherche, combinées : le mot-clé de la
+         sous-catégorie (/vetements/chemises → « chemise ») et celui de l'URL
+         (les tuiles « Tendances maintenant » de /boutique). matchTexte exige
+         TOUS les mots, donc les combiner intersecte au lieu d'élargir :
+         /vetements/chemises?q=lin rend bien les chemises en lin.
+         À noter : `q` était déjà passé ici, mais CategoryPage ne le lisait
+         nulle part — les sous-catégories ne filtraient donc pas non plus. */
+      q={[mapping?.q, sp.q].filter(Boolean).join(" ") || undefined}
       genre={sp.genre}
       style={sp.style}
       page={parseInt(sp.page ?? "1", 10)}

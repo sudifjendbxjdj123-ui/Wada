@@ -36,6 +36,11 @@ export interface CategoryFilters {
   seasons: string[];    // « ete » | « mi-saison » | « hiver »
   materials: string[];
   onSale: boolean;
+  /** Recherche libre (nom, description, marque). Alimente les tuiles
+      « Tendances maintenant » de /boutique, qui pointaient jusqu'ici sur
+      une liste NON filtrée : le paramètre `q` existait dans les props de
+      CategoryPage mais n'était utilisé nulle part. */
+  q: string;
   sort: string;         // "" | "prix-asc" | "prix-desc" | "nouveau"
 }
 
@@ -46,7 +51,7 @@ export function getDefaultFilters(): CategoryFilters {
   return {
     palettes: [], types: [], genres: [], brands: [], colors: [], sizes: [],
     priceMin: PRICE_MIN, priceMax: PRICE_MAX,
-    styles: [], seasons: [], materials: [], onSale: false, sort: "",
+    styles: [], seasons: [], materials: [], onSale: false, q: "", sort: "",
   };
 }
 
@@ -292,8 +297,23 @@ export function matchStyle(p: ProduitAwin, styles: string[]): boolean {
 
 export function matchSale(p: ProduitAwin, onSale: boolean): boolean {
   if (!onSale) return true;
-  /* Pas de champ solde dans le flux → best-effort par mots-clés. */
+  /* Le flux Awin fournit un prix de référence (`rrp_price` → `prixOriginal`)
+     que le parseur ne lisait pas : ce filtre en était réduit à chercher le mot
+     « solde » dans le texte du produit — un pis-aller qui ratait toutes les
+     vraies remises et retenait des produits nommés « outlet » à plein tarif.
+     On regarde maintenant le prix d'abord ; les mots-clés restent en secours
+     pour les marchands qui ne renseignent pas le champ. */
+  if (typeof p.prixOriginal === "number" && p.prixOriginal > p.prix) return true;
   return /solde|promo|outlet|\-\d{2}\s?%|destockage|déstockage/i.test(haystack(p));
+}
+
+/** Recherche libre sur le nom, la description et la marque. Tous les mots
+    doivent être présents — « pull laine » ne doit pas rendre tous les pulls. */
+export function matchTexte(p: ProduitAwin, q: string): boolean {
+  const requete = q.trim().toLowerCase();
+  if (!requete) return true;
+  const foin = haystack(p);
+  return requete.split(/\s+/).every((mot) => foin.includes(mot));
 }
 
 /* ──────────────────────────────────────────────────────────────────────
@@ -329,6 +349,7 @@ export function applyCategoryFilters(
     if (!matchSeason(p, filters.seasons)) return false;
     if (!matchStyle(p, filters.styles)) return false;
     if (!matchSale(p, filters.onSale)) return false;
+    if (!matchTexte(p, filters.q)) return false;
     if (selectedPalettes.length && !selectedPalettes.some((e) => productMatchesPalette(p, e))) return false;
     return true;
   });
@@ -398,6 +419,7 @@ export function filtersToParams(f: CategoryFilters): URLSearchParams {
   if (f.priceMin > PRICE_MIN) p.set("priceMin", String(f.priceMin));
   if (f.priceMax < PRICE_MAX) p.set("priceMax", String(f.priceMax));
   if (f.onSale) p.set("onSale", "1");
+  if (f.q) p.set("q", f.q);
   if (f.sort) p.set("sort", f.sort);
   return p;
 }
@@ -410,7 +432,8 @@ export function paramsToFilters(sp: URLSearchParams): CategoryFilters {
     brands: arr("brands"), colors: arr("colors"), sizes: arr("sizes"),
     priceMin: num("priceMin", PRICE_MIN), priceMax: num("priceMax", PRICE_MAX),
     styles: arr("styles"), seasons: arr("seasons"), materials: arr("materials"),
-    onSale: sp.get("onSale") === "1", sort: sp.get("sort") || "",
+    onSale: sp.get("onSale") === "1", q: sp.get("q") || "",
+    sort: sp.get("sort") || "",
   };
 }
 
@@ -419,7 +442,7 @@ export function activeFilterCount(f: CategoryFilters): number {
   return (
     f.palettes.length + f.types.length + f.genres.length + f.brands.length +
     f.colors.length + f.sizes.length + f.styles.length + f.seasons.length +
-    f.materials.length + (f.onSale ? 1 : 0) +
+    f.materials.length + (f.onSale ? 1 : 0) + (f.q ? 1 : 0) +
     (f.priceMin > PRICE_MIN || f.priceMax < PRICE_MAX ? 1 : 0)
   );
 }
