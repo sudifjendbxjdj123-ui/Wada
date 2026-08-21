@@ -4372,3 +4372,42 @@ html.wada-home-immersive {
   overscroll-behavior: none;
   height: 100%;
 }
+
+/* ══════════════════════════════════════════════════════════════════════
+   /ma-tenue — sections qui contrôlent leur propre rythme vertical
+   ══════════════════════════════════════════════════════════════════════
+   Trouvé en mesurant la page (2026-08-21) : une section à qui on écrit
+   `padding: "28px 5% 0"` en style inline sortait à 64 px en haut et 48 en
+   bas. La cause est la règle mobile générique plus haut dans ce fichier :
+
+       main > section        { padding-top: 48px !important; … }
+       main > section:first-of-type { padding-top: 64px !important; }
+
+   Un `!important` bat un style inline. Aucune page ne peut donc ajuster son
+   rythme vertical sur mobile — le style inline est simplement ignoré.
+
+   On ne touche pas à la règle générique : elle tient la mise en page de tout
+   le site. On ouvre juste une porte, pour les sections qui en demandent une.
+   `main > section.classe` est plus spécifique que `main > section`, et ce
+   bloc est placé APRÈS `:first-of-type` (spécificité égale) pour le battre.
+
+   Motif : le client signalait qu'il devait scroller avant de voir sa tenue.
+   Mesuré en 393×852, la tenue commençait à 615 px du haut. */
+@media (max-width: 900px) {
+  main > section.wada-tenue-tete {
+    padding-top: 24px !important;
+    padding-bottom: 0 !important;
+  }
+  main > section.wada-tenue-look {
+    padding-top: 0 !important;
+    padding-bottom: 16px !important;
+  }
+  main > section.wada-tenue-da {
+    padding-top: 0 !important;
+    padding-bottom: 20px !important;
+  }
+  main > section.wada-tenue-note {
+    padding-top: 0 !important;
+    padding-bottom: 24px !important;
+  }
+}

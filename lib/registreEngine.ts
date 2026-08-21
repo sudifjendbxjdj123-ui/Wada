@@ -438,29 +438,50 @@ function sansAccents(v: string): string {
   return v.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 }
 
+/** Bornes de mot autour d'un terme, sur du texte déjà normalisé.
+    Sans elles, la couleur « Os » matcherait « mocassins » et « Lin »
+    matcherait « linge ». */
+function motPresent(terme: string, texte: string): boolean {
+  if (!terme) return false;
+  const echappe = terme.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`(^|[^a-z0-9])${echappe}([^a-z0-9]|$)`).test(texte);
+}
+
 /** Couleurs placées par l'auteur de la palette, slot par slot. Vide si la
     composition ne nomme aucune couleur reconnaissable. */
 function couleursDeLaComposition(
   entry: DictionaryEntry
 ): Partial<Record<SlotKey, { hex: string; name: string }>> {
   const out: Partial<Record<SlotKey, { hex: string; name: string }>> = {};
+  const noms = entry.colors.map((c) => sansAccents(c.name || ""));
+
   for (const piece of entry.composition ?? []) {
     const slot = PIECE_VERS_SLOT[piece.piece];
     /* Premier gagnant : « Top » prime sur « Shirt » quand les deux existent. */
     if (!slot || out[slot]) continue;
     const texte = sansAccents(piece.item || "");
     if (!texte) continue;
-    const trouvee = entry.colors.find((c) => {
-      const nom = sansAccents(c.name || "");
-      if (!nom) return false;
-      /* Bornes de mot : sans elles, la couleur « Os » matcherait
-         « mocassins » et « Lin » matcherait « lin/ge ». */
-      const motif = new RegExp(
-        `(^|[^a-z0-9])${nom.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}([^a-z0-9]|$)`
-      );
-      return motif.test(texte);
+
+    /* 1. Nom complet — le cas franc : « gris givré » dans « Pull gris givré ». */
+    const exact = noms.findIndex((n) => n && motPresent(n, texte));
+    if (exact >= 0) { out[slot] = entry.colors[exact]; continue; }
+
+    /* 2. Premier mot du nom. Les palettes nomment souvent leurs teintes en
+       deux mots (« Sauge tendre », « Ardoise profonde », « Indigo profond »)
+       mais les compositions n'en citent qu'un : « Pantalon ample sauge ».
+       Exiger le nom entier faisait manquer 44 placements — dont la palette
+       002 « Rosée du matin », où le pantalon sauge tombait sur la teinte
+       mousse, la même que le cardigan.
+       Deux garde-fous : au moins 4 lettres (« Os », « Or » matcheraient
+       n'importe quoi) et une seule couleur candidate — si deux teintes de
+       la palette commencent par le même mot, on ne devine pas. */
+    const candidats: number[] = [];
+    noms.forEach((n, i) => {
+      const premier = n.split(/\s+/)[0];
+      if (premier && premier.length >= 4 && motPresent(premier, texte)) candidats.push(i);
     });
-    if (trouvee) out[slot] = trouvee;
+    const uniques = [...new Set(candidats)];
+    if (uniques.length === 1) out[slot] = entry.colors[uniques[0]];
   }
   return out;
 }

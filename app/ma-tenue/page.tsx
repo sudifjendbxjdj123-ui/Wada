@@ -31,7 +31,7 @@ import {
 } from "@/lib/fashionPromptEngine";
 import {
   composeOutfitFromProfile, validateOutfit,
-  type RegistreOutfit, type RegistreSlot,
+  type RegistreOutfit, type RegistreSlot, type SlotKey,
 } from "@/lib/registreEngine";
 import { scoreTenue } from "@/lib/composer/scoreTenue";
 import type { SaisonTendance } from "@/lib/tendances2026";
@@ -45,6 +45,8 @@ import {
 import ExternalLink from "@/components/ExternalLink";
 import Reveal from "@/components/Reveal";
 import NoteComposition from "@/components/NoteComposition";
+import LookComplet, { type ProduitLook } from "@/components/LookComplet";
+import ShopperLaTenue from "@/components/ShopperLaTenue";
 /* Brief « appli efficace » §6 (2026-05-29) : repère « Ensuite : … ». */
 import NextStepHint from "@/components/NextStepHint";
 
@@ -87,6 +89,16 @@ const PIECE_LABELS: Record<string, string> = {
   // Nouvelles clés registreEngine (refonte 2026-05-22) — slots FR lowercase
   haut: "Haut", bas: "Bas", veste: "Veste",
   chaussures: "Chaussures", accent: "Accent",
+};
+
+/* Repères affichés sous la palette : « Minimal · Casual chic · Regular ».
+   Le vocabulaire interne (« quotidien », « sorties ») n'est pas celui qu'on
+   montre à un client. */
+const OCCASION_LABEL: Record<string, string> = {
+  quotidien: "Casual chic",
+  bureau: "Bureau",
+  sorties: "Sortie",
+  voyage: "Voyage",
 };
 
 /* Map occasion WADA → saison/contexte UserIntent.
@@ -579,6 +591,19 @@ function MaTenueContent() {
     return out;
   }, [entry, prefs.style, prefs.fit, prefs.occasion_focus, prefs.gender, prefs.morpho]);
 
+  /* Produits résolus, indexés par slot — la vue « look complet » et la barre
+     d'achat lisent le MÊME préfetch que les fiches détaillées, pour qu'un
+     prix affiché en haut soit celui de la carte plus bas. Tant que le
+     préfetch n'a pas répondu, les vignettes montrent la teinte prévue. */
+  const produitsParSlot = useMemo<Partial<Record<SlotKey, ProduitLook | null>>>(() => {
+    const out: Partial<Record<SlotKey, ProduitLook | null>> = {};
+    if (!outfitPrefetch) return out;
+    for (const [slot, p] of Object.entries(outfitPrefetch)) {
+      if (p) out[slot as SlotKey] = p as ProduitLook;
+    }
+    return out;
+  }, [outfitPrefetch]);
+
   /* Note de composition sur 100 (barème brief 2026-08-21). Elle juge le PLAN
      de tenue — couleurs, proportions, styles, occasion, matières, saison,
      accessoire — donc avant même d'aller chercher les produits marchands.
@@ -906,15 +931,20 @@ function MaTenueContent() {
       {/* ═══════════════════════════════════════════════════════════════
           HEADER — annonce de la tenue choisie + récap profil
           ═══════════════════════════════════════════════════════════════ */}
-      <section style={{ padding: "48px 5% 24px" }}>
+      {/* Compacté (retour client 2026-08-21) : « le texte prend beaucoup de
+          place et repousse les vêtements très bas. Sur mobile, l'utilisateur
+          doit scroller avant même de comprendre à quoi ressemble la tenue. »
+          Le kicker et les marges passent de 48/18/22 px à 28/10/14, et les
+          swatches de 84×50 à 60×38 — la tenue remonte d'environ 120 px. */}
+      <section className="wada-tenue-tete" style={{ padding: "28px 5% 0" }}>
         <div style={{ maxWidth: 880, margin: "0 auto", textAlign: "center" }}>
           <Reveal>
-            <p style={{ ...sectionLabel, color: mojo, fontWeight: 700, letterSpacing: "0.4em", marginBottom: 18 }}>
+            <p style={{ ...sectionLabel, color: mojo, fontWeight: 700, letterSpacing: "0.4em", marginBottom: 10 }}>
               Votre tenue, sélectionnée pour vous
             </p>
             <h1 style={{
               fontFamily: fontHeading, fontStyle: "italic", fontWeight: 500,
-              fontSize: "clamp(36px, 6vw, 60px)", margin: "0 0 6px",
+              fontSize: "clamp(30px, 5.4vw, 52px)", margin: "0 0 6px",
               letterSpacing: "-0.02em", color: ink, lineHeight: 1.05,
             }}>
               {entry.name}
@@ -926,20 +956,20 @@ function MaTenueContent() {
                 NOMMÉS, type carte nuancier de coloriste. */}
             <div style={{
               display: "flex", justifyContent: "center", flexWrap: "wrap",
-              gap: 12, marginTop: 22,
+              gap: 10, marginTop: 14,
             }}>
               {entry.colors.slice(0, 5).map((c, i) => (
                 <div key={`${c.hex}-${i}`} style={{
                   display: "flex", flexDirection: "column",
-                  alignItems: "center", gap: 8,
+                  alignItems: "center", gap: 6,
                 }}>
                   <span aria-hidden style={{
-                    width: 84, height: 50, borderRadius: 12,
+                    width: 60, height: 38, borderRadius: 10,
                     background: c.hex,
-                    boxShadow: "inset 0 0 0 1px rgba(30,30,30,.08), 0 8px 20px -12px rgba(30,30,30,.5)",
+                    boxShadow: "inset 0 0 0 1px rgba(30,30,30,.08), 0 6px 16px -12px rgba(30,30,30,.5)",
                   }} />
                   <span style={{
-                    fontFamily: fontLabel, fontSize: 10,
+                    fontFamily: fontLabel, fontSize: 9.5,
                     letterSpacing: "0.12em", textTransform: "uppercase",
                     color: textSecondary, fontWeight: 600,
                   }}>
@@ -948,6 +978,24 @@ function MaTenueContent() {
                 </div>
               ))}
             </div>
+
+            {/* Ligne de repères demandée par le client : « Minimal · Casual
+                chic · Regular », juste sous la palette. Elle remplace le
+                paragraphe éditorial en tête de page, qui disait la même
+                chose en quatre lignes. */}
+            {registreOutfit && (
+              <p style={{
+                fontFamily: fontLabel, fontSize: 11, letterSpacing: ".12em",
+                textTransform: "uppercase", color: textSecondary,
+                margin: "14px 0 0",
+              }}>
+                {[
+                  registreOutfit.registre,
+                  OCCASION_LABEL[registreOutfit.occasion] ?? registreOutfit.occasion,
+                  registreOutfit.slots.find((sl) => sl.slot === "haut")?.fit,
+                ].filter(Boolean).join(" · ")}
+              </p>
+            )}
           </Reveal>
         </div>
       </section>
@@ -958,6 +1006,36 @@ function MaTenueContent() {
           montre concrètement la tenue construite, pas juste une grille de
           photos détourées.
           ═══════════════════════════════════════════════════════════════ */}
+      {/* ═══════════════════════════════════════════════════════════════
+          NOTE DE COMPOSITION — brief client 2026-08-21.
+          Placée après la phrase de direction artistique et AVANT les pièces :
+          le client lit d'abord l'intention, puis ce qu'elle vaut, puis le
+          détail des pièces.
+          ═══════════════════════════════════════════════════════════════ */}
+      {registreOutfit && (
+        <section className="wada-tenue-look" style={{ padding: "0 5% 20px" }} id="votre-tenue">
+          {/* offset=0 : le décalage d'animation par défaut (24 px) creusait
+              un vide sous la palette, alors que c'est justement l'espace
+              qu'on cherche à récupérer pour remonter la tenue. */}
+          <Reveal offset={0}>
+            <p style={{
+              ...sectionLabel, color: mojo, fontWeight: 700,
+              letterSpacing: "0.3em", textAlign: "center", margin: "16px 0 12px",
+            }}>
+              Votre tenue
+            </p>
+            <LookComplet
+              outfit={registreOutfit}
+              produits={produitsParSlot}
+              onVoirPiece={(slot) => {
+                document.getElementById(`piece-${slot}`)
+                  ?.scrollIntoView({ behavior: "smooth", block: "start" });
+              }}
+            />
+          </Reveal>
+        </section>
+      )}
+
       {/* ════════════════════════════════════════════════════════════════
           DIRECTION ARTISTIQUE — brief 2026-05-28 (retrait flat-lay IA) :
           plus de visuel généré en haut. À la place, fine bande de pastilles
@@ -966,7 +1044,7 @@ function MaTenueContent() {
           juste en dessous, agrandies, sur 2 colonnes.
           ════════════════════════════════════════════════════════════════ */}
       {fashionOutput && (
-        <section style={{ padding: "8px 5% 24px" }}>
+        <section className="wada-tenue-da" style={{ padding: "0 5% 18px" }}>
           <div style={{ maxWidth: 720, margin: "0 auto" }}>
             <Reveal>
               {/* Pastilles rondes flottantes retirées (design 2026-06-07) :
@@ -975,8 +1053,8 @@ function MaTenueContent() {
                   éditoriale se suffit comme chapô sous le nuancier. */}
               <div style={{ textAlign: "center", padding: "0 12px" }}>
                 <p style={{
-                  fontFamily: fontBody, fontStyle: "italic", fontSize: 18,
-                  color: seal, lineHeight: 1.6, margin: "0 auto",
+                  fontFamily: fontBody, fontStyle: "italic", fontSize: 16,
+                  color: seal, lineHeight: 1.55, margin: "0 auto",
                   maxWidth: "44ch", letterSpacing: 0,
                 }}>
                   {registreOutfit?.description || fashionOutput.description}
@@ -990,14 +1068,8 @@ function MaTenueContent() {
         </section>
       )}
 
-      {/* ═══════════════════════════════════════════════════════════════
-          NOTE DE COMPOSITION — brief client 2026-08-21.
-          Placée après la phrase de direction artistique et AVANT les pièces :
-          le client lit d'abord l'intention, puis ce qu'elle vaut, puis le
-          détail des pièces.
-          ═══════════════════════════════════════════════════════════════ */}
       {noteTenue && (
-        <section style={{ padding: "0 5% 24px" }}>
+        <section className="wada-tenue-note" style={{ padding: "0 5% 24px" }}>
           <Reveal>
             <NoteComposition note={noteTenue} />
           </Reveal>
@@ -1041,25 +1113,11 @@ function MaTenueContent() {
               <span aria-hidden style={{ flex: 1, height: 1, background: border }} />
             </div>
 
-            {/* Badge « ✓ Validée par le styliste WADA » quand cohérent. */}
-            {validation.state === "coherent" && (
-              <div style={{
-                display: "inline-flex", alignItems: "center", gap: 6,
-                padding: "5px 12px", marginTop: 14,
-                background: "rgba(168, 178, 154, 0.18)",
-                border: "1px solid rgba(168, 178, 154, 0.4)",
-                borderRadius: 999,
-                fontFamily: "'Inter', sans-serif",
-                fontSize: 11, color: "#5a6849",
-                fontWeight: 600, letterSpacing: "0.04em",
-              }}>
-                <span style={{
-                  width: 8, height: 8, borderRadius: "50%",
-                  background: "#A8B29A",
-                }} />
-                Tenue validée par le styliste WADA
-              </div>
-            )}
+            {/* Le badge « ✓ Tenue validée par le styliste WADA » a été retiré
+                ici (retour client 2026-08-21 : « ça sonne légèrement comme une
+                IA qui s'auto-certifie »). Il est remplacé plus haut dans la
+                page par le bloc « Compatibilité WADA », qui donne le même
+                message en chiffres détaillés et l'explique en français. */}
           </div>
 
           {/* Scanner Phase 3 (2026-05-31) — Carte « Ta pièce » :
@@ -1345,7 +1403,11 @@ function MaTenueContent() {
             return (
               <div
                 key={piece.item}
-                style={{ gridColumn: featured ? "1 / -1" : undefined }}
+                /* Cible du clic depuis la vignette « Votre tenue » : la
+                   vignette fait défiler jusqu'à la fiche détaillée de sa
+                   pièce plutôt que d'ouvrir une modale de plus. */
+                id={`piece-${piece.piece}`}
+                style={{ gridColumn: featured ? "1 / -1" : undefined, scrollMarginTop: 16 }}
               >
                 <PieceCard
                   piece={piece.piece}
@@ -1674,6 +1736,11 @@ function MaTenueContent() {
           `}</style>
         </div>
       </section>
+
+      {/* Barre d'achat permanente (retour client 2026-08-21 : « c'est
+          probablement ce qui manque le plus commercialement »). Rendue en
+          portail sur document.body — voir le commentaire du composant. */}
+      <ShopperLaTenue produits={produitsParSlot} />
 
       {/* ═══════════════════════════════════════════════════════════════
           COMPLÉTEZ VOTRE LOOK — accessoires compatibles palette

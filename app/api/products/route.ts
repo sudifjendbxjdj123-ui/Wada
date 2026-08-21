@@ -866,17 +866,26 @@ export async function GET(req: Request) {
     ? hexToLab(colorHex.trim())[0]
     : null;
 
+  /* Garde luminance, extraite pour être réutilisable : elle vaut pour
+     n'importe quelle consigne de couleur, pas seulement ?color=. */
+  function gardeLuminance(cibleHex: string, produitHex: string): boolean {
+    let cibleL: number, produitL: number;
+    try {
+      [cibleL] = hexToLab(cibleHex.trim());
+      [produitL] = hexToLab(produitHex);
+    } catch { return true; }   // hex illisible : on ne bloque pas
+    /* Consigne sombre (noir / anthracite / marine profond) refuse clair. */
+    if (cibleL < 28 && produitL > 62) return false;
+    /* Consigne claire (blanc / crème / écru) refuse sombre. */
+    if (cibleL > 75 && produitL < 35) return false;
+    return true;
+  }
+
   function passesColorGuard(p: ProduitAwin): boolean {
     if (!isValidHex || !colorHex) return true; // pas de consigne couleur précise
     const dE = deltaEHex(p.hex, colorHex);
     if (dE > MAX_DELTA_E) return false;
-    if (targetL !== null) {
-      const [productL] = hexToLab(p.hex);
-      /* Consigne sombre (noir / anthracite / marine profond) refuse clair. */
-      if (targetL < 28 && productL > 62) return false;
-      /* Consigne claire (blanc / crème / écru) refuse sombre. */
-      if (targetL > 75 && productL < 35) return false;
-    }
+    if (targetL !== null) return gardeLuminance(colorHex, p.hex);
     return true;
   }
 
@@ -909,7 +918,25 @@ export async function GET(req: Request) {
       const relaxedSlot = colorValid.filter(
         (p) => deltaEHex(p.hex, slotTargetColor) < SLOT_COLOR_THRESHOLD_RELAXED,
       );
-      filteredForOutput = relaxedSlot.length > 0 ? relaxedSlot : colorValid;
+      /* Dernier repli. Il rendait TOUT le pool quand aucun produit n'était à
+         ΔE 50 de la cible — sans plafond ni garde de clarté. Signalé en usage
+         réel : palette « Rosée du matin » (lait · sauge · mousse), consigne
+         du haut #F0EDE5, et une chemise NOIRE renvoyée. Le client voyait
+         trois teintes claires annoncées puis du noir, sans explication.
+
+         La garde de clarté qui existait déjà ne s'appliquait qu'à ?color= ;
+         ici c'est slotTargetColor qui porte la consigne, et elle passait au
+         travers. On applique donc la même règle : une consigne claire ne
+         renvoie jamais une pièce sombre, et inversement.
+
+         On reste fail-open : si la garde vide le pool, on préfère encore une
+         pièce mal assortie à un slot vide — mais on a d'abord essayé. */
+      if (relaxedSlot.length > 0) {
+        filteredForOutput = relaxedSlot;
+      } else {
+        const clarteOk = colorValid.filter((p) => gardeLuminance(slotTargetColor, p.hex));
+        filteredForOutput = clarteOk.length > 0 ? clarteOk : colorValid;
+      }
     }
   } else {
     filteredForOutput = colorValid.length > 0 ? colorValid : filtered;
