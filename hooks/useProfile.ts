@@ -37,6 +37,14 @@ export type Profession = "Créatif" | "Corporate" | "Freelance" | "Étudiant" | 
 /* Niveau de formalité — slider 0 (très casual) → 4 (très habillé) */
 export type FormaliteLevel = 0 | 1 | 2 | 3 | 4;
 
+/* Tailles — collectées par le questionnaire de /palette/[number]
+   (spec 2026-08-21). Optionnelles comme tous les champs enrichis. */
+export type TailleHaut = "XS" | "S" | "M" | "L" | "XL" | "XXL";
+export const TAILLES_HAUT: TailleHaut[] = ["XS", "S", "M", "L", "XL", "XXL"];
+/* Bas : 34 → 54, pas de 2 (tailles FR). Chaussures : 35 → 48. */
+export const TAILLES_BAS: string[] = Array.from({ length: 11 }, (_, i) => String(34 + i * 2));
+export const POINTURES: string[] = Array.from({ length: 14 }, (_, i) => String(35 + i));
+
 export interface Profile {
   /* Champs obligatoires (onboarding 3 questions) */
   genre: Genre;
@@ -58,6 +66,14 @@ export interface Profile {
   couleursInterdites?: string[];  // hex codes
   marquesFavorites?: string[];    // noms libres
   formalite?: FormaliteLevel;
+
+  /* Tailles (spec questionnaire 2026-08-21). Renseignées depuis
+     /palette/[number], réutilisées pour pré-remplir le formulaire ensuite.
+     NOTE : le composeur de tenue ne filtre pas encore par taille — la donnée
+     est collectée et conservée, pas exploitée. À câbler côté moteur. */
+  tailleHaut?: TailleHaut;
+  tailleBas?: string;
+  pointure?: string;
 }
 
 export const DEFAULT_PROFILE: Profile = {
@@ -99,6 +115,9 @@ function isValidProfile(raw: unknown): raw is Profile {
   if (p.couleursAimees !== undefined && !Array.isArray(p.couleursAimees)) return false;
   if (p.couleursInterdites !== undefined && !Array.isArray(p.couleursInterdites)) return false;
   if (p.marquesFavorites !== undefined && !Array.isArray(p.marquesFavorites)) return false;
+  if (p.tailleHaut !== undefined && !TAILLES_HAUT.includes(p.tailleHaut as TailleHaut)) return false;
+  if (p.tailleBas !== undefined && !TAILLES_BAS.includes(p.tailleBas as string)) return false;
+  if (p.pointure !== undefined && !POINTURES.includes(p.pointure as string)) return false;
   if (p.formalite !== undefined) {
     const f = p.formalite;
     if (typeof f !== "number" || f < 0 || f > 4) return false;

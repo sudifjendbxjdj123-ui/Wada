@@ -1,10 +1,18 @@
 "use client";
 /**
- * ComposeForm — formulaire « Composez votre tenue » (refonte maquette
- * 2026-06-11). Remplace l'ancien PersonalizedCompose : 5 questions
- * numérotées en grille 2 colonnes (occasion / univers / pour qui / budget /
- * niveau d'audace), carte « Votre sélection » récapitulative, CTA « Voir ma
- * tenue ».
+ * ComposeForm — formulaire « Composez votre tenue ».
+ *
+ * Questionnaire mis à jour le 2026-08-21 sur spec client. Quatre questions :
+ *   1. Occasion  — Travail · Quotidien · Soirée · Voyage · Événement spécial
+ *                  · Autre (champ texte)
+ *   2. Univers   — Minimaliste · Élégant · Créatif · Décontracté
+ *                  · Autre (champ texte)
+ *   3. Pour qui  — Femme · Homme · Mixte
+ *   4. Tailles   — haut XS→XXL, bas 34→54, chaussures 35→48
+ *
+ * Remplacent « Budget total » et « Niveau d'audace », absents de la spec.
+ * L'audace n'était de toute façon jamais transmise, et le budget partait en
+ * `?maxPrice=` que /ma-tenue ne lit pas.
  *
  * « Visuel d'abord » (décision user) : les libellés de la maquette qui ne
  * sont pas reconnus par le moteur (/ma-tenue) — occasion « Voyage », univers
@@ -17,7 +25,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import type { DictionaryEntry } from "@/lib/data";
 import { cultureLabels } from "@/lib/data";
-import { useProfile } from "@/hooks/useProfile";
+import { useProfile, TAILLES_HAUT, TAILLES_BAS, POINTURES, type TailleHaut } from "@/hooks/useProfile";
 
 const palette = {
   beige: "#F4EFE7",
@@ -46,19 +54,30 @@ function hexRgba(hex: string, a: number): string {
   return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${a})`;
 }
 
-type OccasionOpt = "travail" | "quotidien" | "soiree" | "voyage";
-type UniversOpt = "Minimaliste" | "Élégant" | "Créatif" | "Décontracté";
+type OccasionOpt = "travail" | "quotidien" | "soiree" | "voyage" | "evenement" | "autre";
+type UniversOpt = "Minimaliste" | "Élégant" | "Créatif" | "Décontracté" | "Autre";
 type Genre = "Femme" | "Homme" | "Mixte";
 
+const OCCASIONS: OccasionOpt[] = ["travail", "quotidien", "soiree", "voyage", "evenement", "autre"];
 const OCC_LABEL: Record<OccasionOpt, string> = {
-  travail: "Travail", quotidien: "Quotidien", soiree: "Soirée", voyage: "Voyage",
+  travail: "Travail", quotidien: "Quotidien", soiree: "Soirée",
+  voyage: "Voyage", evenement: "Événement spécial", autre: "Autre",
 };
-/* Traduction maquette → paramètres /ma-tenue (registres reconnus). */
+/* Traduction des libellés du questionnaire → paramètres que /ma-tenue
+   reconnaît. Le moteur n'a que quatre registres d'occasion (bureau,
+   quotidien, soiree, voyage n'existant pas) : on rattache chaque libellé au
+   plus proche plutôt que d'inventer une valeur qui serait ignorée.
+   « Autre » retombe sur quotidien, le registre le plus neutre — la précision
+   saisie est affichée dans le récapitulatif mais n'est pas exploitable par le
+   composeur, qui n'accepte pas de texte libre. */
 const OCC_TO_PARAM: Record<OccasionOpt, string> = {
-  travail: "bureau", quotidien: "quotidien", soiree: "soiree", voyage: "quotidien",
+  travail: "bureau", quotidien: "quotidien", soiree: "soiree",
+  voyage: "quotidien", evenement: "soiree", autre: "quotidien",
 };
+const UNIVERS: UniversOpt[] = ["Minimaliste", "Élégant", "Créatif", "Décontracté", "Autre"];
 const UNIV_TO_STYLE: Record<UniversOpt, string> = {
-  Minimaliste: "Minimal", "Élégant": "Old money", "Créatif": "Streetwear", "Décontracté": "Décontracté",
+  Minimaliste: "Minimal", "Élégant": "Old money", "Créatif": "Streetwear",
+  "Décontracté": "Décontracté", Autre: "Minimal",
 };
 
 export default function ComposeForm({ entry }: { entry: DictionaryEntry }) {
@@ -66,22 +85,28 @@ export default function ComposeForm({ entry }: { entry: DictionaryEntry }) {
   const [occasion, setOccasion] = useState<OccasionOpt>("quotidien");
   const [univers, setUnivers] = useState<UniversOpt>("Élégant");
   const [genre, setGenre] = useState<Genre>("Homme");
-  const [budget, setBudget] = useState<number>(450);
-  const [audace, setAudace] = useState<number>(50);
+  /* Précisions libres quand « Autre » est coché (spec 2026-08-21). */
+  const [occasionAutre, setOccasionAutre] = useState("");
+  const [universAutre, setUniversAutre] = useState("");
+  /* Tailles — vides par défaut : on ne devine pas la morphologie du client. */
+  const [tailleHaut, setTailleHaut] = useState<TailleHaut | "">("");
+  const [tailleBas, setTailleBas] = useState("");
+  const [pointure, setPointure] = useState("");
 
   /* Pré-remplissage depuis le profil (genre / budget / style le plus proche). */
   useEffect(() => {
     if (!hydrated) return;
     if (effective.genre === "Femme" || effective.genre === "Homme") setGenre(effective.genre);
-    if (effective.budget === "< 150€") setBudget(150);
-    else if (effective.budget === "150–400€") setBudget(400);
-    else if (effective.budget === "Premium") setBudget(1000);
+    /* Tailles déjà renseignées lors d'une visite précédente. */
+    if (effective.tailleHaut) setTailleHaut(effective.tailleHaut);
+    if (effective.tailleBas) setTailleBas(effective.tailleBas);
+    if (effective.pointure) setPointure(effective.pointure);
     const s = effective.style;
     if (s === "Minimaliste") setUnivers("Minimaliste");
     else if (s === "Décontracté") setUnivers("Décontracté");
     else if (s === "Streetwear") setUnivers("Créatif");
     else if (s) setUnivers("Élégant");
-  }, [hydrated, effective.style, effective.genre, effective.budget]);
+  }, [hydrated, effective.style, effective.genre, effective.tailleHaut, effective.tailleBas, effective.pointure]);
 
   if (!hydrated) return <div style={{ height: 820 }} aria-hidden />;
 
@@ -95,11 +120,25 @@ export default function ComposeForm({ entry }: { entry: DictionaryEntry }) {
     `/ma-tenue?palette=${entry.number}` +
     `&style=${encodeURIComponent(UNIV_TO_STYLE[univers])}` +
     `&occasion=${OCC_TO_PARAM[occasion]}` +
-    `&genre=${genreParam}` +
-    `&maxPrice=${budget >= 2000 ? "" : budget}`;
+    `&genre=${genreParam}`;
 
-  const audaceLabel = audace < 34 ? "Classique" : audace < 67 ? "Affirmé" : "Éditorial";
-  const budgetPct = ((budget - 100) / (2000 - 100)) * 100;
+  /* Les tailles sont enregistrées dans le profil au moment de composer :
+     c'est de la donnée client stable, pas un paramètre d'une tenue. Elles
+     re-préremplissent le formulaire aux visites suivantes.
+     NOTE : le composeur ne filtre pas encore par taille. */
+  const persistReponses = () => {
+    const patch: Record<string, unknown> = {};
+    if (genre === "Femme" || genre === "Homme") patch.genre = genre;
+    if (tailleHaut) patch.tailleHaut = tailleHaut;
+    if (tailleBas) patch.tailleBas = tailleBas;
+    if (pointure) patch.pointure = pointure;
+    if (Object.keys(patch).length === 0) return;
+    try {
+      const brut = localStorage.getItem("wada.profile");
+      const actuel = brut ? JSON.parse(brut) : {};
+      localStorage.setItem("wada.profile", JSON.stringify({ ...actuel, ...patch }));
+    } catch { /* stockage indisponible : on compose quand même */ }
+  };
 
   /* ── styles ── */
   const qCard: React.CSSProperties = {
@@ -140,6 +179,13 @@ export default function ComposeForm({ entry }: { entry: DictionaryEntry }) {
     </button>
   );
 
+  /* Champ « Précisez… » des options « Autre ». */
+  const champTexte: React.CSSProperties = {
+    width: "100%", boxSizing: "border-box", marginTop: 2, padding: "12px 15px",
+    borderRadius: 11, border: `1.5px solid ${accent}`, background: "#fff",
+    fontFamily: fonts.sans, fontSize: 14.5, color: palette.ink, outline: "none",
+  };
+
   const sliderStyle = (pct: number): React.CSSProperties => ({
     width: "100%", height: 6, borderRadius: 999,
     background: `linear-gradient(to right, ${accent} 0%, ${accent} ${pct}%, #e7e0d4 ${pct}%, #e7e0d4 100%)`,
@@ -152,16 +198,26 @@ export default function ComposeForm({ entry }: { entry: DictionaryEntry }) {
         {/* 1 — Occasion */}
         <div style={qCard}>
           <div style={qHead}><span style={qBadge}>1</span><h3 style={qTitle}>Pour quelle occasion&nbsp;?</h3></div>
-          {(["travail", "quotidien", "soiree", "voyage"] as OccasionOpt[]).map((o) =>
-            choiceRow(occasion === o, () => setOccasion(o), OCC_LABEL[o]),
+          {OCCASIONS.map((o) => choiceRow(occasion === o, () => setOccasion(o), OCC_LABEL[o]))}
+          {occasion === "autre" && (
+            <input
+              type="text" value={occasionAutre} onChange={(e) => setOccasionAutre(e.target.value)}
+              placeholder="Précisez…" aria-label="Précisez l'occasion"
+              style={champTexte}
+            />
           )}
         </div>
 
         {/* 2 — Univers */}
         <div style={qCard}>
           <div style={qHead}><span style={qBadge}>2</span><h3 style={qTitle}>Quel univers&nbsp;?</h3></div>
-          {(["Minimaliste", "Élégant", "Créatif", "Décontracté"] as UniversOpt[]).map((u) =>
-            choiceRow(univers === u, () => setUnivers(u), u),
+          {UNIVERS.map((u) => choiceRow(univers === u, () => setUnivers(u), u))}
+          {univers === "Autre" && (
+            <input
+              type="text" value={universAutre} onChange={(e) => setUniversAutre(e.target.value)}
+              placeholder="Précisez…" aria-label="Précisez l'univers"
+              style={champTexte}
+            />
           )}
         </div>
 
@@ -173,37 +229,40 @@ export default function ComposeForm({ entry }: { entry: DictionaryEntry }) {
           )}
         </div>
 
-        {/* 4 — Budget total */}
-        <div style={qCard}>
-          <div style={qHead}><span style={qBadge}>4</span><h3 style={qTitle}>Budget total</h3></div>
-          <div style={{ display: "flex", justifyContent: "space-between", fontFamily: fonts.sans, fontSize: 12, color: palette.inkSoft, marginBottom: 10 }}>
-            <span>100&nbsp;€</span><span>2000&nbsp;€+</span>
-          </div>
-          <input
-            type="range" min={100} max={2000} step={50} value={budget}
-            onChange={(e) => setBudget(parseInt(e.target.value))}
-            className="wada-slider" style={sliderStyle(budgetPct)}
-            aria-label="Budget total"
-          />
-          <div style={{ textAlign: "center", marginTop: 16, fontFamily: fonts.display, fontSize: 30, fontWeight: 500, color: accent, letterSpacing: "-0.5px", lineHeight: 1 }}>
-            {budget >= 2000 ? "2000 €+" : `~ ${budget} €`}
-          </div>
-        </div>
-
-        {/* 5 — Niveau d'audace (pleine largeur) */}
+        {/* 4 — Vos tailles (pleine largeur) */}
         <div style={{ ...qCard, gridColumn: "1 / -1" }}>
-          <div style={qHead}><span style={qBadge}>5</span><h3 style={qTitle}>Niveau d'audace</h3></div>
-          <div style={{ display: "flex", justifyContent: "space-between", fontFamily: fonts.sans, fontSize: 12.5, color: palette.inkSoft, marginBottom: 10 }}>
-            <span>Classique</span>
-            <span style={{ color: accent, fontWeight: 600 }}>{audaceLabel} · {audace}%</span>
-            <span>Éditorial</span>
+          <div style={qHead}><span style={qBadge}>4</span><h3 style={qTitle}>Vos tailles</h3></div>
+          <div className="wada-tailles" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 14 }}>
+            {([
+              ["Haut", tailleHaut, (v: string) => setTailleHaut(v as TailleHaut | ""), TAILLES_HAUT as readonly string[]],
+              ["Bas", tailleBas, setTailleBas, TAILLES_BAS],
+              ["Chaussures", pointure, setPointure, POINTURES],
+            ] as [string, string, (v: string) => void, readonly string[]][]).map(([label, valeur, set, options]) => (
+              <label key={label} style={{ display: "block" }}>
+                <span style={{
+                  display: "block", marginBottom: 7, fontFamily: fonts.sans, fontSize: 12,
+                  fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", color: palette.inkSoft,
+                }}>
+                  {label}
+                </span>
+                <select
+                  value={valeur}
+                  onChange={(e) => set(e.target.value)}
+                  style={{
+                    width: "100%", padding: "12px 13px", borderRadius: 11,
+                    border: `1.5px solid ${valeur ? accent : palette.line}`,
+                    background: valeur ? accentTint : "#fff",
+                    fontFamily: fonts.sans, fontSize: 14.5, fontWeight: valeur ? 600 : 500,
+                    color: palette.ink, cursor: "pointer", appearance: "none",
+                    WebkitAppearance: "none", MozAppearance: "none",
+                  }}
+                >
+                  <option value="">—</option>
+                  {options.map((o) => <option key={o} value={o}>{o}</option>)}
+                </select>
+              </label>
+            ))}
           </div>
-          <input
-            type="range" min={0} max={100} step={5} value={audace}
-            onChange={(e) => setAudace(parseInt(e.target.value))}
-            className="wada-slider" style={sliderStyle(audace)}
-            aria-label="Niveau d'audace"
-          />
         </div>
       </div>
 
@@ -222,11 +281,12 @@ export default function ComposeForm({ entry }: { entry: DictionaryEntry }) {
         </div>
         <div style={{ marginTop: 10 }}>
           {([
-            ["Occasion", OCC_LABEL[occasion]],
-            ["Univers", univers],
+            ["Occasion", occasion === "autre" && occasionAutre.trim()
+              ? occasionAutre.trim() : OCC_LABEL[occasion]],
+            ["Univers", univers === "Autre" && universAutre.trim()
+              ? universAutre.trim() : univers],
             ["Pour", genre],
-            ["Budget", budget >= 2000 ? "2000 €+" : `~ ${budget} €`],
-            ["Audace", `${audace}% · ${audaceLabel}`],
+            ["Tailles", [tailleHaut, tailleBas, pointure].filter(Boolean).join(" · ") || "Non renseignées"],
           ] as [string, string][]).map(([k, v]) => (
             <div key={k} style={sumRow}>
               <span style={{ color: palette.inkSoft, fontFamily: fonts.sans }}>{k}</span>
@@ -237,7 +297,7 @@ export default function ComposeForm({ entry }: { entry: DictionaryEntry }) {
       </div>
 
       {/* CTA */}
-      <Link href={composeHref} style={{
+      <Link href={composeHref} onClick={persistReponses} style={{
         display: "flex", alignItems: "center", justifyContent: "center", gap: 9,
         width: "100%", boxSizing: "border-box", background: palette.ink, color: "#fff",
         borderRadius: 14, padding: "18px", fontFamily: fonts.display, fontSize: 16.5, fontWeight: 500,
@@ -265,6 +325,11 @@ export default function ComposeForm({ entry }: { entry: DictionaryEntry }) {
         }
         @media (max-width: 680px) {
           :global(.wada-q-grid) { grid-template-columns: 1fr !important; }
+        }
+        /* Les trois sélecteurs de taille tiennent côte à côte jusqu'à ~420px ;
+           en dessous ils passent l'un sous l'autre pour rester tapables. */
+        @media (max-width: 420px) {
+          :global(.wada-tailles) { grid-template-columns: 1fr !important; }
         }
       `}</style>
     </div>

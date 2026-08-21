@@ -287,6 +287,13 @@ function MaTenueContent() {
   // les écraser durablement.
   const overrideStyle = searchParams.get("style");
   const overrideOccasion = searchParams.get("occasion");
+  /* Fix 2026-08-21 : `?genre=` était construit par le questionnaire de
+     /palette/[number] et par les liens catégorie, mais jamais lu ici — la
+     réponse « Pour qui » du client était donc perdue, et la tenue composée
+     avec le genre du profil. Le commentaire de la résolution du genre, plus
+     bas, affirmait pourtant que « les query params explicites gagnent ». On
+     applique ce qui était annoncé. */
+  const overrideGenre = searchParams.get("genre");
 
   const [prefs, setPrefs] = useState<WadaPrefs>(DEFAULT_PREFS);
   const [matchIndex, setMatchIndex] = useState(0);
@@ -464,10 +471,13 @@ function MaTenueContent() {
       // Overrides URL — gagnent sur localStorage pour cette session
       if (overrideStyle) initial.style = overrideStyle;
       if (overrideOccasion) initial.occasion_focus = overrideOccasion;
+      if (overrideGenre === "femme" || overrideGenre === "homme" || overrideGenre === "unisexe") {
+        initial.gender = overrideGenre;
+      }
       setPrefs(initial);
     } catch { /* ignore */ }
     setHydrated(true);
-  }, [overrideStyle, overrideOccasion]);
+  }, [overrideStyle, overrideOccasion, overrideGenre]);
 
   /* Trouve les palettes qui matchent — calcul memoisé pour ne pas relancer
      le scoring à chaque render.
