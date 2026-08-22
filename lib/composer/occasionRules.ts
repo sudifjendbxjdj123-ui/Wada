@@ -31,8 +31,40 @@ export const WHITELIST_SOURCES = new Set<string>([
      Complète La Redoute côté chaussures et lifestyle (Vans, Dr. Martens,
      Timberland…). Approbation Awin plus rapide → sert de plan B rapide. */
   "spartoo",
-  /* À ajouter quand intégrés : "the-shirt-company", "armor-lux", … */
+  /* Fix 2026-08-23 « installer toutes les marques » : The Shirt Company
+     (Awin ID 115010) est rejointe depuis le 28/05, listée « active » dans
+     AFFILIATE_BRANDS, citée comme partenaire par le pied de page et la page
+     /affiliation — mais son slug manquait ICI, et cette liste rejette tout
+     produit d'un marchand absent avant même le tri. Ses 757 produits ne
+     pouvaient donc jamais s'afficher. 100 % femme, GBP converti à
+     l'ingestion, livraison monde : rien d'autre à adapter. */
+  "the-shirt-company",
 ]);
+
+/* ── Marchands déclarés dans AWIN_DATAFEED_URLS ─────────────────────────────
+   Le même oubli se serait reproduit à CHAQUE nouveau flux : la promesse
+   « installer une marque = ajouter son flux à la variable d'environnement,
+   sans déploiement » était fausse tant que cette liste ne se mettait à jour
+   qu'à la main. Un slug déclaré dans AWIN_DATAFEED_URLS est donc désormais
+   affilié d'office : un flux n'y entre que si le programme Awin est rejoint,
+   c'est précisément le critère de la liste.
+
+   La liste codée reste nécessaire : plusieurs marchands ont un slug
+   CANONIQUE différent de celui du flux (muji → muji-france, K&Ö →
+   kastner-ohler)— pour eux, c'est elle qui fait foi. Lue paresseusement et
+   mise en cache : ce prédicat est appelé une fois par produit du catalogue. */
+let slugsEnv: Set<string> | null = null;
+function slugsDeclaresEnv(): Set<string> {
+  if (slugsEnv) return slugsEnv;
+  slugsEnv = new Set<string>();
+  try {
+    const feeds: Array<{ slug?: string }> = JSON.parse(process.env.AWIN_DATAFEED_URLS || "[]");
+    for (const f of feeds) {
+      if (f?.slug) slugsEnv.add(String(f.slug).toLowerCase().trim());
+    }
+  } catch { /* env absente ou illisible : la liste codée suffit */ }
+  return slugsEnv;
+}
 
 /**
  * Mots-clés FR + EN à exclure du `product_name` selon l'occasion. Si le nom
@@ -111,5 +143,5 @@ export function isProductOkForOccasion(productName: string, occasion: string): b
 
 /** True si la source est une marque affiliée WADA. */
 export function isAffiliated(source: string): boolean {
-  return WHITELIST_SOURCES.has(source);
+  return WHITELIST_SOURCES.has(source) || slugsDeclaresEnv().has(source);
 }
