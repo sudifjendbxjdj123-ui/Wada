@@ -47,6 +47,7 @@ import type { ProduitAwin } from "@/lib/schema";
 import { gunzipSync } from "node:zlib";
 import { uploadRemoteImage, uploadBatch } from "@/lib/imageStorage";
 import { readAllProducts, writeAllProducts } from "@/lib/productStore";
+import { isAffiliated } from "@/lib/composer/occasionRules";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -139,6 +140,21 @@ async function runVerify(feedUrl: string) {
   const top = (m: Map<string, number>, n: number) =>
     [...m.entries()].sort((a, b) => b[1] - a[1]).slice(0, n)
       .map(([nom, count]) => ({ nom, produits: count }));
+  /* Le piège qui a englouti The Shirt Company (757 produits ingérés, zéro
+     affiché) : un slug absent de la liste d'affiliation est rejeté par
+     /api/products APRÈS l'ingestion. Le rapport le dit noir sur blanc,
+     marchand par marchand, plutôt que de laisser découvrir un catalogue
+     vide en production. */
+  const marchandsAnnotes = top(marchands, 5).map((m) => ({
+    ...m,
+    affilie: isAffiliated(m.nom),
+  }));
+  const avertissements = marchandsAnnotes
+    .filter((m) => !m.affilie)
+    .map((m) =>
+      `Le slug « ${m.nom} » n'est pas encore affilié : ses produits seraient ` +
+      `rejetés à l'affichage. Utiliser EXACTEMENT ce slug dans AWIN_DATAFEED_URLS ` +
+      `(il devient alors affilié d'office), ou l'ajouter à WHITELIST_SOURCES.`);
   const pct = (n: number) => products.length ? Math.round((n / products.length) * 100) : 0;
 
   return {
@@ -149,7 +165,8 @@ async function runVerify(feedUrl: string) {
     produits_gardes: products.length,
     ecartes_au_parsing: stats.dropped,
     doublons_variantes_fusionnes: stats.parsed - stats.afterDedup,
-    marchands: top(marchands, 5),
+    marchands: marchandsAnnotes,
+    ...(avertissements.length ? { avertissements } : {}),
     marques_distinctes: marques.size,
     top_marques: top(marques, 15),
     devises: Object.fromEntries(devises),
