@@ -63,6 +63,119 @@ interface FeedConfig {
    Le cron utilise readAllProducts() / writeAllProducts() depuis ce module. */
 
 /* ──────────────────────────────────────────────────────────────────────
+   PHASE VERIFY — auditer un flux candidat SANS toucher au catalogue.
+
+   « On va installer toutes les marques sur Wada » (client 2026-08-23).
+   Chaque marchand ajouté jusqu'ici a demandé un aller-retour de code
+   (New Era, K&Ö, La Redoute, Spartoo…) parce qu'on découvrait ses
+   particularités APRÈS l'avoir branché. Cette phase inverse l'ordre :
+   on télécharge le flux, on le fait passer par le MÊME parseur que
+   l'ingestion réelle, et on rend un rapport — produits gardés/écartés et
+   pourquoi, marques trouvées, devise, genres, couverture images/tailles.
+   Rien n'est écrit en KV : c'est un essayage, pas une installation.
+
+   USAGE :
+     /api/cron/refresh-awin-feed?phase=verify&url=<URL du flux Awin>
+   (même Authorization: Bearer CRON_SECRET que les autres phases)
+
+   Une fois le rapport satisfaisant, l'installation reste la même :
+   ajouter {"slug":"...","url":"..."} à AWIN_DATAFEED_URLS puis relancer
+   ?phase=ingest — aucun déploiement nécessaire.
+   ────────────────────────────────────────────────────────────────────── */
+async function runVerify(feedUrl: string) {
+  let res: Response;
+  try {
+    res = await fetch(feedUrl, {
+      headers: { "User-Agent": "WADA-feed-ingest/1.0" },
+      signal: AbortSignal.timeout(45_000),
+    });
+  } catch (e) {
+    return { ok: false, error: `Téléchargement impossible : ${e instanceof Error ? e.message : "réseau"}` };
+  }
+  if (!res.ok) {
+    return {
+      ok: false,
+      error: `HTTP ${res.status} — vérifier que l'URL vient bien de « Créer un flux » sur Awin et que le programme est approuvé.`,
+    };
+  }
+  const buf = Buffer.from(await res.arrayBuffer());
+  const looksGzipped = /\.gz(\?|$)|gzip/i.test(feedUrl) || (buf[0] === 0x1f && buf[1] === 0x8b);
+  let csvText: string;
+  try {
+    csvText = looksGzipped ? gunzipSync(buf).toString("utf8") : buf.toString("utf8");
+  } catch {
+    return { ok: false, error: "Fichier illisible (ni CSV ni CSV.gz valide)." };
+  }
+
+  const { products, stats } = ingestAwinCsv(csvText);
+
+  /* Agrégats lisibles par un humain — c'est un rapport de décision, pas un
+     dump. Chaque compteur répond à « ce flux vaut-il d'être installé ? ». */
+  const parNom = (m: Map<string, number>, k: string | undefined) => {
+    const cle = (k || "").trim();
+    if (cle) m.set(cle, (m.get(cle) || 0) + 1);
+  };
+  const marques = new Map<string, number>();
+  const marchands = new Map<string, number>();
+  const devises = new Map<string, number>();
+  const genres = new Map<string, number>();
+  let avecImage = 0, avecTailles = 0, avecPrixBarre = 0, avecCouleur = 0;
+  let prixMin = Infinity, prixMax = 0, sommePrix = 0;
+  for (const p of products) {
+    parNom(marques, p.marque);
+    parNom(marchands, p.marchandSlug);
+    parNom(devises, p.devise);
+    parNom(genres, p.genre);
+    if (p.image || p.largeImage) avecImage++;
+    if (p.tailles?.length) avecTailles++;
+    if (typeof p.prixOriginal === "number") avecPrixBarre++;
+    if (p.couleurNom || p.hex) avecCouleur++;
+    if (p.prix > 0) {
+      prixMin = Math.min(prixMin, p.prix);
+      prixMax = Math.max(prixMax, p.prix);
+      sommePrix += p.prix;
+    }
+  }
+  const top = (m: Map<string, number>, n: number) =>
+    [...m.entries()].sort((a, b) => b[1] - a[1]).slice(0, n)
+      .map(([nom, count]) => ({ nom, produits: count }));
+  const pct = (n: number) => products.length ? Math.round((n / products.length) * 100) : 0;
+
+  return {
+    ok: true,
+    phase: "verify",
+    ecrit_en_kv: false,
+    lignes_flux: stats.totalLines,
+    produits_gardes: products.length,
+    ecartes_au_parsing: stats.dropped,
+    doublons_variantes_fusionnes: stats.parsed - stats.afterDedup,
+    marchands: top(marchands, 5),
+    marques_distinctes: marques.size,
+    top_marques: top(marques, 15),
+    devises: Object.fromEntries(devises),
+    genres: Object.fromEntries(genres),
+    couverture: {
+      images: `${pct(avecImage)}%`,
+      tailles: `${pct(avecTailles)}%`,
+      prix_barre: `${pct(avecPrixBarre)}%`,
+      couleur: `${pct(avecCouleur)}%`,
+    },
+    prix: products.length
+      ? {
+          min: Math.round(prixMin * 100) / 100,
+          max: Math.round(prixMax * 100) / 100,
+          moyen: Math.round((sommePrix / products.length) * 100) / 100,
+        }
+      : null,
+    installation: {
+      etape_1: "Ajouter {\"slug\":\"<slug>\",\"url\":\"<cette URL>\"} à AWIN_DATAFEED_URLS (Vercel → Settings → Environment Variables)",
+      etape_2: "Relancer /api/cron/refresh-awin-feed?phase=ingest",
+      etape_3: "Puis ?phase=mirror&batch=50 (répété) pour héberger les images",
+    },
+  };
+}
+
+/* ──────────────────────────────────────────────────────────────────────
    PHASE INGEST — fetch CSV + parse + dédup + write KV (no image mirror)
    ────────────────────────────────────────────────────────────────────── */
 
@@ -312,7 +425,10 @@ export async function GET(req: Request) {
   } catch {
     return Response.json({ ok: false, error: "AWIN_DATAFEED_URLS invalide" });
   }
-  if (feeds.length === 0) {
+  /* `verify` audite un flux qui n'est PAS encore installé : exiger que la
+     liste soit déjà remplie interdirait de vérifier le tout premier. */
+  const phasePrevue = (new URL(req.url).searchParams.get("phase") || "ingest").toLowerCase();
+  if (feeds.length === 0 && phasePrevue !== "verify") {
     return Response.json({
       ok: false,
       configured: false,
@@ -337,10 +453,19 @@ export async function GET(req: Request) {
     payload = await runMirror(batchSize, force);
   } else if (phase === "ingest") {
     payload = await runIngest(feeds);
+  } else if (phase === "verify") {
+    const feedUrl = url.searchParams.get("url");
+    if (!feedUrl || !/^https?:\/\//.test(feedUrl)) {
+      return Response.json({
+        ok: false,
+        error: "phase=verify demande ?url=<URL complète du flux Awin>",
+      });
+    }
+    payload = await runVerify(feedUrl);
   } else {
     return Response.json({
       ok: false,
-      error: `phase inconnue : ${phase}. Utiliser ?phase=ingest ou ?phase=mirror&batch=N`,
+      error: `phase inconnue : ${phase}. Utiliser ?phase=ingest, ?phase=mirror&batch=N ou ?phase=verify&url=…`,
     });
   }
 
